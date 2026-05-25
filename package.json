@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
-    "start": "NODE_OPTIONS='--max-old-space-size=4096' next start",
+    "dev": "NODE_OPTIONS='--max-old-space-size=8192' next dev --turbo=false",
+    "build": "NODE_OPTIONS='--max-old-space-size=8192' next build",
+    "start": "NODE_OPTIONS='--max-old-space-size=8192' next start",
     "lint": "eslint"
   },
   "dependencies": {

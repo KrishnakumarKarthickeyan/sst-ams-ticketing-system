@@ -233,7 +233,16 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           } else {
             const local = localStorage.getItem('sst_tickets');
             if (local) {
-              setTickets(JSON.parse(local));
+              try {
+                const parsed = JSON.parse(local);
+                if (Array.isArray(parsed) && parsed.length >= 50 && parsed.some((x: any) => x.assignedConsultant === 'Priya Raman')) {
+                  setTickets(parsed);
+                } else {
+                  loadMockTickets();
+                }
+              } catch (e) {
+                loadMockTickets();
+              }
             } else {
               loadMockTickets();
             }
@@ -352,7 +361,23 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const cat = localStorage.getItem('sst_categories');
     const n = localStorage.getItem('sst_notifications');
 
-    setTickets(t ? JSON.parse(t) : MOCK_TICKETS);
+    let parsedTickets = MOCK_TICKETS;
+    if (t) {
+      try {
+        const parsed = JSON.parse(t);
+        if (Array.isArray(parsed) && parsed.length >= 50 && parsed.some((x: any) => x.assignedConsultant === 'Priya Raman')) {
+          parsedTickets = parsed;
+        } else {
+          localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
+        }
+      } catch (e) {
+        localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
+      }
+    } else {
+      localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
+    }
+
+    setTickets(parsedTickets);
     setContracts(c ? JSON.parse(c) : MOCK_CONTRACTS);
     setContacts(co ? JSON.parse(co) : MOCK_CONTACTS);
     setKbArticles(a ? JSON.parse(a) : MOCK_ARTICLES);

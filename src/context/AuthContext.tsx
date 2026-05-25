@@ -12,6 +12,9 @@ export interface UserSession {
   role: UserRole;
   company?: string;
   id?: string;
+  consultantType?: 'Functional' | 'Technical';
+  modules?: string[];
+  phoneNumber?: string;
 }
 
 interface AuthContextType {
@@ -41,10 +44,23 @@ const DEMO_USERS: Record<string, UserSession> = {
   },
   'consultant@sap.com': {
     id: 'usr-consult-333',
-    name: 'Karthik Subramanian',
+    name: 'Priya Raman',
     email: 'consultant@sap.com',
     role: 'Consultant',
-    company: 'SST SAP Operations'
+    company: 'SST SAP Operations',
+    consultantType: 'Functional',
+    modules: ['FICO', 'MM', 'SD', 'HCM'],
+    phoneNumber: '+91 98765 00001'
+  },
+  'arjun.technical@example.com': {
+    id: 'usr-consult-444',
+    name: 'Arjun Mehta',
+    email: 'arjun.technical@example.com',
+    role: 'Consultant',
+    company: 'SST SAP Operations',
+    consultantType: 'Technical',
+    modules: ['ABAP', 'BASIS', 'CPI', 'Fiori'],
+    phoneNumber: '+91 98765 43210'
   },
   'customer@sap.com': {
     id: 'usr-customer-444',

@@ -90,9 +90,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
   const consultantMenu: MenuItem[] = [
     { title: 'Dashboard', href: '/consultant/dashboard', icon: <LayoutDashboard size={16} /> },
     { title: 'My Tickets', href: '/consultant/my-tickets', icon: <Ticket size={16} /> },
-    { title: 'Priority Queue', href: '/consultant/priority-queue', icon: <Clock size={16} /> },
-    { title: 'Effort Logger', href: '/consultant/effort-logs', icon: <Activity size={16} /> },
-    { title: 'My Performance', href: '/consultant/performance', icon: <UserCheck size={16} /> },
     { title: 'My Reports', href: '/consultant/reports', icon: <FileSpreadsheet size={16} /> }
   ];
 
