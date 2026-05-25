@@ -231,7 +231,12 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (dbTickets && dbTickets.length > 0) {
             setTickets(dbTickets.map(mapDbTicket));
           } else {
-            loadMockTickets();
+            const local = localStorage.getItem('sst_tickets');
+            if (local) {
+              setTickets(JSON.parse(local));
+            } else {
+              loadMockTickets();
+            }
           }
 
           if (dbContracts && dbContracts.length > 0) {
@@ -247,7 +252,12 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               isActive: c.is_active
             })));
           } else {
-            setContracts(MOCK_CONTRACTS);
+            const local = localStorage.getItem('sst_contracts');
+            if (local) {
+              setContracts(JSON.parse(local));
+            } else {
+              setContracts(MOCK_CONTRACTS);
+            }
           }
 
           if (dbContacts && dbContacts.length > 0) {
@@ -262,7 +272,12 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               isSecondary: c.is_secondary
             })));
           } else {
-            setContacts(MOCK_CONTACTS);
+            const local = localStorage.getItem('sst_contacts');
+            if (local) {
+              setContacts(JSON.parse(local));
+            } else {
+              setContacts(MOCK_CONTACTS);
+            }
           }
 
           if (dbArticles && dbArticles.length > 0) {
@@ -282,19 +297,34 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               updatedAt: a.updated_at
             })));
           } else {
-            setKbArticles(MOCK_ARTICLES);
+            const local = localStorage.getItem('sst_articles');
+            if (local) {
+              setKbArticles(JSON.parse(local));
+            } else {
+              setKbArticles(MOCK_ARTICLES);
+            }
           }
 
           setKbCategories(dbCategories && dbCategories.length > 0 ? dbCategories : MOCK_CATEGORIES);
-          setNotifications(dbNotifications && dbNotifications.length > 0 ? dbNotifications.map(n => ({
-            id: n.id,
-            userId: n.user_id,
-            title: n.title,
-            message: n.message,
-            ticketId: n.ticket_id,
-            isRead: n.is_read,
-            createdAt: n.created_at
-          })) : MOCK_NOTIFICATIONS);
+
+          if (dbNotifications && dbNotifications.length > 0) {
+            setNotifications(dbNotifications.map(n => ({
+              id: n.id,
+              userId: n.user_id,
+              title: n.title,
+              message: n.message,
+              ticketId: n.ticket_id,
+              isRead: n.is_read,
+              createdAt: n.created_at
+            })));
+          } else {
+            const local = localStorage.getItem('sst_notifications');
+            if (local) {
+              setNotifications(JSON.parse(local));
+            } else {
+              setNotifications(MOCK_NOTIFICATIONS);
+            }
+          }
 
         } catch (err) {
           console.error('Supabase fetch failed, falling back to local mock data.', err);
