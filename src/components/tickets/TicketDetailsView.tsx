@@ -23,7 +23,13 @@ import {
   CheckCircle,
   Copy,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Star,
+  Trash2,
+  Eye,
+  EyeOff,
+  FileText,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -46,7 +52,14 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     escalateTicket,
     updateTransportRequest,
     assignTicket,
-    getChatResponse
+    getChatResponse,
+    approveRevisionRequest,
+    rejectRevisionRequest,
+    approveClosureRequest,
+    rejectClosureRequest,
+    approveUnlockRequest,
+    rejectUnlockRequest,
+    updateTicketStatus
   } = useTickets();
 
   const ticket = tickets.find((t) => t.id === ticketId);
@@ -62,6 +75,39 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
   const [billable, setBillable] = useState(true);
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadFileSize, setUploadFileSize] = useState('');
+
+  // Operational Hub Active Tab
+  const [activeHubTab, setActiveHubTab] = useState<'overview' | 'assignments' | 'estimates' | 'actuals' | 'customer'>('overview');
+
+  // Custom Rejection Dialog Modal State
+  const [rejectionModal, setRejectionModal] = useState<{
+    isOpen: boolean;
+    type: 'estimate' | 'closure' | 'unlock' | 'reopen';
+    targetId: string;
+    reason: string;
+  }>({
+    isOpen: false,
+    type: 'estimate',
+    targetId: '',
+    reason: ''
+  });
+
+  // Closure Modal State
+  const [closureModalOpen, setClosureModalOpen] = useState(false);
+  const [closureRating, setClosureRating] = useState(5);
+  const [closureFeedback, setClosureFeedback] = useState('');
+
+  // Comment Attachments States
+  const [commentAttachments, setCommentAttachments] = useState<{
+    id: string;
+    fileName: string;
+    fileSize: number;
+    progress: number; // 0 to 100
+    isInternal: boolean;
+  }[]>([]);
+  const [commentAttachmentName, setCommentAttachmentName] = useState('');
+  const [commentAttachmentSize, setCommentAttachmentSize] = useState('150'); // in kb
+  const [commentAttachmentType, setCommentAttachmentType] = useState('application/pdf');
 
   // Resolution States
   const [rootCause, setRootCause] = useState('');
@@ -124,11 +170,19 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
   };
 
   // Handlers
+  // Handlers
   const handleCommentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
+    if (!commentText.trim() && commentAttachments.length === 0) return;
 
-    const files = uploadFileName ? [{ fileName: uploadFileName, fileSize: Number(uploadFileSize) || 120000, fileType: 'application/octet-stream' }] : undefined;
+    const files = commentAttachments.length > 0 
+      ? commentAttachments.map(f => ({
+          fileName: f.fileName,
+          fileSize: f.fileSize,
+          fileType: f.fileName.split('.').pop() || 'pdf',
+          fileUrl: '#'
+        }))
+      : undefined;
 
     addComment(
       ticket.id,
@@ -141,9 +195,85 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     );
 
     setCommentText('');
-    setUploadFileName('');
-    setUploadFileSize('');
+    setCommentAttachments([]);
     showBannerMessage('Comment response successfully added to the ticket timeline.');
+  };
+
+  const addPendingFile = () => {
+    if (!commentAttachmentName.trim()) return;
+    const sizeKb = Number(commentAttachmentSize) || 150;
+    const newFile = {
+      id: `att-${Date.now()}`,
+      fileName: commentAttachmentName,
+      fileSize: sizeKb * 1024,
+      progress: 0,
+      isInternal: isInternalComment
+    };
+    setCommentAttachments(prev => [...prev, newFile]);
+    setCommentAttachmentName('');
+    
+    // Simulate upload progress
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += 20;
+      setCommentAttachments(prev => 
+        prev.map(f => f.id === newFile.id ? { ...f, progress: currentProgress } : f)
+      );
+      if (currentProgress >= 100) {
+        clearInterval(interval);
+      }
+    }, 100);
+  };
+
+  const removePendingFile = (id: string) => {
+    setCommentAttachments(prev => prev.filter(f => f.id !== id));
+  };
+
+  const triggerRejectionModal = (type: 'estimate' | 'closure' | 'unlock' | 'reopen', targetId: string) => {
+    setRejectionModal({
+      isOpen: true,
+      type,
+      targetId,
+      reason: ''
+    });
+  };
+
+  const handleRejectionConfirm = () => {
+    const { type, targetId, reason } = rejectionModal;
+    if (!reason.trim()) return;
+
+    if (type === 'estimate') {
+      rejectRevisionRequest(ticket.id, targetId, user?.name || role, reason);
+      showBannerMessage('Hour estimate allocation revision rejected. Comments logged to history.');
+    } else if (type === 'closure') {
+      rejectClosureRequest(ticket.id, targetId, user?.name || role, reason);
+      showBannerMessage('Closure request rejected. Ticket returned to active status.');
+    } else if (type === 'unlock') {
+      rejectUnlockRequest(ticket.id, targetId, user?.name || role, reason);
+      showBannerMessage('Unlock timesheet lock request rejected.');
+    } else if (type === 'reopen') {
+      closeTicket(ticket.id, 5, `Reopen request rejected: ${reason}`, user?.name || role);
+      showBannerMessage('Reopen request rejected. Incident has been re-closed.');
+    }
+
+    setRejectionModal({ isOpen: false, type: 'estimate', targetId: '', reason: '' });
+  };
+
+  const handleApproveReopen = (tId: string) => {
+    updateTicketStatus(tId, 'In Progress', user?.name || role);
+    showBannerMessage('Reopen request approved. Incident returned to active development.');
+  };
+
+  const handleCloseClick = () => {
+    setClosureRating(5);
+    setClosureFeedback('');
+    setClosureModalOpen(true);
+  };
+
+  const handleCloseSubmit = () => {
+    closeTicket(ticket.id, closureRating, closureFeedback || 'Verified by Customer', user?.name || role);
+    setClosureModalOpen(false);
+    showBannerMessage('Ticket closure verified and confirmed. CSAT score recorded.');
   };
 
   const handleLogEffortSubmit = (e: React.FormEvent) => {
@@ -177,11 +307,6 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     e.preventDefault();
     assignTicket(ticket.id, assigneeManager || undefined, assigneeConsultant || undefined, user?.name || role);
     showBannerMessage('Ticket allocation updated. Resource assignments logged on the timeline.');
-  };
-
-  const handleCloseConfirm = () => {
-    closeTicket(ticket.id, 5, 'Client closure verification.', user?.name || 'Customer');
-    showBannerMessage('Ticket closure verified and confirmed. Satisfaction score recorded.');
   };
 
   const handleReopenSubmit = (e: React.FormEvent) => {
@@ -301,6 +426,463 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
             )}
           </div>
 
+          {/* Operational Parameters Hub */}
+          <div className="bg-white border border-zinc-200 rounded-lg shadow-sm overflow-hidden">
+            {/* Tabs Header */}
+            <div className="bg-zinc-50 border-b border-zinc-200 flex overflow-x-auto whitespace-nowrap">
+              {([
+                { id: 'overview', label: 'Incident Overview' },
+                { id: 'assignments', label: 'Resource Allocations' },
+                { id: 'estimates', label: 'Effort Estimates' },
+                { id: 'actuals', label: 'Actuals & Timesheets' },
+                { id: 'customer', label: 'Customer SLA profile' }
+              ] as const).map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveHubTab(tab.id)}
+                  className={`py-2.5 px-4 font-bold uppercase text-[9px] tracking-wider border-r border-zinc-200 transition ${
+                    activeHubTab === tab.id
+                      ? 'bg-white text-zinc-955 font-extrabold border-b-2 border-b-zinc-950 shadow-sm'
+                      : 'text-zinc-550 hover:bg-zinc-150/30 hover:text-zinc-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Body */}
+            <div className="p-4 space-y-4 text-xs font-mono">
+              {/* --- OVERVIEW TAB --- */}
+              {activeHubTab === 'overview' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Ticket Type</span>
+                      <span className="font-semibold text-zinc-900 mt-0.5 block">{ticket.ticketType || 'Incident'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Issue Classification</span>
+                      <span className="font-semibold text-zinc-900 mt-0.5 block">{ticket.category}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">SAP Module</span>
+                      <span className="font-bold text-zinc-950 mt-0.5 block font-mono">{ticket.sapModule}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Source Agent</span>
+                      <span className="font-semibold text-zinc-900 mt-0.5 block">{ticket.source}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Business Operational Impact</span>
+                      <span className="text-zinc-700 leading-normal mt-0.5 block">{ticket.businessImpact || 'No specific impact description provided.'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Expected Resolution Boundary</span>
+                      <span className="font-semibold text-zinc-900 mt-0.5 block font-mono">
+                        {ticket.expectedResolutionDate ? new Date(ticket.expectedResolutionDate).toLocaleString() : 'TBD (Awaiting estimates)'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">SLA Commitment Timeline</span>
+                      <span className="font-semibold text-zinc-900 mt-0.5 block font-mono">
+                        SLA Due: {new Date(ticket.slaDueAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* --- ASSIGNMENTS TAB --- */}
+              {activeHubTab === 'assignments' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-zinc-100 pb-3">
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Primary Lead Consultant</span>
+                      <span className="font-bold text-zinc-950 mt-0.5 block flex items-center gap-1.5">
+                        <User size={12} className="text-zinc-400" />
+                        {ticket.assignedConsultant || 'No consultant lead allocated.'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Primary Escalations Manager</span>
+                      <span className="font-bold text-zinc-950 mt-0.5 block flex items-center gap-1.5">
+                        <User size={12} className="text-zinc-400" />
+                        {ticket.assignedManager || 'No manager assigned.'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Multi-resource efforts table */}
+                  <div>
+                    <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block mb-2">Multi-Resource Efforts Roster</span>
+                    <div className="border border-zinc-200 rounded overflow-hidden">
+                      <table className="w-full text-left text-[10px]">
+                        <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                          <tr>
+                            <th className="py-2 px-3">Consultant Name</th>
+                            <th className="py-2 px-3 text-center">Type Allocation</th>
+                            <th className="py-2 px-3 text-center">Estimated Hours</th>
+                            <th className="py-2 px-3 text-center">Actual Hours</th>
+                            <th className="py-2 px-3">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-150">
+                          {(!ticket.consultantEfforts || ticket.consultantEfforts.length === 0) ? (
+                            <tr>
+                              <td colSpan={5} className="py-3 text-center text-zinc-400 italic">No resources allocated to this incident yet.</td>
+                            </tr>
+                          ) : (
+                            ticket.consultantEfforts.map(eff => (
+                              <tr key={eff.id} className="hover:bg-zinc-55/30 transition">
+                                <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
+                                <td className="py-2 px-3 text-center">
+                                  <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[8px] ${
+                                    eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-violet-50 text-violet-700 border border-violet-100'
+                                  }`}>{eff.consultantType}</span>
+                                </td>
+                                <td className="py-2 px-3 text-center font-bold text-zinc-900">{eff.estimatedHours}h</td>
+                                <td className="py-2 px-3 text-center font-bold text-zinc-955 bg-zinc-50/50">{eff.actualHours}h</td>
+                                <td className="py-2 px-3 text-zinc-500 truncate max-w-[150px]">{eff.remarks || '-'}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* --- ESTIMATES TAB --- */}
+              {activeHubTab === 'estimates' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Quoted Estimate Budget</span>
+                      <span className="font-bold text-zinc-955 text-sm mt-0.5 block font-mono">{ticket.quotedHours || 0} Hours</span>
+                    </div>
+                  </div>
+
+                  {/* Estimates History and approvals */}
+                  <div>
+                    <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block mb-2">Estimate Approval Ledger</span>
+                    <div className="border border-zinc-200 rounded overflow-hidden">
+                      <table className="w-full text-left text-[10px]">
+                        <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                          <tr>
+                            <th className="py-2 px-3">Submitted By</th>
+                            <th className="py-2 px-3 text-center">Functional Est</th>
+                            <th className="py-2 px-3 text-center">Technical Est</th>
+                            <th className="py-2 px-3 text-center">Total Est</th>
+                            <th className="py-2 px-3">Remarks / Justification</th>
+                            <th className="py-2 px-3 text-center">Status</th>
+                            {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Review Action</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-150">
+                          {(!ticket.hourEstimates || ticket.hourEstimates.length === 0) ? (
+                            <tr>
+                              <td colSpan={7} className="py-3 text-center text-zinc-400 italic">No hour estimate logs filed.</td>
+                            </tr>
+                          ) : (
+                            ticket.hourEstimates.map(est => {
+                              const isPending = est.status === 'Submitted' || est.status === 'Revision Requested';
+                              return (
+                                <tr key={est.id} className="hover:bg-zinc-55/30 transition">
+                                  <td className="py-2 px-3 font-semibold text-zinc-800">{est.consultantId}</td>
+                                  <td className="py-2 px-3 text-center font-semibold text-zinc-700">{est.functionalEstimatedHours}h</td>
+                                  <td className="py-2 px-3 text-center font-semibold text-zinc-700">{est.technicalEstimatedHours}h</td>
+                                  <td className="py-2 px-3 text-center font-bold text-zinc-950 bg-zinc-50/50">{est.totalEstimatedHours}h</td>
+                                  <td className="py-2 px-3 text-zinc-550 max-w-[150px] truncate" title={est.remarks}>{est.remarks}</td>
+                                  <td className="py-2 px-3 text-center">
+                                    <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[8px] ${
+                                      est.status === 'Revision Approved' || est.status === 'Submitted'
+                                        ? 'bg-green-50 text-green-700'
+                                        : est.status === 'Revision Rejected'
+                                        ? 'bg-red-50 text-red-750'
+                                        : 'bg-amber-50 text-amber-700 animate-pulse'
+                                    }`}>{est.status}</span>
+                                  </td>
+                                  {(role === 'Manager' || role === 'SuperAdmin') && (
+                                    <td className="py-2 px-3 text-right">
+                                      {isPending ? (
+                                        <div className="flex justify-end gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => approveRevisionRequest(ticket.id, est.id, user?.name || role)}
+                                            className="px-2 py-0.5 bg-emerald-950 text-white rounded text-[8px] font-bold uppercase tracking-wider hover:bg-emerald-800 transition"
+                                          >
+                                            Approve
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => triggerRejectionModal('estimate', est.id)}
+                                            className="px-2 py-0.5 border border-red-500 text-red-850 hover:bg-red-50 rounded text-[8px] font-bold uppercase tracking-wider transition"
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="text-zinc-400 font-mono text-[8px] uppercase">Audited</span>
+                                      )}
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* --- ACTUALS TAB --- */}
+              {activeHubTab === 'actuals' && (
+                <div className="space-y-4">
+                  {/* Variance Audit Grid */}
+                  <div>
+                    <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block mb-2">Actual vs Estimated Variance Audit</span>
+                    <div className="border border-zinc-200 rounded overflow-hidden">
+                      <table className="w-full text-left text-[10px]">
+                        <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                          <tr>
+                            <th className="py-2 px-3">Billing Type</th>
+                            <th className="py-2 px-3 text-center">Approved Estimates</th>
+                            <th className="py-2 px-3 text-center">Actual Logged</th>
+                            <th className="py-2 px-3 text-center">Variance Gap</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-150">
+                          {(() => {
+                            const latestApprovedEst = (ticket.hourEstimates || [])
+                              .filter(e => e.status === 'Revision Approved' || e.status === 'Submitted')
+                              .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+                            const estFunc = latestApprovedEst?.functionalEstimatedHours || 0;
+                            const estTech = latestApprovedEst?.technicalEstimatedHours || 0;
+                            
+                            const actFunc = (ticket.consultantEfforts || [])
+                              .filter(e => e.consultantType === 'Functional')
+                              .reduce((sum, e) => sum + e.actualHours, 0);
+                            const actTech = (ticket.consultantEfforts || [])
+                              .filter(e => e.consultantType === 'Technical')
+                              .reduce((sum, e) => sum + e.actualHours, 0);
+
+                            const funcVar = actFunc - estFunc;
+                            const techVar = actTech - estTech;
+                            
+                            return (
+                              <>
+                                <tr className="hover:bg-zinc-55/30 transition">
+                                  <td className="py-2 px-3 font-semibold text-zinc-800">Functional support resource</td>
+                                  <td className="py-2 px-3 text-center font-bold">{estFunc}h</td>
+                                  <td className="py-2 px-3 text-center font-bold">{actFunc}h</td>
+                                  <td className={`py-2 px-3 text-center font-black ${funcVar > 0 ? 'text-red-650' : 'text-emerald-700'}`}>
+                                    {funcVar >= 0 ? `+${funcVar}` : funcVar}h
+                                  </td>
+                                </tr>
+                                <tr className="hover:bg-zinc-55/30 transition">
+                                  <td className="py-2 px-3 font-semibold text-zinc-800">Technical / development support</td>
+                                  <td className="py-2 px-3 text-center font-bold">{estTech}h</td>
+                                  <td className="py-2 px-3 text-center font-bold">{actTech}h</td>
+                                  <td className={`py-2 px-3 text-center font-black ${techVar > 0 ? 'text-red-650' : 'text-emerald-700'}`}>
+                                    {techVar >= 0 ? `+${techVar}` : techVar}h
+                                  </td>
+                                </tr>
+                                <tr className="bg-zinc-50 font-extrabold border-t border-zinc-200">
+                                  <td className="py-2.5 px-3 text-zinc-900">Grand total cumulative efforts</td>
+                                  <td className="py-2.5 px-3 text-center text-zinc-950 font-black">{(estFunc + estTech)}h</td>
+                                  <td className="py-2.5 px-3 text-center text-zinc-955 font-black">{(actFunc + actTech)}h</td>
+                                  <td className={`py-2.5 px-3 text-center font-black ${((actFunc + actTech) - (estFunc + estTech)) > 0 ? 'text-red-600 bg-red-50/50' : 'text-emerald-700 bg-emerald-50/50'}`}>
+                                    {((actFunc + actTech) - (estFunc + estTech)) >= 0 ? `+${((actFunc + actTech) - (estFunc + estTech))}` : ((actFunc + actTech) - (estFunc + estTech))}h
+                                  </td>
+                                </tr>
+                              </>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Closure requests pending */}
+                  {ticket.closureRequests && ticket.closureRequests.length > 0 && (
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block mb-2">Pending Closure Verification Requests</span>
+                      <div className="border border-zinc-200 rounded overflow-hidden">
+                        <table className="w-full text-left text-[10px]">
+                          <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                            <tr>
+                              <th className="py-2 px-3">Lead Consultant</th>
+                              <th className="py-2 px-3 text-center">Actual Func</th>
+                              <th className="py-2 px-3 text-center">Actual Tech</th>
+                              <th className="py-2 px-3 text-center">Grand Total</th>
+                              <th className="py-2 px-3">Completed Work Summary</th>
+                              <th className="py-2 px-3 text-center">Status</th>
+                              {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Action</th>}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-150">
+                            {ticket.closureRequests.map(req => {
+                              const isPending = req.status === 'Pending Manager Approval' || req.status === 'Resubmitted';
+                              return (
+                                <tr key={req.id} className="hover:bg-zinc-55/30 transition">
+                                  <td className="py-2 px-3 font-semibold text-zinc-800">{req.requestedBy}</td>
+                                  <td className="py-2 px-3 text-center">{req.functionalActualHours}h</td>
+                                  <td className="py-2 px-3 text-center">{req.technicalActualHours}h</td>
+                                  <td className="py-2 px-3 text-center font-bold text-zinc-950 bg-zinc-50/50">{req.totalActualHours}h</td>
+                                  <td className="py-2 px-3 text-zinc-600 truncate max-w-[150px]" title={req.workCompletedSummary}>{req.workCompletedSummary}</td>
+                                  <td className="py-2 px-3 text-center">
+                                    <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[8px] ${
+                                      req.status === 'Approved' ? 'bg-green-50 text-green-700' : req.status === 'Rejected' ? 'bg-red-50 text-red-750' : 'bg-amber-50 text-amber-700 animate-pulse'
+                                    }`}>{req.status}</span>
+                                  </td>
+                                  {(role === 'Manager' || role === 'SuperAdmin') && (
+                                    <td className="py-2 px-3 text-right">
+                                      {isPending ? (
+                                        <div className="flex justify-end gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => approveClosureRequest(ticket.id, req.id, user?.name || role)}
+                                            className="px-2 py-0.5 bg-emerald-950 text-white rounded text-[8px] font-bold uppercase tracking-wider hover:bg-emerald-800 transition"
+                                          >
+                                            Approve
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => triggerRejectionModal('closure', req.id)}
+                                            className="px-2 py-0.5 border border-red-500 text-red-800 hover:bg-red-50 rounded text-[8px] font-bold uppercase tracking-wider transition"
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="text-zinc-400 font-mono text-[8px] uppercase">Audited</span>
+                                      )}
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Unlock Requests pending */}
+                  {ticket.unlockRequests && ticket.unlockRequests.length > 0 && (
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block mb-2">Work Log Unlock Requests</span>
+                      <div className="border border-zinc-200 rounded overflow-hidden">
+                        <table className="w-full text-left text-[10px]">
+                          <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                            <tr>
+                              <th className="py-2 px-3">Requested By</th>
+                              <th className="py-2 px-3">Unlock Reason</th>
+                              <th className="py-2 px-3">Proposed Correction</th>
+                              <th className="py-2 px-3 text-center">Status</th>
+                              {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Action</th>}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-150">
+                            {ticket.unlockRequests.map(req => {
+                              const isPending = req.status === 'Pending';
+                              return (
+                                <tr key={req.id} className="hover:bg-zinc-55/30 transition">
+                                  <td className="py-2 px-3 font-semibold text-zinc-800">{req.requestedBy}</td>
+                                  <td className="py-2 px-3 text-zinc-650 truncate max-w-[150px]" title={req.reason}>{req.reason}</td>
+                                  <td className="py-2 px-3 text-zinc-650 truncate max-w-[150px]" title={req.requestedChange}>{req.requestedChange}</td>
+                                  <td className="py-2 px-3 text-center font-bold">
+                                    <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[8px] ${
+                                      req.status === 'Approved' ? 'bg-green-50 text-green-700' : req.status === 'Rejected' ? 'bg-red-50 text-red-750' : 'bg-amber-50 text-amber-700 animate-pulse'
+                                    }`}>{req.status}</span>
+                                  </td>
+                                  {(role === 'Manager' || role === 'SuperAdmin') && (
+                                    <td className="py-2 px-3 text-right">
+                                      {isPending ? (
+                                        <div className="flex justify-end gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => approveUnlockRequest(ticket.id, req.id, user?.name || role)}
+                                            className="px-2 py-0.5 bg-emerald-950 text-white rounded text-[8px] font-bold uppercase tracking-wider hover:bg-emerald-800 transition"
+                                          >
+                                            Approve
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => triggerRejectionModal('unlock', req.id)}
+                                            className="px-2 py-0.5 border border-red-500 text-red-800 hover:bg-red-55 rounded text-[8px] font-bold uppercase tracking-wider transition"
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="text-zinc-400 font-mono text-[8px] uppercase">Audited</span>
+                                      )}
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {/* --- CUSTOMER TAB --- */}
+              {activeHubTab === 'customer' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Company / Client Organization</span>
+                      <span className="font-bold text-zinc-950 mt-0.5 block flex items-center gap-1.5">
+                        <Building2 size={13} className="text-zinc-450" />
+                        {ticket.organization}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Primary Contact Requester</span>
+                      <span className="font-semibold text-zinc-900 mt-0.5 block">{ticket.requestedBy}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Contact Email Address</span>
+                      <span className="font-mono text-zinc-800 mt-0.5 block text-[10px]">{ticket.requestedByEmail}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Contract SLA Plan</span>
+                      <span className="font-black text-zinc-955 mt-0.5 block font-mono">Premium SLA (24x7 Coverage)</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">CSAT Satisfaction Rating Record</span>
+                      {ticket.rating ? (
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <span className="font-bold text-green-700 flex items-center gap-0.5">
+                            {ticket.rating.score} / 5 <Star size={11} className="fill-green-600 text-green-600" />
+                          </span>
+                          <span className="text-zinc-400 font-mono text-[9px]">"{ticket.rating.feedback}"</span>
+                        </div>
+                      ) : (
+                        <span className="text-zinc-450 italic mt-0.5 block">No rating submitted (ticket open or unresolved)</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Resolutions summary if ready */}
           {(ticket.status === 'Resolved' || ticket.status === 'Closed') && (
             <div className="bg-white border border-green-500 rounded-lg p-5 space-y-3.5 shadow-sm text-green-950">
@@ -362,28 +944,90 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                   className="w-full bg-white border border-zinc-200 rounded p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
                 />
 
-                {/* Upload attachment tool mockup */}
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px]">Attach File Name (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. error_log.txt"
-                      value={uploadFileName}
-                      onChange={(e) => setUploadFileName(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-955 focus:outline-none"
-                    />
+                {/* Advanced File Upload Simulator */}
+                <div className="space-y-2 pt-2 border-t border-zinc-100 mt-2">
+                  <span className="font-bold text-zinc-550 uppercase text-[9px] block">Comment Attachments Registry</span>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="sm:col-span-2">
+                      <input
+                        type="text"
+                        placeholder="File name (e.g. error_log.txt)..."
+                        value={commentAttachmentName}
+                        onChange={(e) => setCommentAttachmentName(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-950 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="number"
+                          placeholder="Size (KB)..."
+                          value={commentAttachmentSize}
+                          onChange={(e) => setCommentAttachmentSize(e.target.value)}
+                          className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-955 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={addPendingFile}
+                          disabled={!commentAttachmentName.trim()}
+                          className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[9px] tracking-wider disabled:opacity-50 transition cursor-pointer"
+                        >
+                          Attach
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px]">File Size in Bytes</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 100000"
-                      value={uploadFileSize}
-                      onChange={(e) => setUploadFileSize(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-955 focus:outline-none"
-                    />
-                  </div>
+
+                  {/* List of pending attachments with progress bars and visibility toggles */}
+                  {commentAttachments.length > 0 && (
+                    <div className="space-y-2 border border-zinc-200 rounded p-2.5 bg-zinc-50/50">
+                      {commentAttachments.map(file => (
+                        <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px] bg-white border border-zinc-150 p-2 rounded shadow-sm">
+                          <div className="flex-1 space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-zinc-850 truncate max-w-[200px]">{file.fileName}</span>
+                              <span className="text-zinc-400 font-mono">{(file.fileSize / 1024).toFixed(0)} KB</span>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="w-full h-1.5 bg-zinc-100 rounded overflow-hidden border border-zinc-250">
+                              <div
+                                className="h-full bg-zinc-950 rounded-r transition-all duration-350"
+                                style={{ width: `${file.progress}%` }}
+                              ></div>
+                            </div>
+                            <div className="flex justify-between items-center text-[8px] text-zinc-450 font-bold uppercase">
+                              <span>Status: {file.progress < 100 ? `Uploading (${file.progress}%)` : 'Ready'}</span>
+                              <span className={file.isInternal ? 'text-red-650' : 'text-emerald-700'}>
+                                {file.isInternal ? 'Internal attachment' : 'Public attachment'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCommentAttachments(prev => 
+                                  prev.map(f => f.id === file.id ? { ...f, isInternal: !f.isInternal } : f)
+                                );
+                              }}
+                              className="px-2 py-1 border border-zinc-200 rounded text-[9px] hover:bg-zinc-55 uppercase font-semibold cursor-pointer"
+                            >
+                              {file.isInternal ? 'Make Public' : 'Make Internal'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removePendingFile(file.id)}
+                              className="p-1 text-zinc-400 hover:text-red-600 transition cursor-pointer"
+                              title="Delete attachment"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end pt-2">
@@ -713,13 +1357,15 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               <div className="space-y-4">
                 <span className="font-bold text-zinc-500 uppercase text-[9px] block">Awaiting validation</span>
                 <button
-                  onClick={handleCloseConfirm}
+                  type="button"
+                  onClick={handleCloseClick}
                   className="w-full py-2 bg-green-950 hover:bg-green-800 text-white font-bold rounded uppercase tracking-wider text-[10px]"
                 >
-                  Approve Resolution (5★ CSAT)
+                  Confirm Closure & CSAT Rating
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setShowReopenForm(!showReopenForm)}
                   className="w-full py-1.5 border border-zinc-200 hover:border-zinc-950 rounded font-bold uppercase tracking-wider text-[10px] text-zinc-800 transition"
                 >
@@ -734,7 +1380,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                       placeholder="Reason for re-opening..."
                       value={reopenReason}
                       onChange={(e) => setReopenReason(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-950 font-mono focus:outline-none"
+                      className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-955 font-mono focus:outline-none"
                     />
                     <button type="submit" className="w-full py-1.5 bg-black text-white rounded font-bold uppercase text-[9px] tracking-wider">
                       Reopen Ticket
@@ -744,10 +1390,25 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               </div>
             )}
 
+            {/* Manager / Admin Closure actions */}
+            {(role === 'Manager' || role === 'SuperAdmin') && ticket.status === 'Resolved' && (
+              <div className="space-y-3">
+                <span className="font-bold text-zinc-500 uppercase text-[9px] block">Administrative Closure</span>
+                <button
+                  type="button"
+                  onClick={handleCloseClick}
+                  className="w-full py-2 bg-green-950 hover:bg-green-800 text-white font-bold rounded uppercase tracking-wider text-[10px]"
+                >
+                  Close Incident (Verify CSAT)
+                </button>
+              </div>
+            )}
+
             {/* Customer Reopen console if closed */}
             {role === 'Customer' && ticket.status === 'Closed' && (
               <div>
                 <button
+                  type="button"
                   onClick={() => setShowReopenForm(!showReopenForm)}
                   className="w-full py-1.5 border border-zinc-250 hover:border-zinc-950 rounded font-bold uppercase tracking-wider text-[10px]"
                 >
@@ -760,7 +1421,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                       placeholder="Provide reopen reasons..."
                       value={reopenReason}
                       onChange={(e) => setReopenReason(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-950 focus:outline-none"
+                      className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-955 focus:outline-none"
                     />
                     <button type="submit" className="w-full py-1.5 bg-black text-white rounded font-bold uppercase text-[9px] tracking-wider">
                       Confirm Reopen
@@ -770,12 +1431,66 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               </div>
             )}
 
+            {/* Manager Reopen Review Desk */}
+            {isInternal && ticket.status === 'Reopened' && (role === 'Manager' || role === 'SuperAdmin') && (
+              <div className="bg-red-50/50 border border-red-200 rounded p-4 space-y-3">
+                <span className="font-bold text-red-800 uppercase text-[9px] flex items-center gap-1">
+                  <ShieldAlert size={12} />
+                  Reopened Incident Review
+                </span>
+                
+                <div className="text-zinc-700 leading-normal space-y-2 text-[10px]">
+                  <div>
+                    <strong className="text-zinc-900 uppercase text-[8px] block">Client Reopen Justification:</strong>
+                    <p className="mt-0.5 p-1.5 bg-white border border-zinc-200 rounded font-mono">
+                      {(() => {
+                        const reopenHistory = [...ticket.history]
+                          .reverse()
+                          .find(h => h.fieldChanged === 'Status' && h.newValue === 'Reopened');
+                        const lastCustomerComment = [...ticket.comments]
+                          .reverse()
+                          .find(c => c.authorRole === 'Customer');
+                        return reopenHistory?.oldValue === 'Closed' || reopenHistory?.oldValue === 'Resolved' 
+                          ? lastCustomerComment?.content || 'No explanation provided by client.'
+                          : 'Client rejected previous resolution verification.';
+                      })()}
+                    </p>
+                  </div>
+                  <div>
+                    <strong className="text-zinc-900 uppercase text-[8px] block">Previous Resolution Summary:</strong>
+                    <p className="mt-0.5 text-zinc-655">{ticket.resolutionSummary || 'None recorded.'}</p>
+                  </div>
+                  <div>
+                    <strong className="text-zinc-900 uppercase text-[8px] block">Previous Root Cause:</strong>
+                    <p className="mt-0.5 text-zinc-655">{ticket.rootCause || 'None recorded.'}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleApproveReopen(ticket.id)}
+                    className="flex-1 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider hover:bg-zinc-800 transition"
+                  >
+                    Authorize Reopen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => triggerRejectionModal('reopen', ticket.id)}
+                    className="flex-1 py-1.5 border border-red-500 text-red-800 hover:bg-red-50 rounded font-bold uppercase text-[9px] tracking-wider transition"
+                  >
+                    Reject & Close
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Closed Info */}
             {ticket.status === 'Closed' && (
               <div className="p-3 bg-zinc-50 border border-zinc-200 rounded text-center">
-                <span className="font-bold text-zinc-400 uppercase block">Ticket Resolved & Closed</span>
+                <span className="font-bold text-zinc-450 uppercase block">Ticket Resolved & Closed</span>
                 {ticket.rating && (
-                  <div className="mt-2 text-zinc-650 font-semibold">
+                  <div className="mt-2 text-zinc-650 font-semibold text-[10px]">
                     CSAT Score: <span className="font-bold text-green-700">{ticket.rating.score} / 5 ★</span>
                     <p className="text-[10px] text-zinc-400 mt-0.5">"{ticket.rating.feedback}"</p>
                   </div>
@@ -810,6 +1525,153 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
         </div>
 
       </div>
+
+      {/* --- MANDATORY TICKET CLOSURE DIALOG MODAL --- */}
+      {closureModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px]">
+          <div className="bg-white border border-zinc-250 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 font-mono text-xs text-zinc-955 animate-in fade-in zoom-in-95 duration-150">
+            
+            <div className="flex items-center gap-2 text-zinc-900 font-bold uppercase text-[11px] pb-2 border-b border-zinc-150">
+              <CheckCircle size={14} className="text-green-600" />
+              <span>Confirm Ticket Resolution & Closure</span>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-zinc-650">
+                You are about to close ticket <strong className="text-zinc-955">{ticket.id}</strong>. Once closed, actual efforts are locked and CSAT is finalized.
+              </p>
+              <p className="text-[10px] text-zinc-500 font-semibold">
+                To help maintain quality control standards, rating is strictly mandatory.
+              </p>
+            </div>
+
+            {/* CSAT Star Rating Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-bold text-zinc-600 uppercase">CSAT Satisfaction Rating *</label>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setClosureRating(star)}
+                    className="p-1 hover:scale-110 transition cursor-pointer text-zinc-300 hover:text-amber-500"
+                  >
+                    <Star
+                      size={20}
+                      className={star <= closureRating ? 'fill-amber-500 text-amber-500' : 'fill-none text-zinc-300'}
+                    />
+                  </button>
+                ))}
+                <span className="font-bold text-[10px] text-zinc-700 ml-2 font-mono">
+                  {closureRating === 5 ? 'Excellent (5/5)' : 
+                   closureRating === 4 ? 'Good (4/5)' : 
+                   closureRating === 3 ? 'Average (3/5)' : 
+                   closureRating === 2 ? 'Poor (2/5)' : 
+                   'Unacceptable (1/5)'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-zinc-600 uppercase">Closure Feedback Comments *</label>
+              <textarea
+                value={closureFeedback}
+                onChange={(e) => setClosureFeedback(e.target.value)}
+                placeholder="Share your experience regarding resolution speed, quality, or SAP consultant coordination..."
+                className="w-full h-24 p-2 bg-white border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-955 font-mono"
+                maxLength={400}
+                required
+              />
+              <div className="text-right text-[8px] text-zinc-400 font-semibold">
+                {closureFeedback.length}/400 characters max
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-150">
+              <button
+                type="button"
+                onClick={() => setClosureModalOpen(false)}
+                className="py-1.5 px-3 border border-zinc-200 rounded text-zinc-600 hover:bg-zinc-55 font-bold transition uppercase text-[10px]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseSubmit}
+                disabled={!closureFeedback.trim()}
+                className={`py-1.5 px-4 rounded font-bold transition uppercase text-[10px] ${
+                  closureFeedback.trim()
+                    ? 'bg-green-950 hover:bg-green-800 text-white shadow-sm'
+                    : 'bg-zinc-150 text-zinc-400 cursor-not-allowed border border-zinc-200'
+                }`}
+              >
+                Confirm Closure
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* --- STATE-DRIVEN REJECTION COMMENTS DIALOG MODAL --- */}
+      {rejectionModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px]">
+          <div className="bg-white border border-zinc-250 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 font-mono text-xs text-zinc-955 animate-in fade-in zoom-in-95 duration-150">
+            
+            <div className="flex items-center gap-2 text-zinc-900 font-bold uppercase text-[11px] pb-2 border-b border-zinc-150">
+              <AlertTriangle size={14} className="text-zinc-650" />
+              <span>Mandatory Rejection Comment Required</span>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-zinc-655 leading-relaxed">
+                You are rejecting a submission for ticket <strong className="text-zinc-955">{ticket.id}</strong>.
+              </p>
+              <p className="text-[10px] text-zinc-500 font-semibold">
+                Rejections require a detailed audit explanation. This will be appended to the timeline and notified to the consultant.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-zinc-600 uppercase">Reason for Rejection</label>
+              <textarea
+                value={rejectionModal.reason}
+                onChange={(e) => setRejectionModal({ ...rejectionModal, reason: e.target.value })}
+                placeholder="Explain what is incorrect or what changes must be made..."
+                className="w-full h-24 p-2 bg-white border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-950 font-mono"
+                maxLength={400}
+                required
+              />
+              <div className="text-right text-[8px] text-zinc-400 font-semibold">
+                {rejectionModal.reason.length}/400 characters max
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-150">
+              <button
+                type="button"
+                onClick={() => setRejectionModal({ ...rejectionModal, isOpen: false })}
+                className="py-1.5 px-3 border border-zinc-200 rounded text-zinc-600 hover:bg-zinc-50 font-bold transition uppercase text-[10px]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectionConfirm}
+                disabled={!rejectionModal.reason.trim()}
+                className={`py-1.5 px-4 rounded font-bold transition uppercase text-[10px] text-white ${
+                  rejectionModal.reason.trim()
+                    ? 'bg-red-650 hover:bg-red-700'
+                    : 'bg-zinc-150 text-zinc-400 cursor-not-allowed border border-zinc-200'
+                }`}
+              >
+                Submit Rejection
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
