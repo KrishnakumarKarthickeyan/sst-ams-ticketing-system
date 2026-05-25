@@ -13,8 +13,6 @@ import {
   ShieldCheck,
   Download,
   Calendar,
-  Zap,
-  TrendingUp,
   Activity,
   FileText,
   ShieldAlert,
@@ -22,10 +20,14 @@ import {
   User,
   Users,
   CheckCircle,
-  HelpCircle,
-  FileCode,
   Lock,
-  ArrowRight
+  ArrowRight,
+  TrendingUp,
+  FileCheck,
+  CheckSquare,
+  HelpCircle,
+  ThumbsUp,
+  Timer
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -41,25 +43,21 @@ import {
   LineChart,
   Line,
   AreaChart,
-  Area
+  Area,
+  CartesianGrid
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 
-// Helper: Calculate Sunday through Thursday working days in a month (excluding Friday/Saturday)
-function getWorkingDaysCount(year: number, monthIndex: number) {
-  let count = 0;
-  const date = new Date(year, monthIndex, 1);
-  while (date.getMonth() === monthIndex) {
-    const day = date.getDay();
-    if (day !== 5 && day !== 6) { // 5 = Friday, 6 = Saturday
-      count++;
-    }
-    date.setDate(date.getDate() + 1);
-  }
-  return count;
-}
+// Color system configuration matching requirements
+const COLORS = {
+  blue: '#3b82f6',    // In Progress, Active, Assigned
+  green: '#10b981',   // Approved, Closed, Healthy, Success
+  amber: '#f59e0b',   // Pending, Customer Action, Raised to SAP, Warning
+  red: '#ef4444',     // Critical, Rejected, SLA Breached, Overdue
+  gray: '#71717a',    // Neutral, Disabled, Archived
+};
 
 const MONTH_OPTIONS = [
   { value: '2025-11', label: 'December 2025' },
@@ -78,12 +76,12 @@ export default function ManagerDashboardPage() {
   const { user } = useAuth();
 
   const [selectedMonthStr, setSelectedMonthStr] = useState('2026-04'); // May 2026
+  const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<'tickets' | 'customers' | 'consultants' | 'hours' | 'approvals'>('tickets');
+
   const [selectedYear, selectedMonth] = useMemo(() => {
     const [y, m] = selectedMonthStr.split('-');
     return [parseInt(y, 10), parseInt(m, 10)];
   }, [selectedMonthStr]);
-
-  const [activeChartTab, setActiveChartTab] = useState<'tickets' | 'customers' | 'consultants' | 'operational'>('tickets');
 
   // Base Scoped Tickets for the Manager
   const scopedTickets = useMemo(() => {
@@ -95,404 +93,418 @@ export default function ManagerDashboardPage() {
     });
   }, [tickets, user]);
 
-  // Dynamic calculations for current selected month
-  const stats = useMemo(() => {
-    const now = new Date();
-    const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+  // 1. EXTENSIVE METRICS CALCULATIONS (5 SECTIONS)
+  const dashboardStats = useMemo(() => {
+    const nowTime = Date.now();
     const seed = (selectedYear * 12 + selectedMonth) % 100;
 
-    const workingDays = getWorkingDaysCount(selectedYear, selectedMonth);
-    const expectedCapacityHours = workingDays * 8; // sun-thu only
-
-    // ── Database Metrics ──
-    const dbMonthTickets = scopedTickets.filter(t => {
+    // Filter tickets created in or before selected month and either open or closed in selected month
+    const monthTickets = scopedTickets.filter(t => {
       const d = new Date(t.createdAt);
       return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
     });
 
-    const dbMonthClosed = dbMonthTickets.filter(t => t.status === 'Closed').length;
-    const dbMonthResolved = dbMonthTickets.filter(t => t.status === 'Resolved').length;
-    const dbMonthNew = dbMonthTickets.filter(t => t.status === 'New').length;
-    const dbMonthUnassigned = dbMonthTickets.filter(t => !t.assignedConsultant).length;
-    const dbMonthCritical = dbMonthTickets.filter(t => t.priority === 'Critical').length;
-    const dbMonthHigh = dbMonthTickets.filter(t => t.priority === 'High').length;
-    const dbMonthReopened = dbMonthTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length;
-    const dbMonthIPFunc = dbMonthTickets.filter(t => t.status === 'In Progress - Functional').length;
-    const dbMonthIPTech = dbMonthTickets.filter(t => t.status === 'In Progress - Technical').length;
-    const dbMonthCustAct = dbMonthTickets.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer').length;
-    const dbMonthSap = dbMonthTickets.filter(t => t.status === 'Raised to SAP').length;
-    const dbMonthClosureReq = dbMonthTickets.filter(t => t.status === 'Request for Closure').length;
-    const dbMonthReqGathering = dbMonthTickets.filter(t => t.status === 'Requirement Gathering').length;
-
-    // SLA calculation
-    const nowTime = Date.now();
-    const dbMonthBreached = dbMonthTickets.filter(t => {
-      if (t.status === 'Closed' || t.status === 'Resolved') return false;
-      return new Date(t.slaDueAt).getTime() < nowTime;
-    }).length;
-
-    const dbMonthSlaWarning = dbMonthTickets.filter(t => {
-      if (t.status === 'Closed' || t.status === 'Resolved') return false;
-      const diff = new Date(t.slaDueAt).getTime() - nowTime;
-      return diff > 0 && diff < 24 * 60 * 60 * 1000;
-    }).length;
-
-    // Effort Hours calculations
-    let dbActualHours = 0;
-    let dbBillableHours = 0;
-    let dbPlannedHours = 0;
-
-    dbMonthTickets.forEach(t => {
-      const latestEst = (t.hourEstimates || [])
-        .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
-        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
-      dbPlannedHours += latestEst?.totalEstimatedHours || t.quotedHours || 0;
-
-      const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
-      if (approvedClosure) {
-        dbActualHours += approvedClosure.totalActualHours;
-        if (t.billable) dbBillableHours += approvedClosure.totalActualHours;
-      }
-      
-      // Sum up logged efforts
-      (t.efforts || []).forEach(e => {
-        if (e.status === 'Approved') {
-          dbActualHours += e.hoursWorked || e.hoursLogged || 0;
-          if (e.billable) dbBillableHours += e.hoursWorked || e.hoursLogged || 0;
-        }
-      });
-    });
-
-    // ── Blended Scale Sim Coefficients ──
-    const scaleFactor = 3.5;
+    // ── SECTION A: EXECUTIVE OVERVIEW ──
+    const totalCustomers = 42;
+    const activeCustomers = 38;
+    const totalTicketsRaised = Math.max(monthTickets.length, 320 + (seed % 30));
     
-    // Customers (Total 40+)
-    const uniqueOrgs = Array.from(new Set(scopedTickets.map(t => t.organization)));
-    const totalCustomers = Math.max(42, uniqueOrgs.length);
-    const activeCustomers = Math.max(38, scopedTickets.filter(t => t.status !== 'Closed').reduce((set, t) => set.add(t.organization), new Set()).size);
-    const criticalCusts = scopedTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed').reduce((set, t) => set.add(t.organization), new Set()).size || 3;
-    const breachedCusts = scopedTickets.filter(t => {
+    // Status filters
+    const openTickets = monthTickets.filter(t => t.status !== 'Closed').length || 84;
+    const closedTickets = monthTickets.filter(t => t.status === 'Closed').length || 236;
+    const unassignedTickets = monthTickets.filter(t => !t.assignedConsultant).length || 5;
+    const ipFunc = monthTickets.filter(t => t.status === 'In Progress - Functional').length || 18;
+    const ipTech = monthTickets.filter(t => t.status === 'In Progress - Technical').length || 24;
+    const customerAction = monthTickets.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer').length || 12;
+    const onHold = monthTickets.filter(t => t.status === 'Waiting for Internal Team').length || 8;
+    const raisedToSap = monthTickets.filter(t => t.status === 'Raised to SAP' || t.raisedToSap).length || 6;
+    const reqClosure = monthTickets.filter(t => t.status === 'Request for Closure').length || 9;
+    const reopenedTickets = monthTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length || 4;
+    const criticalTickets = monthTickets.filter(t => t.priority === 'Critical').length || 8;
+    
+    const slaBreachedTickets = monthTickets.filter(t => {
       if (t.status === 'Closed' || t.status === 'Resolved') return false;
       return new Date(t.slaDueAt).getTime() < nowTime;
-    }).reduce((set, t) => set.add(t.organization), new Set()).size || 1;
+    }).length || 3;
 
-    // Tickets
-    const totalTickets = isCurrentMonth ? Math.max(scopedTickets.length, 310 + (seed % 20)) : 280 + (seed * 8) % 100;
-    const closedTickets = isCurrentMonth ? Math.max(scopedTickets.filter(t => t.status === 'Closed').length, 210) : Math.round(totalTickets * 0.75);
-    const unassignedTickets = isCurrentMonth ? dbMonthUnassigned : 3 + (seed % 4);
-    const ipFunc = isCurrentMonth ? Math.max(dbMonthIPFunc, 14 + (seed % 5)) : 12 + (seed % 4);
-    const ipTech = isCurrentMonth ? Math.max(dbMonthIPTech, 18 + (seed % 6)) : 15 + (seed % 5);
-    const custAction = isCurrentMonth ? Math.max(dbMonthCustAct, 8 + (seed % 4)) : 7 + (seed % 3);
-    const raisedSap = isCurrentMonth ? Math.max(dbMonthSap, 4 + (seed % 3)) : 3 + (seed % 2);
-    const closureReq = isCurrentMonth ? Math.max(dbMonthClosureReq, 6 + (seed % 4)) : 5 + (seed % 3);
-    const reopenedTickets = isCurrentMonth ? Math.max(dbMonthReopened, 4 + (seed % 3)) : 3 + (seed % 2);
-    const reqGathering = isCurrentMonth ? Math.max(dbMonthReqGathering, 9 + (seed % 4)) : 8 + (seed % 3);
-    const newTickets = isCurrentMonth ? Math.max(dbMonthNew, 5 + (seed % 4)) : 6 + (seed % 3);
+    // ── SECTION B: DELIVERY HEALTH ──
+    const ticketsReqManagerAction = unassignedTickets + reopenedTickets + raisedToSap + reqClosure;
+    const ticketsWithoutConsultant = unassignedTickets;
+    
+    const ticketsPendingActualHours = monthTickets.filter(t => 
+      t.efforts?.some(e => e.status === 'Pending' || e.status === 'Pending Approval')
+    ).length || 15;
+    
+    const ticketsPendingClosureDecision = reqClosure;
+    
+    const ticketsPendingRating = monthTickets.filter(t => 
+      t.status === 'Closed' && !t.rating
+    ).length || 7;
+    
+    const ticketsWaitingCustomer = customerAction;
+    
+    const ticketsAgingBeyondThreshold = monthTickets.filter(t => {
+      if (t.status === 'Closed') return false;
+      const ageDays = (nowTime - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      return ageDays > 7;
+    }).length || 14;
 
-    const openTickets = totalTickets - closedTickets;
+    const ticketsReopenedMoreThanOnce = monthTickets.filter(t => (t.reopenedCount || 0) > 1).length || 2;
 
-    // Priorities
-    const criticalTickets = isCurrentMonth ? Math.max(dbMonthCritical, 6 + (seed % 3)) : 5 + (seed % 2);
-    const highTickets = isCurrentMonth ? Math.max(dbMonthHigh, 22 + (seed % 8)) : 18 + (seed % 5);
-    const breachedTickets = isCurrentMonth ? Math.max(dbMonthBreached, 2) : seed % 4 === 0 ? 1 : 0;
-    const warningTickets = isCurrentMonth ? Math.max(dbMonthSlaWarning, 5) : 3 + (seed % 3);
-
-    // Approvals
-    const estPending = isCurrentMonth ? scopedTickets.flatMap(t => t.hourEstimates || []).filter(e => e.status === 'Submitted' || e.status === 'Revision Requested').length : 6 + (seed % 4);
-    const actPending = isCurrentMonth ? scopedTickets.flatMap(t => t.efforts || []).filter(e => e.status === 'Pending' || e.status === 'Pending Approval' || e.status === 'Resubmitted').length : 14 + (seed % 6);
-    const closurePending = isCurrentMonth ? scopedTickets.flatMap(t => t.closureRequests || []).filter(e => e.status === 'Pending Manager Approval' || e.status === 'Resubmitted').length : 4 + (seed % 3);
-    const reopenPending = isCurrentMonth ? scopedTickets.filter(t => t.status === 'Reopened').length : 3 + (seed % 2);
-    const unlockPending = isCurrentMonth ? scopedTickets.flatMap(t => t.unlockRequests || []).filter(e => e.status === 'Pending').length : 2 + (seed % 2);
-
-    // Resources (Total 70+)
+    // ── SECTION C: CONSULTANT HEALTH ──
     const totalConsultants = 72;
-    const funcConsultants = 42;
-    const techConsultants = 30;
-    const activeConsultants = 66;
-    const overloadedConsultants = 4 + (seed % 3);
-    const underutilizedConsultants = 7 - (seed % 3);
+    const functionalConsultants = 42;
+    const technicalConsultants = 30;
+    const overloadedConsultants = 6;  // Ute > 92%
+    const underutilizedConsultants = 8; // Ute < 70%
+    const consultantsPendingWork = 48;
+    const consultantsClosureRequests = 12;
+    const consultantsSlaBreaches = 4;
 
-    // Hours
-    const actualHours = isCurrentMonth ? Math.max(activeConsultants * 115, dbActualHours) : activeConsultants * 124 + (seed % 30);
-    const billableHours = Math.round(actualHours * 0.84);
-    const nonBillableHours = actualHours - billableHours;
-    const plannedHours = isCurrentMonth ? Math.max(activeConsultants * 125, dbPlannedHours) : actualHours + 700;
+    // ── SECTION D: CUSTOMER HEALTH ──
+    const customersCriticalTickets = 5;
+    const customersReopenedTickets = 3;
+    const customersSlaBreaches = 2;
+    const customersAwaitingClosure = 6;
+    const customersHighestHours = 4; // Apex Global, Titan Energy, Nexa Mfg, Orion Log
+    const customersHighestVolume = 5;
+
+    // ── SECTION E: APPROVAL HEALTH ──
+    const actualHoursPendingApproval = monthTickets.flatMap(t => t.efforts || [])
+      .filter(e => e.status === 'Pending' || e.status === 'Pending Approval').length || 18;
+      
+    const closureRequestsPendingApproval = monthTickets.flatMap(t => t.closureRequests || [])
+      .filter(c => c.status === 'Pending Manager Approval').length || 4;
+      
+    const reopenRequestsPendingApproval = reopenedTickets;
+    
+    const resourceChangeRequestsPending = monthTickets.flatMap(t => t.unlockRequests || [])
+      .filter(u => u.status === 'Pending' && u.reason.toLowerCase().includes('resource')).length || 2;
+      
+    const unlockRequestsPending = monthTickets.flatMap(t => t.unlockRequests || [])
+      .filter(u => u.status === 'Pending').length || 3;
 
     return {
-      workingDays,
-      expectedCapacityHours,
-      totalCustomers,
-      activeCustomers,
-      criticalCusts,
-      breachedCusts,
-
-      totalTickets,
-      openTickets,
-      unassignedTickets,
-      ipFunc,
-      ipTech,
-      custAction,
-      raisedSap,
-      closureReq,
-      closedTickets,
-      reopenedTickets,
-      reqGathering,
-      newTickets,
-
-      criticalTickets,
-      highTickets,
-      breachedTickets,
-      warningTickets,
-
-      estPending,
-      actPending,
-      closurePending,
-      reopenPending,
-      unlockPending,
-
-      totalConsultants,
-      funcConsultants,
-      techConsultants,
-      activeConsultants,
-      overloadedConsultants,
-      underutilizedConsultants,
-
-      actualHours,
-      billableHours,
-      nonBillableHours,
-      plannedHours,
-      utilizationPercent: Math.min(100.0, (actualHours / (activeConsultants * expectedCapacityHours)) * 100)
+      executive: {
+        totalCustomers,
+        activeCustomers,
+        totalTicketsRaised,
+        openTickets,
+        unassignedTickets,
+        ipFunc,
+        ipTech,
+        customerAction,
+        onHold,
+        raisedToSap,
+        reqClosure,
+        closedTickets,
+        reopenedTickets,
+        criticalTickets,
+        slaBreachedTickets
+      },
+      delivery: {
+        ticketsReqManagerAction,
+        ticketsWithoutConsultant,
+        ticketsPendingActualHours,
+        ticketsPendingClosureDecision,
+        ticketsPendingRating,
+        ticketsWaitingCustomer,
+        ticketsAgingBeyondThreshold,
+        ticketsReopenedMoreThanOnce
+      },
+      consultant: {
+        totalConsultants,
+        functionalConsultants,
+        technicalConsultants,
+        overloadedConsultants,
+        underutilizedConsultants,
+        consultantsPendingWork,
+        consultantsClosureRequests,
+        consultantsSlaBreaches
+      },
+      customer: {
+        customersCriticalTickets,
+        customersReopenedTickets,
+        customersSlaBreaches,
+        customersAwaitingClosure,
+        customersHighestHours,
+        customersHighestVolume
+      },
+      approval: {
+        actualHoursPendingApproval,
+        closureRequestsPendingApproval,
+        reopenRequestsPendingApproval,
+        resourceChangeRequestsPending,
+        unlockRequestsPending
+      }
     };
-  }, [selectedYear, selectedMonth, scopedTickets]);
+  }, [scopedTickets, selectedYear, selectedMonth]);
 
-  // ── CSV Download Handlers ──
-  const handleDownloadMonthlyReport = () => {
-    const headers = ['Metric Focus', 'Value Count'];
-    const rows = [
-      ['Total SAP Customers', stats.totalCustomers],
-      ['Active Ticket Backlog', stats.openTickets],
-      ['SLA Breaches Detected', stats.breachedTickets],
-      ['Total Effort Hours Logged', `${stats.actualHours} hrs`],
-      ['Billable Ratio', `${((stats.billableHours / stats.actualHours) * 100).toFixed(1)}%`],
-      ['Average Capacity Utilization', `${stats.utilizationPercent.toFixed(1)}%`]
-    ];
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
-    const encoded = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.href = encoded;
-    link.download = `SST_AMS_Monthly_Scorecard_${selectedMonthStr}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  // 2. ADVANCED ANALYTICS CHART DATA (32 INDICATORS IN 5 CATEGORIES)
+  // --- TICKET ANALYTICS DATA ---
+  const ticketStatusData = useMemo(() => [
+    { name: 'Req. Gathering', value: dashboardStats.executive.openTickets * 0.15 },
+    { name: 'IP Functional', value: dashboardStats.executive.ipFunc },
+    { name: 'IP Technical', value: dashboardStats.executive.ipTech },
+    { name: 'Cust. Action', value: dashboardStats.executive.customerAction },
+    { name: 'On Hold', value: dashboardStats.executive.onHold },
+    { name: 'Raised to SAP', value: dashboardStats.executive.raisedToSap },
+    { name: 'Req. Closure', value: dashboardStats.executive.reqClosure },
+    { name: 'Reopened', value: dashboardStats.executive.reopenedTickets },
+  ], [dashboardStats]);
 
-  const handleDownloadPerformanceReport = () => {
-    const headers = ['SLA Status Group', 'Incident Count'];
-    const rows = [
-      ['SLA Compliant / Healthy', stats.totalTickets - stats.breachedTickets],
-      ['SLA Breached', stats.breachedTickets],
-      ['Approaching SLA Target (<24h)', stats.warningTickets],
-      ['Critical Urgency Incidents', stats.criticalTickets]
-    ];
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
-    const encoded = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.href = encoded;
-    link.download = `SST_AMS_SLA_Audit_${selectedMonthStr}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const priorityData = useMemo(() => [
+    { name: 'Critical (P1)', value: dashboardStats.executive.criticalTickets },
+    { name: 'High (P2)', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.25) },
+    { name: 'Medium (P3)', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.45) },
+    { name: 'Low (P4)', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.22) },
+  ], [dashboardStats]);
 
-  const handleDownloadUtilizationReport = () => {
-    const headers = ['Resource Category', 'Value'];
-    const rows = [
-      ['Total Active Workforce', stats.totalConsultants],
-      ['Functional Consultants', stats.funcConsultants],
-      ['Technical Consultants', stats.techConsultants],
-      ['Overloaded Resources (>92% Ute)', stats.overloadedConsultants],
-      ['Underutilized Resources (<70% Ute)', stats.underutilizedConsultants],
-      ['Practice Utilization Percentage', `${stats.utilizationPercent.toFixed(1)}%`]
-    ];
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
-    const encoded = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.href = encoded;
-    link.download = `SST_AMS_Capacity_Utilization_${selectedMonthStr}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const typeData = useMemo(() => [
+    { name: 'Incident', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.60) },
+    { name: 'Service Request', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.25) },
+    { name: 'Change Request', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.12) },
+    { name: 'Problem Ticket', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.03) },
+  ], [dashboardStats]);
 
-  // ── 22 CHARTS TREND DATA GENERATOR ──
-  const ticketTrends = useMemo(() => {
-    return [
-      { name: 'New', count: stats.newTickets },
-      { name: 'Assigned', count: stats.totalTickets - stats.newTickets - stats.ipFunc - stats.ipTech - stats.closedTickets },
-      { name: 'Req Gathering', count: stats.reqGathering },
-      { name: 'IP Functional', count: stats.ipFunc },
-      { name: 'IP Technical', count: stats.ipTech },
-      { name: 'Cust Action', count: stats.custAction },
-      { name: 'OSS SAP', count: stats.raisedSap },
-      { name: 'Closure Req', count: stats.closureReq },
-      { name: 'Reopened', count: stats.reopenedTickets },
-      { name: 'Closed', count: stats.closedTickets }
-    ];
-  }, [stats]);
+  const moduleData = useMemo(() => [
+    { name: 'FICO', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.30) },
+    { name: 'MM', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.22) },
+    { name: 'SD', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.18) },
+    { name: 'ABAP', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.15) },
+    { name: 'BASIS', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.10) },
+    { name: 'SF/CPI', value: Math.round(dashboardStats.executive.totalTicketsRaised * 0.05) },
+  ], [dashboardStats]);
 
-  const priorityTrends = useMemo(() => [
-    { name: 'Critical (P1)', value: stats.criticalTickets },
-    { name: 'High (P2)', value: stats.highTickets },
-    { name: 'Medium (P3)', value: Math.round(stats.totalTickets * 0.4) },
-    { name: 'Low (P4)', value: Math.round(stats.totalTickets * 0.35) }
-  ], [stats]);
-
-  const moduleTrends = useMemo(() => [
-    { name: 'FICO', Tickets: Math.round(stats.totalTickets * 0.28) },
-    { name: 'MM', Tickets: Math.round(stats.totalTickets * 0.22) },
-    { name: 'SD', Tickets: Math.round(stats.totalTickets * 0.18) },
-    { name: 'ABAP', Tickets: Math.round(stats.totalTickets * 0.14) },
-    { name: 'BASIS', Tickets: Math.round(stats.totalTickets * 0.12) },
-    { name: 'CPI', Tickets: Math.round(stats.totalTickets * 0.06) }
-  ], [stats]);
-
-  const typeTrends = useMemo(() => [
-    { name: 'Incident', Tickets: Math.round(stats.totalTickets * 0.65) },
-    { name: 'Service Request', Tickets: Math.round(stats.totalTickets * 0.22) },
-    { name: 'Change Request', Tickets: Math.round(stats.totalTickets * 0.10) },
-    { name: 'Others', Tickets: Math.round(stats.totalTickets * 0.03) }
-  ], [stats]);
+  const agingBucketData = useMemo(() => [
+    { name: '< 24 Hours', value: 34 },
+    { name: '1-3 Days', value: 28 },
+    { name: '3-7 Days', value: 16 },
+    { name: '7-14 Days', value: 9 },
+    { name: '14+ Days', value: 5 },
+  ], []);
 
   const openVsClosedTrend = useMemo(() => [
-    { month: 'Jan', Open: 65, Closed: 58 },
-    { month: 'Feb', Open: 72, Closed: 64 },
-    { month: 'Mar', Open: 84, Closed: 72 },
-    { month: 'Apr', Open: stats.openTickets, Closed: stats.closedTickets }
-  ], [stats]);
+    { month: 'Jan', Raised: 145, Closed: 125 },
+    { month: 'Feb', Raised: 160, Closed: 155 },
+    { month: 'Mar', Raised: 178, Closed: 162 },
+    { month: 'Apr', Raised: 195, Closed: 180 },
+    { month: 'May', Raised: dashboardStats.executive.totalTicketsRaised, Closed: dashboardStats.executive.closedTickets }
+  ], [dashboardStats]);
 
-  const reopenTrendData = useMemo(() => [
+  const reopenedTrend = useMemo(() => [
     { month: 'Jan', Reopened: 2 },
-    { month: 'Feb', Reopened: 4 },
+    { month: 'Feb', Reopened: 5 },
     { month: 'Mar', Reopened: 3 },
-    { month: 'Apr', Reopened: stats.reopenedTickets }
-  ], [stats]);
+    { month: 'Apr', Reopened: 6 },
+    { month: 'May', Reopened: dashboardStats.executive.reopenedTickets }
+  ], [dashboardStats]);
 
-  const agingTrendData = useMemo(() => [
-    { name: '< 3 Days', count: Math.round(stats.openTickets * 0.45) },
-    { name: '3-7 Days', count: Math.round(stats.openTickets * 0.35) },
-    { name: '7-14 Days', count: Math.round(stats.openTickets * 0.15) },
-    { name: '14+ Days', count: Math.round(stats.openTickets * 0.05) }
-  ], [stats]);
+  const raisedToSapTrend = useMemo(() => [
+    { month: 'Jan', OSS: 3 },
+    { month: 'Feb', OSS: 4 },
+    { month: 'Mar', OSS: 2 },
+    { month: 'Apr', OSS: 5 },
+    { month: 'May', OSS: dashboardStats.executive.raisedToSap }
+  ], [dashboardStats]);
 
-  // Customer Analytics Data
-  const ticketsByCustomer = useMemo(() => [
-    { name: 'Apex Global', Tickets: Math.round(stats.totalTickets * 0.35) },
-    { name: 'Titan Energy', Tickets: Math.round(stats.totalTickets * 0.25) },
-    { name: 'Nexa Mfg', Tickets: Math.round(stats.totalTickets * 0.20) },
-    { name: 'Orion Log', Tickets: Math.round(stats.totalTickets * 0.12) },
-    { name: 'Stellar Retail', Tickets: Math.round(stats.totalTickets * 0.08) }
-  ], [stats]);
+  const customerActionTrend = useMemo(() => [
+    { month: 'Jan', Waiting: 8 },
+    { month: 'Feb', Waiting: 11 },
+    { month: 'Mar', Waiting: 9 },
+    { month: 'Apr', Waiting: 14 },
+    { month: 'May', Waiting: dashboardStats.executive.customerAction }
+  ], [dashboardStats]);
 
-  const customerHealthTrend = useMemo(() => [
-    { month: 'Jan', Health: 94 },
-    { month: 'Feb', Health: 96 },
-    { month: 'Mar', Health: 95 },
-    { month: 'Apr', Health: Math.round(100 - (stats.breachedTickets * 1.5)) }
-  ], [stats]);
+  // --- CUSTOMER ANALYTICS DATA ---
+  const customerTicketVolume = useMemo(() => [
+    { name: 'Apex Global', value: 85 },
+    { name: 'Titan Energy', value: 68 },
+    { name: 'Nexa Mfg', value: 54 },
+    { name: 'Orion Log', value: 36 },
+    { name: 'Stellar Retail', value: 24 }
+  ], []);
 
-  const customerCsatTrend = useMemo(() => [
-    { month: 'Jan', CSAT: 4.5 },
-    { month: 'Feb', CSAT: 4.7 },
-    { month: 'Mar', CSAT: 4.6 },
-    { month: 'Apr', CSAT: 4.8 }
+  const customerOpenTickets = useMemo(() => [
+    { name: 'Apex Global', value: 18 },
+    { name: 'Titan Energy', value: 12 },
+    { name: 'Nexa Mfg', value: 9 },
+    { name: 'Orion Log', value: 5 },
+    { name: 'Stellar Retail', value: 4 }
+  ], []);
+
+  const customerCriticalTickets = useMemo(() => [
+    { name: 'Apex Global', value: 3 },
+    { name: 'Titan Energy', value: 2 },
+    { name: 'Nexa Mfg', value: 1 },
+    { name: 'Orion Log', value: 1 },
+    { name: 'Stellar Retail', value: 0 }
+  ], []);
+
+  const customerSlaBreach = useMemo(() => [
+    { name: 'Apex Global', value: 1 },
+    { name: 'Titan Energy', value: 1 },
+    { name: 'Nexa Mfg', value: 0 },
+    { name: 'Orion Log', value: 0 },
+    { name: 'Stellar Retail', value: 0 }
   ], []);
 
   const customerHoursConsumed = useMemo(() => [
-    { name: 'Apex Global', Hours: Math.round(stats.actualHours * 0.36) },
-    { name: 'Titan Energy', Hours: Math.round(stats.actualHours * 0.26) },
-    { name: 'Nexa Mfg', Hours: Math.round(stats.actualHours * 0.18) },
-    { name: 'Orion Log', Hours: Math.round(stats.actualHours * 0.12) },
-    { name: 'Stellar Retail', Hours: Math.round(stats.actualHours * 0.08) }
-  ], [stats]);
-
-  // Consultant Analytics Data
-  const workloadDistData = useMemo(() => [
-    { name: 'Priya Raman', Tickets: 4 },
-    { name: 'Arjun Mehta', Tickets: 5 },
-    { name: 'Karthik Sub', Tickets: 3 },
-    { name: 'Elena Rostova', Tickets: 2 },
-    { name: 'Sanjay Dutt', Tickets: 6 }
+    { name: 'Apex Global', value: 420 },
+    { name: 'Titan Energy', value: 310 },
+    { name: 'Nexa Mfg', value: 260 },
+    { name: 'Orion Log', value: 180 },
+    { name: 'Stellar Retail', value: 95 }
   ], []);
 
-  const utilizationDistData = useMemo(() => [
-    { name: 'Priya Raman', Ute: 82 },
-    { name: 'Arjun Mehta', Ute: 94 },
-    { name: 'Karthik Sub', Ute: 76 },
-    { name: 'Elena Rostova', Ute: 65 },
-    { name: 'Sanjay Dutt', Ute: 92 }
+  const customerSatisfaction = useMemo(() => [
+    { name: 'Apex Global', value: 4.6 },
+    { name: 'Titan Energy', value: 4.2 },
+    { name: 'Nexa Mfg', value: 4.8 },
+    { name: 'Orion Log', value: 4.5 },
+    { name: 'Stellar Retail', value: 4.9 }
   ], []);
 
-  const consultantTicketsClosed = useMemo(() => [
-    { name: 'Priya R', Closed: 18 },
-    { name: 'Arjun M', Closed: 22 },
-    { name: 'Karthik S', Closed: 14 },
-    { name: 'Elena R', Closed: 11 },
-    { name: 'Sanjay D', Closed: 25 }
+  // --- CONSULTANT ANALYTICS DATA ---
+  const consultantWorkload = useMemo(() => [
+    { name: 'Priya Raman', value: 6 },
+    { name: 'Arjun Mehta', value: 5 },
+    { name: 'Elena Rostova', value: 4 },
+    { name: 'Sanjay Dutt', value: 5 },
+    { name: 'Karthik S', value: 3 }
   ], []);
 
-  const consultantTicketsReopened = useMemo(() => [
-    { name: 'Priya R', Reopened: 1 },
-    { name: 'Arjun M', Reopened: 2 },
-    { name: 'Karthik S', Reopened: 0 },
-    { name: 'Elena R', Reopened: 1 },
-    { name: 'Sanjay D', Reopened: 3 }
+  const functionalWorkload = useMemo(() => [
+    { name: 'Priya Raman', value: 6 },
+    { name: 'Arjun Mehta', value: 5 },
+    { name: 'Sanjay Dutt', value: 5 }
   ], []);
 
-  // Operational Analytics Data
-  const slaComplianceTrend = useMemo(() => [
-    { month: 'Jan', Compliance: 97.4 },
-    { month: 'Feb', Compliance: 98.2 },
-    { month: 'Mar', Compliance: 96.8 },
-    { month: 'Apr', Compliance: Math.max(92, 100 - (stats.breachedTickets * 0.8)) }
-  ], [stats]);
-
-  const slaBreachTrend = useMemo(() => [
-    { month: 'Jan', Breaches: 2 },
-    { month: 'Feb', Breaches: 1 },
-    { month: 'Mar', Breaches: 3 },
-    { month: 'Apr', Breaches: stats.breachedTickets }
-  ], [stats]);
-
-  const closureApprovalTrend = useMemo(() => [
-    { month: 'Jan', Rate: 92 },
-    { month: 'Feb', Rate: 95 },
-    { month: 'Mar', Rate: 93 },
-    { month: 'Apr', Rate: 96 }
+  const technicalWorkload = useMemo(() => [
+    { name: 'Elena Rostova', value: 4 },
+    { name: 'Karthik S', value: 3 },
+    { name: 'Rajesh Kumar', value: 2 }
   ], []);
 
+  const consultantHours = useMemo(() => [
+    { name: 'Priya Raman', value: 165 },
+    { name: 'Arjun Mehta', value: 158 },
+    { name: 'Elena Rostova', value: 142 },
+    { name: 'Sanjay Dutt', value: 150 },
+    { name: 'Karthik S', value: 128 }
+  ], []);
+
+  const consultantClosure = useMemo(() => [
+    { name: 'Priya Raman', value: 24 },
+    { name: 'Arjun Mehta', value: 22 },
+    { name: 'Elena Rostova', value: 18 },
+    { name: 'Sanjay Dutt', value: 19 },
+    { name: 'Karthik S', value: 15 }
+  ], []);
+
+  const consultantReopened = useMemo(() => [
+    { name: 'Priya Raman', value: 1 },
+    { name: 'Arjun Mehta', value: 2 },
+    { name: 'Elena Rostova', value: 0 },
+    { name: 'Sanjay Dutt', value: 1 },
+    { name: 'Karthik S', value: 0 }
+  ], []);
+
+  const consultantSlaPerformance = useMemo(() => [
+    { name: 'Priya Raman', value: 98 },
+    { name: 'Arjun Mehta', value: 94 },
+    { name: 'Elena Rostova', value: 100 },
+    { name: 'Sanjay Dutt', value: 96 },
+    { name: 'Karthik S', value: 100 }
+  ], []);
+
+  // --- HOURS ANALYTICS DATA ---
   const estVsActualHours = useMemo(() => [
-    { module: 'FICO', Est: 450, Act: 480 },
-    { module: 'MM', Est: 380, Act: 375 },
-    { module: 'SD', Est: 310, Act: 330 },
-    { module: 'ABAP', Est: 240, Act: 265 },
-    { module: 'BASIS', Est: 200, Act: 195 }
+    { name: 'Apex Global', Est: 400, Act: 420 },
+    { name: 'Titan Energy', Est: 330, Act: 310 },
+    { name: 'Nexa Mfg', Est: 240, Act: 260 },
+    { name: 'Orion Log', Est: 190, Act: 180 },
+    { name: 'Stellar Retail', Est: 100, Act: 95 }
   ], []);
 
-  const raisedToSapTrend = useMemo(() => [
-    { month: 'Jan', OSS: 2 },
-    { month: 'Feb', OSS: 5 },
-    { month: 'Mar', OSS: 4 },
-    { month: 'Apr', OSS: stats.raisedSap }
-  ], [stats]);
+  const functionalHours = useMemo(() => [
+    { name: 'Apex Global', value: 260 },
+    { name: 'Titan Energy', value: 190 },
+    { name: 'Nexa Mfg', value: 150 },
+    { name: 'Orion Log', value: 110 },
+    { name: 'Stellar Retail', value: 60 }
+  ], []);
+
+  const technicalHours = useMemo(() => [
+    { name: 'Apex Global', value: 160 },
+    { name: 'Titan Energy', value: 120 },
+    { name: 'Nexa Mfg', value: 110 },
+    { name: 'Orion Log', value: 70 },
+    { name: 'Stellar Retail', value: 35 }
+  ], []);
+
+  const totalHours = useMemo(() => [
+    { name: 'Apex Global', value: 420 },
+    { name: 'Titan Energy', value: 310 },
+    { name: 'Nexa Mfg', value: 260 },
+    { name: 'Orion Log', value: 180 },
+    { name: 'Stellar Retail', value: 95 }
+  ], []);
+
+  const billableVsNonBillable = useMemo(() => [
+    { name: 'Billable Hours', value: 1150 },
+    { name: 'Non-Billable Hours', value: 215 }
+  ], []);
+
+  const monthlyHoursTrend = useMemo(() => [
+    { month: 'Jan', Hours: 1120 },
+    { month: 'Feb', Hours: 1240 },
+    { month: 'Mar', Hours: 1190 },
+    { month: 'Apr', Hours: 1310 },
+    { month: 'May', Hours: 1365 }
+  ], []);
+
+  // --- APPROVAL ANALYTICS DATA ---
+  const closureApprovalTrend = useMemo(() => [
+    { month: 'Jan', Approved: 32, Rejected: 2 },
+    { month: 'Feb', Approved: 38, Rejected: 1 },
+    { month: 'Mar', Approved: 34, Rejected: 3 },
+    { month: 'Apr', Approved: 42, Rejected: 2 },
+    { month: 'May', Approved: 45, Rejected: 1 }
+  ], []);
+
+  const actualHoursApprovalTrend = useMemo(() => [
+    { month: 'Jan', Approved: 120, Rejected: 6 },
+    { month: 'Feb', Approved: 145, Rejected: 8 },
+    { month: 'Mar', Approved: 132, Rejected: 4 },
+    { month: 'Apr', Approved: 154, Rejected: 10 },
+    { month: 'May', Approved: 168, Rejected: 5 }
+  ], []);
+
+  const reopenRequestTrend = useMemo(() => [
+    { month: 'Jan', Approved: 1, Rejected: 2 },
+    { month: 'Feb', Approved: 3, Rejected: 1 },
+    { month: 'Mar', Approved: 2, Rejected: 2 },
+    { month: 'Apr', Approved: 4, Rejected: 3 },
+    { month: 'May', Approved: 3, Rejected: 1 }
+  ], []);
+
+  const resourceChangeRequestTrend = useMemo(() => [
+    { month: 'Jan', Approved: 6, Rejected: 1 },
+    { month: 'Feb', Approved: 8, Rejected: 0 },
+    { month: 'Mar', Approved: 5, Rejected: 2 },
+    { month: 'Apr', Approved: 11, Rejected: 1 },
+    { month: 'May', Approved: 9, Rejected: 2 }
+  ], []);
 
   return (
     <div className="space-y-6 font-mono text-xs text-[#09090b]">
       
-      {/* Timeline Selection Header Row */}
+      {/* ── TIMELINE HEADER ROW ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
         <div>
-          <h1 className="text-lg font-bold uppercase text-zinc-950 tracking-wider">Delivery Command Center</h1>
-          <p className="text-zinc-500 mt-1">SST Enterprise AMS control room monitoring ticket velocities, SLA compliance boundaries, and allocations.</p>
+          <h1 className="text-lg font-bold uppercase text-zinc-950 tracking-wider">Manager Command Center</h1>
+          <p className="text-zinc-500 mt-1">SST Enterprise AMS control tower for routing, SLAs, efforts, and capacity health.</p>
         </div>
         
         <div className="flex flex-wrap gap-2 items-center">
@@ -508,656 +520,788 @@ export default function ManagerDashboardPage() {
               ))}
             </select>
           </div>
-
-          <div className="bg-zinc-100 border border-zinc-200 rounded px-3 py-1 text-[9px] font-bold text-zinc-650 flex items-center gap-1.5 uppercase">
-            <span>Month Capacity:</span>
-            <span className="text-zinc-950 font-black font-mono">{stats.expectedCapacityHours} hrs</span>
-          </div>
+          <Badge className="bg-zinc-100 text-zinc-900 border border-zinc-200 px-3 py-1 font-bold text-[9px] uppercase">
+            Active Workspace
+          </Badge>
         </div>
       </div>
 
-      {/* ── 2. EXECUTIVE KPI SECTION (4 BLOCKS GRID) ── */}
-      <div className="space-y-4">
-        <h2 className="text-[10px] uppercase font-bold text-zinc-450 tracking-widest">Executive Health Scorecard</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          
-          {/* Customer KPIs */}
-          <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
-            <CardHeader className="bg-zinc-50/50 border-b border-zinc-150 py-2.5 px-4 flex flex-row items-center justify-between">
-              <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Customer Metrics</span>
-              <Building2 size={11} className="text-zinc-400" />
-            </CardHeader>
-            <CardContent className="p-4 space-y-2">
-              <div className="flex justify-between">
-                <span>Total Customers:</span>
-                <span className="font-bold text-zinc-950">{stats.totalCustomers}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Active Engagement:</span>
-                <span className="font-bold text-zinc-950">{stats.activeCustomers}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Critical Backlogs:</span>
-                <span className={`font-bold ${stats.criticalCusts > 0 ? 'text-red-650' : 'text-zinc-950'}`}>
-                  {stats.criticalCusts} Accounts
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>SLA Breached:</span>
-                <span className={`font-bold ${stats.breachedCusts > 0 ? 'text-red-655' : 'text-zinc-950'}`}>
-                  {stats.breachedCusts} Accounts
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+      {/* ── GRID: 5 SECTIONS FOR HEALTH & PERFORMANCE ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        
+        {/* SECTION A: EXECUTIVE OVERVIEW */}
+        <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
+          <CardHeader className="bg-zinc-50/50 border-b border-zinc-200 py-2.5 px-4 flex flex-row items-center justify-between">
+            <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">A. Executive Overview</span>
+            <Layers size={11} className="text-zinc-400" />
+          </CardHeader>
+          <CardContent className="p-4 space-y-2.5">
+            <div className="flex justify-between border-b border-zinc-100 pb-1">
+              <span className="text-zinc-550">Total / Active Cust:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.executive.totalCustomers} / {dashboardStats.executive.activeCustomers}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Raised / Open Tickets:</span>
+              <span className="font-bold text-zinc-950">{dashboardStats.executive.totalTicketsRaised} / {dashboardStats.executive.openTickets}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Unassigned:</span>
+              <span className={`font-bold ${dashboardStats.executive.unassignedTickets > 0 ? 'text-red-600' : 'text-zinc-900'}`}>{dashboardStats.executive.unassignedTickets}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>IP Func / IP Tech:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.executive.ipFunc} / {dashboardStats.executive.ipTech}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Customer Action:</span>
+              <span className="font-bold text-[#d97706]">{dashboardStats.executive.customerAction}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>On Hold / OSS SAP:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.executive.onHold} / {dashboardStats.executive.raisedToSap}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Req Closure / Closed:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.executive.reqClosure} / {dashboardStats.executive.closedTickets}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Reopened:</span>
+              <span className={`font-bold ${dashboardStats.executive.reopenedTickets > 0 ? 'text-red-600' : 'text-zinc-900'}`}>{dashboardStats.executive.reopenedTickets}</span>
+            </div>
+            <div className="flex justify-between border-t border-zinc-100 pt-1.5 font-bold">
+              <span>Critical / SLA Breach:</span>
+              <span className="text-red-600 font-extrabold">{dashboardStats.executive.criticalTickets} / {dashboardStats.executive.slaBreachedTickets}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Ticket KPIs */}
-          <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
-            <CardHeader className="bg-zinc-50/50 border-b border-zinc-150 py-2.5 px-4 flex flex-row items-center justify-between">
-              <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Ticket Backlogs</span>
-              <Layers size={11} className="text-zinc-400" />
-            </CardHeader>
-            <CardContent className="p-4 grid grid-cols-2 gap-x-4 gap-y-1.5">
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">Total:</span>
-                <span className="font-bold text-zinc-900">{stats.totalTickets}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">Open:</span>
-                <span className="font-bold text-zinc-900">{stats.openTickets}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">Unassigned:</span>
-                <span className={`font-bold ${stats.unassignedTickets > 0 ? 'text-red-650' : 'text-zinc-900'}`}>{stats.unassignedTickets}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">IP Func:</span>
-                <span className="font-bold text-zinc-900">{stats.ipFunc}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">IP Tech:</span>
-                <span className="font-bold text-zinc-900">{stats.ipTech}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">Waiting Cust:</span>
-                <span className="font-bold text-zinc-900">{stats.custAction}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">Raised SAP:</span>
-                <span className="font-bold text-zinc-900">{stats.raisedSap}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">Closure Req:</span>
-                <span className="font-bold text-zinc-900">{stats.closureReq}</span>
-              </div>
-              <div className="flex justify-between text-[10px] col-span-2 border-t border-zinc-100 pt-1 mt-0.5">
-                <span className="text-zinc-500">Reopened / Closed:</span>
-                <span className="font-bold text-zinc-900">{stats.reopenedTickets} / {stats.closedTickets}</span>
-              </div>
-            </CardContent>
-          </Card>
+        {/* SECTION B: DELIVERY HEALTH */}
+        <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
+          <CardHeader className="bg-zinc-50/50 border-b border-zinc-200 py-2.5 px-4 flex flex-row items-center justify-between">
+            <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">B. Delivery Health</span>
+            <Activity size={11} className="text-zinc-400" />
+          </CardHeader>
+          <CardContent className="p-4 space-y-2.5">
+            <div className="flex justify-between border-b border-zinc-100 pb-1">
+              <span className="text-zinc-550">Action Needed:</span>
+              <span className={`font-bold ${dashboardStats.delivery.ticketsReqManagerAction > 0 ? 'text-[#d97706]' : 'text-zinc-900'}`}>{dashboardStats.delivery.ticketsReqManagerAction}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Unassigned Tasks:</span>
+              <span className="font-bold text-zinc-950">{dashboardStats.delivery.ticketsWithoutConsultant}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Pending Effort Appr:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.delivery.ticketsPendingActualHours}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Pending Closures:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.delivery.ticketsPendingClosureDecision}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Awaiting Client Rating:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.delivery.ticketsPendingRating}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Awaiting Client Action:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.delivery.ticketsWaitingCustomer}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Aging Backlogs (&gt;7d):</span>
+              <span className={`font-bold ${dashboardStats.delivery.ticketsAgingBeyondThreshold > 10 ? 'text-[#d97706]' : 'text-zinc-900'}`}>{dashboardStats.delivery.ticketsAgingBeyondThreshold}</span>
+            </div>
+            <div className="flex justify-between border-t border-zinc-100 pt-1.5 font-bold">
+              <span>Multi-Reopens:</span>
+              <span className={`font-bold ${dashboardStats.delivery.ticketsReopenedMoreThanOnce > 0 ? 'text-red-600' : 'text-zinc-900'}`}>{dashboardStats.delivery.ticketsReopenedMoreThanOnce}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Approval KPIs */}
-          <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
-            <CardHeader className="bg-zinc-50/50 border-b border-zinc-150 py-2.5 px-4 flex flex-row items-center justify-between">
-              <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Workflow Approvals</span>
-              <ShieldCheck size={11} className="text-zinc-400" />
-            </CardHeader>
-            <CardContent className="p-4 space-y-2">
-              <div className="flex justify-between">
-                <span>Estimated Hours:</span>
-                <span className={`font-bold ${stats.estPending > 0 ? 'text-amber-600' : 'text-zinc-950'}`}>{stats.estPending} Pending</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Actual Hours (Timesheets):</span>
-                <span className={`font-bold ${stats.actPending > 0 ? 'text-amber-600' : 'text-zinc-950'}`}>{stats.actPending} Pending</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Closure Requests:</span>
-                <span className={`font-bold ${stats.closurePending > 0 ? 'text-amber-600' : 'text-zinc-950'}`}>{stats.closurePending} Pending</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Reopen / Unlock Requests:</span>
-                <span className="font-bold text-zinc-950">{stats.reopenPending + stats.unlockPending} Pending</span>
-              </div>
-            </CardContent>
-          </Card>
+        {/* SECTION C: CONSULTANT HEALTH */}
+        <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
+          <CardHeader className="bg-zinc-50/50 border-b border-zinc-200 py-2.5 px-4 flex flex-row items-center justify-between">
+            <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">C. Consultant Health</span>
+            <Users size={11} className="text-zinc-400" />
+          </CardHeader>
+          <CardContent className="p-4 space-y-2.5">
+            <div className="flex justify-between border-b border-zinc-100 pb-1">
+              <span className="text-zinc-550">Practice Size (F/T):</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.consultant.totalConsultants} ({dashboardStats.consultant.functionalConsultants} / {dashboardStats.consultant.technicalConsultants})</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Overloaded (&gt;92%):</span>
+              <span className={`font-bold ${dashboardStats.consultant.overloadedConsultants > 0 ? 'text-red-600' : 'text-zinc-950'}`}>{dashboardStats.consultant.overloadedConsultants}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Underutilized (&lt;70%):</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.consultant.underutilizedConsultants}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>With Active Tickets:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.consultant.consultantsPendingWork}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>With Closure Request:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.consultant.consultantsClosureRequests}</span>
+            </div>
+            <div className="flex justify-between border-t border-zinc-100 pt-1.5 font-bold">
+              <span>With SLA Breaches:</span>
+              <span className={`font-bold ${dashboardStats.consultant.consultantsSlaBreaches > 0 ? 'text-red-600' : 'text-zinc-900'}`}>{dashboardStats.consultant.consultantsSlaBreaches}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Resource KPIs */}
-          <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
-            <CardHeader className="bg-zinc-50/50 border-b border-zinc-150 py-2.5 px-4 flex flex-row items-center justify-between">
-              <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Resource Allocation</span>
-              <Users size={11} className="text-zinc-400" />
-            </CardHeader>
-            <CardContent className="p-4 space-y-2">
-              <div className="flex justify-between">
-                <span>Practice Staff (Func / Tech):</span>
-                <span className="font-bold text-zinc-950">{stats.totalConsultants} ({stats.funcConsultants}F / {stats.techConsultants}T)</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Active Consultants:</span>
-                <span className="font-bold text-zinc-950">{stats.activeConsultants} Engaged</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Overloaded Resources:</span>
-                <span className={`font-bold ${stats.overloadedConsultants > 0 ? 'text-red-650' : 'text-zinc-950'}`}>
-                  {stats.overloadedConsultants} (Ute &gt; 92%)
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Underutilized Resources:</span>
-                <span className="font-bold text-zinc-950">{stats.underutilizedConsultants} (Ute &lt; 70%)</span>
-              </div>
-            </CardContent>
-          </Card>
+        {/* SECTION D: CUSTOMER HEALTH */}
+        <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
+          <CardHeader className="bg-zinc-50/50 border-b border-zinc-200 py-2.5 px-4 flex flex-row items-center justify-between">
+            <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">D. Customer Health</span>
+            <Building2 size={11} className="text-zinc-400" />
+          </CardHeader>
+          <CardContent className="p-4 space-y-2.5">
+            <div className="flex justify-between border-b border-zinc-100 pb-1">
+              <span className="text-zinc-550">Critical Tickets Org:</span>
+              <span className={`font-bold ${dashboardStats.customer.customersCriticalTickets > 0 ? 'text-red-600' : 'text-zinc-900'}`}>{dashboardStats.customer.customersCriticalTickets}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Reopened Tickets Org:</span>
+              <span className="font-bold text-zinc-950">{dashboardStats.customer.customersReopenedTickets}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>SLA Breached Org:</span>
+              <span className={`font-bold ${dashboardStats.customer.customersSlaBreaches > 0 ? 'text-red-600' : 'text-zinc-950'}`}>{dashboardStats.customer.customersSlaBreaches}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Closure Pending Org:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.customer.customersAwaitingClosure}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Top Hour Consumers:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.customer.customersHighestHours}</span>
+            </div>
+            <div className="flex justify-between border-t border-zinc-100 pt-1.5 font-bold">
+              <span>Top Vol. Customers:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.customer.customersHighestVolume}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-        </div>
+        {/* SECTION E: APPROVAL HEALTH */}
+        <Card className="border border-zinc-200 shadow-sm flex flex-col justify-between">
+          <CardHeader className="bg-zinc-50/50 border-b border-zinc-200 py-2.5 px-4 flex flex-row items-center justify-between">
+            <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">E. Approval Health</span>
+            <ShieldCheck size={11} className="text-zinc-400" />
+          </CardHeader>
+          <CardContent className="p-4 space-y-2.5">
+            <div className="flex justify-between border-b border-zinc-100 pb-1">
+              <span className="text-zinc-550">Actual Hrs Appr:</span>
+              <span className={`font-bold ${dashboardStats.approval.actualHoursPendingApproval > 0 ? 'text-[#d97706]' : 'text-zinc-900'}`}>{dashboardStats.approval.actualHoursPendingApproval} Pending</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Closure Decisions:</span>
+              <span className="font-bold text-zinc-950">{dashboardStats.approval.closureRequestsPendingApproval} Pending</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Reopen Decisions:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.approval.reopenRequestsPendingApproval} Pending</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Resource Changes:</span>
+              <span className="font-bold text-zinc-900">{dashboardStats.approval.resourceChangeRequestsPending} Pending</span>
+            </div>
+            <div className="flex justify-between border-t border-zinc-100 pt-1.5 font-bold">
+              <span>Unlock Requests:</span>
+              <span className={`font-bold ${dashboardStats.approval.unlockRequestsPending > 0 ? 'text-[#d97706]' : 'text-zinc-900'}`}>{dashboardStats.approval.unlockRequestsPending} Pending</span>
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
 
-      {/* ── 4. OPERATIONAL ALERTS CENTER (12 WIDGETS PANEL) ── */}
+      {/* ── ADVANCED ANALYTICS SECTION (32 CHARTS / 5 TABS) ── */}
       <div className="space-y-4">
-        <h2 className="text-[10px] uppercase font-bold text-zinc-450 tracking-widest">Operational Alerts Center</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          
-          {/* 1. Critical Tickets */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.criticalTickets > 0 ? 'bg-red-50/20 border-red-200 text-red-800' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">Critical Urgency</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.criticalTickets}</span>
-              <span className="text-[9px] font-normal">Active P1s</span>
-            </div>
-          </div>
-
-          {/* 2. SLA Breached */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.breachedTickets > 0 ? 'bg-red-50/20 border-red-200 text-red-800' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">SLA Overdue</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.breachedTickets}</span>
-              <span className="text-[9px] font-normal">Breached</span>
-            </div>
-          </div>
-
-          {/* 3. SLA Due < 24 Hours */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.warningTickets > 0 ? 'bg-amber-50/20 border-amber-250 text-amber-800' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">SLA Warning</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.warningTickets}</span>
-              <span className="text-[9px] font-normal">&lt; 24h Left</span>
-            </div>
-          </div>
-
-          {/* 4. Tickets Without Assignment */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.unassignedTickets > 0 ? 'bg-amber-50/20 border-amber-255 text-amber-800' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">Needs Routing</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.unassignedTickets}</span>
-              <span className="text-[9px] font-normal">Unassigned</span>
-            </div>
-          </div>
-
-          {/* 5. Tickets Waiting For Customer */}
-          <div className="p-3 bg-zinc-50/50 border border-zinc-200 text-zinc-700 rounded-lg space-y-1">
-            <span className="text-[8px] uppercase font-bold block">Waiting Customer</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.custAction}</span>
-              <span className="text-[9px] font-normal">On Client</span>
-            </div>
-          </div>
-
-          {/* 6. Tickets Waiting For Consultant */}
-          <div className="p-3 bg-zinc-50/50 border border-zinc-200 text-zinc-700 rounded-lg space-y-1">
-            <span className="text-[8px] uppercase font-bold block">Waiting Team</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.ipFunc + stats.ipTech}</span>
-              <span className="text-[9px] font-normal">In Progress</span>
-            </div>
-          </div>
-
-          {/* 7. Tickets Waiting For Approval */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.estPending + stats.actPending > 0 ? 'bg-amber-50/25 border-amber-200 text-amber-700' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">Hours Approvals</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.estPending + stats.actPending}</span>
-              <span className="text-[9px] font-normal">Pending</span>
-            </div>
-          </div>
-
-          {/* 8. Closure Requests Pending */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.closurePending > 0 ? 'bg-amber-50/25 border-amber-200 text-amber-700' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">Closures Pending</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.closurePending}</span>
-              <span className="text-[9px] font-normal">Audits</span>
-            </div>
-          </div>
-
-          {/* 9. Reopen Requests Pending */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.reopenPending > 0 ? 'bg-red-50/20 border-red-200 text-red-800 font-bold' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">Reopen Reviews</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.reopenPending}</span>
-              <span className="text-[9px] font-normal">Audits</span>
-            </div>
-          </div>
-
-          {/* 10. Tickets Aging More Than 7 Days */}
-          <div className="p-3 bg-zinc-50/50 border border-zinc-200 text-zinc-700 rounded-lg space-y-1">
-            <span className="text-[8px] uppercase font-bold block">Aging &gt; 7 Days</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{Math.round(stats.openTickets * 0.2)}</span>
-              <span className="text-[9px] font-normal">Backlogs</span>
-            </div>
-          </div>
-
-          {/* 11. Customers At Risk */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.breachedCusts > 0 ? 'bg-red-50/20 border-red-200 text-red-850' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">Accounts At Risk</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.breachedCusts}</span>
-              <span className="text-[9px] font-normal">At Risk</span>
-            </div>
-          </div>
-
-          {/* 12. Overloaded Consultants */}
-          <div className={`p-3 border rounded-lg space-y-1 ${stats.overloadedConsultants > 0 ? 'bg-red-50/20 border-red-200 text-red-850' : 'bg-zinc-50/30 border-zinc-200 text-zinc-600'}`}>
-            <span className="text-[8px] uppercase font-bold block">Consultant Alert</span>
-            <div className="text-base font-bold flex items-baseline gap-1">
-              <span>{stats.overloadedConsultants}</span>
-              <span className="text-[9px] font-normal">Overloaded</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── 3. EXTENSIVE ANALYTICS SECTION (22 CHARTS IN 4 TABS) ── */}
-      <div className="space-y-4">
-        <div className="flex border-b border-zinc-200 bg-zinc-50 p-1 rounded-lg border max-w-2xl">
-          <button
-            onClick={() => setActiveChartTab('tickets')}
-            className={`flex-1 py-1.5 text-center font-bold uppercase text-[9px] rounded transition ${
-              activeChartTab === 'tickets' ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200 font-extrabold' : 'text-zinc-500 hover:text-zinc-800'
-            }`}
-          >
-            Ticket Flow (7)
-          </button>
-          <button
-            onClick={() => setActiveChartTab('customers')}
-            className={`flex-1 py-1.5 text-center font-bold uppercase text-[9px] rounded transition ${
-              activeChartTab === 'customers' ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200 font-extrabold' : 'text-zinc-500 hover:text-zinc-800'
-            }`}
-          >
-            Customer Health (4)
-          </button>
-          <button
-            onClick={() => setActiveChartTab('consultants')}
-            className={`flex-1 py-1.5 text-center font-bold uppercase text-[9px] rounded transition ${
-              activeChartTab === 'consultants' ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200 font-extrabold' : 'text-zinc-500 hover:text-zinc-800'
-            }`}
-          >
-            Consultant Metrics (6)
-          </button>
-          <button
-            onClick={() => setActiveChartTab('operational')}
-            className={`flex-1 py-1.5 text-center font-bold uppercase text-[9px] rounded transition ${
-              activeChartTab === 'operational' ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200 font-extrabold' : 'text-zinc-500 hover:text-zinc-800'
-            }`}
-          >
-            Operational SLA (5)
-          </button>
+        <div className="flex border-b border-zinc-200 bg-zinc-50 p-1 rounded-lg border max-w-3xl">
+          {([
+            { id: 'tickets', label: 'Ticket Analytics (9)' },
+            { id: 'customers', label: 'Customer Analytics (6)' },
+            { id: 'consultants', label: 'Consultant Analytics (7)' },
+            { id: 'hours', label: 'Hours Analytics (6)' },
+            { id: 'approvals', label: 'Approval Analytics (4)' }
+          ] as const).map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveAnalyticsTab(tab.id)}
+              className={`flex-1 py-1.5 text-center font-bold uppercase text-[9px] rounded transition ${
+                activeAnalyticsTab === tab.id
+                  ? 'bg-white text-zinc-955 shadow-sm border border-zinc-200 font-extrabold'
+                  : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* ── SUB TAB A: TICKET FLOW (7 CHARTS) ── */}
-        {activeChartTab === 'tickets' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* ── TAB CONTENT: TICKETS FLOW (9 CHARTS) ── */}
+        {activeAnalyticsTab === 'tickets' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
-            {/* 1. Status Distribution */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
+            {/* 1. Ticket Status Distribution */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
               <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">1. Status Distribution</span>
-              <div className="h-44 mt-3">
+              <div className="h-48 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ticketTrends} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <YAxis stroke="#71717a" fontSize={8} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="count" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                  <BarChart data={ticketStatusData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={7} tickLine={false} />
+                    <YAxis stroke="#71717a" fontSize={7} tickLine={false} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card>
 
             {/* 2. Priority Distribution */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
               <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">2. Priority Distribution</span>
-              <div className="h-44 mt-3">
+              <div className="h-48 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={priorityTrends} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <YAxis stroke="#71717a" fontSize={8} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="value" fill="#ef4444" radius={[2, 2, 0, 0]} />
+                  <BarChart data={priorityData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.red} radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card>
 
-            {/* 3. Module Distribution */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">3. Module Distribution</span>
-              <div className="h-44 mt-3">
+            {/* 3. Ticket Type Distribution */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">3. Ticket Type Distribution</span>
+              <div className="h-48 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={moduleTrends} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <YAxis stroke="#71717a" fontSize={8} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Tickets" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                  <BarChart data={typeData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.gray} radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card>
 
-            {/* 4. Ticket Type Distribution */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">4. Ticket Type Distribution</span>
-              <div className="h-44 mt-3">
+            {/* 4. Module Distribution */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">4. Module Distribution</span>
+              <div className="h-48 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={typeTrends} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <YAxis stroke="#71717a" fontSize={8} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Tickets" fill="#6366f1" radius={[2, 2, 0, 0]} />
+                  <BarChart data={moduleData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.amber} radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card>
 
-            {/* 5. Open vs Closed Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">5. Open vs Closed Trend</span>
-              <div className="h-44 mt-3">
+            {/* 5. Aging Bucket Chart */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">5. Aging Bucket Chart</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={agingBucketData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill="#64748b" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 6. Open vs Closed Trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">6. Open vs Closed Trend</span>
+              <div className="h-48 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={openVsClosedTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <YAxis stroke="#71717a" fontSize={8} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                     <Legend wrapperStyle={{ fontSize: 8 }} />
-                    <Line type="monotone" dataKey="Open" stroke="#ef4444" strokeWidth={2} dot={{ r: 2 }} />
-                    <Line type="monotone" dataKey="Closed" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} />
+                    <Line type="monotone" dataKey="Raised" stroke={COLORS.blue} strokeWidth={2} dot={{ r: 2 }} />
+                    <Line type="monotone" dataKey="Closed" stroke={COLORS.green} strokeWidth={2} dot={{ r: 2 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </Card>
 
-            {/* 6. Reopen Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">6. Reopen Trend</span>
-              <div className="h-44 mt-3">
+            {/* 7. Reopened Trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">7. Reopened Trend</span>
+              <div className="h-48 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={reopenTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <YAxis stroke="#71717a" fontSize={8} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Line type="monotone" dataKey="Reopened" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} />
+                  <LineChart data={reopenedTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Line type="monotone" dataKey="Reopened" stroke={COLORS.red} strokeWidth={2} dot={{ r: 2 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </Card>
 
-            {/* 7. Aging Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4 md:col-span-3">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">7. Aging Trend (Unresolved Backlog)</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={agingTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <YAxis stroke="#71717a" fontSize={8} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="count" fill="#94a3b8" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-          </div>
-        )}
-
-        {/* ── SUB TAB B: CUSTOMER HEALTH (4 CHARTS) ── */}
-        {activeChartTab === 'customers' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* 8. Tickets By Customer */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">8. Tickets By Customer</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ticketsByCustomer} layout="vertical" margin={{ top: 5, right: 5, left: 15, bottom: 5 }}>
-                    <XAxis type="number" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <YAxis type="category" dataKey="name" stroke="#71717a" fontSize={8} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Tickets" fill="#3b82f6" radius={[0, 2, 2, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 9. Customer Health Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">9. Customer Health Trend (SLA Compliant %)</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={customerHealthTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} domain={[80, 100]} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Line type="monotone" dataKey="Health" stroke="#10b981" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 10. Customer Satisfaction Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">10. Customer Satisfaction Trend (CSAT Index)</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={customerCsatTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} domain={[3.0, 5.0]} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Area type="monotone" dataKey="CSAT" stroke="#10b981" fill="#ecfdf5" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 11. Hours Consumed By Customer */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">11. Hours Consumed By Customer</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={customerHoursConsumed} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Hours" fill="#6366f1" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-          </div>
-        )}
-
-        {/* ── SUB TAB C: CONSULTANT METRICS (6 CHARTS) ── */}
-        {activeChartTab === 'consultants' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* 12. Workload Distribution */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">12. Workload Distribution (Active Backlog)</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={workloadDistData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Tickets" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 13. Utilization Distribution */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">13. Utilization Distribution (%)</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={utilizationDistData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} domain={[0, 100]} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Ute" fill="#10b981" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 14. Billable Hours */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">14. Billable Hours Summary</span>
-              <div className="h-44 flex flex-col justify-center items-center text-center space-y-2">
-                <span className="text-2xl font-black text-emerald-700 font-mono">{stats.billableHours.toLocaleString()}h</span>
-                <span className="text-[10px] text-zinc-450 uppercase">Approved Billable Effort</span>
-                <div className="w-4/5 h-2 bg-zinc-100 border rounded overflow-hidden mt-1">
-                  <div className="h-full bg-emerald-600" style={{ width: `${(stats.billableHours / stats.actualHours) * 100}%` }}></div>
-                </div>
-                <span className="text-[9px] text-zinc-400">Ratio: {((stats.billableHours / stats.actualHours) * 100).toFixed(1)}% of total logged</span>
-              </div>
-            </Card>
-
-            {/* 15. Non-Billable Hours */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">15. Non-Billable Hours Summary</span>
-              <div className="h-44 flex flex-col justify-center items-center text-center space-y-2">
-                <span className="text-2xl font-black text-zinc-650 font-mono">{stats.nonBillableHours.toLocaleString()}h</span>
-                <span className="text-[10px] text-zinc-450 uppercase">Internal / Non-Billable Effort</span>
-                <div className="w-4/5 h-2 bg-zinc-100 border rounded overflow-hidden mt-1">
-                  <div className="h-full bg-zinc-450" style={{ width: `${(stats.nonBillableHours / stats.actualHours) * 100}%` }}></div>
-                </div>
-                <span className="text-[9px] text-zinc-400">Ratio: {((stats.nonBillableHours / stats.actualHours) * 100).toFixed(1)}% of total logged</span>
-              </div>
-            </Card>
-
-            {/* 16. Tickets Closed By Consultant */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">16. Tickets Closed By Consultant</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={consultantTicketsClosed} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Closed" fill="#10b981" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 17. Reopened Tickets By Consultant */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">17. Reopened By Consultant</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={consultantTicketsReopened} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Reopened" fill="#ef4444" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-          </div>
-        )}
-
-        {/* ── SUB TAB D: OPERATIONAL SLA (5 CHARTS) ── */}
-        {activeChartTab === 'operational' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* 18. SLA Compliance Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">18. SLA Compliance Trend (%)</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={slaComplianceTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} domain={[90, 100]} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Line type="monotone" dataKey="Compliance" stroke="#10b981" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 19. SLA Breach Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">19. SLA Breach Trend (Volume)</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={slaBreachTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Bar dataKey="Breaches" fill="#ef4444" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 20. Closure Approval Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">20. Closure Approval Rate (%)</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={closureApprovalTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} domain={[80, 100]} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Area type="monotone" dataKey="Rate" stroke="#6366f1" fill="#e0e7ff" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 21. Estimated vs Actual Hours */}
-            <Card className="border border-zinc-200 shadow-sm p-4 md:col-span-2">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">21. Estimated vs Actual Hours Variance</span>
-              <div className="h-44 mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={estVsActualHours} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                    <XAxis dataKey="module" stroke="#71717a" fontSize={8} />
-                    <YAxis stroke="#71717a" fontSize={8} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Legend wrapperStyle={{ fontSize: 8 }} />
-                    <Bar dataKey="Est" fill="#94a3b8" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="Act" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* 22. Raised To SAP Trend */}
-            <Card className="border border-zinc-200 shadow-sm p-4">
-              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">22. Raised To SAP Trend</span>
-              <div className="h-44 mt-3">
+            {/* 8. Raised to SAP Trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">8. Raised to SAP Trend</span>
+              <div className="h-48 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={raisedToSapTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
                     <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
                     <YAxis stroke="#71717a" fontSize={8} />
-                    <RechartsTooltip contentStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <Line type="monotone" dataKey="OSS" stroke="#ef4444" strokeWidth={2} dot={{ r: 2 }} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Line type="monotone" dataKey="OSS" stroke={COLORS.amber} strokeWidth={2} dot={{ r: 2 }} />
                   </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 9. Customer Action Trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">9. Customer Action Trend</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={customerActionTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Line type="monotone" dataKey="Waiting" stroke={COLORS.gray} strokeWidth={2} dot={{ r: 2 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+          </div>
+        )}
+
+        {/* ── TAB CONTENT: CUSTOMERS HEALTH (6 CHARTS) ── */}
+        {activeAnalyticsTab === 'customers' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* 10. Customer-wise ticket volume */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">10. Customer-wise Ticket Volume</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={customerTicketVolume} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 11. Customer-wise open tickets */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">11. Customer-wise Open Tickets</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={customerOpenTickets} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.amber} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 12. Customer-wise critical tickets */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">12. Customer-wise Critical Tickets</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={customerCriticalTickets} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.red} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 13. Customer-wise SLA breach */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">13. Customer-wise SLA Breach</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={customerSlaBreach} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.red} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 14. Customer-wise actual hours consumed */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">14. Customer-wise Hours Consumed</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={customerHoursConsumed} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.gray} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 15. Customer-wise satisfaction rating */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">15. Customer Satisfaction Rating</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={customerSatisfaction} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} domain={[0, 5]} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.green} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+          </div>
+        )}
+
+        {/* ── TAB CONTENT: CONSULTANT HEALTH (7 CHARTS) ── */}
+        {activeAnalyticsTab === 'consultants' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* 16. Consultant-wise workload */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">16. Consultant Workload (Open Tickets)</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={consultantWorkload} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 17. Functional consultant workload */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">17. Functional Consultant Workload</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={functionalWorkload} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 18. Technical consultant workload */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">18. Technical Consultant Workload</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={technicalWorkload} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 19. Consultant-wise actual hours */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">19. Consultant Hours Logged</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={consultantHours} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.gray} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 20. Consultant-wise ticket closure */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">20. Consultant Ticket Closures</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={consultantClosure} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.green} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 21. Consultant-wise reopened tickets */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">21. Reopened Tickets by Consultant</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={consultantReopened} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.red} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 22. Consultant-wise SLA performance */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">22. Consultant SLA Compliance (%)</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={consultantSlaPerformance} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} domain={[80, 100]} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.green} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+          </div>
+        )}
+
+        {/* ── TAB CONTENT: HOURS ANALYTICS (6 CHARTS) ── */}
+        {activeAnalyticsTab === 'hours' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* 23. Estimated vs actual hours */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">23. Estimated vs Actual Hours Variance</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={estVsActualHours} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Legend wrapperStyle={{ fontSize: 8 }} />
+                    <Bar dataKey="Est" fill={COLORS.gray} radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Act" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 24. Functional actual hours */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">24. Functional Actual Hours Consumed</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={functionalHours} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 25. Technical actual hours */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">25. Technical Actual Hours Consumed</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={technicalHours} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 26. Total actual hours */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">26. Total Actual Hours</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={totalHours} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 27. Billable vs non-billable */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">27. Billable vs Non-Billable Split</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={billableVsNonBillable}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={65}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      <Cell fill={COLORS.green} />
+                      <Cell fill={COLORS.gray} />
+                    </Pie>
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Legend wrapperStyle={{ fontSize: 8 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 28. Monthly hours trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">28. Monthly Hours Trend</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monthlyHoursTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Area type="monotone" dataKey="Hours" stroke={COLORS.blue} fill="#eff6ff" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+          </div>
+        )}
+
+        {/* ── TAB CONTENT: APPROVAL ANALYTICS (4 CHARTS) ── */}
+        {activeAnalyticsTab === 'approvals' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* 29. Closure approval trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">29. Closure Approval Decisions Trend</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={closureApprovalTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Legend wrapperStyle={{ fontSize: 8 }} />
+                    <Bar dataKey="Approved" fill={COLORS.green} radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Rejected" fill={COLORS.red} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 30. Actual hours approval trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">30. Timesheet (Hours) Approvals Trend</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={actualHoursApprovalTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Legend wrapperStyle={{ fontSize: 8 }} />
+                    <Bar dataKey="Approved" fill={COLORS.green} radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Rejected" fill={COLORS.red} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 31. Reopen request trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">31. Reopen Request Decisions Trend</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={reopenRequestTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Legend wrapperStyle={{ fontSize: 8 }} />
+                    <Bar dataKey="Approved" fill={COLORS.green} radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Rejected" fill={COLORS.red} radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* 32. Resource change request trend */}
+            <Card className="border border-zinc-200 p-4 flex flex-col justify-between">
+              <span className="font-bold block text-[10px] text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-100">32. Resource Change Requests Trend</span>
+              <div className="h-48 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={resourceChangeRequestTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                    <XAxis dataKey="month" stroke="#71717a" fontSize={8} />
+                    <YAxis stroke="#71717a" fontSize={8} />
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Legend wrapperStyle={{ fontSize: 8 }} />
+                    <Bar dataKey="Approved" fill={COLORS.green} radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Rejected" fill={COLORS.red} radius={[2, 2, 0, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card>
@@ -1167,28 +1311,21 @@ export default function ManagerDashboardPage() {
 
       </div>
 
-      {/* ── 5. QUICK ACTION REPORTS FOOTER SUMMARY ── */}
+      {/* ── FOOTER ACTIONS ── */}
       <Card className="bg-white border border-zinc-200 rounded-lg shadow-sm p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans text-xs">
           <div>
-            <h4 className="font-bold text-zinc-900">Download Operational Reports</h4>
-            <p className="text-zinc-500 text-[11px] mt-0.5">Export direct summaries of current month capacity, performance scorecard logs, and ticket distributions.</p>
+            <h4 className="font-bold text-zinc-900 uppercase text-[10px] tracking-wider font-mono">Download Command Center Snapshots</h4>
+            <p className="text-zinc-500 text-[11px] mt-0.5 font-mono">Export current metric structures, active allocations audit sheet, or SLA health summaries.</p>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <Button onClick={handleDownloadMonthlyReport} variant="outline"
-              className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer">
+            <Button variant="outline" className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer">
               <Download size={12} />
-              Monthly Activity (.CSV)
+              Delivery Audit (.CSV)
             </Button>
-            <Button onClick={handleDownloadPerformanceReport} variant="outline"
-              className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer">
+            <Button variant="outline" className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer">
               <Download size={12} />
-              Performance Audit (.CSV)
-            </Button>
-            <Button onClick={handleDownloadUtilizationReport} variant="outline"
-              className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer">
-              <Download size={12} />
-              Utilization Sheet (.CSV)
+              SLA Compliance (.CSV)
             </Button>
           </div>
         </div>
