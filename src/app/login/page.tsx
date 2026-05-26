@@ -10,7 +10,7 @@ export default function LoginPage() {
   const { user, login, loading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('••••••••');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
 
@@ -51,7 +51,7 @@ export default function LoginPage() {
       return;
     }
 
-    const res = await login(email, password === '••••••••' ? 'password123' : password);
+    const res = await login(email, password);
     if (res.success) {
       // router is handled in useEffect or we can do it directly
       const session = localStorage.getItem('sap_user_session');
@@ -63,7 +63,7 @@ export default function LoginPage() {
         redirectToDashboard('Customer');
       }
     } else {
-      setError(res.error || 'Invalid credentials. Please use a demo account.');
+      setError(res.error || 'Invalid credentials.');
     }
     setAuthenticating(false);
   };
@@ -72,16 +72,12 @@ export default function LoginPage() {
     setError('');
     setAuthenticating(true);
     setEmail(demoEmail);
-    setPassword('••••••••');
-    const res = await login(demoEmail, 'password123');
+    setPassword('Manager@12345');
+    const res = await login(demoEmail, 'Manager@12345');
     if (res.success) {
-      // Find role and redirect
-      const role = demoEmail === 'admin@sap.com' ? 'SuperAdmin' :
-                   demoEmail === 'manager@sap.com' ? 'Manager' :
-                   (demoEmail === 'consultant@sap.com' || demoEmail === 'arjun.technical@example.com') ? 'Consultant' : 'Customer';
-      redirectToDashboard(role);
+      redirectToDashboard('Manager');
     } else {
-      setError(res.error || 'Failed to authenticate demo account.');
+      setError(res.error || 'Failed to authenticate manager account.');
     }
     setAuthenticating(false);
   };
@@ -187,61 +183,17 @@ export default function LoginPage() {
           </div>
 
           {/* Quick Demo Selectors */}
-          <div className="grid grid-cols-2 gap-2 font-mono">
+          <div className="flex flex-col gap-2 font-mono">
             
-            {/* Demo 1: Customer */}
+            {/* Demo: SAP Manager */}
             <button
-              onClick={() => handleDemoLogin('customer@sap.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group cursor-pointer"
+              onClick={() => handleDemoLogin('manager@supportstudio.com')}
+              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group cursor-pointer w-full"
               disabled={authenticating}
             >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Customer</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Apex Global</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">customer@sap.com</span>
-            </button>
-
-            {/* Demo 2: SAP Manager */}
-            <button
-              onClick={() => handleDemoLogin('manager@sap.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group cursor-pointer"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">SAP Manager</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Marcus Vance</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">manager@sap.com</span>
-            </button>
-
-            {/* Demo 3: Functional Consultant */}
-            <button
-              onClick={() => handleDemoLogin('consultant@sap.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group cursor-pointer"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Functional Consultant</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Priya Raman</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">consultant@sap.com</span>
-            </button>
-
-            {/* Demo 4: Technical Consultant */}
-            <button
-              onClick={() => handleDemoLogin('arjun.technical@example.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group cursor-pointer"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Technical Consultant</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Arjun Mehta</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate text-[8px]">arjun.technical@example.com</span>
-            </button>
-
-            {/* Demo 5: Super Admin */}
-            <button
-              onClick={() => handleDemoLogin('admin@sap.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group col-span-2 cursor-pointer"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Super Admin</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate font-sans">System Admin</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">admin@sap.com</span>
+              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Default SAP Manager</span>
+              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Enterprise Administrator</span>
+              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">manager@supportstudio.com</span>
             </button>
 
           </div>

@@ -28,46 +28,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const DEMO_USERS: Record<string, UserSession> = {
-  'admin@sap.com': {
-    id: 'usr-admin-111',
-    name: 'Sarah Admin (Global)',
-    email: 'admin@sap.com',
-    role: 'SuperAdmin',
-    company: 'SST SAP Operations'
-  },
-  'manager@sap.com': {
-    id: 'usr-manager-222',
-    name: 'Marcus Vance',
-    email: 'manager@sap.com',
+  'manager@supportstudio.com': {
+    id: 'usr-manager-default',
+    name: 'SAP Manager',
+    email: 'manager@supportstudio.com',
     role: 'Manager',
-    company: 'Apex Global Industries'
-  },
-  'consultant@sap.com': {
-    id: 'usr-consult-333',
-    name: 'Priya Raman',
-    email: 'consultant@sap.com',
-    role: 'Consultant',
-    company: 'SST SAP Operations',
-    consultantType: 'Functional',
-    modules: ['FICO', 'MM', 'SD', 'HCM'],
-    phoneNumber: '+91 98765 00001'
-  },
-  'arjun.technical@example.com': {
-    id: 'usr-consult-444',
-    name: 'Arjun Mehta',
-    email: 'arjun.technical@example.com',
-    role: 'Consultant',
-    company: 'SST SAP Operations',
-    consultantType: 'Technical',
-    modules: ['ABAP', 'BASIS', 'CPI', 'Fiori'],
-    phoneNumber: '+91 98765 43210'
-  },
-  'customer@sap.com': {
-    id: 'usr-customer-444',
-    name: 'Sarah Jenkins',
-    email: 'customer@sap.com',
-    role: 'Customer',
-    company: 'Apex Global Industries'
+    company: 'Support Studio'
   }
 };
 
@@ -164,12 +130,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: normalizedEmail,
-          password: password || 'password123' // default for easier demoing
+          password: password || ''
         });
 
         if (error) {
           // Check if it is a demo account, let it authenticate client side as fallback if needed
-          if (DEMO_USERS[normalizedEmail]) {
+          if (DEMO_USERS[normalizedEmail] && password === 'Manager@12345') {
             const demoSession = DEMO_USERS[normalizedEmail];
             setUser(demoSession);
             localStorage.setItem('sap_user_session', JSON.stringify(demoSession));
@@ -203,12 +169,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       // Local demo mode check
       const matched = DEMO_USERS[normalizedEmail];
-      if (matched) {
+      if (matched && password === 'Manager@12345') {
         setUser(matched);
         localStorage.setItem('sap_user_session', JSON.stringify(matched));
         return { success: true };
       }
-      return { success: false, error: 'Invalid credentials. Please use one of the demo logins below.' };
+      return { success: false, error: 'Invalid credentials. Use email manager@supportstudio.com and password Manager@12345.' };
     }
   };
 

@@ -7,13 +7,7 @@ import { User, Plus, ShieldCheck, Mail, ShieldAlert } from 'lucide-react';
 export default function AdminUsersPage() {
   const { user } = useAuth();
   const [usersList, setUsersList] = useState([
-    { id: '1', name: 'Sarah Admin (Global)', email: 'admin@sap.com', role: 'SuperAdmin', organization: 'SST SAP Operations' },
-    { id: '2', name: 'Marcus Vance', email: 'manager@sap.com', role: 'Manager', organization: 'Apex Global Industries' },
-    { id: '3', name: 'Karthik Subramanian', email: 'consultant@sap.com', role: 'Consultant', organization: 'SST SAP Operations' },
-    { id: '4', name: 'Sarah Jenkins', email: 'customer@sap.com', role: 'Customer', organization: 'Apex Global Industries' },
-    { id: '5', name: 'Elena Rostova', email: 'elena@sap.com', role: 'Consultant', organization: 'SST SAP Operations' },
-    { id: '6', name: 'Rajesh Kumar', email: 'rajesh@sap.com', role: 'Consultant', organization: 'SST SAP Operations' },
-    { id: '7', name: 'David Miller', email: 'david@nexamfg.com', role: 'Customer', organization: 'Nexa Manufacturing' }
+    { id: 'usr-manager-default', name: 'SAP Manager', email: 'manager@supportstudio.com', role: 'Manager', organization: 'Support Studio' }
   ]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');

@@ -406,6 +406,26 @@ export default function ConsultantDashboardPage() {
     triggerCSVDownload(`${consultantName}_Monthly_Activity_${selectedMonthStr}.csv`, csv);
   };
 
+  if (myTickets.length === 0) {
+    return (
+      <div className="space-y-6 font-sans text-xs text-zinc-900">
+        <div className="border-b border-zinc-200 pb-5">
+          <h1 className="text-xl font-bold tracking-tight text-zinc-950 uppercase font-sans">
+            AMS Operations & Performance Cockpit
+          </h1>
+          <p className="text-zinc-500 text-xs mt-1">
+            Active: <span className="font-semibold text-zinc-900">{consultantName}</span> ({consultantType})
+          </p>
+        </div>
+        <div className="bg-white border border-zinc-200 rounded-2xl p-12 text-center shadow-[0_2px_8px_rgba(0,0,0,0.015)] space-y-4">
+          <Layers className="mx-auto text-zinc-450" size={48} />
+          <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets available</h3>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">You do not have any active SAP tickets assigned or logged hours in your queue yet.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 text-zinc-900 font-sans">
 

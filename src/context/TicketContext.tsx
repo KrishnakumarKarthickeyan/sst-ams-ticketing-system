@@ -797,7 +797,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         let requestorId = 'd3b07384-d113-4ec6-a558-7e30773d57d5'; // Fallback
-        const { data: profData } = await supabase.from('profiles').select('id').eq('email', data.requestedByEmail || 'customer@sap.com').maybeSingle();
+        const { data: profData } = await supabase.from('profiles').select('id').eq('email', data.requestedByEmail || 'customer@supportstudio.com').maybeSingle();
         if (profData) {
           requestorId = profData.id;
         }
@@ -895,7 +895,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
         }
 
-        const { data: mgrProfile } = await supabase.from('profiles').select('id').eq('email', 'manager@sap.com').maybeSingle();
+        const { data: mgrProfile } = await supabase.from('profiles').select('id').eq('email', 'manager@supportstudio.com').maybeSingle();
         if (mgrProfile) {
           await supabase.from('notifications').insert({
             user_id: mgrProfile.id,
@@ -997,7 +997,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       `New Ticket: ${ticketId}`,
       `Ticket "${data.title}" was submitted. Source: ${ticketSource}`,
       ticketId
@@ -1005,7 +1005,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (data.assignedConsultant) {
       createSystemNotification(
-        'consultant@sap.com',
+        'consultant@supportstudio.com',
         'New Ticket Assigned',
         `You have been assigned to ${ticketId} during creation.`,
         ticketId
@@ -1081,7 +1081,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       `Ticket Escalated: ${ticketId}`,
       `A ${severity} severity escalation was requested by ${actorName}. Reason: ${reason}`,
       ticketId
@@ -1209,7 +1209,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           // Notify Consultant if a consultant is assigned
           if (consultantName) {
             createSystemNotification(
-              'consultant@sap.com',
+              'consultant@supportstudio.com',
               'Ticket Assigned',
               `You have been assigned to ${t.id} by ${changeActor}.`,
               ticketId
@@ -1285,13 +1285,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (incrementReopened) {
       createSystemNotification(
-        'customer@sap.com',
+        'customer@supportstudio.com',
         'Ticket Reopen Approved',
         `Your reopen request for ticket ${ticketId} has been approved by ${actorName}.`,
         ticketId
       );
       createSystemNotification(
-        'consultant@sap.com',
+        'consultant@supportstudio.com',
         'Ticket Reopened',
         `Ticket ${ticketId} has been reopened and assigned back to you for resolution.`,
         ticketId
@@ -1492,14 +1492,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Notifications
     if (authorRole === 'Customer') {
       createSystemNotification(
-        'consultant@sap.com',
+        'consultant@supportstudio.com',
         'Customer Comment Added',
         `${authorName} commented on ${ticketId}.`,
         ticketId
       );
     } else if (!isInternal) {
       createSystemNotification(
-        'customer@sap.com',
+        'customer@supportstudio.com',
         'Consultant Response',
         `${authorName} posted a reply on ${ticketId}.`,
         ticketId
@@ -1582,7 +1582,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Effort Approval Required',
       `${data.consultantName} logged ${data.hours}h on ${data.ticketId}.`,
       data.ticketId
@@ -1685,7 +1685,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       `Effort log ${action}`,
       `Your timesheet entry for ${ticketId} has been ${action.toLowerCase()} by ${actorName}.${action === 'Rejected' && rejectionReason ? ' Reason: ' + rejectionReason : ''}`,
       ticketId
@@ -1775,7 +1775,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Effort Log Resubmitted',
       `Consultant has resubmitted effort log ${logId} for ticket ${ticketId}.`,
       ticketId
@@ -1844,7 +1844,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'customer@sap.com',
+      'customer@supportstudio.com',
       'Ticket Resolved',
       `Incidents ${ticketId} has been resolved. Validation required.`,
       ticketId
@@ -1966,7 +1966,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Ticket Closed by Client',
       `${actorName} closed ${ticketId} with score ${score}/5.`,
       ticketId
@@ -2043,7 +2043,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Ticket Reopen Requested',
       `Ticket ${ticketId} reopen has been requested by ${actorName}. Reason: ${reason}`,
       ticketId
@@ -2078,7 +2078,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Ticket Escalation Alarm',
       `${actorName} escalated ticket ${ticketId}.`,
       ticketId
@@ -2436,7 +2436,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       `Soft Delete Request: ${ticketId}`,
       `A soft delete request was submitted by ${requester}. Reason: ${reason}`,
       ticketId
@@ -2594,7 +2594,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Initial Estimate Submitted',
       `Consultant ${data.submittedBy} submitted initial estimate of ${total} hrs for ticket ${ticketId}.`,
       ticketId
@@ -2687,7 +2687,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Estimate Revision Requested',
       `Consultant ${data.submittedBy} requested estimate revision for ticket ${ticketId} to ${total} hrs.`,
       ticketId
@@ -2907,7 +2907,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Estimate Revision Approved',
       `Your estimate revision request has been approved by ${managerName}.`,
       ticketId
@@ -3007,7 +3007,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Estimate Revision Rejected',
       `Your estimate revision request was rejected by ${managerName}. Reason: ${rejectionReason}`,
       ticketId
@@ -3130,7 +3130,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Closure Request Raised',
       `Consultant ${data.requestedBy} raised a closure request with ${total} actual hours for ${ticketId}.`,
       ticketId
@@ -3255,7 +3255,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Closure Request Resubmitted',
       `Consultant ${data.requestedBy} resubmitted a closure request for ${ticketId} with ${total} actual hours.`,
       ticketId
@@ -3454,7 +3454,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Closure Request Approved',
       `Your closure request for ${ticketId} has been approved. Ticket is now Awaiting Closure.`,
       ticketId
@@ -3556,7 +3556,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Closure Request Rejected',
       `Your closure request for ${ticketId} was rejected by ${managerName}. Reason: ${rejectionReason}`,
       ticketId
@@ -3598,7 +3598,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     });
 
     const actorName = user?.name || 'System';
-    const actorEmail = user?.email || 'manager@sap.com';
+    const actorEmail = user?.email || 'manager@supportstudio.com';
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -3784,7 +3784,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Ticket Unlock Requested',
       `Consultant ${data.requestedBy} requested unlock/change for locked ticket ${ticketId}.`,
       ticketId
@@ -3862,7 +3862,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Ticket Unlock Approved',
       `Your unlock request for ${ticketId} has been approved. The ticket is now unlocked for updates.`,
       ticketId
@@ -3925,7 +3925,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Ticket Unlock Rejected',
       `Your unlock request for ${ticketId} was rejected. Reason: ${rejectionReason}`,
       ticketId

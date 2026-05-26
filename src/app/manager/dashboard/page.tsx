@@ -76,14 +76,7 @@ const SAP_MODULES_LIST: SAPModule[] = [
   'FICO', 'MM', 'SD', 'PP', 'HCM', 'ABAP', 'BASIS', 'CPI/Integration', 'Fiori', 'Security/GRC', 'PM', 'QM', 'TRM'
 ];
 
-const CONSULTANTS_DB = [
-  { name: 'Priya Raman', type: 'Functional', expertise: ['FICO', 'TRM'] },
-  { name: 'Arjun Mehta', type: 'Functional', expertise: ['MM', 'SD'] },
-  { name: 'Elena Rostova', type: 'Technical', expertise: ['ABAP', 'Fiori'] },
-  { name: 'Sanjay Dutt', type: 'Functional', expertise: ['PP', 'QM'] },
-  { name: 'Karthik Subramanian', type: 'Technical', expertise: ['BASIS', 'Security/GRC'] },
-  { name: 'Rajesh Kumar', type: 'Technical', expertise: ['ABAP', 'CPI/Integration'] }
-];
+const CONSULTANTS_DB: any[] = [];
 
 const SYSTEM_NOW = new Date('2026-05-26T11:09:49+05:30').getTime();
 
@@ -100,6 +93,50 @@ export default function ManagerDashboardPage() {
 
   const { user } = useAuth();
   const managerName = user?.name || 'Marcus Vance';
+
+  const [customersCount, setCustomersCount] = useState(0);
+  const [consultantsCount, setConsultantsCount] = useState(0);
+  const [consultantsDbList, setConsultantsDbList] = useState<{ name: string; type: string; expertise: string[] }[]>([]);
+
+  useEffect(() => {
+    const fetchStakeholders = async () => {
+      const storedCustomers = localStorage.getItem('sst_stakeholder_customers');
+      if (storedCustomers) {
+        setCustomersCount(JSON.parse(storedCustomers).length);
+      }
+
+      // Check if Supabase configured
+      const { isSupabaseConfigured, supabase: client } = await import('../../../lib/supabase/client');
+      if (isSupabaseConfigured && client) {
+        const { data: profs } = await client.from('profiles').select('full_name, role').eq('role', 'Consultant');
+        if (profs) {
+          setConsultantsCount(profs.length);
+          setConsultantsDbList(profs.map((c: any) => ({
+            name: c.full_name,
+            type: 'Technical', // default fallback
+            expertise: []
+          })));
+          return;
+        }
+      }
+
+      const storedConsultants = localStorage.getItem('sst_stakeholder_consultants');
+      if (storedConsultants) {
+        const parsed = JSON.parse(storedConsultants);
+        setConsultantsCount(parsed.length);
+        setConsultantsDbList(parsed.map((c: any) => ({
+          name: c.name,
+          type: c.consultantType,
+          expertise: c.modules
+        })));
+      } else {
+        setConsultantsCount(0);
+        setConsultantsDbList([]);
+      }
+    };
+
+    fetchStakeholders();
+  }, [tickets]);
 
   // --- FILTERS & INTERACTION STATES ---
   const [selectedMonthStr, setSelectedMonthStr] = useState('2026-05'); // June 2026
@@ -210,7 +247,7 @@ export default function ManagerDashboardPage() {
   // Capacity & Load dynamic calculations for individual consultants
   const consultantsLoad = useMemo(() => {
     const expectedCapacity = workingDaysInMonth * 8;
-    return CONSULTANTS_DB.map(consultant => {
+    return consultantsDbList.map(consultant => {
       const activeCount = filteredDashboardTickets.filter(t => 
         t.status !== 'Closed' && 
         (t.assignedConsultant === consultant.name || t.consultantEfforts?.some(e => e.consultantName === consultant.name && !e.isDeleted))
@@ -220,7 +257,7 @@ export default function ManagerDashboardPage() {
         .filter(e => e.consultantName === consultant.name && e.status === 'Approved')
         .reduce((sum, e) => sum + (e.hoursLogged || e.hoursWorked || 0), 0);
 
-      const actualLogged = loggedHours || 45; // Realistic fallback for demo visualization
+      const actualLogged = loggedHours;
       let loadPercentage = expectedCapacity > 0 ? Math.round((actualLogged / expectedCapacity) * 100) : 0;
       loadPercentage += activeCount * 12; // Dynamic load amplification based on open items
       loadPercentage = Math.min(loadPercentage, 100);
@@ -240,7 +277,7 @@ export default function ManagerDashboardPage() {
         loadStatus
       };
     });
-  }, [filteredDashboardTickets, workingDaysInMonth]);
+  }, [filteredDashboardTickets, workingDaysInMonth, consultantsDbList]);
 
   // Dynamic calculations for all requested sections
   const dashboardData = useMemo(() => {
@@ -499,6 +536,10 @@ export default function ManagerDashboardPage() {
     });
     return list;
   }, [filteredDashboardTickets]);
+
+  const pendingApprovalsCount = useMemo(() => {
+    return pendingEffortLogs.length + pendingClosureRequests.length + pendingUnlockRequests.length;
+  }, [pendingEffortLogs, pendingClosureRequests, pendingUnlockRequests]);
 
   // Recharts chart calculations
   const chartsData = useMemo(() => {
@@ -838,6 +879,84 @@ export default function ManagerDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ── CLEAN DB EMPTY STATES OVERVIEW ── */}
+      {(customersCount === 0 || consultantsCount === 0 || tickets.length === 0 || pendingApprovalsCount === 0) && (
+        <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3 font-sans text-xs shadow-sm">
+          <div className="flex items-center gap-2 border-b border-zinc-150 pb-2">
+            <AlertCircle size={14} className="text-zinc-500" />
+            <span className="font-bold text-zinc-950 uppercase tracking-wider text-[9px] font-mono">[Database Status]: Production Readiness Status Checklist</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+            
+            {/* Customers State */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${customersCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-zinc-700">Customers</span>
+                {customersCount === 0 ? (
+                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
+                ) : (
+                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{customersCount === 0 ? 'No customers created yet' : `${customersCount} customers active`}</p>
+            </div>
+
+            {/* Consultants State */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${consultantsCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-zinc-700">Consultants</span>
+                {consultantsCount === 0 ? (
+                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
+                ) : (
+                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{consultantsCount === 0 ? 'No consultants created yet' : `${consultantsCount} consultants active`}</p>
+            </div>
+
+            {/* Tickets State */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${tickets.length === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-zinc-700">Tickets</span>
+                {tickets.length === 0 ? (
+                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
+                ) : (
+                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{tickets.length === 0 ? 'No tickets available' : `${tickets.length} tickets logged`}</p>
+            </div>
+
+            {/* Approvals State */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${pendingApprovalsCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-amber-100 bg-amber-50/20'}`}>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-zinc-700">Approvals</span>
+                {pendingApprovalsCount === 0 ? (
+                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
+                ) : (
+                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-amber-600 text-white px-1 py-0.5">Pending</Badge>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{pendingApprovalsCount === 0 ? 'No approvals pending' : `${pendingApprovalsCount} pending approvals`}</p>
+            </div>
+
+            {/* Reports State */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${tickets.length === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-zinc-700">Reports</span>
+                {tickets.length === 0 ? (
+                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
+                ) : (
+                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{tickets.length === 0 ? 'No reports available' : 'SLA reports active'}</p>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* ── CORE WORKSPACE TABS INTERFACE ── */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
