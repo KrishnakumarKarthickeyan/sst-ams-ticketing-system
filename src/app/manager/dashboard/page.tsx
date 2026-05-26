@@ -100,24 +100,37 @@ export default function ManagerDashboardPage() {
 
   useEffect(() => {
     const fetchStakeholders = async () => {
-      const storedCustomers = localStorage.getItem('sst_stakeholder_customers');
-      if (storedCustomers) {
-        setCustomersCount(JSON.parse(storedCustomers).length);
-      }
-
       // Check if Supabase configured
       const { isSupabaseConfigured, supabase: client } = await import('../../../lib/supabase/client');
       if (isSupabaseConfigured && client) {
-        const { data: profs } = await client.from('profiles').select('full_name, role').eq('role', 'Consultant');
-        if (profs) {
-          setConsultantsCount(profs.length);
-          setConsultantsDbList(profs.map((c: any) => ({
+        const { data: consProfs } = await client
+          .from('profiles')
+          .select('full_name, role, consultant_type, sap_modules')
+          .eq('role', 'Consultant');
+
+        const { data: custProfs } = await client
+          .from('profiles')
+          .select('id')
+          .eq('role', 'Customer');
+
+        if (consProfs) {
+          setConsultantsCount(consProfs.length);
+          setConsultantsDbList(consProfs.map((c: any) => ({
             name: c.full_name,
-            type: 'Technical', // default fallback
-            expertise: []
+            type: c.consultant_type || 'Technical',
+            expertise: c.sap_modules || []
           })));
-          return;
         }
+
+        if (custProfs) {
+          setCustomersCount(custProfs.length);
+        }
+        return;
+      }
+
+      const storedCustomers = localStorage.getItem('sst_stakeholder_customers');
+      if (storedCustomers) {
+        setCustomersCount(JSON.parse(storedCustomers).length);
       }
 
       const storedConsultants = localStorage.getItem('sst_stakeholder_consultants');

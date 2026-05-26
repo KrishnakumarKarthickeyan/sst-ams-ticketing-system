@@ -132,34 +132,13 @@ export default function ConsultantDashboardPage() {
     const workingDays = getWorkingDaysCount(selectedYear, selectedMonth);
     const expectedHours = workingDays * 8;
 
-    // 2. Base Simulation Seed based on Month/Year/Consultant to keep historical stats stable & realistic
-    const seed = (selectedYear * 12 + selectedMonth + (consultantName.charCodeAt(0) || 0)) % 100;
-    
-    const simActual = 128 + (seed % 28); // 128 to 155 hours
-    const simBillable = Math.round(simActual * (0.8 + (seed % 10) / 100)); // ~80% to 90% billable
-    const simNonBillable = simActual - simBillable;
-    const simPlanned = simActual + 6 + (seed % 5) * 3; // Planned slightly higher
-    
-    const simAssigned = 16 + (seed % 8); // 16 to 23 tickets
-    const simClosed = Math.round(simAssigned * (0.75 + (seed % 12) / 100));
-    const simReopened = seed % 5 === 0 ? 1 : 0;
-    const simSap = seed % 4 === 0 ? 1 : 0;
-    const simCustomerAction = 1 + (seed % 2);
-    const simClosureRequests = simClosed + (seed % 2);
-    
-    const simSlaCompliance = 92.4 + (seed % 6) * 0.8; 
-    const simAvgResTime = 16.2 + (seed % 8) * 0.7; 
-    const simAvgAge = 6.4 + (seed % 5) * 0.4; 
-    const simClosureSuccess = 90.0 + (seed % 8) * 1.1; 
-    const simReopenRate = (simReopened / simAssigned) * 100;
-    
     // Filter database tickets for selected month
     const dbMonthTickets = roleTickets.filter(t => {
       const d = new Date(t.createdAt);
       return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
     });
 
-    const dbMonthClosed = dbMonthTickets.filter(t => t.status === 'Closed').length;
+    const dbMonthClosed = dbMonthTickets.filter(t => t.status === 'Closed' || t.status === 'Resolved').length;
     const dbMonthReopened = dbMonthTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length;
     const dbMonthSap = dbMonthTickets.filter(t => t.status === 'Raised to SAP' || t.raisedToSap).length;
     const dbMonthCustomerAction = dbMonthTickets.filter(t => t.status === 'Customer Action' || t.customerActionRequired).length;
@@ -179,35 +158,48 @@ export default function ConsultantDashboardPage() {
         : (latestEst?.technicalEstimatedHours || t.quotedHours || 0);
       dbPlannedHours += est;
 
-      const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
-      if (approvedClosure) {
-        const act = consultantType === 'Functional'
-          ? approvedClosure.functionalActualHours
-          : approvedClosure.technicalActualHours;
-        dbActualHours += act;
-        if (t.billable) {
-          dbBillableHours += act;
-        } else {
-          dbNonBillableHours += act;
+      // Sum hours logged by this consultant from the efforts table if database structure supports efforts
+      const consultantEffortLogs = (t.efforts || []).filter(e => e.status === 'Approved');
+      if (consultantEffortLogs.length > 0) {
+        consultantEffortLogs.forEach(log => {
+          const hrs = log.hoursLogged || log.hoursWorked || 0;
+          dbActualHours += hrs;
+          if (log.billable) {
+            dbBillableHours += hrs;
+          } else {
+            dbNonBillableHours += hrs;
+          }
+        });
+      } else {
+        const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
+        if (approvedClosure) {
+          const act = consultantType === 'Functional'
+            ? approvedClosure.functionalActualHours
+            : approvedClosure.technicalActualHours;
+          dbActualHours += act;
+          if (t.billable) {
+            dbBillableHours += act;
+          } else {
+            dbNonBillableHours += act;
+          }
         }
       }
       dbClosureRequests += (t.closureRequests || []).length;
     });
 
-    // Blend live database values with simulation if it's the current month, else show pure simulation for history
-    const actualHours = isCurrentMonth ? Math.max(simActual, dbActualHours) : simActual;
-    const billableHours = isCurrentMonth ? Math.max(simBillable, dbBillableHours) : simBillable;
-    const nonBillableHours = actualHours - billableHours;
-    const plannedHours = isCurrentMonth ? Math.max(simPlanned, dbPlannedHours) : simPlanned;
+    const actualHours = dbActualHours;
+    const billableHours = dbBillableHours;
+    const nonBillableHours = dbNonBillableHours;
+    const plannedHours = dbPlannedHours;
 
-    const ticketsAssigned = isCurrentMonth ? Math.max(simAssigned, dbMonthTickets.length) : simAssigned;
-    const ticketsClosed = isCurrentMonth ? Math.max(simClosed, dbMonthClosed) : simClosed;
-    const ticketsReopened = isCurrentMonth ? Math.max(simReopened, dbMonthReopened) : simReopened;
-    const ticketsRaisedToSap = isCurrentMonth ? Math.max(simSap, dbMonthSap) : simSap;
-    const customerActionTickets = isCurrentMonth ? Math.max(simCustomerAction, dbMonthCustomerAction) : simCustomerAction;
-    const closureRequestsSubmitted = isCurrentMonth ? Math.max(simClosureRequests, dbClosureRequests) : simClosureRequests;
+    const ticketsAssigned = dbMonthTickets.length;
+    const ticketsClosed = dbMonthClosed;
+    const ticketsReopened = dbMonthReopened;
+    const ticketsRaisedToSap = dbMonthSap;
+    const customerActionTickets = dbMonthCustomerAction;
+    const closureRequestsSubmitted = dbClosureRequests;
 
-    const utilizationPercent = Math.min(100.0, (actualHours / expectedHours) * 100);
+    const utilizationPercent = Math.min(100.0, expectedHours > 0 ? (actualHours / expectedHours) * 100 : 0);
     const remainingCapacity = Math.max(0, expectedHours - actualHours);
 
     let workloadHealth: 'Overloaded' | 'Healthy' | 'Underutilized' = 'Healthy';
@@ -217,38 +209,86 @@ export default function ConsultantDashboardPage() {
       workloadHealth = 'Underutilized';
     }
 
-    // Customer Portfolio
-    const clientsList = consultantType === 'Functional'
-      ? ['Apex Global', 'Titan Energy', 'Nexa Mfg', 'Orion Logistics', 'Stellar Retail']
-      : ['Apex Global', 'Nexa Mfg', 'Titan Energy', 'Orion Logistics', 'Zenith Aero'];
+    // Dynamic Customer Portfolio from assigned tickets
+    const uniqueClients = Array.from(new Set(dbMonthTickets.map(t => t.organization))).filter(Boolean);
+    const customerEffort = uniqueClients.map(client => {
+      const clientTickets = dbMonthTickets.filter(t => t.organization === client);
+      const vol = clientTickets.length;
+      const op = clientTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
+      
+      let clientHours = 0;
+      clientTickets.forEach(t => {
+        const approvedEfforts = (t.efforts || []).filter(e => e.status === 'Approved');
+        if (approvedEfforts.length > 0) {
+          clientHours += approvedEfforts.reduce((sum, e) => sum + (e.hoursLogged || e.hoursWorked || 0), 0);
+        } else {
+          const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
+          if (approvedClosure) {
+            clientHours += consultantType === 'Functional'
+              ? approvedClosure.functionalActualHours
+              : approvedClosure.technicalActualHours;
+          }
+        }
+      });
+      return { name: client, hours: clientHours, volume: vol, open: op };
+    }).sort((a, b) => b.hours - a.hours);
 
-    const customerEffort = clientsList.map((client, i) => {
-      const basePct = [0.38, 0.24, 0.16, 0.12, 0.10][i];
-      const hrs = Math.round(actualHours * basePct * 10) / 10;
-      const vol = Math.max(1, Math.round(ticketsAssigned * basePct));
-      const op = Math.max(0, Math.round((ticketsAssigned - ticketsClosed) * basePct));
-      return { name: client, hours: hrs, volume: vol, open: op };
-    });
+    // Dynamic Module Portfolio from assigned tickets
+    const uniqueModules = Array.from(new Set(dbMonthTickets.map(t => t.sapModule))).filter(Boolean);
+    const modulePortfolio = uniqueModules.map(mod => {
+      const modTickets = dbMonthTickets.filter(t => t.sapModule === mod);
+      const count = modTickets.length;
+      const open = modTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
+      
+      let modHours = 0;
+      modTickets.forEach(t => {
+        const approvedEfforts = (t.efforts || []).filter(e => e.status === 'Approved');
+        if (approvedEfforts.length > 0) {
+          modHours += approvedEfforts.reduce((sum, e) => sum + (e.hoursLogged || e.hoursWorked || 0), 0);
+        } else {
+          const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
+          if (approvedClosure) {
+            modHours += consultantType === 'Functional'
+              ? approvedClosure.functionalActualHours
+              : approvedClosure.technicalActualHours;
+          }
+        }
+      });
+      return { name: mod, hours: modHours, count, open };
+    }).sort((a, b) => b.hours - a.hours);
 
-    // Module Portfolio
-    const modulesList = consultantType === 'Functional'
-      ? ['FICO', 'MM', 'SD', 'HCM', 'PM']
-      : ['ABAP', 'BASIS', 'CPI', 'Fiori', 'Security'];
+    // Dynamic SLA Metrics & Scores
+    const closedTicketsList = dbMonthTickets.filter(t => t.status === 'Closed' || t.status === 'Resolved');
+    const metSlaCount = closedTicketsList.filter(t => {
+      const resolvedOrClosed = t.resolvedAt || t.closedAt;
+      if (!resolvedOrClosed) return true;
+      return new Date(resolvedOrClosed).getTime() <= new Date(t.slaDueAt).getTime();
+    }).length;
+    const slaScore = closedTicketsList.length > 0
+      ? Math.round((metSlaCount / closedTicketsList.length) * 100)
+      : 100;
 
-    const modulePortfolio = modulesList.map((mod, i) => {
-      const basePct = [0.42, 0.22, 0.16, 0.12, 0.08][i];
-      const hrs = Math.round(actualHours * basePct * 10) / 10;
-      const count = Math.max(1, Math.round(ticketsAssigned * basePct));
-      const open = Math.max(0, Math.round((ticketsAssigned - ticketsClosed) * basePct));
-      return { name: mod, hours: hrs, count, open };
-    });
+    const resolvedOrClosedTickets = dbMonthTickets.filter(t => t.resolvedAt || t.closedAt);
+    const totalResTimeMs = resolvedOrClosedTickets.reduce((sum, t) => {
+      const resolvedOrClosed = t.resolvedAt || t.closedAt || t.updatedAt;
+      return sum + (new Date(resolvedOrClosed).getTime() - new Date(t.createdAt).getTime());
+    }, 0);
+    const avgResTimeHours = resolvedOrClosedTickets.length > 0
+      ? Math.round((totalResTimeMs / (1000 * 60 * 60)) / resolvedOrClosedTickets.length * 10) / 10
+      : 0.0;
 
-    // Scoring Command Center
-    const productivityScore = Math.max(0, Math.min(100, Math.round(82 + (ticketsClosed * 1.5) - (ticketsReopened * 6) + (simSlaCompliance > 94 ? 3 : -3))));
-    const slaScore = simSlaCompliance;
-    const resolutionScore = 100 - (simAvgResTime - 12) * 3; // Normalize to 0-100
-    const workloadScore = utilizationPercent;
-    const billableEfficiencyScore = (billableHours / actualHours) * 100;
+    const openTicketsList = dbMonthTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
+    const totalAgeMs = openTicketsList.reduce((sum, t) => {
+      return sum + (Date.now() - new Date(t.createdAt).getTime());
+    }, 0);
+    const avgAgeDays = openTicketsList.length > 0
+      ? Math.round((totalAgeMs / (1000 * 60 * 60 * 24)) / openTicketsList.length * 10) / 10
+      : 0.0;
+
+    const productivityScore = Math.max(0, Math.min(100, Math.round(85 + (ticketsClosed * 2) - (ticketsReopened * 5))));
+    const resolutionScore = Math.max(0, Math.min(100, 100 - Math.round(avgResTimeHours * 1.5)));
+    const workloadScore = Math.round(utilizationPercent);
+    const billableEfficiencyScore = actualHours > 0 ? (billableHours / actualHours) * 100 : 0;
 
     return {
       workingDays,
@@ -268,12 +308,12 @@ export default function ConsultantDashboardPage() {
       customerActionTickets,
       closureRequestsSubmitted,
 
-      slaCompliancePercent: simSlaCompliance,
-      avgResolutionTime: simAvgResTime,
-      avgTicketAge: simAvgAge,
-      closureSuccessRate: simClosureSuccess,
-      reopenRate: simReopenRate,
-      firstResponseCompliancePercent: Math.min(100, simSlaCompliance + 1.6),
+      slaCompliancePercent: slaScore,
+      avgResolutionTime: avgResTimeHours,
+      avgTicketAge: avgAgeDays,
+      closureSuccessRate: dbMonthClosed > 0 ? Math.round((dbMonthClosed / (dbMonthClosed + dbMonthReopened || 1)) * 100) : 100,
+      reopenRate: dbMonthClosed > 0 ? Math.round((dbMonthReopened / dbMonthClosed) * 100) : 0,
+      firstResponseCompliancePercent: slaScore,
 
       customerEffort,
       modulePortfolio,

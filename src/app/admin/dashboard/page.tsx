@@ -27,12 +27,27 @@ import {
 export default function AdminDashboardPage() {
   const { tickets, contracts } = useTickets();
 
-  // 1. Customer & User stats
-  const totalCustomers = 3;
-  const activeCustomers = 3;
-  const totalUsers = 12;
-  const totalConsultants = 3; // Karthik, Rajesh, Amit
-  const totalSapManagers = 2; // Marcus, Sarah
+  const [profiles, setProfiles] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchProfiles = async () => {
+      const { isSupabaseConfigured, supabase } = await import('../../../lib/supabase/client');
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('profiles').select('*');
+        if (!error && data) {
+          setProfiles(data);
+        }
+      }
+    };
+    fetchProfiles();
+  }, []);
+
+  // 1. Customer & User stats from database
+  const totalCustomers = profiles.filter(p => p.role === 'Customer').length;
+  const activeCustomers = profiles.filter(p => p.role === 'Customer' && p.is_active).length;
+  const totalUsers = profiles.length;
+  const totalConsultants = profiles.filter(p => p.role === 'Consultant').length;
+  const totalSapManagers = profiles.filter(p => p.role === 'Manager').length;
 
   // 2. Ticket Status Breakdown
   const totalTickets = tickets.length;
@@ -67,15 +82,34 @@ export default function AdminDashboardPage() {
   const slaHealthyCount = totalTickets - slaBreachedCount - slaWarningCount;
   const slaCompliancePct = totalTickets > 0 ? (((totalTickets - slaBreachedCount) / totalTickets) * 100).toFixed(0) : '100';
 
-  // 5. Avg Response & Resolution Times (mock calculations from real seed data where available)
-  const avgResponseTime = "45 mins";
-  const avgResolutionTime = "4.2 hours";
+  // 5. Dynamic Avg Response & Resolution Times
+  const respondedTickets = tickets.filter(t => t.comments && t.comments.some(c => c.authorRole !== 'Customer'));
+  let totalResponseTimeMs = 0;
+  respondedTickets.forEach(t => {
+    const firstResponse = t.comments.find(c => c.authorRole !== 'Customer');
+    if (firstResponse) {
+      totalResponseTimeMs += new Date(firstResponse.createdAt).getTime() - new Date(t.createdAt).getTime();
+    }
+  });
+  const avgResponseTime = respondedTickets.length > 0
+    ? (totalResponseTimeMs / (1000 * 60 * 60) / respondedTickets.length).toFixed(1) + " hours"
+    : "No data";
+
+  const resolvedOrClosedTickets = tickets.filter(t => t.resolvedAt || t.closedAt);
+  let totalResolutionTimeMs = 0;
+  resolvedOrClosedTickets.forEach(t => {
+    const end = t.resolvedAt || t.closedAt || t.updatedAt;
+    totalResolutionTimeMs += new Date(end).getTime() - new Date(t.createdAt).getTime();
+  });
+  const avgResolutionTime = resolvedOrClosedTickets.length > 0
+    ? (totalResolutionTimeMs / (1000 * 60 * 60) / resolvedOrClosedTickets.length).toFixed(1) + " hours"
+    : "No data";
 
   // 6. CSAT Score
   const ratedTickets = tickets.filter(t => t.rating);
   const avgCsat = ratedTickets.length > 0
     ? (ratedTickets.reduce((acc, t) => acc + (t.rating?.score || 0), 0) / ratedTickets.length).toFixed(1)
-    : '4.8';
+    : '5.0';
 
   // 7. Work breakdowns
   const allEfforts = tickets.flatMap(t => t.efforts || []);
@@ -508,15 +542,36 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[11px] leading-relaxed">
           <div className="space-y-1 bg-zinc-50 border border-zinc-150 rounded p-3">
             <p className="font-bold text-zinc-900 uppercase text-[9px] text-zinc-500">Resource Load Recommendation</p>
-            <p className="text-zinc-650 mt-1">Consultant **Karthik Subramanian** is assigned to {consultantWorkload['Karthik Subramanian'] || 0} active tickets, exceeding the recommended limit of 3 for critical projects. Reassign MM tickets to Amit Patel.</p>
+            <p className="text-zinc-650 mt-1">
+              {Object.entries(consultantWorkload).filter(([_, count]) => count > 3).length > 0 ? (
+                `Consultant ${Object.entries(consultantWorkload).filter(([_, count]) => count > 3).map(([name, count]) => `**${name}** (${count} tickets)`).join(', ')} exceed the recommended limit of 3 active tickets. Reassign low priority tickets to balance workload.`
+              ) : (
+                "All consultants have healthy workloads. No consultant exceeds 3 active tickets."
+              )}
+            </p>
           </div>
           <div className="space-y-1 bg-zinc-50 border border-zinc-150 rounded p-3">
             <p className="font-bold text-zinc-900 uppercase text-[9px] text-zinc-500">Contract Hour Alerts</p>
-            <p className="text-zinc-650 mt-1">**Apex Global Industries** Support Contract has burned 485.5h of 1200h (40.5%). Their monthly consumption rate is healthy, projecting ample hours for rollout hypercare schedules.</p>
+            <p className="text-zinc-650 mt-1">
+              {contracts && contracts.length > 0 ? (
+                contracts.map(c => {
+                  const pct = c.totalHours > 0 ? ((c.usedHours / c.totalHours) * 100).toFixed(1) : '0';
+                  return `**${c.organizationName}** support contract has burned ${c.usedHours}h of ${c.totalHours}h (${pct}%).`;
+                }).join(' ')
+              ) : (
+                "No active customer contracts found in database."
+              )}
+            </p>
           </div>
           <div className="space-y-1 bg-zinc-50 border border-zinc-150 rounded p-3">
             <p className="font-bold text-zinc-900 uppercase text-[9px] text-zinc-500">SLA Violation Forecast</p>
-            <p className="text-zinc-650 mt-1">Incident **SST-FICO-1023** is currently in "New" state with an approaching SLA threshold. It has no assigned consultant. Assign Rajesh Kumar immediately to prevent breach penalties.</p>
+            <p className="text-zinc-650 mt-1">
+              {tickets.filter(t => t.status === 'New' || !t.assignedConsultant).length > 0 ? (
+                `Incident **${tickets.filter(t => t.status === 'New' || !t.assignedConsultant)[0].id}** is currently unassigned with SLA due at ${new Date(tickets.filter(t => t.status === 'New' || !t.assignedConsultant)[0].slaDueAt).toLocaleString()}. Assign a consultant immediately.`
+              ) : (
+                "No unassigned tickets found. SLA violation forecast is clear."
+              )}
+            </p>
           </div>
         </div>
       </div>

@@ -111,6 +111,12 @@ export default function AdminTicketsPage() {
       {/* Grid List */}
       {loading ? (
         <div className="py-20 text-center text-zinc-500 font-semibold">Loading tickets registry...</div>
+      ) : tickets.length === 0 ? (
+        <div className="bg-white border border-zinc-200 rounded py-20 text-center text-zinc-400 space-y-2">
+          <Layers className="mx-auto opacity-30 text-zinc-400" size={32} />
+          <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
+          <p className="text-[10px] text-zinc-500 font-mono">No tickets have been created in the database yet.</p>
+        </div>
       ) : filteredTickets.length === 0 ? (
         <div className="bg-white border border-zinc-200 rounded py-20 text-center text-zinc-400 space-y-2">
           <Layers className="mx-auto opacity-30 text-zinc-400" size={32} />

@@ -54,14 +54,7 @@ interface ConsultantLookup {
   workload: number;
 }
 
-const CONSULTANTS_DB: ConsultantLookup[] = [
-  { name: 'Priya Raman', type: 'Functional', expertise: ['FICO', 'TRM'], workload: 6 },
-  { name: 'Arjun Mehta', type: 'Functional', expertise: ['MM', 'SD'], workload: 5 },
-  { name: 'Elena Rostova', type: 'Technical', expertise: ['ABAP', 'Fiori'], workload: 4 },
-  { name: 'Sanjay Dutt', type: 'Functional', expertise: ['PP', 'QM'], workload: 5 },
-  { name: 'Karthik Subramanian', type: 'Technical', expertise: ['BASIS', 'Security/GRC'], workload: 3 },
-  { name: 'Rajesh Kumar', type: 'Technical', expertise: ['ABAP', 'CPI/Integration'], workload: 2 }
-];
+const CONSULTANTS_DB: ConsultantLookup[] = [];
 
 export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, role }) => {
   const { user } = useAuth();
@@ -85,6 +78,30 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
   } = useTickets();
 
   const ticket = tickets.find((t) => t.id === ticketId);
+
+  const [dbConsultants, setDbConsultants] = useState<ConsultantLookup[]>([]);
+  const CONSULTANTS_DB = dbConsultants;
+
+  useEffect(() => {
+    const fetchDbConsultants = async () => {
+      const { isSupabaseConfigured, supabase } = await import('../../lib/supabase/client');
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'Consultant');
+        if (!error && data) {
+          setDbConsultants(data.map(c => ({
+            name: c.full_name,
+            type: (c.consultant_type as 'Functional' | 'Technical') || 'Functional',
+            expertise: (c.sap_modules as SAPModule[]) || [],
+            workload: 0
+          })));
+        }
+      }
+    };
+    fetchDbConsultants();
+  }, []);
 
   // States
   const [commentText, setCommentText] = useState('');

@@ -31,7 +31,7 @@ import { Badge } from '../../../components/ui/badge';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { createAuthUser, updateAuthUserPassword, deleteAuthUser } from '../../actions/auth';
+import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser } from '../../actions/auth';
 
 interface ConsultantProfile {
   id: string;
@@ -237,13 +237,23 @@ export default function ManagerConsultantsPage() {
       const toastId = toast.loading(`Registering consultant ${formEmail} in database...`);
       try {
         let authId = '';
+        const modulesArray = formModules.split(',').map(m => m.trim().toUpperCase()).filter(Boolean);
         
         // 1. Try server action first (service role)
-        const authRes = await createAuthUser(formEmail, password, formName, 'Consultant');
-        if (authRes.success && authRes.id) {
-          authId = authRes.id;
-        } else if (authRes.error === 'NO_SERVICE_KEY') {
-          // 2. Fallback to client-side non-persisted sign up
+        const authRes = await provisionUser({
+          email: formEmail,
+          password,
+          fullName: formName,
+          role: 'Consultant',
+          consultantType: formType as any,
+          sapModules: modulesArray,
+          phoneNumber: formPhone || 'N/A',
+          roleTitle: formRole || `${formType} Specialist`,
+          skills: formSkills
+        });
+
+        if (authRes.error === 'NO_SERVICE_KEY') {
+          // 2. Fallback to client-side non-persisted sign up and client inserts
           const authClient = getClientSideAuthClient();
           if (!authClient) throw new Error('Client-side auth manager failed to initialize.');
           const { data, error: signUpErr } = await authClient.auth.signUp({
@@ -262,27 +272,25 @@ export default function ManagerConsultantsPage() {
           } else {
             throw new Error('This email address may already be registered. Please try a different email or sign in.');
           }
-        } else {
+
+          // 3. Create public profiles entry
+          const { error: profErr } = await supabase.from('profiles').insert({
+            id: authId,
+            email: formEmail.trim().toLowerCase(),
+            full_name: formName,
+            role: 'Consultant',
+            is_active: true,
+            consultant_type: formType,
+            sap_modules: modulesArray,
+            phone_number: formPhone || 'N/A',
+            role_title: formRole || `${formType} Specialist`,
+            skills: formSkills
+          });
+
+          if (profErr) throw new Error(profErr.message);
+        } else if (!authRes.success) {
           throw new Error(authRes.error);
         }
-
-        if (!authId) throw new Error('Failed to obtain user identity reference.');
-
-        // 3. Create public profiles entry
-        const { error: profErr } = await supabase.from('profiles').insert({
-          id: authId,
-          email: formEmail.trim().toLowerCase(),
-          full_name: formName,
-          role: 'Consultant',
-          is_active: true,
-          consultant_type: formType,
-          sap_modules: formModules.split(',').map(m => m.trim().toUpperCase()).filter(Boolean),
-          phone_number: formPhone || 'N/A',
-          role_title: formRole || `${formType} Specialist`,
-          skills: formSkills
-        });
-
-        if (profErr) throw new Error(profErr.message);
 
         toast.success(`Consultant profile created successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
         fetchStakeholders();
@@ -426,13 +434,22 @@ export default function ManagerConsultantsPage() {
       const toastId = toast.loading(`Registering customer user ${formEmail}...`);
       try {
         let authId = '';
+        const hoursNum = parseFloat(formHours) || 160.00;
 
-        // 1. Try server action
-        const authRes = await createAuthUser(formEmail, password, formContact, 'Customer');
-        if (authRes.success && authRes.id) {
-          authId = authRes.id;
-        } else if (authRes.error === 'NO_SERVICE_KEY') {
-          // 2. Fallback to client-side non-persisted sign up
+        // 1. Try server-side provisioning (Service Role client)
+        const authRes = await provisionUser({
+          email: formEmail,
+          password,
+          fullName: formContact,
+          role: 'Customer',
+          companyName: formCompany,
+          contractType: formContract || 'AMS',
+          contractHours: hoursNum,
+          phoneNumber: formPhone || 'N/A'
+        });
+
+        if (authRes.error === 'NO_SERVICE_KEY') {
+          // 2. Fallback to client-side non-persisted sign up and manual inserts
           const authClient = getClientSideAuthClient();
           if (!authClient) throw new Error('Client-side auth manager failed to initialize.');
           const { data, error: signUpErr } = await authClient.auth.signUp({
@@ -451,58 +468,56 @@ export default function ManagerConsultantsPage() {
           } else {
             throw new Error('This email address may already be registered. Please try a different email or sign in.');
           }
-        } else {
+
+          // 3. Resolve or insert organization
+          let orgId = '';
+          const { data: existingOrg } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('name', formCompany.trim())
+            .maybeSingle();
+
+          if (existingOrg) {
+            orgId = existingOrg.id;
+          } else {
+            const { data: newOrg, error: orgErr } = await supabase
+              .from('organizations')
+              .insert({ name: formCompany.trim() })
+              .select('id')
+              .single();
+            if (orgErr) throw new Error(orgErr.message);
+            orgId = newOrg.id;
+          }
+
+          // 4. Create public profile row
+          const { error: profErr } = await supabase.from('profiles').insert({
+            id: authId,
+            email: formEmail.trim().toLowerCase(),
+            full_name: formContact,
+            role: 'Customer',
+            is_active: true,
+            organization_id: orgId,
+            phone_number: formPhone || 'N/A'
+          });
+
+          if (profErr) throw new Error(profErr.message);
+
+          // 5. Create customer contract
+          const { error: contractErr } = await supabase.from('customer_contracts').insert({
+            organization_id: orgId,
+            contract_type: (formContract || 'AMS') as any,
+            start_date: new Date().toISOString().split('T')[0],
+            end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            total_hours: hoursNum,
+            used_hours: 0.00,
+            monthly_budget_hours: Math.round(hoursNum / 12) || 15.00,
+            is_active: true
+          });
+
+          if (contractErr) console.warn('Non-blocking contract error:', contractErr.message);
+        } else if (!authRes.success) {
           throw new Error(authRes.error);
         }
-
-        if (!authId) throw new Error('Failed to obtain user identity reference.');
-
-        // 3. Resolve or insert organization
-        let orgId = '';
-        const { data: existingOrg } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('name', formCompany.trim())
-          .maybeSingle();
-
-        if (existingOrg) {
-          orgId = existingOrg.id;
-        } else {
-          const { data: newOrg, error: orgErr } = await supabase
-            .from('organizations')
-            .insert({ name: formCompany.trim() })
-            .select('id')
-            .single();
-          if (orgErr) throw new Error(orgErr.message);
-          orgId = newOrg.id;
-        }
-
-        // 4. Create public profile row
-        const { error: profErr } = await supabase.from('profiles').insert({
-          id: authId,
-          email: formEmail.trim().toLowerCase(),
-          full_name: formContact,
-          role: 'Customer',
-          is_active: true,
-          organization_id: orgId,
-          phone_number: formPhone || 'N/A'
-        });
-
-        if (profErr) throw new Error(profErr.message);
-
-        // 5. Create customer contract
-        const { error: contractErr } = await supabase.from('customer_contracts').insert({
-          organization_id: orgId,
-          contract_type: (formContract || 'AMS') as any,
-          start_date: new Date().toISOString().split('T')[0],
-          end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          total_hours: parseFloat(formHours) || 160.00,
-          used_hours: 0.00,
-          monthly_budget_hours: Math.round(parseFloat(formHours) / 12) || 15.00,
-          is_active: true
-        });
-
-        if (contractErr) console.warn('Non-blocking contract error:', contractErr.message);
 
         toast.success(`Customer created successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
         fetchStakeholders();
@@ -817,7 +832,7 @@ export default function ManagerConsultantsPage() {
         filteredConsultants.length === 0 ? (
           <div className="bg-white border border-zinc-200 rounded-2xl p-8 text-center shadow-sm space-y-3">
             <Users className="mx-auto text-zinc-400" size={32} />
-            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No consultants created yet</h3>
+            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No consultants created yet.</h3>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Create SAP consultants to assign tickets and manage functional or technical workflows.</p>
           </div>
         ) : (
@@ -975,7 +990,7 @@ export default function ManagerConsultantsPage() {
         filteredCustomers.length === 0 ? (
           <div className="bg-white border border-zinc-200 rounded-2xl p-8 text-center shadow-sm space-y-3">
             <Building2 className="mx-auto text-zinc-400" size={32} />
-            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No customers created yet</h3>
+            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No customers created yet.</h3>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Add organizations and contracts to setup tenant configurations and SLAs.</p>
           </div>
         ) : (

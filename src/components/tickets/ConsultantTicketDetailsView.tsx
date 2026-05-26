@@ -39,15 +39,7 @@ interface ConsultantTicketDetailsViewProps {
   ticketId: string;
 }
 
-const MOCK_MENTIONABLE_USERS = [
-  { id: 'manager@sap.com', name: 'Marcus Vance', role: 'SAP Manager' },
-  { id: 'consultant@sap.com', name: 'Karthik Subramanian', role: 'Consultant' },
-  { id: 'arun@sap.com', name: 'Arun Kumar', role: 'Functional Consultant' },
-  { id: 'priya@sap.com', name: 'Priya S', role: 'Functional Consultant' },
-  { id: 'rahim@sap.com', name: 'Rahim', role: 'Technical Consultant' },
-  { id: 'vijay@sap.com', name: 'Vijay', role: 'Technical Consultant' },
-  { id: 'admin@sap.com', name: 'Super Admin', role: 'Super Admin' }
-];
+const MOCK_MENTIONABLE_USERS: any[] = [];
 
 export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewProps> = ({ ticketId }) => {
   const { user } = useAuth();
@@ -63,8 +55,30 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   } = useTickets();
 
   const ticket = tickets.find((t) => t.id === ticketId);
-  const consultantName = user?.name || 'Karthik Subramanian';
+  const consultantName = user?.name || 'Unassigned';
   const consultantType = user?.consultantType || 'Functional';
+
+  const [dbMentionableUsers, setDbMentionableUsers] = useState<any[]>([]);
+  const MOCK_MENTIONABLE_USERS = dbMentionableUsers;
+
+  useEffect(() => {
+    const fetchDbMentionableUsers = async () => {
+      const { isSupabaseConfigured, supabase } = await import('../../lib/supabase/client');
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, role');
+        if (!error && data) {
+          setDbMentionableUsers(data.map(p => ({
+            id: p.email,
+            name: p.full_name,
+            role: p.role
+          })));
+        }
+      }
+    };
+    fetchDbMentionableUsers();
+  }, []);
 
   // UI States
   const [successBanner, setSuccessBanner] = useState<string | null>(null);

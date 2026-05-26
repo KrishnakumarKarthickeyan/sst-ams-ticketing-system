@@ -670,6 +670,12 @@ export default function ManagerTicketsPage() {
       {/* ── TICKETS WORKSPACE PRESENTATION ── */}
       {loading ? (
         <div className="py-20 text-center text-zinc-500 font-bold">Querying tickets registry...</div>
+      ) : tickets.length === 0 ? (
+        <Card className="border border-zinc-200 rounded-lg p-20 text-center text-zinc-450 italic space-y-2 bg-white">
+          <AlertCircle className="mx-auto text-zinc-300 animate-pulse" size={24} />
+          <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Create an SAP incident to start tracking support and resolutions.</p>
+        </Card>
       ) : filteredTickets.length === 0 ? (
         <Card className="border border-zinc-200 rounded-lg p-20 text-center text-zinc-450 italic space-y-2 bg-white">
           <AlertCircle className="mx-auto text-zinc-300 animate-pulse" size={24} />

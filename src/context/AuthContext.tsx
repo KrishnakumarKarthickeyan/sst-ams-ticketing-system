@@ -27,15 +27,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_USERS: Record<string, UserSession> = {
-  'manager@supportstudio.com': {
-    id: 'usr-manager-default',
-    name: 'SAP Manager',
-    email: 'manager@supportstudio.com',
-    role: 'Manager',
-    company: 'Support Studio'
-  }
-};
+const DEMO_USERS: Record<string, UserSession> = {};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserSession | null>(null);

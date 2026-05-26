@@ -166,31 +166,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="relative flex items-center justify-center font-mono">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-zinc-200"></div>
-            </div>
-            <span className="relative bg-white px-3 text-[9px] font-bold uppercase tracking-wider text-zinc-400 z-10">
-              One-Click Demo Roles
-            </span>
-          </div>
-
-          {/* Quick Demo Selectors */}
-          <div className="flex flex-col gap-2 font-mono">
-            
-            {/* Demo: SAP Manager */}
-            <button
-              onClick={() => handleDemoLogin('manager@supportstudio.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group cursor-pointer w-full"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Default SAP Manager</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Enterprise Administrator</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">manager@supportstudio.com</span>
-            </button>
-
-          </div>
 
         </div>
 

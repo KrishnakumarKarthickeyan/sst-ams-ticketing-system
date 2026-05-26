@@ -25,23 +25,19 @@ const AVAILABLE_MODULES = [
   'CPI/Integration', 'BW/BI', 'Fiori', 'TRM'
 ];
 
-const DEFAULT_CUSTOMERS = [
-  'Apex Global Industries',
-  'Titan Energy Services',
-  'Nexa Manufacturing Solutions',
-  'Orion Logistics Operations',
-  'Stellar Retail Enterprises',
-  'Summit Healthcare Systems',
-  'Pinnacle Financials Ltd'
-];
-
 export default function ManagerCreateTicketPage() {
   const { createTicket, contracts } = useTickets();
   const { user } = useAuth();
   const router = useRouter();
 
+  // Compile list of unique companies from contract lists
+  const customerList = useMemo(() => {
+    const list = contracts.map(c => c.organizationName).filter(Boolean);
+    return Array.from(new Set(list));
+  }, [contracts]);
+
   // Form states
-  const [selectedOrg, setSelectedOrg] = useState(DEFAULT_CUSTOMERS[0]);
+  const [selectedOrg, setSelectedOrg] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sapModules, setSapModules] = useState<any[]>(['FICO']);
@@ -58,12 +54,11 @@ export default function ManagerCreateTicketPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
-  // Compile list of unique companies from contract lists
-  const customerList = useMemo(() => {
-    const list = contracts.map(c => c.organizationName);
-    const set = new Set([...list, ...DEFAULT_CUSTOMERS]);
-    return Array.from(set);
-  }, [contracts]);
+  React.useEffect(() => {
+    if (!selectedOrg && customerList.length > 0) {
+      setSelectedOrg(customerList[0]);
+    }
+  }, [customerList, selectedOrg]);
 
   const handleToggleModule = (mod: string) => {
     if (sapModules.includes(mod)) {

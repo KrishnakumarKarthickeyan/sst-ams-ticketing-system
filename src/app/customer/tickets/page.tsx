@@ -719,6 +719,15 @@ ${ticket.description}
                         </TableCell>
                       </TableRow>
                     ))
+                  ) : companyTickets.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={columnsList.length + 1} className="py-24 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
+                          <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Submit a support ticket to get started.</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ) : currentTickets.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={columnsList.length + 1} className="py-24 text-center text-zinc-400 font-mono italic text-xs">

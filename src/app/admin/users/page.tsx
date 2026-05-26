@@ -6,7 +6,7 @@ import { User, Plus, ShieldCheck, Mail, ShieldAlert, XCircle } from 'lucide-reac
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { createAuthUser, updateAuthUserPassword, deleteAuthUser } from '../../actions/auth';
+import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser } from '../../actions/auth';
 
 interface UserProfile {
   id: string;
@@ -91,12 +91,19 @@ export default function AdminUsersPage() {
       try {
         let authId = '';
         
-        // 1. Create auth user
-        const authRes = await createAuthUser(newEmail, password, newName, newRole);
-        if (authRes.success && authRes.id) {
-          authId = authRes.id;
-        } else if (authRes.error === 'NO_SERVICE_KEY') {
-          // Fallback to client-side non-persisted signup
+        // 1. Try server-side provisioning (Service Role client)
+        const authRes = await provisionUser({
+          email: newEmail,
+          password,
+          fullName: newName,
+          role: newRole as any,
+          companyName: newRole === 'Customer' ? newOrg : undefined,
+          contractType: 'AMS',
+          contractHours: 160.00
+        });
+
+        if (authRes.error === 'NO_SERVICE_KEY') {
+          // Fallback to client-side non-persisted signup and manual inserts
           const authClient = getClientSideAuthClient();
           if (!authClient) throw new Error('Client-side auth manager failed to initialize.');
           const { data, error: signUpErr } = await authClient.auth.signUp({
@@ -115,59 +122,57 @@ export default function AdminUsersPage() {
           } else {
             throw new Error('This email address may already be registered. Please try a different email or sign in.');
           }
-        } else {
-          throw new Error(authRes.error);
-        }
 
-        if (!authId) throw new Error('Failed to obtain user identity reference.');
+          // 2. Resolve organization if role is Customer
+          let orgId = null;
+            if (newRole === 'Customer') {
+              const { data: existingOrg } = await supabase
+                .from('organizations')
+                .select('id')
+                .eq('name', newOrg.trim())
+                .maybeSingle();
 
-        // 2. Resolve organization if role is Customer
-        let orgId = null;
-        if (newRole === 'Customer') {
-          const { data: existingOrg } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('name', newOrg.trim())
-            .maybeSingle();
-
-          if (existingOrg) {
-            orgId = existingOrg.id;
-          } else {
-            const { data: newOrganization, error: orgErr } = await supabase
-              .from('organizations')
-              .insert({ name: newOrg.trim() })
-              .select('id')
-              .single();
-            if (orgErr) throw new Error(orgErr.message);
-            orgId = newOrganization.id;
+            if (existingOrg) {
+              orgId = existingOrg.id;
+            } else {
+              const { data: newOrganization, error: orgErr } = await supabase
+                .from('organizations')
+                .insert({ name: newOrg.trim() })
+                .select('id')
+                .single();
+              if (orgErr) throw new Error(orgErr.message);
+              orgId = newOrganization.id;
+            }
           }
-        }
 
-        // 3. Create profile
-        const { error: profErr } = await supabase.from('profiles').insert({
-          id: authId,
-          email: newEmail.trim().toLowerCase(),
-          full_name: newName,
-          role: newRole,
-          is_active: true,
-          organization_id: orgId
-        });
-
-        if (profErr) throw new Error(profErr.message);
-
-        // 4. Create customer contract if it is customer
-        if (newRole === 'Customer' && orgId) {
-          const { error: contractErr } = await supabase.from('customer_contracts').insert({
-            organization_id: orgId,
-            contract_type: 'AMS',
-            start_date: new Date().toISOString().split('T')[0],
-            end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            total_hours: 160.00,
-            used_hours: 0.00,
-            monthly_budget_hours: 15.00,
-            is_active: true
+          // 3. Create profile
+          const { error: profErr } = await supabase.from('profiles').insert({
+            id: authId,
+            email: newEmail.trim().toLowerCase(),
+            full_name: newName,
+            role: newRole,
+            is_active: true,
+            organization_id: orgId
           });
-          if (contractErr) console.warn('Non-blocking contract error:', contractErr.message);
+
+          if (profErr) throw new Error(profErr.message);
+
+          // 4. Create customer contract if it is customer
+          if (newRole === 'Customer' && orgId) {
+            const { error: contractErr } = await supabase.from('customer_contracts').insert({
+              organization_id: orgId,
+              contract_type: 'AMS',
+              start_date: new Date().toISOString().split('T')[0],
+              end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              total_hours: 160.00,
+              used_hours: 0.00,
+              monthly_budget_hours: 15.00,
+              is_active: true
+            });
+            if (contractErr) console.warn('Non-blocking contract error:', contractErr.message);
+          }
+        } else if (!authRes.success) {
+          throw new Error(authRes.error);
         }
 
         toast.success(`User provisioned successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });

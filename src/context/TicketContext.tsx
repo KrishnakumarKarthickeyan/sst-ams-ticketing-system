@@ -222,8 +222,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: dbProfiles } = await supabase.from('profiles').select('*');
-        const { data: dbTickets } = await supabase.from('tickets').select('*, comments(*), efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_consultant_efforts(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
-        const { data: dbContracts } = await supabase.from('customer_contracts').select('*');
+        const { data: dbTickets } = await supabase.from('tickets').select('*, organizations(name), comments(*), efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_consultant_efforts(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
+        const { data: dbContracts } = await supabase.from('customer_contracts').select('*, organizations(name)');
         const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
         const { data: dbArticles } = await supabase.from('knowledgebase_articles').select('*');
         const { data: dbCategories } = await supabase.from('knowledgebase_categories').select('*');
@@ -231,85 +231,75 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         const profilesList = dbProfiles || [];
 
-        if (dbTickets && dbTickets.length > 0) {
-          setTickets(dbTickets.map(t => mapDbTicket(t, profilesList)));
-        } else {
-          loadMockTickets();
-        }
+        setTickets(dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList)) : []);
 
-        if (dbContracts && dbContracts.length > 0) {
-          setContracts(dbContracts.map(c => ({
-            id: c.id,
-            organizationName: c.organization_id,
-            contractType: c.contract_type as SupportContractType,
-            startDate: c.start_date,
-            endDate: c.end_date,
-            totalHours: Number(c.total_hours),
-            usedHours: Number(c.used_hours),
-            monthlyBudgetHours: Number(c.monthly_budget_hours),
-            isActive: c.is_active
-          })));
-        } else {
-          setContracts(MOCK_CONTRACTS);
-        }
+        setContracts(dbContracts ? dbContracts.map(c => ({
+          id: c.id,
+          organizationName: (c.organizations as any)?.name || c.organization_id,
+          contractType: c.contract_type as SupportContractType,
+          startDate: c.start_date,
+          endDate: c.end_date,
+          totalHours: Number(c.total_hours),
+          usedHours: Number(c.used_hours),
+          monthlyBudgetHours: Number(c.monthly_budget_hours),
+          isActive: c.is_active
+        })) : []);
 
-        if (dbContacts && dbContacts.length > 0) {
-          setContacts(dbContacts.map(c => ({
-            id: c.id,
-            organizationName: c.organization_name || c.organization_id || '',
-            name: c.name,
-            designation: c.designation,
-            email: c.email,
-            phone: c.phone || undefined,
-            isPrimary: c.is_primary,
-            isSecondary: c.is_secondary
-          })));
-        } else {
-          setContacts(MOCK_CONTACTS);
-        }
+        setContacts(dbContacts ? dbContacts.map(c => ({
+          id: c.id,
+          organizationName: c.organization_name || c.organization_id || '',
+          name: c.name,
+          designation: c.designation,
+          email: c.email,
+          phone: c.phone || undefined,
+          isPrimary: c.is_primary,
+          isSecondary: c.is_secondary
+        })) : []);
 
-        if (dbArticles && dbArticles.length > 0) {
-          setKbArticles(dbArticles.map(a => ({
-            id: a.id,
-            categoryId: a.category_id,
-            categoryName: 'General Guides',
-            title: a.title,
-            slug: a.slug,
-            content: a.content,
-            sapModule: a.sap_module as SAPModule,
-            isInternal: a.is_internal,
-            authorName: a.author_id,
-            ratingsCount: a.ratings_count || 0,
-            ratingsSum: a.ratings_sum || 0,
-            createdAt: a.created_at,
-            updatedAt: a.updated_at
-          })));
-        } else {
-          setKbArticles(MOCK_ARTICLES);
-        }
+        setKbArticles(dbArticles ? dbArticles.map(a => ({
+          id: a.id,
+          categoryId: a.category_id,
+          categoryName: 'General Guides',
+          title: a.title,
+          slug: a.slug,
+          content: a.content,
+          sapModule: a.sap_module as SAPModule,
+          isInternal: a.is_internal,
+          authorName: a.author_id,
+          ratingsCount: a.ratings_count || 0,
+          ratingsSum: a.ratings_sum || 0,
+          createdAt: a.created_at,
+          updatedAt: a.updated_at
+        })) : []);
 
-        setKbCategories(dbCategories && dbCategories.length > 0 ? dbCategories : MOCK_CATEGORIES);
+        setKbCategories(dbCategories || []);
 
-        if (dbNotifications && dbNotifications.length > 0) {
-          setNotifications(dbNotifications.map(n => ({
-            id: n.id,
-            userId: n.user_id,
-            title: n.title,
-            message: n.message,
-            ticketId: n.ticket_id,
-            isRead: n.is_read,
-            createdAt: n.created_at
-          })));
-        } else {
-          setNotifications(MOCK_NOTIFICATIONS);
-        }
+        setNotifications(dbNotifications ? dbNotifications.map(n => ({
+          id: n.id,
+          userId: n.user_id,
+          title: n.title,
+          message: n.message,
+          ticketId: n.ticket_id,
+          isRead: n.is_read,
+          createdAt: n.created_at
+        })) : []);
 
       } catch (err) {
-        console.error('Supabase fetch failed, falling back to local mock data.', err);
-        loadLocalFallback();
+        console.error('Supabase fetch failed, setting states to empty.', err);
+        setTickets([]);
+        setContracts([]);
+        setContacts([]);
+        setKbArticles([]);
+        setKbCategories([]);
+        setNotifications([]);
       }
     } else {
-      loadLocalFallback();
+      setTickets([]);
+      setContracts([]);
+      setContacts([]);
+      setKbArticles([]);
+      setKbCategories([]);
+      setNotifications([]);
     }
     setLoading(false);
   };
@@ -403,7 +393,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       id: t.id,
       title: t.title,
       description: t.description,
-      organization: t.organization_id, // Organization Name
+      organization: (t.organizations as any)?.name || t.organization_id, // Organization Name
       requestedBy: customer?.full_name || t.created_by_name || t.requested_by,
       requestedByEmail: customer?.email || '',
       sapModule: t.sap_module as SAPModule,
