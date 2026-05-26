@@ -28,6 +28,10 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
+import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+import { toast } from 'sonner';
+import { createAuthUser, updateAuthUserPassword, deleteAuthUser } from '../../actions/auth';
 
 interface ConsultantProfile {
   id: string;
@@ -84,27 +88,100 @@ export default function ManagerConsultantsPage() {
   const [formContact, setFormContact] = useState('');
   const [formContract, setFormContract] = useState('');
   const [formHours, setFormHours] = useState('160');
+  const [formPassword, setFormPassword] = useState('');
   const [passwordResetValue, setPasswordResetValue] = useState('password123');
 
-  // --- Initializing from LocalStorage to support working CRUD persistence ---
-  useEffect(() => {
-    const storedConsultants = localStorage.getItem('sst_stakeholder_consultants');
-    const storedCustomers = localStorage.getItem('sst_stakeholder_customers');
+  const getClientSideAuthClient = () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) return null;
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
+  };
 
-    if (storedConsultants) {
-      setConsultants(JSON.parse(storedConsultants));
-    } else {
-      const defaultConsultants: ConsultantProfile[] = [];
-      setConsultants(defaultConsultants);
-      localStorage.setItem('sst_stakeholder_consultants', JSON.stringify(defaultConsultants));
+  const fetchStakeholders = async () => {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      // Fetch Consultants
+      const { data: dbCons, error: consErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'Consultant');
+      
+      if (!consErr && dbCons) {
+        const mappedCons: ConsultantProfile[] = dbCons.map(c => ({
+          id: c.id,
+          name: c.full_name,
+          role: c.role_title || 'SAP Consultant',
+          email: c.email,
+          modules: c.sap_modules || [],
+          skills: c.skills || 'SAP Specialist',
+          phone: c.phone_number || 'N/A',
+          active: c.is_active,
+          joiningDate: c.created_at ? new Date(c.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          consultantType: (c.consultant_type as 'Functional' | 'Technical') || 'Functional'
+        }));
+        setConsultants(mappedCons);
+      }
+
+      // Fetch Customers
+      const { data: dbCust, error: custErr } = await supabase
+        .from('profiles')
+        .select('*, organizations(*), customer_contracts(*)');
+
+      if (!custErr && dbCust) {
+        // filter by profiles with role 'Customer'
+        const filtered = dbCust.filter(c => c.role === 'Customer');
+        const mappedCust: CustomerProfile[] = filtered.map(c => {
+          const org = c.organizations as any;
+          const contract = c.customer_contracts?.[0] as any;
+          return {
+            id: c.id,
+            company: org ? org.name : 'Apex Global Industries',
+            contact: c.full_name,
+            email: c.email,
+            phone: c.phone_number || 'N/A',
+            contractType: contract ? contract.contract_type : 'Standard Support',
+            expectedHours: contract ? Number(contract.total_hours) : 160,
+            active: c.is_active,
+            csat: 5.0
+          };
+        });
+        setCustomers(mappedCust);
+      }
+    } catch (err) {
+      console.error('Failed to fetch profiles from database', err);
     }
+  };
 
-    if (storedCustomers) {
-      setCustomers(JSON.parse(storedCustomers));
+  // --- Initializing from LocalStorage / Supabase to support working CRUD persistence ---
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      fetchStakeholders();
     } else {
-      const defaultCustomers: CustomerProfile[] = [];
-      setCustomers(defaultCustomers);
-      localStorage.setItem('sst_stakeholder_customers', JSON.stringify(defaultCustomers));
+      const storedConsultants = localStorage.getItem('sst_stakeholder_consultants');
+      const storedCustomers = localStorage.getItem('sst_stakeholder_customers');
+
+      if (storedConsultants) {
+        setConsultants(JSON.parse(storedConsultants));
+      } else {
+        const defaultConsultants: ConsultantProfile[] = [];
+        setConsultants(defaultConsultants);
+        localStorage.setItem('sst_stakeholder_consultants', JSON.stringify(defaultConsultants));
+      }
+
+      if (storedCustomers) {
+        setCustomers(JSON.parse(storedCustomers));
+      } else {
+        const defaultCustomers: CustomerProfile[] = [];
+        setCustomers(defaultCustomers);
+        localStorage.setItem('sst_stakeholder_customers', JSON.stringify(defaultCustomers));
+      }
     }
   }, []);
 
@@ -151,132 +228,460 @@ export default function ManagerConsultantsPage() {
   }, [customers, searchQuery]);
 
   // --- CRUD HANDLERS ---
-  const handleAddConsultant = (e: React.FormEvent) => {
+  const handleAddConsultant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName || !formEmail) return;
 
-    const newConsultant: ConsultantProfile = {
-      id: `usr-consult-${Date.now()}`,
-      name: formName,
-      role: formRole || `${formType} Specialist`,
-      email: formEmail,
-      modules: formModules.split(',').map(m => m.trim().toUpperCase()).filter(Boolean),
-      skills: formSkills,
-      phone: formPhone || 'N/A',
-      active: true,
-      joiningDate: new Date().toISOString().split('T')[0],
-      consultantType: formType
-    };
+    if (isSupabaseConfigured && supabase) {
+      const password = formPassword || 'Password@12345';
+      const toastId = toast.loading(`Registering consultant ${formEmail} in database...`);
+      try {
+        let authId = '';
+        
+        // 1. Try server action first (service role)
+        const authRes = await createAuthUser(formEmail, password, formName, 'Consultant');
+        if (authRes.success && authRes.id) {
+          authId = authRes.id;
+        } else if (authRes.error === 'NO_SERVICE_KEY') {
+          // 2. Fallback to client-side non-persisted sign up
+          const authClient = getClientSideAuthClient();
+          if (!authClient) throw new Error('Client-side auth manager failed to initialize.');
+          const { data, error: signUpErr } = await authClient.auth.signUp({
+            email: formEmail.trim().toLowerCase(),
+            password: password,
+            options: {
+              data: {
+                full_name: formName,
+                role: 'Consultant'
+              }
+            }
+          });
+          if (signUpErr) throw new Error(signUpErr.message);
+          if (data.user) {
+            authId = data.user.id;
+          }
+        } else {
+          throw new Error(authRes.error);
+        }
 
-    saveConsultants([...consultants, newConsultant]);
-    closeActionModal();
+        if (!authId) throw new Error('Failed to obtain user identity reference.');
+
+        // 3. Create public profiles entry
+        const { error: profErr } = await supabase.from('profiles').insert({
+          id: authId,
+          email: formEmail.trim().toLowerCase(),
+          full_name: formName,
+          role: 'Consultant',
+          is_active: true,
+          consultant_type: formType,
+          sap_modules: formModules.split(',').map(m => m.trim().toUpperCase()).filter(Boolean),
+          phone_number: formPhone || 'N/A',
+          role_title: formRole || `${formType} Specialist`,
+          skills: formSkills
+        });
+
+        if (profErr) throw new Error(profErr.message);
+
+        toast.success(`Consultant profile created successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
+        fetchStakeholders();
+        closeActionModal();
+      } catch (err: any) {
+        toast.error(`Provisioning failed: ${err.message}`, { id: toastId });
+        console.error(err);
+      }
+    } else {
+      // Local fallback
+      const newConsultant: ConsultantProfile = {
+        id: `usr-consult-${Date.now()}`,
+        name: formName,
+        role: formRole || `${formType} Specialist`,
+        email: formEmail,
+        modules: formModules.split(',').map(m => m.trim().toUpperCase()).filter(Boolean),
+        skills: formSkills,
+        phone: formPhone || 'N/A',
+        active: true,
+        joiningDate: new Date().toISOString().split('T')[0],
+        consultantType: formType
+      };
+      saveConsultants([...consultants, newConsultant]);
+      closeActionModal();
+    }
   };
 
-  const handleEditConsultantSubmit = (e: React.FormEvent) => {
+  const handleEditConsultantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeAction.targetId || !formName) return;
 
-    const updated = consultants.map(c => {
-      if (c.id === activeAction.targetId) {
-        return {
-          ...c,
-          name: formName,
-          role: formRole,
-          email: formEmail,
-          phone: formPhone,
-          skills: formSkills,
-          modules: formModules.split(',').map(m => m.trim().toUpperCase()).filter(Boolean),
-          consultantType: formType
-        };
-      }
-      return c;
-    });
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Saving consultant updates...');
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            full_name: formName,
+            consultant_type: formType,
+            sap_modules: formModules.split(',').map(m => m.trim().toUpperCase()).filter(Boolean),
+            phone_number: formPhone || 'N/A',
+            role_title: formRole,
+            skills: formSkills
+          })
+          .eq('id', activeAction.targetId);
 
-    saveConsultants(updated);
-    closeActionModal();
+        if (error) throw new Error(error.message);
+        toast.success('Consultant profile updated.', { id: toastId });
+        fetchStakeholders();
+        closeActionModal();
+      } catch (err: any) {
+        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      const updated = consultants.map(c => {
+        if (c.id === activeAction.targetId) {
+          return {
+            ...c,
+            name: formName,
+            role: formRole,
+            email: formEmail,
+            phone: formPhone,
+            skills: formSkills,
+            modules: formModules.split(',').map(m => m.trim().toUpperCase()).filter(Boolean),
+            consultantType: formType
+          };
+        }
+        return c;
+      });
+      saveConsultants(updated);
+      closeActionModal();
+    }
   };
 
-  const toggleConsultantStatus = (id: string) => {
-    const updated = consultants.map(c => {
-      if (c.id === id) {
-        return { ...c, active: !c.active };
-      }
-      return c;
-    });
-    saveConsultants(updated);
-  };
+  const toggleConsultantStatus = async (id: string) => {
+    const current = consultants.find(c => c.id === id);
+    if (!current) return;
 
-  const deleteConsultant = (id: string) => {
-    if (confirm('Are you sure you want to remove this consultant profile?')) {
-      const updated = consultants.filter(c => c.id !== id);
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Toggling account access...');
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ is_active: !current.active })
+          .eq('id', id);
+
+        if (error) throw new Error(error.message);
+        toast.success(`Account access changed to: ${!current.active ? 'Active' : 'Disabled'}`, { id: toastId });
+        fetchStakeholders();
+      } catch (err: any) {
+        toast.error(`Operation failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      const updated = consultants.map(c => {
+        if (c.id === id) {
+          return { ...c, active: !c.active };
+        }
+        return c;
+      });
       saveConsultants(updated);
     }
   };
 
-  const handleAddCustomer = (e: React.FormEvent) => {
+  const deleteConsultant = async (id: string) => {
+    if (confirm('Are you sure you want to permanently remove this consultant profile?')) {
+      if (isSupabaseConfigured && supabase) {
+        const toastId = toast.loading('Pruning consultant registration...');
+        try {
+          // Delete auth record (requires service role)
+          const authRes = await deleteAuthUser(id);
+          if (!authRes.success && authRes.error !== 'NO_SERVICE_KEY') {
+            throw new Error(authRes.error);
+          }
+
+          // Delete DB row
+          const { error } = await supabase.from('profiles').delete().eq('id', id);
+          if (error) throw new Error(error.message);
+
+          toast.success('Consultant removed completely.', { id: toastId });
+          fetchStakeholders();
+        } catch (err: any) {
+          toast.error(`Prune failed: ${err.message}`, { id: toastId });
+        }
+      } else {
+        const updated = consultants.filter(c => c.id !== id);
+        saveConsultants(updated);
+      }
+    }
+  };
+
+  const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formCompany || !formEmail) return;
 
-    const newCustomer: CustomerProfile = {
-      id: `cust-${Date.now()}`,
-      company: formCompany,
-      contact: formContact,
-      email: formEmail,
-      phone: formPhone || 'N/A',
-      contractType: formContract || 'Standard Support',
-      expectedHours: parseInt(formHours, 10) || 160,
-      active: true,
-      csat: 5.0
-    };
+    if (isSupabaseConfigured && supabase) {
+      const password = formPassword || 'Password@12345';
+      const toastId = toast.loading(`Registering customer user ${formEmail}...`);
+      try {
+        let authId = '';
 
-    saveCustomers([...customers, newCustomer]);
-    closeActionModal();
+        // 1. Try server action
+        const authRes = await createAuthUser(formEmail, password, formContact, 'Customer');
+        if (authRes.success && authRes.id) {
+          authId = authRes.id;
+        } else if (authRes.error === 'NO_SERVICE_KEY') {
+          // 2. Fallback to client-side non-persisted sign up
+          const authClient = getClientSideAuthClient();
+          if (!authClient) throw new Error('Client-side auth manager failed to initialize.');
+          const { data, error: signUpErr } = await authClient.auth.signUp({
+            email: formEmail.trim().toLowerCase(),
+            password: password,
+            options: {
+              data: {
+                full_name: formContact,
+                role: 'Customer'
+              }
+            }
+          });
+          if (signUpErr) throw new Error(signUpErr.message);
+          if (data.user) {
+            authId = data.user.id;
+          }
+        } else {
+          throw new Error(authRes.error);
+        }
+
+        if (!authId) throw new Error('Failed to obtain user identity reference.');
+
+        // 3. Resolve or insert organization
+        let orgId = '';
+        const { data: existingOrg } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('name', formCompany.trim())
+          .maybeSingle();
+
+        if (existingOrg) {
+          orgId = existingOrg.id;
+        } else {
+          const { data: newOrg, error: orgErr } = await supabase
+            .from('organizations')
+            .insert({ name: formCompany.trim() })
+            .select('id')
+            .single();
+          if (orgErr) throw new Error(orgErr.message);
+          orgId = newOrg.id;
+        }
+
+        // 4. Create public profile row
+        const { error: profErr } = await supabase.from('profiles').insert({
+          id: authId,
+          email: formEmail.trim().toLowerCase(),
+          full_name: formContact,
+          role: 'Customer',
+          is_active: true,
+          organization_id: orgId,
+          phone_number: formPhone || 'N/A'
+        });
+
+        if (profErr) throw new Error(profErr.message);
+
+        // 5. Create customer contract
+        const { error: contractErr } = await supabase.from('customer_contracts').insert({
+          organization_id: orgId,
+          contract_type: (formContract || 'AMS') as any,
+          start_date: new Date().toISOString().split('T')[0],
+          end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          total_hours: parseFloat(formHours) || 160.00,
+          used_hours: 0.00,
+          monthly_budget_hours: Math.round(parseFloat(formHours) / 12) || 15.00,
+          is_active: true
+        });
+
+        if (contractErr) console.warn('Non-blocking contract error:', contractErr.message);
+
+        toast.success(`Customer created successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
+        fetchStakeholders();
+        closeActionModal();
+      } catch (err: any) {
+        toast.error(`Provisioning failed: ${err.message}`, { id: toastId });
+        console.error(err);
+      }
+    } else {
+      const newCustomer: CustomerProfile = {
+        id: `cust-${Date.now()}`,
+        company: formCompany,
+        contact: formContact,
+        email: formEmail,
+        phone: formPhone || 'N/A',
+        contractType: formContract || 'Standard Support',
+        expectedHours: parseInt(formHours, 10) || 160,
+        active: true,
+        csat: 5.0
+      };
+      saveCustomers([...customers, newCustomer]);
+      closeActionModal();
+    }
   };
 
-  const handleEditCustomerSubmit = (e: React.FormEvent) => {
+  const handleEditCustomerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeAction.targetId || !formCompany) return;
 
-    const updated = customers.map(c => {
-      if (c.id === activeAction.targetId) {
-        return {
-          ...c,
-          company: formCompany,
-          contact: formContact,
-          email: formEmail,
-          phone: formPhone,
-          contractType: formContract,
-          expectedHours: parseInt(formHours, 10) || 160
-        };
-      }
-      return c;
-    });
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Saving customer updates...');
+      try {
+        // Find profile to obtain org ID
+        const target = customers.find(c => c.id === activeAction.targetId);
+        if (!target) throw new Error('Account record not found.');
 
-    saveCustomers(updated);
-    closeActionModal();
+        const { data: dbProfile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', activeAction.targetId)
+          .single();
+
+        const orgId = dbProfile?.organization_id;
+
+        // Update profile
+        const { error: profErr } = await supabase
+          .from('profiles')
+          .update({
+            full_name: formContact,
+            phone_number: formPhone || 'N/A'
+          })
+          .eq('id', activeAction.targetId);
+
+        if (profErr) throw new Error(profErr.message);
+
+        // Update organization name if modified
+        if (orgId && formCompany.trim() !== target.company) {
+          await supabase
+            .from('organizations')
+            .update({ name: formCompany.trim() })
+            .eq('id', orgId);
+        }
+
+        // Update contract if org exists
+        if (orgId) {
+          const { data: existingContract } = await supabase
+            .from('customer_contracts')
+            .select('id')
+            .eq('organization_id', orgId)
+            .maybeSingle();
+
+          if (existingContract) {
+            await supabase
+              .from('customer_contracts')
+              .update({
+                contract_type: formContract as any,
+                total_hours: parseFloat(formHours) || 160.00
+              })
+              .eq('id', existingContract.id);
+          }
+        }
+
+        toast.success('Customer profile saved.', { id: toastId });
+        fetchStakeholders();
+        closeActionModal();
+      } catch (err: any) {
+        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      const updated = customers.map(c => {
+        if (c.id === activeAction.targetId) {
+          return {
+            ...c,
+            company: formCompany,
+            contact: formContact,
+            email: formEmail,
+            phone: formPhone,
+            contractType: formContract,
+            expectedHours: parseInt(formHours, 10) || 160
+          };
+        }
+        return c;
+      });
+      saveCustomers(updated);
+      closeActionModal();
+    }
   };
 
-  const toggleCustomerStatus = (id: string) => {
-    const updated = customers.map(c => {
-      if (c.id === id) {
-        return { ...c, active: !c.active };
-      }
-      return c;
-    });
-    saveCustomers(updated);
-  };
+  const toggleCustomerStatus = async (id: string) => {
+    const current = customers.find(c => c.id === id);
+    if (!current) return;
 
-  const deleteCustomer = (id: string) => {
-    if (confirm('Are you sure you want to remove this customer record?')) {
-      const updated = customers.filter(c => c.id !== id);
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Toggling account access...');
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ is_active: !current.active })
+          .eq('id', id);
+
+        if (error) throw new Error(error.message);
+        toast.success(`Account access changed to: ${!current.active ? 'Active' : 'Disabled'}`, { id: toastId });
+        fetchStakeholders();
+      } catch (err: any) {
+        toast.error(`Operation failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      const updated = customers.map(c => {
+        if (c.id === id) {
+          return { ...c, active: !c.active };
+        }
+        return c;
+      });
       saveCustomers(updated);
     }
   };
 
-  const handlePasswordResetSubmit = (e: React.FormEvent) => {
+  const deleteCustomer = async (id: string) => {
+    if (confirm('Are you sure you want to permanently remove this customer record? All organization data will cascade delete.')) {
+      if (isSupabaseConfigured && supabase) {
+        const toastId = toast.loading('Pruning customer registration...');
+        try {
+          // Delete auth record
+          const authRes = await deleteAuthUser(id);
+          if (!authRes.success && authRes.error !== 'NO_SERVICE_KEY') {
+            throw new Error(authRes.error);
+          }
+
+          // Delete DB row
+          const { error } = await supabase.from('profiles').delete().eq('id', id);
+          if (error) throw new Error(error.message);
+
+          toast.success('Customer record pruned.', { id: toastId });
+          fetchStakeholders();
+        } catch (err: any) {
+          toast.error(`Prune failed: ${err.message}`, { id: toastId });
+        }
+      } else {
+        const updated = customers.filter(c => c.id !== id);
+        saveCustomers(updated);
+      }
+    }
+  };
+
+  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Security Notice: Password for stakeholder account ID "${activeAction.targetId}" successfully reset to: "${passwordResetValue}". Notification email queued in system backlog.`);
-    closeActionModal();
+    if (!activeAction.targetId || !passwordResetValue) return;
+
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Authorizing password overwrite...');
+      try {
+        const res = await updateAuthUserPassword(activeAction.targetId, passwordResetValue);
+        if (res.success) {
+          toast.success(`Password overwrite successful! New credentials active immediately.`, { id: toastId, duration: 6000 });
+          closeActionModal();
+        } else if (res.error === 'NO_SERVICE_KEY') {
+          toast.error('Overwriting passwords from the dashboard requires configuring the SUPABASE_SERVICE_ROLE_KEY environment variable on the server.', { id: toastId, duration: 6000 });
+        } else {
+          throw new Error(res.error);
+        }
+      } catch (err: any) {
+        toast.error(`Authorization failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      alert(`Security Notice: Password for stakeholder account ID "${activeAction.targetId}" successfully reset to: "${passwordResetValue}". Notification email queued in system backlog.`);
+      closeActionModal();
+    }
   };
 
   const closeActionModal = () => {
@@ -291,6 +696,7 @@ export default function ManagerConsultantsPage() {
     setFormContact('');
     setFormContract('');
     setFormHours('160');
+    setFormPassword('');
     setPasswordResetValue('password123');
   };
 
@@ -823,6 +1229,19 @@ export default function ManagerConsultantsPage() {
                       className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
                     />
                   </div>
+                  {activeAction.type === 'add_consultant' && (
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Login Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={formPassword}
+                        onChange={(e) => setFormPassword(e.target.value)}
+                        placeholder="Assign a secure password"
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      />
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">SAP Module Tags (Comma Separated)</label>
                     <input
@@ -910,6 +1329,19 @@ export default function ManagerConsultantsPage() {
                       className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
                     />
                   </div>
+                  {activeAction.type === 'add_customer' && (
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Login Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={formPassword}
+                        onChange={(e) => setFormPassword(e.target.value)}
+                        placeholder="Assign a secure password"
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      />
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Phone</label>
                     <input

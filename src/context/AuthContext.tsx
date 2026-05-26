@@ -20,7 +20,7 @@ export interface UserSession {
 interface AuthContextType {
   user: UserSession | null;
   loading: boolean;
-  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password?: string) => Promise<{ success: boolean; user?: UserSession; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (name: string) => void;
 }
@@ -51,18 +51,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const { data: profile, error } = await supabase
               .from('profiles')
-              .select('full_name, role, organizations(name)')
+              .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
               .eq('id', session.user.id)
               .single();
 
             if (profile && !error) {
+              if (!profile.is_active) {
+                await supabase.auth.signOut();
+                setUser(null);
+                return;
+              }
               const userOrg = profile.organizations as any;
               setUser({
                 id: session.user.id,
                 email: session.user.email || '',
                 name: profile.full_name,
                 role: profile.role as UserRole,
-                company: userOrg ? userOrg.name : undefined
+                company: userOrg ? userOrg.name : undefined,
+                consultantType: profile.consultant_type as any,
+                modules: profile.sap_modules || [],
+                phoneNumber: profile.phone_number
               });
             } else {
               // Fallback if profile row does not exist yet
@@ -100,18 +108,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session) {
           const { data: profile } = await client
             .from('profiles')
-            .select('full_name, role, organizations(name)')
+            .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
             .eq('id', session.user.id)
             .single();
 
-          const userOrg = profile?.organizations as any;
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            name: profile?.full_name || session.user.email?.split('@')[0] || 'User',
-            role: (profile?.role as UserRole) || 'Customer',
-            company: userOrg ? userOrg.name : undefined
-          });
+          if (profile) {
+            if (!profile.is_active) {
+              await client.auth.signOut();
+              setUser(null);
+              return;
+            }
+            const userOrg = profile.organizations as any;
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              name: profile.full_name || session.user.email?.split('@')[0] || 'User',
+              role: (profile.role as UserRole) || 'Customer',
+              company: userOrg ? userOrg.name : undefined,
+              consultantType: profile.consultant_type as any,
+              modules: profile.sap_modules || [],
+              phoneNumber: profile.phone_number
+            });
+          }
         } else {
           setUser(null);
         }
@@ -123,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string, password?: string): Promise<{ success: boolean; user?: UserSession; error?: string }> => {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (isSupabaseConfigured && supabase) {
@@ -139,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const demoSession = DEMO_USERS[normalizedEmail];
             setUser(demoSession);
             localStorage.setItem('sap_user_session', JSON.stringify(demoSession));
-            return { success: true };
+            return { success: true, user: demoSession };
           }
           return { success: false, error: error.message };
         }
@@ -147,20 +165,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (data.user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('full_name, role, organizations(name)')
+            .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
             .eq('id', data.user.id)
             .single();
 
-          const userOrg = profile?.organizations as any;
-          const sessionUser: UserSession = {
-            id: data.user.id,
-            email: data.user.email || '',
-            name: profile?.full_name || data.user.email?.split('@')[0] || 'User',
-            role: (profile?.role as UserRole) || 'Customer',
-            company: userOrg ? userOrg.name : undefined
-          };
-          setUser(sessionUser);
-          return { success: true };
+          if (profile) {
+            if (!profile.is_active) {
+              await supabase.auth.signOut();
+              setUser(null);
+              return { success: false, error: 'Your account has been disabled. Please contact your administrator.' };
+            }
+            const userOrg = profile.organizations as any;
+            const sessionUser: UserSession = {
+              id: data.user.id,
+              email: data.user.email || '',
+              name: profile.full_name || data.user.email?.split('@')[0] || 'User',
+              role: (profile.role as UserRole) || 'Customer',
+              company: userOrg ? userOrg.name : undefined,
+              consultantType: profile.consultant_type as any,
+              modules: profile.sap_modules || [],
+              phoneNumber: profile.phone_number
+            };
+            setUser(sessionUser);
+            return { success: true, user: sessionUser };
+          }
         }
         return { success: false, error: 'User details missing.' };
       } catch (e: any) {
@@ -172,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (matched && password === 'Manager@12345') {
         setUser(matched);
         localStorage.setItem('sap_user_session', JSON.stringify(matched));
-        return { success: true };
+        return { success: true, user: matched };
       }
       return { success: false, error: 'Invalid credentials. Use email manager@supportstudio.com and password Manager@12345.' };
     }

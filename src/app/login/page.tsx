@@ -52,16 +52,10 @@ export default function LoginPage() {
     }
 
     const res = await login(email, password);
-    if (res.success) {
-      // router is handled in useEffect or we can do it directly
-      const session = localStorage.getItem('sap_user_session');
-      if (session) {
-        const uObj = JSON.parse(session);
-        redirectToDashboard(uObj.role);
-      } else {
-        // Fallback checks
-        redirectToDashboard('Customer');
-      }
+    if (res.success && res.user) {
+      redirectToDashboard(res.user.role);
+    } else if (res.success) {
+      redirectToDashboard('Customer');
     } else {
       setError(res.error || 'Invalid credentials.');
     }
