@@ -222,7 +222,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: dbProfiles } = await supabase.from('profiles').select('*');
-        const { data: dbTickets } = await supabase.from('tickets').select('*, organizations(name), comments(*), efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_consultant_efforts(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
+        const { data: dbTickets } = await supabase.from('tickets').select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_consultant_efforts(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
         const { data: dbContracts } = await supabase.from('customer_contracts').select('*, organizations(name)');
         const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
         const { data: dbArticles } = await supabase.from('knowledgebase_articles').select('*');
@@ -415,7 +415,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       transportRequest: t.transport_request,
       source: t.source || 'Created by Client',
       
-      comments: t.comments ? t.comments.map((c: any) => {
+      comments: (t.ticket_comments || t.comments) ? (t.ticket_comments || t.comments).map((c: any) => {
         const commentAuthor = getProfile(c.author_id);
         return {
           id: c.id,
@@ -459,7 +459,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createdAt: a.created_at
       })) : [],
 
-      efforts: t.efforts ? t.efforts.map((e: any) => {
+      efforts: (t.ticket_efforts || t.efforts) ? (t.ticket_efforts || t.efforts).map((e: any) => {
         const effortConsultant = getProfile(e.consultant_id);
         return {
           id: e.id,
