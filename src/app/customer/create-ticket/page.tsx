@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Label } from '../../../components/ui/label';
+import { toast } from 'sonner';
 
 interface UploadingFile {
   id: string;
@@ -18,6 +19,12 @@ interface UploadingFile {
   progress: number;
   status: 'uploading' | 'success' | 'error';
 }
+
+const AVAILABLE_MODULES = [
+  'FICO', 'MM', 'SD', 'PP', 'PM', 'QM', 'HCM', 
+  'SuccessFactors', 'BASIS', 'ABAP', 'Security/GRC', 
+  'CPI/Integration', 'BW/BI', 'Fiori', 'TRM'
+];
 
 export default function CustomerCreateTicketPage() {
   const { createTicket } = useTickets();
@@ -36,13 +43,6 @@ export default function CustomerCreateTicketPage() {
   const [functionalOrTechnical, setFunctionalOrTechnical] = useState<any>('Functional');
   const [businessImpact, setBusinessImpact] = useState('');
   const [expectedResolutionDate, setExpectedResolutionDate] = useState('');
-
-  // Available SAP modules array
-  const AVAILABLE_MODULES = [
-    'FICO', 'MM', 'SD', 'PP', 'PM', 'QM', 'HCM', 
-    'SuccessFactors', 'BASIS', 'ABAP', 'Security/GRC', 
-    'CPI/Integration', 'BW/BI', 'Fiori', 'TRM'
-  ];
 
   const handleToggleModule = (mod: string) => {
     if (sapModules.includes(mod)) {
@@ -89,7 +89,7 @@ export default function CustomerCreateTicketPage() {
       // Progress simulation timer
       let currentProgress = 0;
       const interval = setInterval(() => {
-        currentProgress += Math.floor(Math.random() * 25) + 10;
+        currentProgress += Math.floor(Math.random() * 25) + 12;
         if (currentProgress >= 100) {
           currentProgress = 100;
           clearInterval(interval);
@@ -101,7 +101,7 @@ export default function CustomerCreateTicketPage() {
             prev.map(f => (f.id === id ? { ...f, progress: currentProgress } : f))
           );
         }
-      }, 200);
+      }, 150);
 
       return uploadItem;
     });
@@ -128,7 +128,7 @@ export default function CustomerCreateTicketPage() {
     setUploadingFiles(prev => prev.filter(f => f.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !user) return;
 
@@ -141,7 +141,8 @@ export default function CustomerCreateTicketPage() {
         fileType: f.type
       }));
 
-    createTicket({
+    const toastId = toast.loading('Registering support ticket in database...');
+    const res = await createTicket({
       title,
       description,
       sapModule: sapModules[0], // primary
@@ -158,17 +159,22 @@ export default function CustomerCreateTicketPage() {
       attachments
     });
 
-    setSuccess(true);
-    setTitle('');
-    setDescription('');
-    setBusinessImpact('');
-    setExpectedResolutionDate('');
-    setUploadingFiles([]);
-    
-    setTimeout(() => {
-      setSuccess(false);
-      router.push('/customer/tickets');
-    }, 1500);
+    if (res.success) {
+      toast.success('Ticket registered successfully!', { id: toastId });
+      setSuccess(true);
+      setTitle('');
+      setDescription('');
+      setBusinessImpact('');
+      setExpectedResolutionDate('');
+      setUploadingFiles([]);
+      
+      setTimeout(() => {
+        setSuccess(false);
+        router.push('/customer/tickets');
+      }, 1500);
+    } else {
+      toast.error(`Database Error: ${res.error}`, { id: toastId, duration: 8000 });
+    }
   };
 
   return (

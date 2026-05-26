@@ -101,7 +101,7 @@ export default function AdminCreateTicketPage() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !user) return;
 
@@ -109,7 +109,10 @@ export default function AdminCreateTicketPage() {
     const selectedCustomers = dbCustomers.filter(c => c.orgId === selectedOrgObj?.id);
     const customerUser = selectedCustomers[customerIndex] || { name: 'Unassigned Customer', email: '' };
 
-    createTicket({
+    const { toast } = await import('sonner');
+    const toastId = toast.loading('Registering support ticket in database...');
+
+    const res = await createTicket({
       title,
       description,
       sapModule,
@@ -124,17 +127,22 @@ export default function AdminCreateTicketPage() {
       attachments: attachments
     });
 
-    setSuccess(true);
-    setTitle('');
-    setDescription('');
-    setAttachments([]);
-    setAssignedManager('');
-    setAssignedConsultant('');
+    if (res.success) {
+      toast.success('Ticket registered successfully!', { id: toastId });
+      setSuccess(true);
+      setTitle('');
+      setDescription('');
+      setAttachments([]);
+      setAssignedManager('');
+      setAssignedConsultant('');
 
-    setTimeout(() => {
-      setSuccess(false);
-      router.push('/admin/tickets');
-    }, 1500);
+      setTimeout(() => {
+        setSuccess(false);
+        router.push('/admin/tickets');
+      }, 1500);
+    } else {
+      toast.error(`Database Error: ${res.error}`, { id: toastId, duration: 8000 });
+    }
   };
 
   const selectedOrgObj = dbOrganizations.find(o => o.name === organization);

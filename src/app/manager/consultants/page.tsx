@@ -31,6 +31,7 @@ import { Badge } from '../../../components/ui/badge';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import { useAuth } from '../../../context/AuthContext';
 import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser } from '../../actions/auth';
 
 interface ConsultantProfile {
@@ -60,6 +61,7 @@ interface CustomerProfile {
 
 export default function ManagerConsultantsPage() {
   const { tickets } = useTickets();
+  const { user } = useAuth();
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'consultants' | 'customers' | 'audit'>('consultants');
@@ -132,14 +134,14 @@ export default function ManagerConsultantsPage() {
       // Fetch Customers
       const { data: dbCust, error: custErr } = await supabase
         .from('profiles')
-        .select('*, organizations(*), customer_contracts(*)');
+        .select('*, organizations(*, customer_contracts(*))');
 
       if (!custErr && dbCust) {
         // filter by profiles with role 'Customer'
         const filtered = dbCust.filter(c => c.role === 'Customer');
         const mappedCust: CustomerProfile[] = filtered.map(c => {
           const org = c.organizations as any;
-          const contract = c.customer_contracts?.[0] as any;
+          const contract = org?.customer_contracts?.[0] as any;
           return {
             id: c.id,
             company: org ? org.name : 'Apex Global Industries',
@@ -183,7 +185,7 @@ export default function ManagerConsultantsPage() {
         localStorage.setItem('sst_stakeholder_customers', JSON.stringify(defaultCustomers));
       }
     }
-  }, []);
+  }, [user]);
 
   const saveConsultants = (list: ConsultantProfile[]) => {
     setConsultants(list);

@@ -10,6 +10,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Badge } from '../../../components/ui/badge';
 import { Label } from '../../../components/ui/label';
 
+import { toast } from 'sonner';
+
 interface UploadingFile {
   id: string;
   name: string;
@@ -135,7 +137,7 @@ export default function ManagerCreateTicketPage() {
     setUploadingFiles(prev => prev.filter(f => f.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !user) return;
 
@@ -148,7 +150,8 @@ export default function ManagerCreateTicketPage() {
         fileType: f.type
       }));
 
-    createTicket({
+    const toastId = toast.loading('Registering support ticket in database...');
+    const res = await createTicket({
       title,
       description,
       sapModule: sapModules[0], // Primary
@@ -156,8 +159,8 @@ export default function ManagerCreateTicketPage() {
       category,
       priority,
       organization: selectedOrg,
-      requestedBy: 'Marcus Vance (SAP Manager)',
-      requestedByEmail: 'manager@sap.com',
+      requestedBy: user.name || 'SAP Manager',
+      requestedByEmail: user.email || 'manager@supportstudio.com',
       ticketType,
       functionalOrTechnical,
       businessImpact,
@@ -166,17 +169,22 @@ export default function ManagerCreateTicketPage() {
       source: 'Created by Super Admin' // Registered as Internal Admin created
     });
 
-    setSuccess(true);
-    setTitle('');
-    setDescription('');
-    setBusinessImpact('');
-    setExpectedResolutionDate('');
-    setUploadingFiles([]);
-    
-    setTimeout(() => {
-      setSuccess(false);
-      router.push('/manager/tickets');
-    }, 1500);
+    if (res.success) {
+      toast.success('Ticket registered successfully!', { id: toastId });
+      setSuccess(true);
+      setTitle('');
+      setDescription('');
+      setBusinessImpact('');
+      setExpectedResolutionDate('');
+      setUploadingFiles([]);
+      
+      setTimeout(() => {
+        setSuccess(false);
+        router.push('/manager/tickets');
+      }, 1500);
+    } else {
+      toast.error(`Database Error: ${res.error}`, { id: toastId, duration: 8000 });
+    }
   };
 
   return (

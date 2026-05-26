@@ -149,7 +149,7 @@ export default function ManagerDashboardPage() {
     };
 
     fetchStakeholders();
-  }, [tickets]);
+  }, [tickets, user]);
 
   // --- FILTERS & INTERACTION STATES ---
   const [selectedMonthStr, setSelectedMonthStr] = useState('2026-05'); // June 2026
@@ -298,8 +298,8 @@ export default function ManagerDashboardPage() {
     const ticketsList = filteredDashboardTickets;
 
     // --- 1. EXECUTIVE HEALTH OVERVIEW ---
-    const totalCustomersCount = customersList.length || 42;
-    const activeCustomersCount = customersList.length || 38;
+    const totalCustomersCount = customersCount;
+    const activeCustomersCount = customersCount;
     const customersWithOpenTickets = new Set(ticketsList.filter(t => t.status !== 'Closed').map(t => t.organization)).size;
     const customersWithCriticalTickets = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.priority === 'Critical').map(t => t.organization)).size;
     const customersWithSlaBreaches = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime).map(t => t.organization)).size;
@@ -317,9 +317,9 @@ export default function ManagerDashboardPage() {
     const closedCount = ticketsList.filter(t => t.status === 'Closed').length;
     const reopenedCount = ticketsList.filter(t => t.status === 'Reopened').length;
 
-    const functionalConsultantsCount = 42;
-    const technicalConsultantsCount = 30;
-    const totalConsultantsCount = functionalConsultantsCount + technicalConsultantsCount;
+    const functionalConsultantsCount = consultantsDbList.filter(c => c.type === 'Functional').length;
+    const technicalConsultantsCount = consultantsDbList.filter(c => c.type === 'Technical').length;
+    const totalConsultantsCount = consultantsCount;
 
     const estPendingApproval = ticketsList.flatMap(t => t.hourEstimates || []).filter(e => e.status === 'Submitted').length;
     const actPendingApproval = ticketsList.flatMap(t => t.efforts || []).filter(e => e.status === 'Pending' || e.status === 'Pending Approval').length;
@@ -438,7 +438,7 @@ export default function ManagerDashboardPage() {
         totalConsultants: totalConsultantsCount,
         funcConsultants: functionalConsultantsCount,
         techConsultants: technicalConsultantsCount,
-        activeConsultants: Math.min(totalConsultantsCount - 6, totalConsultantsCount),
+        activeConsultants: totalConsultantsCount,
         overloadedConsultants: consultantsLoad.filter(c => c.loadStatus === 'Overloaded').length,
         underutilizedConsultants: consultantsLoad.filter(c => c.loadStatus === 'Underutilized').length,
 
@@ -610,14 +610,31 @@ export default function ManagerDashboardPage() {
       { name: '30+ Days', value: bucket5 }
     ];
 
-    // Open vs Closed Trend (Monthly Fallback array to look realistic and beautiful)
-    const trendData = [
-      { month: 'Jan', Raised: 145, Closed: 125 },
-      { month: 'Feb', Raised: 160, Closed: 155 },
-      { month: 'Mar', Raised: 178, Closed: 162 },
-      { month: 'Apr', Raised: 195, Closed: 180 },
-      { month: 'May', Raised: filteredDashboardTickets.length || 210, Closed: filteredDashboardTickets.filter(t => t.status === 'Closed').length || 185 }
-    ];
+    // Open vs Closed Trend calculated dynamically from actual tickets
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const trendData = Array.from({ length: 5 }).map((_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (4 - i));
+      const monthLabel = months[d.getMonth()];
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+
+      const raisedInMonth = filteredDashboardTickets.filter(t => {
+        const created = new Date(t.createdAt);
+        return created.getFullYear() === year && created.getMonth() === monthIdx;
+      }).length;
+
+      const closedInMonth = filteredDashboardTickets.filter(t => {
+        const created = new Date(t.createdAt);
+        return created.getFullYear() === year && created.getMonth() === monthIdx && t.status === 'Closed';
+      }).length;
+
+      return {
+        month: monthLabel,
+        Raised: raisedInMonth,
+        Closed: closedInMonth
+      };
+    });
 
     return {
       statusData,

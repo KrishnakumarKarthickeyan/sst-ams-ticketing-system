@@ -72,7 +72,7 @@ interface TicketContextType {
     businessImpact?: string;
     expectedResolutionDate?: string;
     sapModules?: SAPModule[];
-  }) => void;
+  }) => Promise<{ success: boolean; error?: string; ticketId?: string }>;
   updateTicket: (ticketId: string, data: Partial<Ticket>) => void;
   requestDelete: (ticketId: string, reason: string, requester: string) => void;
   requestEscalation: (ticketId: string, reason: string, severity: 'Low' | 'Medium' | 'High', actorName: string) => void;
@@ -306,7 +306,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     fetchData();
+  }, [user]);
 
+  useEffect(() => {
     if (isSupabaseConfigured && supabase) {
       const channel = supabase
         .channel('schema-db-changes')
@@ -402,7 +404,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       status: t.status as TicketStatus,
       assignedManager: manager?.full_name || undefined,
       assignedConsultant: consultant?.full_name || undefined,
-      slaDueAt: t.sla_due_at,
+      slaDueAt: (t.sla_due_at === '9999-12-31T23:59:59.999Z' || t.sla_due_at?.startsWith('9999-12-31')) ? 'SLA Not Applicable' : (t.sla_due_at || 'SLA Not Applicable'),
       resolvedAt: t.resolved_at,
       closedAt: t.closed_at,
       createdAt: t.created_at,
@@ -736,7 +738,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     businessImpact?: string;
     expectedResolutionDate?: string;
     sapModules?: SAPModule[];
-  }) => {
+  }): Promise<{ success: boolean; error?: string; ticketId?: string }> => {
     const tType = data.ticketType || 'Incident';
     const isIncident = tType === 'Incident';
     
@@ -778,33 +780,39 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         let orgId = data.organization;
-        const { data: orgData } = await supabase.from('organizations').select('id').eq('name', data.organization).maybeSingle();
+        const { data: orgData, error: orgFindErr } = await supabase.from('organizations').select('id').eq('name', data.organization).maybeSingle();
+        if (orgFindErr) throw orgFindErr;
+
         if (orgData) {
           orgId = orgData.id;
         } else {
-          const { data: newOrg } = await supabase.from('organizations').insert({ name: data.organization }).select('id').single();
+          const { data: newOrg, error: orgInsErr } = await supabase.from('organizations').insert({ name: data.organization }).select('id').single();
+          if (orgInsErr) throw orgInsErr;
           if (newOrg) orgId = newOrg.id;
         }
 
-        let requestorId = 'd3b07384-d113-4ec6-a558-7e30773d57d5'; // Fallback
-        const { data: profData } = await supabase.from('profiles').select('id').eq('email', data.requestedByEmail || 'customer@supportstudio.com').maybeSingle();
+        let requestorId = user?.id || '7d1be7f4-01b8-4b66-a842-d28a2b63c4f3'; // Dynamic fallback
+        const { data: profData, error: profErr } = await supabase.from('profiles').select('id').eq('email', data.requestedByEmail || 'customer@supportstudio.com').maybeSingle();
+        if (profErr) throw profErr;
         if (profData) {
           requestorId = profData.id;
         }
 
         let consultantId = null;
         if (data.assignedConsultant) {
-          const { data: consData } = await supabase.from('profiles').select('id').eq('full_name', data.assignedConsultant).maybeSingle();
+          const { data: consData, error: consErr } = await supabase.from('profiles').select('id').eq('full_name', data.assignedConsultant).maybeSingle();
+          if (consErr) throw consErr;
           if (consData) consultantId = consData.id;
         }
 
         let managerId = null;
         if (data.assignedManager) {
-          const { data: mgrData } = await supabase.from('profiles').select('id').eq('full_name', data.assignedManager).maybeSingle();
+          const { data: mgrData, error: mgrErr } = await supabase.from('profiles').select('id').eq('full_name', data.assignedManager).maybeSingle();
+          if (mgrErr) throw mgrErr;
           if (mgrData) managerId = mgrData.id;
         }
 
-        await supabase.from('tickets').insert({
+        const { error: ticketInsErr } = await supabase.from('tickets').insert({
           id: ticketId,
           organization_id: orgId,
           requested_by: requestorId,
@@ -814,7 +822,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           status: initialStatus,
           assigned_manager_id: managerId,
           assigned_consultant_id: consultantId,
-          sla_due_at: isIncident ? getFutureDate(slaHours) : null,
+          sla_due_at: isIncident ? getFutureDate(slaHours) : '9999-12-31T23:59:59.999Z',
           description: data.description,
           title: data.title,
           billable: true,
@@ -830,23 +838,26 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           created_by_user: requestorId,
           soft_delete_status: 'Active'
         });
+        if (ticketInsErr) throw ticketInsErr;
 
         if (data.sapModules && data.sapModules.length > 0) {
           for (const m of data.sapModules) {
-            await supabase.from('ticket_modules').insert({
+            const { error: modErr } = await supabase.from('ticket_modules').insert({
               ticket_id: ticketId,
               module_id: m
             });
+            if (modErr) throw modErr;
           }
         } else {
-          await supabase.from('ticket_modules').insert({
+          const { error: modErr } = await supabase.from('ticket_modules').insert({
             ticket_id: ticketId,
             module_id: data.sapModule
           });
+          if (modErr) throw modErr;
         }
 
         for (const att of newAttachments) {
-          await supabase.from('ticket_attachments').insert({
+          const { error: attErr } = await supabase.from('ticket_attachments').insert({
             ticket_id: ticketId,
             uploaded_by: requestorId,
             file_name: att.fileName,
@@ -854,27 +865,30 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             file_size: att.fileSize,
             mime_type: att.fileType
           });
+          if (attErr) throw attErr;
         }
 
-        await supabase.from('ticket_history').insert({
+        const { error: histErr } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: requestorId,
           field_changed: 'Ticket',
           old_value: 'Created',
           new_value: initialStatus
         });
+        if (histErr) throw histErr;
 
         if (data.assignedConsultant) {
-          await supabase.from('ticket_history').insert({
+          const { error: histConsErr } = await supabase.from('ticket_history').insert({
             ticket_id: ticketId,
             changed_by: requestorId,
             field_changed: 'Assigned Consultant',
             old_value: 'Unassigned',
             new_value: data.assignedConsultant
           });
+          if (histConsErr) throw histConsErr;
 
           if (consultantId) {
-            await supabase.from('ticket_consultant_efforts').insert({
+            const { error: effortErr } = await supabase.from('ticket_consultant_efforts').insert({
               ticket_id: ticketId,
               consultant_id: consultantId,
               consultant_name: data.assignedConsultant,
@@ -882,30 +896,34 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               estimated_hours: 0,
               actual_hours: 0
             });
+            if (effortErr) throw effortErr;
           }
         }
 
         const { data: mgrProfile } = await supabase.from('profiles').select('id').eq('email', 'manager@supportstudio.com').maybeSingle();
         if (mgrProfile) {
-          await supabase.from('notifications').insert({
+          const { error: notifErr } = await supabase.from('notifications').insert({
             user_id: mgrProfile.id,
             title: `New Ticket: ${ticketId}`,
             message: `Ticket "${data.title}" was submitted. Source: ${ticketSource}`,
             ticket_id: ticketId
           });
+          if (notifErr) console.warn('Non-blocking notification error:', notifErr.message);
         }
 
         if (consultantId) {
-          await supabase.from('notifications').insert({
+          const { error: notifConsErr } = await supabase.from('notifications').insert({
             user_id: consultantId,
             title: 'New Ticket Assigned',
             message: `You have been assigned to ${ticketId} during creation.`,
             ticket_id: ticketId
           });
+          if (notifConsErr) console.warn('Non-blocking notification error:', notifConsErr.message);
         }
 
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error creating ticket in Supabase:', err);
+        return { success: false, error: err.message || 'Database write failed' };
       }
     }
 
@@ -1001,6 +1019,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ticketId
       );
     }
+
+    return { success: true, ticketId };
   };
 
   const requestEscalation = async (
