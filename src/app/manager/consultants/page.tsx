@@ -1311,13 +1311,18 @@ export default function ManagerConsultantsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract SLA Type</label>
-                      <input
-                        type="text"
-                        value={formContract}
+                      <select
+                        value={formContract || 'AMS'}
                         onChange={(e) => setFormContract(e.target.value)}
-                        placeholder="e.g. Premium SLA"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                      />
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-sans"
+                      >
+                        <option value="AMS">AMS</option>
+                        <option value="Implementation Support">Implementation Support</option>
+                        <option value="Rollout Support">Rollout Support</option>
+                        <option value="Migration Support">Migration Support</option>
+                        <option value="Upgrade Support">Upgrade Support</option>
+                        <option value="Hypercare Support">Hypercare Support</option>
+                      </select>
                     </div>
                     <div className="space-y-1">
                       <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Monthly Hour Cap</label>

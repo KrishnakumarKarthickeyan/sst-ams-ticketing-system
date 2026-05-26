@@ -159,7 +159,7 @@ export default function AdminUsersPage() {
         if (newRole === 'Customer' && orgId) {
           const { error: contractErr } = await supabase.from('customer_contracts').insert({
             organization_id: orgId,
-            contract_type: 'Standard Support',
+            contract_type: 'AMS',
             start_date: new Date().toISOString().split('T')[0],
             end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             total_hours: 160.00,
