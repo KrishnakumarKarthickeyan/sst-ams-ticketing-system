@@ -286,7 +286,11 @@ export default function ManagerConsultantsPage() {
         fetchStakeholders();
         closeActionModal();
       } catch (err: any) {
-        toast.error(`Provisioning failed: ${err.message}`, { id: toastId });
+        let msg = err.message;
+        if (msg.includes('security purposes') || msg.includes('rate limit') || msg.includes('too many requests')) {
+          msg += ' (To bypass security rate limits, configure the SUPABASE_SERVICE_ROLE_KEY environment variable in your .env.local file to use the Admin API)';
+        }
+        toast.error(`Provisioning failed: ${msg}`, { id: toastId, duration: 10000 });
         console.error(err);
       }
     } else {
@@ -500,7 +504,11 @@ export default function ManagerConsultantsPage() {
         fetchStakeholders();
         closeActionModal();
       } catch (err: any) {
-        toast.error(`Provisioning failed: ${err.message}`, { id: toastId });
+        let msg = err.message;
+        if (msg.includes('security purposes') || msg.includes('rate limit') || msg.includes('too many requests')) {
+          msg += ' (To bypass security rate limits, configure the SUPABASE_SERVICE_ROLE_KEY environment variable in your .env.local file to use the Admin API)';
+        }
+        toast.error(`Provisioning failed: ${msg}`, { id: toastId, duration: 10000 });
         console.error(err);
       }
     } else {
