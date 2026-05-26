@@ -110,8 +110,10 @@ export default function AdminUsersPage() {
             }
           });
           if (signUpErr) throw new Error(signUpErr.message);
-          if (data.user) {
+          if (data.user && data.user.id) {
             authId = data.user.id;
+          } else {
+            throw new Error('This email address may already be registered. Please try a different email or sign in.');
           }
         } else {
           throw new Error(authRes.error);
