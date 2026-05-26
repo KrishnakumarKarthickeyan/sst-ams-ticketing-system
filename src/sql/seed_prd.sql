@@ -22,7 +22,7 @@ INSERT INTO auth.users (
     updated_at
 ) VALUES (
     '00000000-0000-0000-0000-000000000000',
-    'd73950aa-c8d1-4cb5-8bc6-52c6f1406e12',
+    '7d1be7f4-01b8-4b66-a842-d28a2b63c4f3',
     'authenticated',
     'authenticated',
     'manager@supportstudio.com',
@@ -33,7 +33,7 @@ INSERT INTO auth.users (
     FALSE,
     now(),
     now()
-) ON CONFLICT (id) DO NOTHING;
+) ON CONFLICT (email) DO NOTHING;
 
 -- 3. Seed Default SAP Manager Profile into public.profiles
 INSERT INTO public.profiles (
@@ -46,7 +46,7 @@ INSERT INTO public.profiles (
     created_at,
     updated_at
 ) VALUES (
-    'd73950aa-c8d1-4cb5-8bc6-52c6f1406e12',
+    '7d1be7f4-01b8-4b66-a842-d28a2b63c4f3',
     'manager@supportstudio.com',
     'SAP Manager',
     'Manager',
@@ -54,7 +54,7 @@ INSERT INTO public.profiles (
     TRUE,
     now(),
     now()
-) ON CONFLICT (id) DO NOTHING;
+) ON CONFLICT (email) DO NOTHING;
 
 -- 4. Seed SAP Modules (if not already existing)
 INSERT INTO sap_modules (code, name, description) VALUES

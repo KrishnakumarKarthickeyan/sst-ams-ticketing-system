@@ -506,14 +506,14 @@ INSERT INTO public.profiles (
     created_at,
     updated_at
 ) VALUES (
-    'd73950aa-c8d1-4cb5-8bc6-52c6f1406e12',
+    '7d1be7f4-01b8-4b66-a842-d28a2b63c4f3',
     'manager@supportstudio.com',
     'SAP Manager',
     'Manager',
     TRUE,
     now(),
     now()
-) ON CONFLICT (id) DO NOTHING;
+) ON CONFLICT (email) DO NOTHING;
 
 -- Seed Default Customer Contacts for existing organizations
 INSERT INTO public.customer_contacts (organization_id, name, designation, email, phone, is_primary, is_secondary)
