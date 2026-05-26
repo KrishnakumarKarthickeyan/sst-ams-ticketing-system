@@ -35,26 +35,27 @@ $$ LANGUAGE plpgsql;
 
 -- 5. Create secure RLS policies using the helper function
 CREATE POLICY profiles_select_policy ON profiles
-    FOR SELECT TO authenticated
-    USING (true); -- Authenticated users can view profiles for ticket assignments
+    FOR SELECT
+    USING (true); -- Public read-access (safe, required for ticket lookup and assignee grids)
 
 CREATE POLICY profiles_insert_policy ON profiles
-    FOR INSERT TO authenticated
+    FOR INSERT
     WITH CHECK (
         public.is_manager_or_admin()
     ); -- Only Managers/SuperAdmins can register new stakeholders
 
 CREATE POLICY profiles_update_policy ON profiles
-    FOR UPDATE TO authenticated
+    FOR UPDATE
     USING (
         public.is_manager_or_admin() OR
         id = auth.uid()
     ); -- Managers/SuperAdmins can update anyone; users can update their own details
 
 CREATE POLICY profiles_delete_policy ON profiles
-    FOR DELETE TO authenticated
+    FOR DELETE
     USING (
         public.is_manager_or_admin()
     ); -- Only Managers/SuperAdmins can prune profiles
+
 
 
