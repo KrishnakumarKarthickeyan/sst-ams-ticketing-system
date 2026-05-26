@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   Search,
   LayoutGrid,
@@ -25,6 +27,7 @@ import {
   FileCheck,
   Star,
   CheckCircle2,
+  CheckSquare,
   Filter,
   X
 } from 'lucide-react';
@@ -64,14 +67,27 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function ManagerTicketsPage() {
-  const { tickets, loading, updateTicketStatus } = useTickets();
+  const { tickets, loading, updateTicketStatus, assignTicket, updateTicket } = useTickets();
   const { user } = useAuth();
   const managerName = user?.name || 'Marcus Vance';
 
-  // State Management
+  const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
+
   const [viewMode, setViewMode] = useState<'card' | 'compact'>('card');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'unassigned' | 'critical' | 'slaBreached' | 'raisedToSap' | 'customerAction' | 'reqClosure' | 'reopened' | 'closed' | 'pendingApprovals'>('all');
+
+  const searchParams = useSearchParams();
+  const tabParam = searchParams ? searchParams.get('tab') : null;
+
+  React.useEffect(() => {
+    if (tabParam) {
+      const validTabs = ['all', 'unassigned', 'critical', 'slaBreached', 'raisedToSap', 'customerAction', 'reqClosure', 'reopened', 'closed', 'pendingApprovals'];
+      if (validTabs.includes(tabParam)) {
+        setActiveTab(tabParam as any);
+      }
+    }
+  }, [tabParam]);
 
   // Filter States
   const [custFilter, setCustFilter] = useState('All');
@@ -299,6 +315,45 @@ export default function ManagerTicketsPage() {
     setClosureStateFilter('All');
     setApprovalStateFilter('All');
     setSearchQuery('');
+  };
+
+  const toggleSelectTicket = (id: string) => {
+    setSelectedTicketIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTicketIds.length === filteredTickets.length) {
+      setSelectedTicketIds([]);
+    } else {
+      setSelectedTicketIds(filteredTickets.map(t => t.id));
+    }
+  };
+
+  const handleBulkAssign = (consultant: string) => {
+    if (!consultant) return;
+    selectedTicketIds.forEach(id => {
+      assignTicket(id, managerName, consultant, managerName);
+    });
+    toast.success(`Assigned ${selectedTicketIds.length} tickets to ${consultant}`);
+    setSelectedTicketIds([]);
+  };
+
+  const handleBulkPriority = (priority: TicketPriority) => {
+    selectedTicketIds.forEach(id => {
+      updateTicket(id, { priority, updatedAt: new Date().toISOString() });
+    });
+    toast.success(`Updated priority to ${priority} for ${selectedTicketIds.length} tickets`);
+    setSelectedTicketIds([]);
+  };
+
+  const handleBulkStatus = (status: TicketStatus) => {
+    selectedTicketIds.forEach(id => {
+      updateTicketStatus(id, status, managerName);
+    });
+    toast.success(`Updated status to ${status} for ${selectedTicketIds.length} tickets`);
+    setSelectedTicketIds([]);
   };
 
   const getTicketAgeStr = (createdAt: string) => {
@@ -555,6 +610,63 @@ export default function ManagerTicketsPage() {
         </div>
       </div>
 
+      {/* ── BULK ACTION CONSOLE ── */}
+      {selectedTicketIds.length > 0 && (
+        <div className="bg-zinc-950 text-white rounded-lg p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md border border-zinc-800 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2">
+            <CheckSquare size={14} className="text-green-400" />
+            <span className="font-bold text-[10px] uppercase tracking-wider">{selectedTicketIds.length} Tickets Selected</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Assign */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] uppercase text-zinc-400 font-bold">Assign:</span>
+              <select
+                onChange={e => { handleBulkAssign(e.target.value); e.target.value = ''; }}
+                className="bg-zinc-900 border border-zinc-850 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none font-mono"
+              >
+                <option value="">Select consultant...</option>
+                {consultantsList.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            {/* Priority */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] uppercase text-zinc-400 font-bold">Priority:</span>
+              <select
+                onChange={e => { handleBulkPriority(e.target.value as any); e.target.value = ''; }}
+                className="bg-zinc-900 border border-zinc-850 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none font-mono"
+              >
+                <option value="">Select...</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            {/* Status */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] uppercase text-zinc-400 font-bold">Status:</span>
+              <select
+                onChange={e => { handleBulkStatus(e.target.value as any); e.target.value = ''; }}
+                className="bg-zinc-900 border border-zinc-850 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none font-mono"
+              >
+                <option value="">Select...</option>
+                <option value="In Progress - Functional">IP Functional</option>
+                <option value="In Progress - Technical">IP Technical</option>
+                <option value="Waiting for Customer">Wait Client</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Raised to SAP">Raised to SAP</option>
+                <option value="Closed">Force Close</option>
+              </select>
+            </div>
+            {/* Cancel */}
+            <button onClick={() => setSelectedTicketIds([])} className="text-[9px] uppercase font-bold text-zinc-400 hover:text-white transition cursor-pointer">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── TICKETS WORKSPACE PRESENTATION ── */}
       {loading ? (
         <div className="py-20 text-center text-zinc-500 font-bold">Querying tickets registry...</div>
@@ -591,7 +703,15 @@ export default function ManagerTicketsPage() {
                 {/* Top Section */}
                 <div className="p-4 space-y-3.5">
                   <div className="flex items-start justify-between">
-                    <span className="font-bold text-[10px] text-zinc-950 tracking-wider">{t.id}</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedTicketIds.includes(t.id)}
+                        onChange={() => toggleSelectTicket(t.id)}
+                        className="cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950"
+                      />
+                      <span className="font-bold text-[10px] text-zinc-950 tracking-wider">{t.id}</span>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`inline-flex items-center px-1.5 py-0.2 rounded border text-[8px] font-bold uppercase font-mono ${statusCfg.color}`}>
                         {statusCfg.label}
@@ -750,6 +870,14 @@ export default function ManagerTicketsPage() {
             <table className="w-full text-left border-collapse font-mono">
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase text-[9px]">
+                  <th className="py-2.5 px-4 font-bold text-center w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedTicketIds.length === filteredTickets.length && filteredTickets.length > 0}
+                      onChange={toggleSelectAll}
+                      className="cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950"
+                    />
+                  </th>
                   <th className="py-2.5 px-4 font-bold">Ticket ID</th>
                   <th className="py-2.5 px-4 font-bold">Customer</th>
                   <th className="py-2.5 px-4 font-bold">Subject / Title</th>
@@ -783,7 +911,15 @@ export default function ManagerTicketsPage() {
                   const totalAct = funcAct + techAct;
 
                   return (
-                    <tr key={t.id} className="hover:bg-zinc-50/50 transition">
+                    <tr key={t.id} className={`hover:bg-zinc-50/50 transition ${selectedTicketIds.includes(t.id) ? 'bg-zinc-50' : ''}`}>
+                      <td className="py-2.5 px-4 text-center w-8">
+                        <input
+                          type="checkbox"
+                          checked={selectedTicketIds.includes(t.id)}
+                          onChange={() => toggleSelectTicket(t.id)}
+                          className="cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950"
+                        />
+                      </td>
                       <td className="py-2.5 px-4 font-bold text-zinc-950">
                         <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.id}</Link>
                       </td>

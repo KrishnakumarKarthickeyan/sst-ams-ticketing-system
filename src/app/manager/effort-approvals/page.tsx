@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { ArrowLeft, Check, X, Shield, AlertCircle, CheckCircle2, FileText, Unlock, RotateCcw, AlertTriangle } from 'lucide-react';
@@ -26,6 +27,7 @@ export default function ManagerEffortApprovalsPage() {
   
   const { user } = useAuth();
   const managerName = user?.name || 'Marcus Vance';
+  const router = useRouter();
 
   // State-driven active tab: estimated, actual, closures, reopens, unlocks, others
   const [activeTab, setActiveTab] = useState<'estimated' | 'actual' | 'closures' | 'reopens' | 'unlocks' | 'others'>('estimated');
@@ -143,21 +145,21 @@ export default function ManagerEffortApprovalsPage() {
 
   // --- 4. REOPEN REQUESTS (Reopened Tickets) ---
   const reopenRequests = useMemo(() => {
-    const reopenedTickets = tickets.filter(t => t.status === 'Reopened');
+    const reopenedTickets = tickets.filter(t => t.status === 'Reopen Requested');
     return reopenedTickets.map(ticket => {
       // Find the status change in history
       const reopenHistory = [...ticket.history]
         .reverse()
-        .find(h => h.fieldChanged === 'Status' && h.newValue === 'Reopened');
+        .find(h => h.fieldChanged === 'Status' && h.newValue === 'Reopen Requested');
       
       // Look for a corresponding reopen notification
-      const reopenNotification = notifications.find(n => n.ticketId === ticket.id && n.title === 'Ticket Reopened');
+      const reopenNotification = notifications.find(n => n.ticketId === ticket.id && n.title === 'Ticket Reopen Requested');
       
       // Grab latest customer comment
       const customerComment = [...ticket.comments]
         .reverse()
         .find(c => c.authorRole === 'Customer');
-
+ 
       // Extract reason
       let parsedReason = 'No explanation provided by client.';
       if (reopenNotification?.message) {
@@ -166,7 +168,7 @@ export default function ManagerEffortApprovalsPage() {
       } else if (customerComment?.content) {
         parsedReason = customerComment.content;
       }
-
+ 
       return {
         id: ticket.id,
         title: ticket.title,
@@ -318,7 +320,7 @@ export default function ManagerEffortApprovalsPage() {
   };
 
   const handleApproveClosure = (ticketId: string, requestId: string) => {
-    approveClosureRequest(ticketId, requestId, managerName);
+    router.push(`/manager/tickets/${ticketId}?approveClosure=${requestId}`);
   };
 
   const handleApproveUnlock = (ticketId: string, requestId: string) => {
@@ -782,7 +784,7 @@ export default function ManagerEffortApprovalsPage() {
               <tbody className="divide-y divide-zinc-100 text-[11px]">
                 {reopenRequests.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-zinc-400 italic">No tickets in Reopened state.</td>
+                    <td colSpan={6} className="py-12 text-center text-zinc-400 italic">No tickets with pending reopen requests.</td>
                   </tr>
                 ) : (
                   reopenRequests.map((req) => (

@@ -62,9 +62,12 @@ export default function ConsultantReportsPage() {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
 
-  // Base scope (assigned tickets only)
+  // Base scope (assigned tickets or where allocated)
   const myTickets = useMemo(() => {
-    return tickets.filter(t => t.assignedConsultant === consultantName);
+    return tickets.filter(t => 
+      t.assignedConsultant === consultantName || 
+      t.consultantEfforts?.some(e => e.consultantName === consultantName && !e.isDeleted)
+    );
   }, [tickets, consultantName]);
 
   const clientsList = useMemo(() => Array.from(new Set(myTickets.map(t => t.organization))), [myTickets]);

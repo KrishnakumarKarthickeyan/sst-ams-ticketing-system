@@ -27,9 +27,11 @@ import {
   Download,
   X,
   UserPlus,
-  Lock
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Badge } from '../ui/badge';
 
 const getTicketAgeStr = (createdAt: string) => {
@@ -104,8 +106,28 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
 
   // Closure Modal State
   const [closureModalOpen, setClosureModalOpen] = useState(false);
-  const [closureRating, setClosureRating] = useState(5);
+  const [closureRating, setClosureRating] = useState(0); // 0 = not selected, making it mandatory
   const [closureFeedback, setClosureFeedback] = useState('');
+  const [pendingClosureId, setPendingClosureId] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const approveClosureParam = searchParams ? searchParams.get('approveClosure') : null;
+
+  useEffect(() => {
+    if (approveClosureParam && ticket && ticket.closureRequests) {
+      const found = ticket.closureRequests.find(r => r.id === approveClosureParam && r.status === 'Pending Manager Approval');
+      if (found) {
+        setPendingClosureId(found.id);
+        setClosureRating(0);
+        setClosureFeedback('');
+        setClosureModalOpen(true);
+      }
+    }
+  }, [approveClosureParam, ticket]);
+  
+  // Resource Reassignment States
+  const [replacingResource, setReplacingResource] = useState<TicketConsultantEffort | null>(null);
+  const [replacementConsultantName, setReplacementConsultantName] = useState('');
   
   // Reopen Form State
   const [reopenReasonText, setReopenReasonText] = useState('');
@@ -173,10 +195,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     if (!dbConsultant) return;
 
     const currentAllocations = ticket.consultantEfforts || [];
-    if (currentAllocations.some(a => a.consultantName === selectedAllocName && !a.isDeleted)) {
-      showBannerMessage(`Error: ${selectedAllocName} is already allocated to this ticket.`);
-      return;
-    }
+    // Duplicate allocations permitted to support multiple roles/sessions.
 
     const newEffort: TicketConsultantEffort = {
       id: `eff-alloc-${Date.now()}`,
@@ -280,6 +299,35 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     showBannerMessage('Comment and attachments successfully posted to timeline.');
   };
 
+  const handleRealFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    const sizeBytes = file.size;
+    const newFile = {
+      id: `sim-file-${Date.now()}`,
+      fileName: file.name,
+      fileSize: sizeBytes,
+      progress: 0,
+      isInternal: isInternalComment,
+      storagePath: `supabase://bucket/sap-tickets/${ticket.id}/${Date.now()}_${file.name}`
+    };
+
+    setCommentAttachments(prev => [...prev, newFile]);
+
+    // Simulate upload progress
+    let prog = 0;
+    const interval = setInterval(() => {
+      prog += 25;
+      setCommentAttachments(prev =>
+        prev.map(f => f.id === newFile.id ? { ...f, progress: prog } : f)
+      );
+      if (prog >= 100) {
+        clearInterval(interval);
+      }
+    }, 120);
+  };
+
   const handleAttachSimulatedFile = () => {
     if (!simFileName.trim()) return;
 
@@ -348,17 +396,80 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     setRejectionModal({ isOpen: false, type: 'estimate', targetId: '', reason: '' });
   };
 
+  const handleReplaceResource = (effId: string, oldName: string, newName: string) => {
+    if (!newName) return;
+    const dbConsultant = CONSULTANTS_DB.find(c => c.name === newName);
+    if (!dbConsultant) return;
+
+    const currentAllocations = ticket.consultantEfforts || [];
+    // Allow duplicate allocations if replacing.
+
+    const updated = currentAllocations.map(a => {
+      if (a.id === effId) {
+        return {
+          ...a,
+          consultantId: newName.toLowerCase().replace(/\s+/g, '-'),
+          consultantName: newName,
+          consultantType: dbConsultant.type,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return a;
+    });
+
+    updateConsultantEfforts(ticket.id, updated);
+
+    // If we replaced the primary lead, reassign the lead in the main ticket
+    if (ticket.assignedConsultant === oldName) {
+      assignTicket(ticket.id, ticket.assignedManager, newName, user?.name || role);
+    }
+
+    // Log to history
+    ticket.history.push({
+      id: `h-alloc-replace-${Date.now()}`,
+      ticketId: ticket.id,
+      changedBy: user?.name || role,
+      fieldChanged: 'Resource Replacement',
+      oldValue: oldName,
+      newValue: newName,
+      createdAt: new Date().toISOString()
+    });
+
+    setReplacingResource(null);
+    setReplacementConsultantName('');
+    showBannerMessage(`Successfully replaced ${oldName} with ${newName} on the ticket.`);
+  };
+
   const handleCloseClick = () => {
-    setClosureRating(5);
+    setClosureRating(0); // Make mandatory (0 = not selected)
     setClosureFeedback('');
+    
+    // Auto-detect a pending closure request if it exists
+    const pendingRequest = ticket.closureRequests?.find(c => c.status === 'Pending Manager Approval');
+    setPendingClosureId(pendingRequest ? pendingRequest.id : null);
+    
     setClosureModalOpen(true);
   };
 
   const handleCloseSubmit = () => {
-    if (!closureFeedback.trim()) return;
-    closeTicket(ticket.id, closureRating, closureFeedback, user?.name || role);
+    if (closureRating === 0) {
+      showBannerMessage('Error: CSAT Satisfaction Rating is mandatory before closing the ticket.');
+      return;
+    }
+    if (!closureFeedback.trim()) {
+      showBannerMessage('Error: Closure Feedback comments are mandatory.');
+      return;
+    }
+
+    const actor = user?.name || role;
+    if (pendingClosureId) {
+      approveClosureRequest(ticket.id, pendingClosureId, actor);
+    }
+    closeTicket(ticket.id, closureRating, closureFeedback, actor);
+    
     setClosureModalOpen(false);
-    showBannerMessage('Ticket has been closed with mandatory rating and feedback comments.');
+    setPendingClosureId(null);
+    showBannerMessage('Ticket has been successfully resolved and closed with CSAT rating.');
   };
 
   const handleApproveReopen = () => {
@@ -605,6 +716,38 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {activeHubTab === 'assignments' && (
                 <div className="space-y-4">
                   
+                  {/* Primary Lead Reassignment Control */}
+                  {(role === 'Manager' || role === 'SuperAdmin') && (
+                    <div className="bg-zinc-50 border border-zinc-200 rounded p-4 space-y-2">
+                      <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider block flex items-center gap-1.5 font-mono">
+                        <User size={12} className="text-zinc-650" /> Primary Lead Consultant Control
+                      </span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1">
+                          <select
+                            value={ticket.assignedConsultant || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              assignTicket(ticket.id, ticket.assignedManager, val || undefined, user?.name || role);
+                              showBannerMessage(`Primary lead consultant changed to ${val || 'Unassigned'}.`);
+                            }}
+                            className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none font-mono"
+                          >
+                            <option value="">Unassigned</option>
+                            {CONSULTANTS_DB.map(c => (
+                              <option key={c.name} value={c.name}>
+                                {c.name} ({c.type} - {c.expertise.join('/')})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 italic font-mono">
+                          Current Assigned Lead: <strong className="text-zinc-800">{ticket.assignedConsultant || 'Unassigned'}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Allocations Form (Manager / Admin Scoped) */}
                   {(role === 'Manager' || role === 'SuperAdmin') && (
                     <form onSubmit={handleAddResource} className="bg-zinc-50 border border-zinc-200 rounded p-4 space-y-3">
@@ -663,72 +806,197 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                     </form>
                   )}
 
-                  {/* Resource roster list */}
-                  <div>
-                    <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block mb-2">Allocated Engineers Roster</span>
-                    <div className="border border-zinc-200 rounded overflow-hidden">
-                      <table className="w-full text-left text-[10px]">
-                        <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
-                          <tr>
-                            <th className="py-2 px-3">Consultant</th>
-                            <th className="py-2 px-3 text-center">Type</th>
-                            <th className="py-2 px-3 text-center">Expertise</th>
-                            <th className="py-2 px-3 text-center">Workload</th>
-                            <th className="py-2 px-3 text-center">Estimated Hours</th>
-                            <th className="py-2 px-3 text-center">Actual Hours</th>
-                            {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Actions</th>}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-155 bg-white">
-                          {(!ticket.consultantEfforts || ticket.consultantEfforts.length === 0) ? (
+                  {/* Grouped Resource Roster */}
+                  <div className="space-y-4">
+                    
+                    {/* A. FUNCTIONAL RESOURCES */}
+                    <div className="space-y-1.5">
+                      <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Functional Resources</span>
+                      <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                        <table className="w-full text-left text-[10px]">
+                          <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
                             <tr>
-                              <td colSpan={7} className="py-4 text-center text-zinc-400 italic">No resources allocated to this incident.</td>
+                              <th className="py-2 px-3">Consultant</th>
+                              <th className="py-2 px-3 text-center">Module Expertise</th>
+                              <th className="py-2 px-3 text-center">Workload</th>
+                              <th className="py-2 px-3 text-center">Estimated Hours</th>
+                              <th className="py-2 px-3 text-center">Actual Hours</th>
+                              {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Actions</th>}
                             </tr>
-                          ) : (
-                            ticket.consultantEfforts.map(eff => {
-                              const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
-                              return (
-                                <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
-                                  <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
-                                  <td className="py-2 px-3 text-center">
-                                    <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
-                                      eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
-                                    }`}>{eff.consultantType}</span>
-                                  </td>
-                                  <td className="py-2 px-3 text-center font-bold text-zinc-650">{dbInfo?.expertise.join(', ') || '-'}</td>
-                                  <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
-                                  <td className="py-2 px-3 text-center">
-                                    {role === 'Manager' || role === 'SuperAdmin' ? (
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        value={eff.estimatedHours}
-                                        onChange={e => handleInlineEstChange(eff.id, Number(e.target.value) || 0)}
-                                        className="w-12 bg-white border border-zinc-200 rounded p-0.5 text-center font-bold text-[10px] focus:outline-none"
-                                      />
-                                    ) : (
-                                      <span className="font-bold text-zinc-800">{eff.estimatedHours}h</span>
-                                    )}
-                                  </td>
-                                  <td className="py-2 px-3 text-center font-bold text-zinc-950 bg-zinc-50/50">{eff.actualHours}h</td>
-                                  {(role === 'Manager' || role === 'SuperAdmin') && (
-                                    <td className="py-2 px-3 text-right">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
-                                        className="p-1 border border-zinc-200 hover:border-red-500 hover:text-red-700 rounded transition"
-                                        title="De-allocate consultant"
-                                      >
-                                        <Trash2 size={12} />
-                                      </button>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-150 bg-white">
+                            {(!ticket.consultantEfforts || ticket.consultantEfforts.filter(e => e.consultantType === 'Functional' && !e.isDeleted).length === 0) ? (
+                              <tr>
+                                <td colSpan={6} className="py-4 text-center text-zinc-400 italic">No functional resources allocated to this incident.</td>
+                              </tr>
+                            ) : (
+                              ticket.consultantEfforts.filter(e => e.consultantType === 'Functional' && !e.isDeleted).map(eff => {
+                                const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
+                                return (
+                                  <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
+                                    <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
+                                    <td className="py-2 px-3 text-center font-bold text-zinc-650">{dbInfo?.expertise.join(', ') || '-'}</td>
+                                    <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
+                                    <td className="py-2 px-3 text-center">
+                                      {role === 'Manager' || role === 'SuperAdmin' ? (
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          value={eff.estimatedHours}
+                                          onChange={e => handleInlineEstChange(eff.id, Number(e.target.value) || 0)}
+                                          className="w-12 bg-white border border-zinc-200 rounded p-0.5 text-center font-bold text-[10px] focus:outline-none"
+                                        />
+                                      ) : (
+                                        <span className="font-bold text-zinc-800">{eff.estimatedHours}h</span>
+                                      )}
                                     </td>
-                                  )}
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
+                                    <td className="py-2 px-3 text-center font-bold text-zinc-955 bg-zinc-50/50">{eff.actualHours}h</td>
+                                    {(role === 'Manager' || role === 'SuperAdmin') && (
+                                      <td className="py-2 px-3 text-right">
+                                        {replacingResource?.id === eff.id ? (
+                                          <div className="flex items-center justify-end gap-1">
+                                            <select
+                                              value={replacementConsultantName}
+                                              onChange={(e) => handleReplaceResource(eff.id, eff.consultantName, e.target.value)}
+                                              className="bg-white border border-zinc-200 rounded p-0.5 text-[9px] focus:outline-none cursor-pointer"
+                                            >
+                                              <option value="">Replace...</option>
+                                              {CONSULTANTS_DB.filter(c => c.name !== eff.consultantName && c.type === 'Functional').map(c => (
+                                                <option key={c.name} value={c.name}>{c.name}</option>
+                                              ))}
+                                            </select>
+                                            <button
+                                              type="button"
+                                              onClick={() => setReplacingResource(null)}
+                                              className="text-[9px] font-bold text-red-650 hover:underline px-1"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div className="flex justify-end gap-1.5">
+                                            <button
+                                              type="button"
+                                              onClick={() => { setReplacingResource(eff); setReplacementConsultantName(''); }}
+                                              className="p-1 border border-zinc-200 hover:border-blue-500 hover:text-blue-700 rounded transition"
+                                              title="Replace Consultant"
+                                            >
+                                              <RefreshCw size={11} />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
+                                              className="p-1 border border-zinc-200 hover:border-red-500 hover:text-red-700 rounded transition"
+                                              title="Remove Consultant"
+                                            >
+                                              <Trash2 size={11} />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </td>
+                                    )}
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* B. TECHNICAL RESOURCES */}
+                    <div className="space-y-1.5 pt-2">
+                      <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Technical Resources</span>
+                      <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                        <table className="w-full text-left text-[10px]">
+                          <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                            <tr>
+                              <th className="py-2 px-3">Consultant</th>
+                              <th className="py-2 px-3 text-center">Module Expertise</th>
+                              <th className="py-2 px-3 text-center">Workload</th>
+                              <th className="py-2 px-3 text-center">Estimated Hours</th>
+                              <th className="py-2 px-3 text-center">Actual Hours</th>
+                              {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Actions</th>}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-150 bg-white">
+                            {(!ticket.consultantEfforts || ticket.consultantEfforts.filter(e => e.consultantType === 'Technical' && !e.isDeleted).length === 0) ? (
+                              <tr>
+                                <td colSpan={6} className="py-4 text-center text-zinc-400 italic">No technical resources allocated to this incident.</td>
+                              </tr>
+                            ) : (
+                              ticket.consultantEfforts.filter(e => e.consultantType === 'Technical' && !e.isDeleted).map(eff => {
+                                const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
+                                return (
+                                  <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
+                                    <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
+                                    <td className="py-2 px-3 text-center font-bold text-zinc-650">{dbInfo?.expertise.join(', ') || '-'}</td>
+                                    <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
+                                    <td className="py-2 px-3 text-center">
+                                      {role === 'Manager' || role === 'SuperAdmin' ? (
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          value={eff.estimatedHours}
+                                          onChange={e => handleInlineEstChange(eff.id, Number(e.target.value) || 0)}
+                                          className="w-12 bg-white border border-zinc-200 rounded p-0.5 text-center font-bold text-[10px] focus:outline-none"
+                                        />
+                                      ) : (
+                                        <span className="font-bold text-zinc-800">{eff.estimatedHours}h</span>
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-center font-bold text-zinc-955 bg-zinc-50/50">{eff.actualHours}h</td>
+                                    {(role === 'Manager' || role === 'SuperAdmin') && (
+                                      <td className="py-2 px-3 text-right">
+                                        {replacingResource?.id === eff.id ? (
+                                          <div className="flex items-center justify-end gap-1">
+                                            <select
+                                              value={replacementConsultantName}
+                                              onChange={(e) => handleReplaceResource(eff.id, eff.consultantName, e.target.value)}
+                                              className="bg-white border border-zinc-200 rounded p-0.5 text-[9px] focus:outline-none cursor-pointer"
+                                            >
+                                              <option value="">Replace...</option>
+                                              {CONSULTANTS_DB.filter(c => c.name !== eff.consultantName && c.type === 'Technical').map(c => (
+                                                <option key={c.name} value={c.name}>{c.name}</option>
+                                              ))}
+                                            </select>
+                                            <button
+                                              type="button"
+                                              onClick={() => setReplacingResource(null)}
+                                              className="text-[9px] font-bold text-red-650 hover:underline px-1"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div className="flex justify-end gap-1.5">
+                                            <button
+                                              type="button"
+                                              onClick={() => { setReplacingResource(eff); setReplacementConsultantName(''); }}
+                                              className="p-1 border border-zinc-200 hover:border-blue-500 hover:text-blue-700 rounded transition"
+                                              title="Replace Consultant"
+                                            >
+                                              <RefreshCw size={11} />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
+                                              className="p-1 border border-zinc-200 hover:border-red-500 hover:text-red-700 rounded transition"
+                                              title="Remove Consultant"
+                                            >
+                                              <Trash2 size={11} />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </td>
+                                    )}
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -951,28 +1219,41 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                 {/* Upload Attachments Simulator */}
                 <div className="space-y-2 border-t border-zinc-100 pt-3">
                   <span className="text-[9px] font-bold text-zinc-450 uppercase block">Comment Attachments Registry</span>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 items-center">
+                    <input
+                      type="file"
+                      id="real-file-upload"
+                      onChange={handleRealFileChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="real-file-upload"
+                      className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-zinc-200 hover:border-zinc-800 rounded bg-white font-bold uppercase text-[9px] tracking-wider text-zinc-700 transition"
+                    >
+                      <Paperclip size={11} /> Select File
+                    </label>
+                    <span className="text-[9px] text-zinc-400 font-sans">or simulate:</span>
                     <input
                       type="text"
-                      placeholder="Simulated file name (e.g. log_dump.txt)..."
+                      placeholder="Simulated name (e.g. dump.txt)..."
                       value={simFileName}
                       onChange={e => setSimFileName(e.target.value)}
-                      className="flex-1 bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
+                      className="flex-1 bg-white border border-zinc-200 rounded p-1.5 text-[10px] focus:outline-none font-mono"
                     />
                     <input
                       type="number"
-                      placeholder="Size (KB)..."
+                      placeholder="KB..."
                       value={simFileSize}
                       onChange={e => setSimFileSize(e.target.value)}
-                      className="w-20 bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
+                      className="w-16 bg-white border border-zinc-200 rounded p-1.5 text-[10px] focus:outline-none font-mono"
                     />
                     <button
                       type="button"
                       onClick={handleAttachSimulatedFile}
                       disabled={!simFileName.trim()}
-                      className="px-3 py-1 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider disabled:opacity-50 transition cursor-pointer"
+                      className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider disabled:opacity-50 transition cursor-pointer font-mono"
                     >
-                      Attach File
+                      Attach
                     </button>
                   </div>
 
@@ -1057,8 +1338,12 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                   <select
                     value={ticket.status}
                     onChange={(e) => {
-                      updateTicketStatus(ticket.id, e.target.value as any, user?.name || role);
-                      showBannerMessage(`Ticket status updated to ${e.target.value}.`);
+                      if (e.target.value === 'Closed') {
+                        handleCloseClick();
+                      } else {
+                        updateTicketStatus(ticket.id, e.target.value as any, user?.name || role);
+                        showBannerMessage(`Ticket status updated to ${e.target.value}.`);
+                      }
                     }}
                     className="bg-white border border-zinc-200 rounded p-1 text-[10px] font-bold text-zinc-955 focus:outline-none uppercase"
                   >
@@ -1186,7 +1471,12 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            onClick={() => approveClosureRequest(ticket.id, cls.id, user?.name || role)}
+                            onClick={() => {
+                              setPendingClosureId(cls.id);
+                              setClosureRating(0);
+                              setClosureFeedback('');
+                              setClosureModalOpen(true);
+                            }}
                             className="flex-1 py-1 bg-green-950 hover:bg-green-800 text-white rounded font-bold uppercase text-[9px] tracking-wider transition"
                           >
                             Approve
@@ -1450,117 +1740,217 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                     onChange={e => setReopenReasonText(e.target.value)}
                     className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs focus:outline-none"
                   />
-                  <button type="submit" className="w-full py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider">
+                  <button type="submit" className="w-full py-1.5 bg-zinc-955 text-white rounded font-bold uppercase text-[9px] tracking-wider">
                     Confirm Request
                   </button>
                 </form>
               )}
             </div>
           )}
-
         </div>
-
       </div>
 
       {/* ── MANDATORY CSAT CLOSURE DIALOG MODAL ── */}
-      {closureModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px]">
-          <div className="bg-white border border-zinc-250 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 font-mono text-xs text-zinc-955 animate-in fade-in duration-100">
-            
-            <div className="flex items-center gap-2 text-zinc-900 font-bold uppercase text-[11px] pb-2 border-b border-zinc-150">
-              <CheckCircle size={14} className="text-green-600" />
-              <span>Confirm Ticket Resolution & Closure</span>
-            </div>
+      {closureModalOpen && (() => {
+        const functionalConsultants = (ticket?.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
+        const technicalConsultants = (ticket?.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
 
-            {/* Hours summary splits */}
-            <div className="bg-zinc-50 border border-zinc-200 p-2.5 rounded space-y-1.5 text-[10px]">
-              <span className="font-bold text-zinc-450 uppercase text-[9px] block">Final actual hours summary:</span>
-              <div className="grid grid-cols-2 gap-1.5 font-mono text-zinc-700">
-                <span>Functional Hours:</span>
-                <span className="text-right font-bold text-zinc-900">{actualsSummary.func}h</span>
-                <span>Technical Hours:</span>
-                <span className="text-right font-bold text-zinc-900">{actualsSummary.tech}h</span>
-                <span className="border-t border-zinc-200 pt-1 font-bold">Total Consumed:</span>
-                <span className="text-right border-t border-zinc-200 pt-1 font-black text-zinc-955">{actualsSummary.total}h</span>
+        const functionalTotalEst = functionalConsultants.reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+        const functionalTotalAct = functionalConsultants.reduce((sum, e) => sum + (e.actualHours || 0), 0);
+
+        const technicalTotalEst = technicalConsultants.reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+        const technicalTotalAct = technicalConsultants.reduce((sum, e) => sum + (e.actualHours || 0), 0);
+
+        const grandTotalEst = functionalTotalEst + technicalTotalEst;
+        const grandTotalAct = functionalTotalAct + technicalTotalAct;
+
+        const activeRequest = ticket?.closureRequests?.find(c => c.id === pendingClosureId) || ticket?.closureRequests?.[ticket.closureRequests.length - 1];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px]">
+            <div className="bg-white border border-zinc-200 rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4 font-mono text-xs text-zinc-955 animate-in fade-in duration-100 max-h-[90vh] overflow-y-auto">
+              
+              <div className="flex items-center gap-2 text-zinc-900 font-bold uppercase text-[11px] pb-2 border-b border-zinc-200">
+                <CheckCircle size={14} className="text-green-600" />
+                <span>Mandatory Ticket Closure Review</span>
               </div>
-              <div className="border-t border-zinc-200 pt-1.5">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Consultant Effort Log:</span>
-                <div className="max-h-24 overflow-y-auto space-y-1 mt-1">
-                  {(ticket.consultantEfforts || []).map(a => (
-                    <div key={a.id} className="flex justify-between text-zinc-650 text-[9px]">
-                      <span>{a.consultantName} ({a.consultantType}):</span>
-                      <span className="font-bold">{a.actualHours}h</span>
-                    </div>
-                  ))}
+
+              {/* A. Functional Consultants Hours */}
+              <div className="space-y-1.5">
+                <span className="font-bold text-zinc-500 uppercase text-[9px] block">Functional Consultants Effort</span>
+                <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                  <table className="w-full text-left text-[10px]">
+                    <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                      <tr>
+                        <th className="py-1.5 px-3">Consultant Name</th>
+                        <th className="py-1.5 px-3 text-center w-24">Estimated Hours</th>
+                        <th className="py-1.5 px-3 text-center w-24">Actual Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-150 bg-white">
+                      {functionalConsultants.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="py-3 text-center text-zinc-400 italic">No functional consultants allocated.</td>
+                        </tr>
+                      ) : (
+                        functionalConsultants.map(e => (
+                          <tr key={e.id} className="hover:bg-zinc-50/50">
+                            <td className="py-1.5 px-3 font-semibold text-zinc-800">{e.consultantName}</td>
+                            <td className="py-1.5 px-3 text-center text-zinc-600">{e.estimatedHours}h</td>
+                            <td className="py-1.5 px-3 text-center font-bold text-zinc-900">{e.actualHours}h</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            </div>
 
-            {/* CSAT Stars Selector */}
-            <div className="space-y-1.5">
-              <label className="block text-[9px] font-bold text-zinc-600 uppercase">CSAT Satisfaction Rating *</label>
-              <div className="flex items-center gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setClosureRating(star)}
-                    className="p-1 hover:scale-115 transition cursor-pointer text-zinc-300 hover:text-amber-500"
-                  >
-                    <Star
-                      size={20}
-                      className={star <= closureRating ? 'fill-amber-500 text-amber-500' : 'fill-none text-zinc-300'}
-                    />
-                  </button>
-                ))}
-                <span className="font-bold text-[10px] text-zinc-700 ml-2">
-                  {closureRating === 5 ? 'Excellent (5/5)' : 
-                   closureRating === 4 ? 'Good (4/5)' : 
-                   closureRating === 3 ? 'Average (3/5)' : 
-                   closureRating === 2 ? 'Poor (2/5)' : 
-                   'Unacceptable (1/5)'}
-                </span>
+              {/* B. Technical Consultants Hours */}
+              <div className="space-y-1.5">
+                <span className="font-bold text-zinc-500 uppercase text-[9px] block">Technical Consultants Effort</span>
+                <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                  <table className="w-full text-left text-[10px]">
+                    <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                      <tr>
+                        <th className="py-1.5 px-3">Consultant Name</th>
+                        <th className="py-1.5 px-3 text-center w-24">Estimated Hours</th>
+                        <th className="py-1.5 px-3 text-center w-24">Actual Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-150 bg-white">
+                      {technicalConsultants.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="py-3 text-center text-zinc-400 italic">No technical consultants allocated.</td>
+                        </tr>
+                      ) : (
+                        technicalConsultants.map(e => (
+                          <tr key={e.id} className="hover:bg-zinc-50/50">
+                            <td className="py-1.5 px-3 font-semibold text-zinc-800">{e.consultantName}</td>
+                            <td className="py-1.5 px-3 text-center text-zinc-600">{e.estimatedHours}h</td>
+                            <td className="py-1.5 px-3 text-center font-bold text-zinc-900">{e.actualHours}h</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
 
-            {/* Comment Comments */}
-            <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-zinc-600 uppercase">Closure Feedback Comments *</label>
-              <textarea
-                value={closureFeedback}
-                onChange={(e) => setClosureFeedback(e.target.value)}
-                placeholder="Share closure confirmation details, validation steps, or CSAT feedback comments..."
-                className="w-full h-20 p-2 bg-white border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-950 font-mono"
-                maxLength={400}
-                required
-              />
-            </div>
+              {/* C. Totals Panel */}
+              <div className="bg-zinc-50 border border-zinc-200 rounded p-3 text-[10px] space-y-1.5">
+                <div className="grid grid-cols-2 gap-1.5 font-mono text-zinc-700">
+                  <span>Functional Total Hours:</span>
+                  <span className="text-right font-bold text-zinc-900">{functionalTotalAct}h actual (Est: {functionalTotalEst}h)</span>
+                  <span>Technical Total Hours:</span>
+                  <span className="text-right font-bold text-zinc-900">{technicalTotalAct}h actual (Est: {technicalTotalEst}h)</span>
+                  <span className="border-t border-zinc-200 pt-1.5 font-bold text-zinc-900">Grand Total Actual Hours:</span>
+                  <span className="text-right border-t border-zinc-200 pt-1.5 font-black text-zinc-955 text-xs">
+                    {grandTotalAct}h actual (Grand Est: {grandTotalEst}h)
+                  </span>
+                </div>
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-150">
-              <button
-                type="button"
-                onClick={() => setClosureModalOpen(false)}
-                className="py-1.5 px-3 border border-zinc-200 rounded text-zinc-600 hover:bg-zinc-50 font-bold transition uppercase text-[10px]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleCloseSubmit}
-                disabled={!closureFeedback.trim()}
-                className={`py-1.5 px-4 rounded font-bold transition uppercase text-[10px] ${
-                  closureFeedback.trim()
-                    ? 'bg-green-955 hover:bg-green-800 text-white shadow-sm'
-                    : 'bg-zinc-150 text-zinc-400 cursor-not-allowed border border-zinc-200'
-                }`}
-              >
-                Confirm Closure
-              </button>
-            </div>
+              {/* D. Resolution Summaries */}
+              <div className="bg-zinc-50 border border-zinc-200 rounded p-3 space-y-2.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px]">
+                  <div className="space-y-1">
+                    <span className="font-bold text-zinc-500 uppercase text-[8px] block">Work Completed Summary</span>
+                    <div className="bg-white border border-zinc-150 p-2 rounded text-zinc-750 min-h-[48px] max-h-24 overflow-y-auto whitespace-pre-wrap">
+                      {activeRequest?.workCompletedSummary || ticket.resolutionSummary || 'N/A'}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-bold text-zinc-500 uppercase text-[8px] block">Root Cause</span>
+                    <div className="bg-white border border-zinc-150 p-2 rounded text-zinc-750 min-h-[48px] max-h-24 overflow-y-auto whitespace-pre-wrap">
+                      {activeRequest?.rootCause || ticket.rootCause || 'N/A'}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-bold text-zinc-500 uppercase text-[8px] block">Resolution Summary</span>
+                    <div className="bg-white border border-zinc-150 p-2 rounded text-zinc-750 min-h-[48px] max-h-24 overflow-y-auto whitespace-pre-wrap">
+                      {activeRequest?.resolutionSummary || ticket.resolutionSummary || 'N/A'}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-bold text-zinc-500 uppercase text-[8px] block">Closure Notes / Pending Items</span>
+                    <div className="bg-white border border-zinc-150 p-2 rounded text-zinc-750 min-h-[48px] max-h-24 overflow-y-auto whitespace-pre-wrap">
+                      {activeRequest?.pendingItems || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
+              {/* E. CSAT Evaluation */}
+              <div className="space-y-3 pt-2 border-t border-zinc-150">
+                {/* CSAT Stars Selector */}
+                <div className="space-y-1.5">
+                  <label className="block text-[9px] font-bold text-zinc-600 uppercase">CSAT Satisfaction Rating *</label>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setClosureRating(star)}
+                        className="p-1 hover:scale-115 transition cursor-pointer text-zinc-300 hover:text-amber-500"
+                      >
+                        <Star
+                          size={20}
+                          className={star <= closureRating ? 'fill-amber-500 text-amber-500' : 'fill-none text-zinc-300'}
+                        />
+                      </button>
+                    ))}
+                    <span className="font-bold text-[10px] text-zinc-700 ml-2">
+                      {closureRating === 5 ? 'Excellent (5/5)' : 
+                       closureRating === 4 ? 'Good (4/5)' : 
+                       closureRating === 3 ? 'Average (3/5)' : 
+                       closureRating === 2 ? 'Poor (2/5)' : 
+                       closureRating === 1 ? 'Unacceptable (1/5)' :
+                       'Select rating (Mandatory)'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feedback Comments */}
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-bold text-zinc-600 uppercase">Closure Feedback Comments *</label>
+                  <textarea
+                    value={closureFeedback}
+                    onChange={(e) => setClosureFeedback(e.target.value)}
+                    placeholder="Provide mandatory closure feedback remarks..."
+                    className="w-full h-16 p-2 bg-white border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-950 font-mono"
+                    maxLength={400}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-150">
+                <button
+                  type="button"
+                  onClick={() => setClosureModalOpen(false)}
+                  className="py-1.5 px-3 border border-zinc-200 rounded text-zinc-600 hover:bg-zinc-50 font-bold transition uppercase text-[10px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseSubmit}
+                  disabled={closureRating === 0 || !closureFeedback.trim()}
+                  className={`py-1.5 px-4 rounded font-bold transition uppercase text-[10px] ${
+                    closureRating > 0 && closureFeedback.trim()
+                      ? 'bg-green-955 hover:bg-green-800 text-white shadow-sm'
+                      : 'bg-zinc-150 text-zinc-400 cursor-not-allowed border border-zinc-200'
+                  }`}
+                >
+                  Confirm Closure
+                </button>
+              </div>
+
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── STATE-DRIVEN REJECTION COMMENTS DIALOG ── */}
       {rejectionModal.isOpen && (

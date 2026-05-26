@@ -158,7 +158,10 @@ export default function ConsultantMyTicketsPage() {
 
   // ── Derived data ──
   const myAssignedTickets = useMemo(() =>
-    tickets.filter(t => t.assignedConsultant === consultantName),
+    tickets.filter(t => 
+      t.assignedConsultant === consultantName || 
+      t.consultantEfforts?.some(e => e.consultantName === consultantName && !e.isDeleted)
+    ),
     [tickets, consultantName]
   );
 

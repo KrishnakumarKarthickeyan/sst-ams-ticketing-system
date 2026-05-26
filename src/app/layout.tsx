@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { TicketProvider } from "../context/TicketContext";
 import { AuthProvider } from "../context/AuthContext";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "SAP Service Desk & Support Portal",
@@ -19,6 +20,7 @@ export default function RootLayout({
         <AuthProvider>
           <TicketProvider>
             {children}
+            <Toaster position="top-right" richColors />
           </TicketProvider>
         </AuthProvider>
       </body>

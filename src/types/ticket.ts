@@ -52,7 +52,9 @@ export type TicketStatus =
   | 'In Progress - Functional'
   | 'Raised to SAP'
   | 'Customer Action'
-  | 'Request for Closure';
+  | 'Request for Closure'
+  | 'Reopen Requested'
+  | 'Awaiting Closure';
 
 export interface Comment {
   id: string;

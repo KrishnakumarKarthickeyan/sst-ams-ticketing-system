@@ -107,9 +107,12 @@ export default function ConsultantDashboardPage() {
 
   const [activeChartTab, setActiveChartTab] = useState<'volume' | 'effort' | 'portfolio'>('volume');
 
-  // Base tickets assigned to this consultant
+  // Base tickets assigned to this consultant or where allocated
   const myTickets = useMemo(() => {
-    return tickets.filter(t => t.assignedConsultant === consultantName);
+    return tickets.filter(t => 
+      t.assignedConsultant === consultantName || 
+      t.consultantEfforts?.some(e => e.consultantName === consultantName && !e.isDeleted)
+    );
   }, [tickets, consultantName]);
 
   // Role-specific ticket filter: only show functionally/technically relevant tickets
