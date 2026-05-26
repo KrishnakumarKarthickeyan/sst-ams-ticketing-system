@@ -387,7 +387,7 @@ CREATE POLICY efforts_access_policy ON public.ticket_consultant_efforts
     USING (
         (is_deleted = FALSE) AND (
             public.is_manager_or_admin() OR
-            (ticket_id IN (SELECT id FROM public.tickets WHERE assigned_consultant_id = auth.uid()))
+            consultant_id = auth.uid()
         )
     );
 
