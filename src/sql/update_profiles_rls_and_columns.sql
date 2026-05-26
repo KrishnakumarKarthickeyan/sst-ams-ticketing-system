@@ -17,7 +17,7 @@ DROP POLICY IF EXISTS profiles_insert_policy ON profiles;
 DROP POLICY IF EXISTS profiles_update_policy ON profiles;
 DROP POLICY IF EXISTS profiles_delete_policy ON profiles;
 
--- 4. Create secure RLS policies using JWT metadata to prevent infinite recursion
+-- 4. Create secure RLS policies checking profiles directly (safe because select policy is wide open)
 CREATE POLICY profiles_select_policy ON profiles
     FOR SELECT TO authenticated
     USING (true); -- Authenticated users can view profiles for ticket assignments
@@ -25,18 +25,19 @@ CREATE POLICY profiles_select_policy ON profiles
 CREATE POLICY profiles_insert_policy ON profiles
     FOR INSERT TO authenticated
     WITH CHECK (
-        coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('SuperAdmin', 'Manager')
+        (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('SuperAdmin', 'Manager')
     ); -- Only Managers/SuperAdmins can register new stakeholders
 
 CREATE POLICY profiles_update_policy ON profiles
     FOR UPDATE TO authenticated
     USING (
-        coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('SuperAdmin', 'Manager') OR
+        (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('SuperAdmin', 'Manager') OR
         id = auth.uid()
     ); -- Managers/SuperAdmins can update anyone; users can update their own details
 
 CREATE POLICY profiles_delete_policy ON profiles
     FOR DELETE TO authenticated
     USING (
-        coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('SuperAdmin', 'Manager')
+        (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('SuperAdmin', 'Manager')
     ); -- Only Managers/SuperAdmins can prune profiles
+
