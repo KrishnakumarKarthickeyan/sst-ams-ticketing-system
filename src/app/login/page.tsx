@@ -76,14 +76,6 @@ export default function LoginPage() {
     setAuthenticating(false);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-zinc-950 font-mono text-xs">
-        <span>Initializing SST Auth Modules...</span>
-      </div>
-    );
-  }
-
   return (
     <main className="min-h-screen flex flex-col justify-center items-center px-4 bg-zinc-50 relative overflow-hidden py-16 text-[#09090b]">
       
@@ -111,61 +103,71 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form Card */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-8 shadow-sm space-y-6">
+        <div className="bg-white border border-zinc-200 rounded-lg p-8 shadow-sm space-y-6 min-h-[280px] flex flex-col justify-center relative overflow-hidden transition-all duration-300">
           
-          {error && (
-            <div className="bg-zinc-50 border border-zinc-900 rounded p-3 text-xs text-zinc-900 font-mono font-bold">
-              [ERROR]: {error}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center space-y-4 py-8 animate-pulse">
+              <div className="w-8 h-8 rounded-full border-2 border-zinc-200 border-t-zinc-950 animate-spin" />
+              <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold font-mono">
+                Verifying Credentials...
+              </div>
             </div>
+          ) : (
+            <>
+              {error && (
+                <div className="bg-zinc-50 border border-zinc-900 rounded p-3 text-xs text-zinc-900 font-mono font-bold">
+                  [ERROR]: {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
+                {/* Email Field */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 uppercase tracking-wider text-[10px]">Email Address</label>
+                  <div className="relative">
+                    <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input 
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="e.g., consultant@sap.com"
+                      className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
+                      disabled={authenticating}
+                    />
+                  </div>
+                </div>
+
+                {/* Password Field */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="font-bold text-zinc-700 uppercase tracking-wider text-[10px]">Password</label>
+                    <Link href="/forgot-password" className="text-[10px] text-zinc-400 hover:text-zinc-950 hover:underline">
+                      Forgot?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input 
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
+                      disabled={authenticating}
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-800 text-[11px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono disabled:opacity-50"
+                  disabled={authenticating}
+                >
+                  {authenticating ? 'Connecting...' : 'Validate & Authenticate'}
+                </button>
+              </form>
+            </>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
-            {/* Email Field */}
-            <div className="space-y-1.5">
-              <label className="font-bold text-zinc-700 uppercase tracking-wider text-[10px]">Email Address</label>
-              <div className="relative">
-                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input 
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g., consultant@sap.com"
-                  className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
-                  disabled={authenticating}
-                />
-              </div>
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="font-bold text-zinc-700 uppercase tracking-wider text-[10px]">Password</label>
-                <Link href="/forgot-password" className="text-[10px] text-zinc-400 hover:text-zinc-950 hover:underline">
-                  Forgot?
-                </Link>
-              </div>
-              <div className="relative">
-                <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input 
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
-                  disabled={authenticating}
-                />
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-800 text-[11px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono disabled:opacity-50"
-              disabled={authenticating}
-            >
-              {authenticating ? 'Connecting...' : 'Validate & Authenticate'}
-            </button>
-          </form>
-
 
         </div>
 
