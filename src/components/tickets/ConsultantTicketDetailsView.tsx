@@ -54,7 +54,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     requestUnlock
   } = useTickets();
 
-  const ticket = tickets.find((t) => t.id === ticketId);
+  const ticket = tickets.find((t) => t.id === ticketId || t.id === decodeURIComponent(ticketId));
   const consultantName = user?.name || 'Unassigned';
   const consultantType = user?.consultantType || 'Functional';
 

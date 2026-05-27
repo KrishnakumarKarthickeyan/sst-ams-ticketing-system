@@ -81,7 +81,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     updateConsultantEfforts
   } = useTickets();
 
-  const ticket = tickets.find((t) => t.id === ticketId);
+  const ticket = tickets.find((t) => t.id === ticketId || t.id === decodeURIComponent(ticketId));
 
   const [dbConsultants, setDbConsultants] = useState<ConsultantLookup[]>([]);
   const CONSULTANTS_DB = dbConsultants;
