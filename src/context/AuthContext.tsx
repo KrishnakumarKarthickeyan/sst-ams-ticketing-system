@@ -31,64 +31,105 @@ const DEMO_USERS: Record<string, UserSession> = {};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserSession | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+      if (isConfigured) {
+        // Look for any supabase auth token in localStorage to see if session exists
+        const keys = Object.keys(localStorage);
+        const hasToken = keys.some(key => key.includes('auth-token'));
+        return hasToken;
+      } else {
+        const hasSession = !!localStorage.getItem('sap_user_session');
+        return hasSession;
+      }
+    }
+    return true;
+  });
   const router = useRouter();
 
   useEffect(() => {
+    let active = true;
+    let currentUserId: string | null = null;
+
+    const fetchAndSetProfile = async (session: any) => {
+      if (!session || !active) return null;
+      try {
+        const { data: profile, error } = await supabase!
+          .from('profiles')
+          .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile && !error && active) {
+          if (!profile.is_active) {
+            await supabase!.auth.signOut();
+            setUser(null);
+            currentUserId = null;
+            return null;
+          }
+          const userOrg = profile.organizations as any;
+          const sessionUser: UserSession = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: profile.full_name,
+            role: profile.role as UserRole,
+            company: userOrg ? userOrg.name : undefined,
+            consultantType: profile.consultant_type as any,
+            modules: profile.sap_modules || [],
+            phoneNumber: profile.phone_number
+          };
+          setUser(sessionUser);
+          currentUserId = session.user.id;
+          return sessionUser;
+        } else if (active) {
+          const sessionUser: UserSession = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.email?.split('@')[0] || 'User',
+            role: 'Customer'
+          };
+          setUser(sessionUser);
+          currentUserId = session.user.id;
+          return sessionUser;
+        }
+      } catch (e) {
+        console.error('Error fetching profile from Supabase', e);
+      }
+      return null;
+    };
+
     const initAuth = async () => {
       if (isSupabaseConfigured && supabase) {
-        // Live Supabase session checks
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          try {
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
-              .eq('id', session.user.id)
-              .single();
-
-            if (profile && !error) {
-              if (!profile.is_active) {
-                await supabase.auth.signOut();
-                setUser(null);
-                return;
-              }
-              const userOrg = profile.organizations as any;
-              setUser({
-                id: session.user.id,
-                email: session.user.email || '',
-                name: profile.full_name,
-                role: profile.role as UserRole,
-                company: userOrg ? userOrg.name : undefined,
-                consultantType: profile.consultant_type as any,
-                modules: profile.sap_modules || [],
-                phoneNumber: profile.phone_number
-              });
-            } else {
-              // Fallback if profile row does not exist yet
-              setUser({
-                id: session.user.id,
-                email: session.user.email || '',
-                name: session.user.email?.split('@')[0] || 'User',
-                role: 'Customer' // default
-              });
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session && active) {
+            if (session.user.id !== currentUserId) {
+              await fetchAndSetProfile(session);
             }
-          } catch (e) {
-            console.error('Error fetching profile from Supabase', e);
+          } else if (active) {
+            setUser(null);
+            currentUserId = null;
           }
+        } catch (e) {
+          console.error('Error in initAuth getSession', e);
         }
       } else {
         // Fallback local storage
         const stored = localStorage.getItem('sap_user_session');
-        if (stored) {
+        if (stored && active) {
           try {
-            setUser(JSON.parse(stored));
+            const parsed = JSON.parse(stored);
+            setUser(parsed);
+            currentUserId = parsed.id || null;
           } catch (e) {
             console.error('Failed to parse local user session', e);
           }
         }
       }
-      setLoading(false);
+      if (active) {
+        setLoading(false);
+      }
     };
 
     initAuth();
@@ -98,36 +139,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isSupabaseConfigured && client) {
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (session) {
-          const { data: profile } = await client
-            .from('profiles')
-            .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profile) {
-            if (!profile.is_active) {
-              await client.auth.signOut();
-              setUser(null);
-              return;
-            }
-            const userOrg = profile.organizations as any;
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              name: profile.full_name || session.user.email?.split('@')[0] || 'User',
-              role: (profile.role as UserRole) || 'Customer',
-              company: userOrg ? userOrg.name : undefined,
-              consultantType: profile.consultant_type as any,
-              modules: profile.sap_modules || [],
-              phoneNumber: profile.phone_number
-            });
+          if (session.user.id !== currentUserId) {
+            if (active) setLoading(true);
+            await fetchAndSetProfile(session);
+            if (active) setLoading(false);
           }
         } else {
           setUser(null);
+          currentUserId = null;
+          if (active) setLoading(false);
         }
       });
 
       return () => {
+        active = false;
         subscription.unsubscribe();
       };
     }

@@ -222,6 +222,16 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
+    if (!user) {
+      setTickets([]);
+      setContracts([]);
+      setContacts([]);
+      setKbArticles([]);
+      setKbCategories([]);
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: dbProfiles } = await supabase.from('profiles').select('*');
