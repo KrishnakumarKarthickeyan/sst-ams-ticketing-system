@@ -103,3 +103,42 @@ The SAP Manager Module has been fully restructured into a central Delivery Comma
 * **Zero Emojis**: Fully removed all emojis from page headers, tab lists, tables, cards, and titles.
 * **Monochrome Outlines**: Standardized Lucide icons with neutral slate-grays (`text-zinc-500` / `text-zinc-700`) without colorful circle backgrounds.
 * **Semantic Color Schemes**: Aligned compliance tags across all views: Green (MET/Closed/Approved/Healthy), Red (BREACHED/Critical/Rejected/Overdue), Amber (Pending/Customer Action/OSS Raised/Warning), Blue (In Progress/Active/Assigned).
+
+---
+
+## Part 3: SAP AMS SaaS Enterprise Ticket Creation Redesign & End-to-End Validation
+
+The Ticket Creation flow has been overhauled for both the **Manager Portal** and the **Customer Portal** to achieve a ServiceNow, Freshservice, and Jira Service Management enterprise-grade standard.
+
+### 1. Database Schema Alignment & Seeding
+* **VARCHAR Conversions**: Modified SQL scripts to convert `ticket_type`, `functional_or_technical`, `category`, and `sap_module` columns from rigid enum constraints to `VARCHAR(100)` fields.
+* **New Columns Added**: 
+  - `classification` (VARCHAR) on `tickets` table
+  - `business_impact_level` (VARCHAR) on `tickets` table
+  - `business_justification` (TEXT) on `tickets` table
+  - `customer_code` (VARCHAR) on `organizations` table
+* **SAP Modules Master List**: Seeded 15 required enterprise modules (`FICO`, `SD`, `MM`, `PP`, `PM`, `QM`, `HCM`, `SF EC`, `SF ECP`, `SF PMGM`, `SF RCM`, `SAC`, `ABAP`, `BASIS`, `CPI`) inside `sap_modules` master table.
+
+### 2. Core Context Uplift & Supabase Storage File Uploads
+* **Real File Uploads**: Refactored `uploadAttachmentToSupabase` and `createTicket` parameters in [TicketContext.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/context/TicketContext.tsx) to accept actual `File` objects from frontend inputs, uploading files directly to the `sap-tickets` Supabase storage bucket and returning the public url.
+* **Metadata Persistence**: The system writes files to storage, registers metadata entries in `ticket_attachments`, inserts audit history records (`ticket_history` table), and populates database notification flags (`notifications` table) on creation.
+* **Data Model Mapper**: Configured `mapDbTicket` mapper method to parse `classification`, `business_impact_level`, and `business_justification` columns into TypeScript object fields.
+
+### 3. Manager Ticket Creation Redesign (`/manager/create-ticket`)
+* **Six Structured Sections**:
+  - **Section A: Ticket Information**: Subject line (Title), detailed description text area, request type selection (15 options), and priority dropdown with color status badges (Critical=Red, High=Orange, Medium=Blue, Low=Gray).
+  - **Section B: Customer Information**: Searchable active customer combobox. Loads active customer profiles from Supabase, rendering Company Name, Contact Person, Customer Code, and Active status. Fully selectable.
+  - **Section C: SAP Classification**: Custom searchable SAP Modules combobox supporting multi-selection, select all, clear all, and removal badges. Classification selector (Functional, Technical, Basis, etc.) and Category selector (Transaction Error, Workflow Issue, etc.).
+  - **Section D: Business Impact**: Business Impact Level dropdown, Impact Description, Expected Resolution Date picker, and Business Justification.
+  - **Section E: Attachments**: Drag & Drop area with file upload queue, real-time simulated progress indicators, image thumbnails/previews, file count & size summaries, and queue removal before submission.
+  - **Section F: Additional Information**: Selectors for Assigned Manager, Assigned Consultant, Quoted Hours estimation, SAP Transport Request code, and Billable toggle.
+
+### 4. Customer Ticket Creation Redesign (`/customer/create-ticket`)
+* **Hiding Customer Dropdown**: Section B (Customer Account selection) is completely hidden.
+* **Organization Auto-Resolution**: The system automatically queries the logged-in user's profile and resolves their organization name (`organizations.name`) and customer code, auto-linking the ticket.
+* **Simplified Layout**: Maintained the exact same premium form sections (A, C, D, E) and fields, but removed internal manager fields (manager/consultant assignment, quoted hours, transport request) to secure customer views.
+
+### 5. Validation and Compilation Controls
+* **Form Submission Lock**: Submission is prevented if any mandatory field (`Title`, `Description`, `Request Type`, `Classification`, `Category`, `Priority`, `Modules`, `Customer`) is missing. Clean alert boxes highlight validation errors.
+* **Build Verification**: Compiled the entire project with Next.js production build (`npm run build`) to ensure 100% type-checking compliance and zero code errors.
+

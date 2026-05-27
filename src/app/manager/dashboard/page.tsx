@@ -303,17 +303,17 @@ export default function ManagerDashboardPage() {
     const customersWithOpenTickets = new Set(ticketsList.filter(t => t.status !== 'Closed').map(t => t.organization)).size;
     const customersWithCriticalTickets = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.priority === 'Critical').map(t => t.organization)).size;
     const customersWithSlaBreaches = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime).map(t => t.organization)).size;
-    const customersAwaitingClosure = new Set(ticketsList.filter(t => t.status === 'Request for Closure').map(t => t.organization)).size;
+    const customersAwaitingClosure = new Set(ticketsList.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').map(t => t.organization)).size;
 
     const openCount = ticketsList.filter(t => t.status !== 'Closed').length;
     const unassignedCount = ticketsList.filter(t => !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0) && t.status !== 'Closed').length;
     const reqGatheringCount = ticketsList.filter(t => t.status === 'Requirement Gathering').length;
-    const ipFuncCount = ticketsList.filter(t => t.status === 'In Progress - Functional').length;
-    const ipTechCount = ticketsList.filter(t => t.status === 'In Progress - Technical').length;
+    const ipFuncCount = ticketsList.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length;
+    const ipTechCount = ticketsList.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length;
     const custActionCount = ticketsList.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer').length;
     const onHoldCount = ticketsList.filter(t => t.status === 'Waiting for Internal Team' || (t.status as string) === 'On Hold').length;
     const raisedToSapCount = ticketsList.filter(t => t.status === 'Raised to SAP' || t.raisedToSap).length;
-    const requestClosureCount = ticketsList.filter(t => t.status === 'Request for Closure').length;
+    const requestClosureCount = ticketsList.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length;
     const closedCount = ticketsList.filter(t => t.status === 'Closed').length;
     const reopenedCount = ticketsList.filter(t => t.status === 'Reopened').length;
 

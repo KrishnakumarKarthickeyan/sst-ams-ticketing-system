@@ -67,12 +67,16 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       if (isSupabaseConfigured && supabase) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name, email, role');
+          .select('id, full_name, email, role, consultant_type, sap_modules, role_title, phone_number');
         if (!error && data) {
           setDbMentionableUsers(data.map(p => ({
             id: p.email,
             name: p.full_name,
-            role: p.role
+            role: p.role,
+            consultantType: p.consultant_type,
+            sapModules: p.sap_modules,
+            roleTitle: p.role_title,
+            phoneNumber: p.phone_number
           })));
         }
       }
@@ -90,7 +94,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   // Comment & Mentions States
   const [commentText, setCommentText] = useState('');
   const [isInternalComment, setIsInternalComment] = useState(false);
-  const [commentFiles, setCommentFiles] = useState<Array<{ id: string; fileName: string; fileSize: number; fileType: string; fileUrl: string }>>([]);
+  const [commentFiles, setCommentFiles] = useState<Array<{ id: string; fileName: string; fileSize: number; fileType: string; fileUrl: string; progress: number; isUploading: boolean }>>([]);
   const [showMentionDropdown, setShowMentionDropdown] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionIndex, setMentionIndex] = useState(-1);
@@ -118,6 +122,21 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   const [rootCause, setRootCause] = useState('');
   const [resolutionSummary, setResolutionSummary] = useState('');
   const [pendingItems, setPendingItems] = useState('');
+
+  const filteredMentions = useMemo(() => {
+    if (!ticket) return [];
+    const assignedNames = new Set((ticket.consultantEfforts || []).map(e => e.consultantName));
+    if (ticket.assignedConsultant) {
+      assignedNames.add(ticket.assignedConsultant);
+    }
+    return MOCK_MENTIONABLE_USERS.filter(u => {
+      const isAssigned = assignedNames.has(u.name) || 
+                         (ticket.assignedManager && u.name === ticket.assignedManager) ||
+                         u.role === 'Manager' || 
+                         u.role === 'SuperAdmin';
+      return isAssigned && u.name.toLowerCase().includes(mentionSearch.toLowerCase());
+    });
+  }, [mentionSearch, MOCK_MENTIONABLE_USERS, ticket]);
 
   useEffect(() => {
     if (ticket) {
@@ -257,11 +276,48 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     }
   };
 
-  const filteredMentions = useMemo(() => {
-    return MOCK_MENTIONABLE_USERS.filter(u =>
-      u.name.toLowerCase().includes(mentionSearch.toLowerCase())
-    );
-  }, [mentionSearch]);
+  // filteredMentions moved above early return to preserve Hook order
+
+  // Highlight mentions in comment strings
+  const renderCommentContent = (content: string) => {
+    if (!content) return '';
+    const sortedUsers = [...MOCK_MENTIONABLE_USERS].sort((a, b) => b.name.length - a.name.length);
+    const parts: React.ReactNode[] = [];
+    
+    if (sortedUsers.length > 0) {
+      const namesPattern = sortedUsers.map(u => u.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      const regex = new RegExp(`@(${namesPattern})`, 'g');
+      
+      let match;
+      let lastIndex = 0;
+      let keyCounter = 0;
+      
+      while ((match = regex.exec(content)) !== null) {
+        const matchIdx = match.index;
+        const matchText = match[0];
+        
+        if (matchIdx > lastIndex) {
+          parts.push(content.substring(lastIndex, matchIdx));
+        }
+        
+        parts.push(
+          <span key={`mention-${keyCounter++}`} className="bg-zinc-900 text-white font-mono px-1.5 py-0.5 rounded text-[10px] font-bold inline-block mx-0.5 shadow-sm">
+            {matchText}
+          </span>
+        );
+        
+        lastIndex = regex.lastIndex;
+      }
+      
+      if (lastIndex < content.length) {
+        parts.push(content.substring(lastIndex));
+      }
+    } else {
+      parts.push(content);
+    }
+    
+    return parts.length > 0 ? parts : content;
+  };
 
   // File Upload Helper
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -272,45 +328,68 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     const filesList = Array.from(files);
 
     for (const file of filesList) {
-      const fileId = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-      setUploadProgress(prev => ({ ...prev, [fileId]: 10 }));
+      const fileId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      
+      const newAttachment = {
+        id: fileId,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        fileUrl: '',
+        progress: 5,
+        isUploading: true
+      };
+
+      setCommentFiles(prev => [...prev, newAttachment]);
 
       if (file.size > 10 * 1024 * 1024) {
-        alert(`File ${file.name} exceeds 10MB limit.`);
+        setCommentFiles(prev => prev.map(a => a.id === fileId ? { ...a, progress: 0, isUploading: false, fileName: `${a.fileName} (Exceeds 10MB limit)` } : a));
         continue;
       }
 
-      let fileUrl = '';
-      if (isSupabaseConfigured && supabase) {
-        try {
+      try {
+        if (isSupabaseConfigured && supabase) {
           const filePath = `tickets/${ticket.id}/comments/${fileId}/${file.name}`;
-          setUploadProgress(prev => ({ ...prev, [fileId]: 50 }));
+          
+          let prog = 10;
+          const interval = setInterval(() => {
+            prog = Math.min(90, prog + 15);
+            setCommentFiles(prev => prev.map(a => a.id === fileId && a.isUploading ? { ...a, progress: prog } : a));
+          }, 150);
 
-          const { error: uploadError } = await supabase.storage.from('tickets') // Simulating bucket access
-            .upload(filePath, file, { cacheControl: '3600', upsert: true } as any);
+          const { error: uploadError } = await supabase.storage
+            .from('sap-tickets')
+            .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+          clearInterval(interval);
 
           if (uploadError) {
-            alert(`Upload failed for ${file.name}`);
+            console.error("Storage upload error:", uploadError);
+            setCommentFiles(prev => prev.filter(a => a.id !== fileId));
             continue;
           }
 
-          setUploadProgress(prev => ({ ...prev, [fileId]: 95 }));
-          const { data: urlData } = supabase.storage.from('tickets').getPublicUrl(filePath);
-          fileUrl = urlData?.publicUrl || '';
-          setUploadProgress(prev => ({ ...prev, [fileId]: 100 }));
-        } catch (err) {
-          alert(`File upload exception: ${file.name}`);
-          continue;
+          const { data: urlData } = supabase.storage.from('sap-tickets').getPublicUrl(filePath);
+          const fileUrl = urlData?.publicUrl || '';
+          
+          setCommentFiles(prev => prev.map(a => a.id === fileId ? { ...a, fileUrl, progress: 100, isUploading: false } : a));
+        } else {
+          // Simulated upload for mock mode
+          let prog = 10;
+          const interval = setInterval(() => {
+            prog += 20;
+            if (prog >= 100) {
+              clearInterval(interval);
+              setCommentFiles(prev => prev.map(a => a.id === fileId ? { ...a, fileUrl: `/files/${file.name}`, progress: 100, isUploading: false } : a));
+            } else {
+              setCommentFiles(prev => prev.map(a => a.id === fileId ? { ...a, progress: prog } : a));
+            }
+          }, 150);
         }
-      } else {
-        setUploadProgress(prev => ({ ...prev, [fileId]: 100 }));
-        fileUrl = `/files/${file.name}`;
+      } catch (err) {
+        console.error("Upload exception:", err);
+        setCommentFiles(prev => prev.filter(a => a.id !== fileId));
       }
-
-      setCommentFiles(prev => [
-        ...prev,
-        { id: fileId, fileName: file.name, fileSize: file.size, fileType: file.type, fileUrl }
-      ]);
     }
     setIsUploading(false);
   };
@@ -319,14 +398,14 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     setCommentFiles(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // Submit Operations
   const handleQuoteHours = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!estFuncHours || !estTechHours) return;
+    const isFunctional = consultantType === 'Functional';
+    if (isFunctional ? !estFuncHours : !estTechHours) return;
 
     quoteEstimatedHours(ticket.id, {
-      functionalEstimatedHours: Number(estFuncHours),
-      technicalEstimatedHours: Number(estTechHours),
+      functionalEstimatedHours: isFunctional ? Number(estFuncHours) : 0,
+      technicalEstimatedHours: !isFunctional ? Number(estTechHours) : 0,
       remarks: estRemarks,
       submittedBy: consultantName
     });
@@ -336,14 +415,16 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
   const handleRevisionRequest = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!estFuncHours || !estTechHours || !estRemarks.trim()) {
-      setValidationError('Justification remarks are required for revision requests.');
+    const isFunctional = consultantType === 'Functional';
+    const hours = isFunctional ? estFuncHours : estTechHours;
+    if (!hours || !estRemarks.trim()) {
+      setValidationError('Justification remarks and new hours are required.');
       return;
     }
 
     requestEstimateRevision(ticket.id, {
-      functionalEstimatedHours: Number(estFuncHours),
-      technicalEstimatedHours: Number(estTechHours),
+      functionalEstimatedHours: isFunctional ? Number(estFuncHours) : 0,
+      technicalEstimatedHours: !isFunctional ? Number(estTechHours) : 0,
       remarks: estRemarks,
       submittedBy: consultantName
     });
@@ -426,6 +507,25 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   };
 
   // Estimates & Closure summaries
+  const myEffort = (ticket.consultantEfforts || []).find(e => (e.consultantId === user?.id || e.consultantName === consultantName) && !e.isDeleted);
+  const myEstimatedHours = myEffort ? myEffort.estimatedHours : 0;
+
+  const teamEstimatedHours = (ticket.consultantEfforts || [])
+    .filter(e => e.consultantId !== user?.id && e.consultantName !== consultantName && !e.isDeleted)
+    .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+
+  const functionalTotalEst = (ticket.consultantEfforts || [])
+    .filter(e => e.consultantType === 'Functional' && !e.isDeleted)
+    .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+
+  const technicalTotalEst = (ticket.consultantEfforts || [])
+    .filter(e => e.consultantType === 'Technical' && !e.isDeleted)
+    .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+
+  const grandTotalEst = (ticket.consultantEfforts || [])
+    .filter(e => !e.isDeleted)
+    .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+
   const currentEstimate = (ticket.hourEstimates || [])
     .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
     .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
@@ -513,14 +613,253 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
         {/* Left Column: Core Fields */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Requirement Details */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-3">
+          {/* Ticket Overview Card */}
+          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <Briefcase size={14} className="text-slate-400" />
+                Ticket Overview
+              </h3>
+              <div className="flex gap-2">
+                <Badge variant={ticket.priority === 'Critical' || ticket.priority === 'High' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-bold">
+                  {ticket.priority} Priority
+                </Badge>
+                <Badge className="bg-zinc-900 text-white uppercase text-[9px] font-mono">
+                  {ticket.status}
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+              <div className="space-y-2">
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Ticket ID</span>
+                  <span className="text-slate-900 font-bold text-sm bg-slate-50 px-2 py-0.5 border border-slate-200 rounded inline-block mt-0.5">{ticket.id}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Subject / Title</span>
+                  <span className="text-slate-900 font-semibold block mt-0.5">{ticket.title}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Description</span>
+                  <p className="text-slate-700 whitespace-pre-line leading-relaxed mt-1 font-sans text-xs bg-slate-50/50 p-2.5 rounded border border-slate-100">{ticket.description}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Classification</span>
+                  <span className="text-slate-955 font-bold block mt-0.5">{ticket.classification || ticket.functionalOrTechnical || 'Functional'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Issue Category</span>
+                  <span className="text-slate-900 font-bold block mt-0.5">{ticket.category}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Created On</span>
+                    <span className="text-slate-700 text-[10px] block mt-0.5">{new Date(ticket.createdAt).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Last Updated</span>
+                    <span className="text-slate-700 text-[10px] block mt-0.5">{new Date(ticket.updatedAt).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-slate-400 text-[9px] uppercase font-bold">SLA Target Due</span>
+                  <SlaBadge ticket={ticket} />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Customer / Client Details Card */}
+          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
             <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
-              <Briefcase size={14} className="text-slate-400" />
-              Requirement description details
+              <Building2 size={14} className="text-slate-400" />
+              Customer & Requester details
             </h3>
-            <div className="text-sm text-slate-700 whitespace-pre-line leading-relaxed pt-1">
-              {ticket.description}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+              <div className="space-y-1">
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">Company / Organization</span>
+                <span className="text-slate-900 font-bold flex items-center gap-1">
+                  <Building2 size={12} className="text-slate-400 shrink-0" />
+                  {ticket.organization}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">Requester Name</span>
+                <span className="text-slate-900 font-bold flex items-center gap-1">
+                  <User size={12} className="text-slate-400 shrink-0" />
+                  {ticket.createdByName || ticket.requestedBy}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">Contact Coordinates</span>
+                <span className="text-slate-700 block">{ticket.requestedByEmail || 'customer@sap.com'}</span>
+                {(() => {
+                  const reqProf = MOCK_MENTIONABLE_USERS.find(u => u.name === (ticket.createdByName || ticket.requestedBy));
+                  const phone = ticket.requestedByPhone || reqProf?.phoneNumber;
+                  return phone ? (
+                    <span className="text-[10px] text-slate-500 font-mono block mt-0.5">Phone: {phone}</span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+          </Card>
+
+          {/* SAP Scope Card */}
+          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
+            <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
+              <Layers size={14} className="text-slate-400" />
+              SAP Scope & Business Impact
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+              <div className="space-y-1">
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">Scope Modules</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {ticket.sapModules && ticket.sapModules.length > 0 ? (
+                    ticket.sapModules.map((mod, i) => (
+                      <Badge key={i} className="bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-150 font-mono text-[9px] uppercase px-1.5 py-0.2">
+                        {mod}
+                      </Badge>
+                    ))
+                  ) : (
+                    <Badge className="bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-150 font-mono text-[9px] uppercase px-1.5 py-0.2">
+                      {ticket.sapModule}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">Business Impact Severity</span>
+                <span className="text-slate-900 font-semibold block">{ticket.businessImpactLevel || ticket.businessImpact || 'Standard Operations'}</span>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">SAP Transport Request</span>
+                <span className="font-bold text-slate-900 block mt-0.5">{ticket.transportRequest || 'None Specified'}</span>
+              </div>
+
+              {ticket.businessJustification && (
+                <div className="md:col-span-3 space-y-1 pt-1 border-t border-slate-50">
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Business Justification</span>
+                  <p className="text-slate-700 font-sans text-xs italic">"{ticket.businessJustification}"</p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Assigned Team Grid Card */}
+          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
+            <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
+              <Users size={14} className="text-slate-400" />
+              Assigned AMS Specialist Teams
+            </h3>
+            
+            <div className="space-y-4 font-mono">
+              {/* Functional Consultants */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                  Functional Consulting Team
+                </span>
+                {(() => {
+                  const list = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
+                  if (list.length === 0) {
+                    return <div className="text-[10px] text-slate-450 italic p-3 bg-slate-50 border border-slate-150 rounded">No Functional consultants assigned to this ticket.</div>;
+                  }
+                  return (
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[9px]">
+                            <th className="p-2">Name</th>
+                            <th className="p-2">Specialty / Module</th>
+                            <th className="p-2">SLA Role</th>
+                            <th className="p-2 text-center">Status</th>
+                            <th className="p-2 text-right">Est. Hours</th>
+                            <th className="p-2 text-right">Act. Hours</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {list.map((e, idx) => {
+                            const prof = MOCK_MENTIONABLE_USERS.find(u => u.name === e.consultantName);
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50/50">
+                                <td className="p-2 font-bold text-slate-900">{e.consultantName}</td>
+                                <td className="p-2 text-slate-655">{prof?.sapModules?.join(', ') || ticket.sapModule}</td>
+                                <td className="p-2 text-slate-500">{prof?.roleTitle || 'Functional Consultant'}</td>
+                                <td className="p-2 text-center">
+                                  <Badge className={`uppercase text-[8px] px-1.5 py-0.2 tracking-wider ${
+                                    e.closureStatus === 'Submitted' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-850'
+                                  }`}>
+                                    {e.closureStatus || 'Pending'}
+                                  </Badge>
+                                </td>
+                                <td className="p-2 text-right font-bold text-slate-500">{e.estimatedHours}h</td>
+                                <td className="p-2 text-right font-bold text-slate-900">{e.actualHours}h</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Technical Consultants */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                  Technical Development Team
+                </span>
+                {(() => {
+                  const list = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
+                  if (list.length === 0) {
+                    return <div className="text-[10px] text-slate-450 italic p-3 bg-slate-50 border border-slate-150 rounded">No Technical developers assigned to this ticket.</div>;
+                  }
+                  return (
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[9px]">
+                            <th className="p-2">Name</th>
+                            <th className="p-2">Specialty / Module</th>
+                            <th className="p-2">SLA Role</th>
+                            <th className="p-2 text-center">Status</th>
+                            <th className="p-2 text-right">Est. Hours</th>
+                            <th className="p-2 text-right">Act. Hours</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {list.map((e, idx) => {
+                            const prof = MOCK_MENTIONABLE_USERS.find(u => u.name === e.consultantName);
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50/50">
+                                <td className="p-2 font-bold text-slate-900">{e.consultantName}</td>
+                                <td className="p-2 text-slate-655">{prof?.sapModules?.join(', ') || ticket.sapModule}</td>
+                                <td className="p-2 text-slate-500">{prof?.roleTitle || 'ABAP Developer'}</td>
+                                <td className="p-2 text-center">
+                                  <Badge className={`uppercase text-[8px] px-1.5 py-0.2 tracking-wider ${
+                                    e.closureStatus === 'Submitted' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-850'
+                                  }`}>
+                                    {e.closureStatus || 'Pending'}
+                                  </Badge>
+                                </td>
+                                <td className="p-2 text-right font-bold text-slate-500">{e.estimatedHours}h</td>
+                                <td className="p-2 text-right font-bold text-slate-900">{e.actualHours}h</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           </Card>
 
@@ -565,23 +904,26 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
             {currentEstimate ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-                  {consultantType === 'Functional' ? (
-                    <div className="bg-slate-50 p-3 border border-slate-200 rounded border-l-2 border-l-blue-500">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-mono">Functional Hours</span>
-                      <span className="text-lg font-bold text-slate-900 mt-1 block font-mono">{currentEstimate.functionalEstimatedHours} h</span>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-50 p-3 border border-slate-200 rounded border-l-2 border-l-violet-500">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-mono">Technical Hours</span>
-                      <span className="text-lg font-bold text-slate-900 mt-1 block font-mono">{currentEstimate.technicalEstimatedHours} h</span>
-                    </div>
-                  )}
-                  <div className="bg-slate-50 p-3 border border-slate-200 rounded border-l-2 border-l-emerald-500">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-mono">Role Estimated Hours</span>
-                    <span className="text-lg font-bold text-emerald-600 mt-1 block font-mono">
-                      {consultantType === 'Functional' ? currentEstimate.functionalEstimatedHours : currentEstimate.technicalEstimatedHours} h
-                    </span>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-blue-500">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">My Estimate</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{myEstimatedHours} h</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-indigo-500">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Team Estimate</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{teamEstimatedHours} h</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-cyan-500">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Functional Total</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{functionalTotalEst} h</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-violet-500">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Technical Total</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{technicalTotalEst} h</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-emerald-500 col-span-2 md:col-span-1">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Grand Total</span>
+                    <span className="text-sm font-bold text-emerald-600 mt-0.5 block font-mono">{grandTotalEst} h</span>
                   </div>
                 </div>
 
@@ -782,24 +1124,55 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               )}
 
               {commentFiles.length > 0 && (
-                <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-200/50">
-                  {commentFiles.map((file, i) => (
-                    <div key={file.id || i} className="flex items-center justify-between bg-white border border-slate-200 rounded p-2 text-[10px] text-slate-700">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Paperclip size={10} className="text-slate-400 shrink-0" />
-                        <span className="truncate font-semibold">{file.fileName}</span>
-                        <span className="text-slate-400 font-mono">({Math.round(file.fileSize / 1024)} KB)</span>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={isLocked}
-                        onClick={() => removeAttachmentFromComment(i)}
-                        className="text-slate-400 hover:text-red-500 disabled:opacity-30"
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  ))}
+                <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/50">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Uploaded files ({commentFiles.length})</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {commentFiles.map((file, i) => {
+                      const isImage = file.fileType.startsWith('image/');
+                      return (
+                        <div key={file.id || i} className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg p-2.5 shadow-xs relative overflow-hidden">
+                          {/* Thumbnail / Icon Preview */}
+                          <div className="w-10 h-10 bg-slate-50 border border-slate-100 rounded flex items-center justify-center shrink-0 overflow-hidden">
+                            {isImage && file.fileUrl ? (
+                              <img src={file.fileUrl} alt={file.fileName} className="w-full h-full object-cover" />
+                            ) : (
+                              <FileText size={16} className="text-slate-400" />
+                            )}
+                          </div>
+                          
+                          {/* File info and Progress */}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-[10px] font-bold text-slate-800 truncate block pr-2">{file.fileName}</span>
+                              <span className="text-[8px] text-slate-450 font-mono shrink-0">({Math.round(file.fileSize / 1024)} KB)</span>
+                            </div>
+                            
+                            {file.isUploading ? (
+                              <div className="space-y-1">
+                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                  <div className="h-full bg-slate-900 transition-all duration-300" style={{ width: `${file.progress}%` }} />
+                                </div>
+                                <span className="text-[8px] text-slate-400 font-mono block">Uploading... {file.progress}%</span>
+                              </div>
+                            ) : (
+                              <span className="text-[8px] text-emerald-600 font-bold uppercase font-mono block">Ready to send</span>
+                            )}
+                          </div>
+                          
+                          {/* Delete Action */}
+                          <button
+                            type="button"
+                            disabled={isLocked}
+                            onClick={() => removeAttachmentFromComment(i)}
+                            className="text-slate-400 hover:text-red-500 disabled:opacity-30 cursor-pointer p-1 rounded hover:bg-slate-50 shrink-0 transition"
+                            title={file.isUploading ? "Cancel upload" : "Remove file"}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -854,7 +1227,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     </div>
                     <span className="text-slate-400 font-mono">{new Date(c.createdAt).toLocaleString()}</span>
                   </div>
-                  <p className="text-slate-700 leading-relaxed font-mono whitespace-pre-wrap">{c.content}</p>
+                  <p className="text-slate-700 leading-relaxed font-mono whitespace-pre-wrap">{renderCommentContent(c.content)}</p>
 
                   {c.attachments && c.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
@@ -880,7 +1253,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
           {/* Audit History */}
           <Card className="bg-white border border-slate-200 p-5 shadow-sm">
-            <TicketTimeline ticket={ticket} />
+            <TicketTimeline ticket={ticket} userRole="Consultant" />
           </Card>
 
         </div>
@@ -1179,69 +1552,99 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {/* RAISE CLOSURE REQUEST */}
               {activeModal === 'closure' && (
                 <form onSubmit={handleRaiseClosure} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Functional Actual Hours</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="e.g. 6.0"
-                        value={actFuncHours}
-                        onChange={(e) => setActFuncHours(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
-                        min="0"
-                        required={consultantType === 'Functional'}
-                        disabled={consultantType !== 'Functional'}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Technical Actual Hours</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="e.g. 8.0"
-                        value={actTechHours}
-                        onChange={(e) => setActTechHours(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
-                        min="0"
-                        required={consultantType === 'Technical'}
-                        disabled={consultantType !== 'Technical'}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Work Completed Summary (Mandatory)</label>
-                    <textarea
-                      value={workCompletedSummary}
-                      onChange={(e) => setWorkCompletedSummary(e.target.value)}
-                      placeholder="Outline final support deliverables..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
-                    <textarea
-                      value={rootCause}
-                      onChange={(e) => setRootCause(e.target.value)}
-                      placeholder="Detail root cause..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Resolution Summary (Mandatory)</label>
-                    <textarea
-                      value={resolutionSummary}
-                      onChange={(e) => setResolutionSummary(e.target.value)}
-                      placeholder="Detail resolution steps..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                      required
-                    />
-                  </div>
+                  {consultantType === 'Functional' ? (
+                    <>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Functional Actual Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          placeholder="e.g. 6.0"
+                          value={actFuncHours}
+                          onChange={(e) => setActFuncHours(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
+                          min="0"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Business Validation Summary (Mandatory)</label>
+                        <textarea
+                          value={workCompletedSummary}
+                          onChange={(e) => setWorkCompletedSummary(e.target.value)}
+                          placeholder="Detail functional testing and business validation results..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
+                        <textarea
+                          value={rootCause}
+                          onChange={(e) => setRootCause(e.target.value)}
+                          placeholder="Detail root cause..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Functional Closure Notes (Mandatory)</label>
+                        <textarea
+                          value={resolutionSummary}
+                          onChange={(e) => setResolutionSummary(e.target.value)}
+                          placeholder="Specify the functional alignment and configuration changes made..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Technical Actual Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          placeholder="e.g. 8.0"
+                          value={actTechHours}
+                          onChange={(e) => setActTechHours(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
+                          min="0"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Work Completed Summary (Mandatory)</label>
+                        <textarea
+                          value={workCompletedSummary}
+                          onChange={(e) => setWorkCompletedSummary(e.target.value)}
+                          placeholder="Outline completed development, code fixes, and technical deliverables..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
+                        <textarea
+                          value={rootCause}
+                          onChange={(e) => setRootCause(e.target.value)}
+                          placeholder="Detail root cause..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Technical Resolution Notes (Mandatory)</label>
+                        <textarea
+                          value={resolutionSummary}
+                          onChange={(e) => setResolutionSummary(e.target.value)}
+                          placeholder="Specify the technical resolution, code modules modified, or SAP notes applied..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div className="space-y-1">
                     <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Pending Items (Optional)</label>
@@ -1264,64 +1667,91 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {/* RESUBMIT CLOSURE */}
               {activeModal === 'resubmit_closure' && (
                 <form onSubmit={handleResubmitClosure} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Revised Functional Actual Hours</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={actFuncHours}
-                        onChange={(e) => setActFuncHours(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
-                        min="0"
-                        required={consultantType === 'Functional'}
-                        disabled={consultantType !== 'Functional'}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Revised Technical Actual Hours</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={actTechHours}
-                        onChange={(e) => setActTechHours(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
-                        min="0"
-                        required={consultantType === 'Technical'}
-                        disabled={consultantType !== 'Technical'}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-550 uppercase text-[9px] font-mono block">Work Completed Summary</label>
-                    <textarea
-                      value={workCompletedSummary}
-                      onChange={(e) => setWorkCompletedSummary(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause</label>
-                    <textarea
-                      value={rootCause}
-                      onChange={(e) => setRootCause(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Resolution Summary</label>
-                    <textarea
-                      value={resolutionSummary}
-                      onChange={(e) => setResolutionSummary(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                      required
-                    />
-                  </div>
+                  {consultantType === 'Functional' ? (
+                    <>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Revised Functional Actual Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={actFuncHours}
+                          onChange={(e) => setActFuncHours(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
+                          min="0"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-550 uppercase text-[9px] font-mono block">Business Validation Summary</label>
+                        <textarea
+                          value={workCompletedSummary}
+                          onChange={(e) => setWorkCompletedSummary(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause</label>
+                        <textarea
+                          value={rootCause}
+                          onChange={(e) => setRootCause(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Functional Closure Notes</label>
+                        <textarea
+                          value={resolutionSummary}
+                          onChange={(e) => setResolutionSummary(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Revised Technical Actual Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={actTechHours}
+                          onChange={(e) => setActTechHours(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
+                          min="0"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-550 uppercase text-[9px] font-mono block">Work Completed Summary</label>
+                        <textarea
+                          value={workCompletedSummary}
+                          onChange={(e) => setWorkCompletedSummary(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause</label>
+                        <textarea
+                          value={rootCause}
+                          onChange={(e) => setRootCause(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Technical Resolution Notes</label>
+                        <textarea
+                          value={resolutionSummary}
+                          onChange={(e) => setResolutionSummary(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div className="space-y-1">
                     <label className="font-bold text-slate-550 uppercase text-[9px] font-mono block">Pending Items</label>

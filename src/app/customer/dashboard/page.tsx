@@ -110,7 +110,13 @@ export default function CustomerDashboardPage() {
   const totalTickets = companyTickets.length;
   const openTickets = companyTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
   const unassignedTickets = companyTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').length;
-  const inProgressTickets = companyTickets.filter(t => t.status === 'In Progress').length;
+  const inProgressTickets = companyTickets.filter(t => 
+    t.status === 'In Progress' ||
+    t.status === 'In Progress - Functional' ||
+    t.status === 'In Progress - Technical' ||
+    t.status === 'Awaiting Functional Submission' ||
+    t.status === 'Awaiting Technical Submission'
+  ).length;
   const technicalTickets = companyTickets.filter(t => t.functionalOrTechnical === 'Technical').length;
   const functionalTickets = companyTickets.filter(t => t.functionalOrTechnical === 'Functional' || !t.functionalOrTechnical).length;
   const onHoldTickets = companyTickets.filter(t => t.status === 'Waiting for Customer' || t.status === 'Waiting for Internal Team').length;

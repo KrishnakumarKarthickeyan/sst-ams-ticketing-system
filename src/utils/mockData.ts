@@ -46,7 +46,13 @@ export const FAQ_MOCK: Record<SAPModule, string[]> = {
   'CPI/Integration': [],
   'BW/BI': [],
   Fiori: [],
-  TRM: []
+  TRM: [],
+  'SF EC': [],
+  'SF ECP': [],
+  'SF PMGM': [],
+  'SF RCM': [],
+  SAC: [],
+  CPI: []
 };
 
 export const MOCK_CONTACTS: CustomerContact[] = [];

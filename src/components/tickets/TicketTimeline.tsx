@@ -6,6 +6,7 @@ import { Clock, Plus, Check, Play, UserCheck, AlertCircle, ArrowUpRight, Message
 
 interface TicketTimelineProps {
   ticket: Ticket;
+  userRole?: 'SuperAdmin' | 'Manager' | 'Consultant' | 'Customer';
 }
 
 interface TimelineItem {
@@ -21,7 +22,39 @@ interface TimelineItem {
   attachments?: Array<{ fileName: string; fileUrl?: string }>;
 }
 
-export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket }) => {
+export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole }) => {
+
+  const highlightMentions = (text: string) => {
+    if (!text) return '';
+    const regex = /@([A-Za-z0-9]+(?:\s[A-Za-z0-9]+)?)/g;
+    const parts: React.ReactNode[] = [];
+    let match;
+    let lastIndex = 0;
+    let keyCounter = 0;
+    
+    while ((match = regex.exec(text)) !== null) {
+      const matchIdx = match.index;
+      const matchText = match[0];
+      
+      if (matchIdx > lastIndex) {
+        parts.push(text.substring(lastIndex, matchIdx));
+      }
+      
+      parts.push(
+        <span key={`mention-${keyCounter++}`} className="bg-zinc-900 text-white font-mono px-1.5 py-0.5 rounded text-[9px] font-bold inline-block mx-0.5 shadow-sm">
+          {matchText}
+        </span>
+      );
+      
+      lastIndex = regex.lastIndex;
+    }
+    
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    
+    return parts.length > 0 ? parts : text;
+  };
 
   const getRoleByName = (name: string): TimelineItem['role'] => {
     const lower = name.toLowerCase();
@@ -34,9 +67,12 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket }) => {
 
   const timelineItems = useMemo(() => {
     const items: TimelineItem[] = [];
+    const isCustomer = userRole === 'Customer';
 
     // 1. Comments
     (ticket.comments || []).forEach(c => {
+      if (isCustomer && c.isInternal) return;
+
       const commentAttachments = (c.attachments || []).map(att => ({
         fileName: att.fileName,
         fileUrl: att.fileUrl
@@ -53,40 +89,46 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket }) => {
       });
     });
 
-    // 2. Effort Logs
-    (ticket.efforts || []).forEach(e => {
-      items.push({
-        id: e.id,
-        type: 'effort',
-        action: `Hours Logged: ${e.hoursWorked || e.hoursLogged} hrs`,
-        date: e.createdAt,
-        performer: e.consultantName,
-        role: 'Consultant',
-        remarks: `${e.activityType} - ${e.description} (${e.billable ? 'Billable' : 'Non-billable'}) - Status: ${e.status}`
+    // 2. Effort Logs (Hidden for Customer)
+    if (!isCustomer) {
+      (ticket.efforts || []).forEach(e => {
+        items.push({
+          id: e.id,
+          type: 'effort',
+          action: `Hours Logged: ${e.hoursWorked || e.hoursLogged} hrs`,
+          date: e.createdAt,
+          performer: e.consultantName,
+          role: 'Consultant',
+          remarks: `${e.activityType} - ${e.description} (${e.billable ? 'Billable' : 'Non-billable'}) - Status: ${e.status}`
+        });
       });
-    });
+    }
 
-    // 3. Hour Estimates
-    (ticket.hourEstimates || []).forEach(est => {
-      let act = 'Estimated Hours Quoted';
-      if (est.status === 'Revision Requested') act = 'Estimated Hours Revision Requested';
-      else if (est.status === 'Revision Approved') act = 'Estimated Hours Revision Approved';
-      else if (est.status === 'Revision Rejected') act = 'Estimated Hours Revision Rejected';
+    // 3. Hour Estimates (Hidden for Customer)
+    if (!isCustomer) {
+      (ticket.hourEstimates || []).forEach(est => {
+        let act = 'Estimated Hours Quoted';
+        if (est.status === 'Revision Requested') act = 'Estimated Hours Revision Requested';
+        else if (est.status === 'Revision Approved') act = 'Estimated Hours Revision Approved';
+        else if (est.status === 'Revision Rejected') act = 'Estimated Hours Revision Rejected';
 
-      items.push({
-        id: est.id,
-        type: 'estimate',
-        action: act,
-        date: est.submittedAt || est.createdAt,
-        performer: est.consultantId,
-        role: getRoleByName(est.consultantId),
-        newValue: `${est.totalEstimatedHours} hrs (Func: ${est.functionalEstimatedHours}, Tech: ${est.technicalEstimatedHours})`,
-        remarks: est.remarks || (est.status === 'Revision Rejected' ? `Reason: ${est.rejectionReason}` : undefined)
+        items.push({
+          id: est.id,
+          type: 'estimate',
+          action: act,
+          date: est.submittedAt || est.createdAt,
+          performer: est.consultantId,
+          role: getRoleByName(est.consultantId),
+          newValue: `${est.totalEstimatedHours} hrs (Func: ${est.functionalEstimatedHours}, Tech: ${est.technicalEstimatedHours})`,
+          remarks: est.remarks || (est.status === 'Revision Rejected' ? `Reason: ${est.rejectionReason}` : undefined)
+        });
       });
-    });
+    }
 
-    // 4. Closure Requests
+    // 4. Closure Requests (Only show approved closures to Customer)
     (ticket.closureRequests || []).forEach(cls => {
+      if (isCustomer && cls.status !== 'Approved') return;
+
       let act = 'Closure Request Raised';
       if (cls.status === 'Approved') act = 'Closure Request Approved';
       else if (cls.status === 'Rejected') act = 'Closure Request Rejected';
@@ -99,16 +141,24 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket }) => {
         date: cls.createdAt,
         performer: cls.requestedBy,
         role: getRoleByName(cls.requestedBy),
-        newValue: `${cls.totalActualHours} hrs (Func: ${cls.functionalActualHours}, Tech: ${cls.technicalActualHours})`,
-        remarks: `Work Summary: ${cls.workCompletedSummary}\nRoot Cause: ${cls.rootCause}\nResolution: ${cls.resolutionSummary}${cls.rejectionReason ? `\nRejection Reason: ${cls.rejectionReason}` : ''}`
+        newValue: isCustomer ? `${cls.totalActualHours} hrs Approved` : `${cls.totalActualHours} hrs (Func: ${cls.functionalActualHours}, Tech: ${cls.technicalActualHours})`,
+        remarks: isCustomer 
+          ? `Work Completed: ${cls.workCompletedSummary}\nResolution: ${cls.resolutionSummary}`
+          : `Work Summary: ${cls.workCompletedSummary}\nRoot Cause: ${cls.rootCause}\nResolution: ${cls.resolutionSummary}${cls.rejectionReason ? `\nRejection Reason: ${cls.rejectionReason}` : ''}`
       });
     });
 
     // 5. Audit History
     (ticket.history || []).forEach(h => {
-      // Avoid duplicate status changes if already represented by comments/estimates/closures
       if (h.fieldChanged === 'Comment Added' || h.fieldChanged === 'Comment') return;
       
+      if (isCustomer) {
+        const field = h.fieldChanged.toLowerCase();
+        if (field.includes('estimate') || field.includes('effort') || field.includes('actual') || field.includes('hour') || field.includes('variance')) {
+          return;
+        }
+      }
+
       items.push({
         id: h.id,
         type: 'history',
@@ -123,7 +173,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket }) => {
 
     // Sort chronologically (newest first)
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [ticket]);
+  }, [ticket, userRole]);
 
   const getTimelineIcon = (type: TimelineItem['type'], action: string) => {
     const act = action.toLowerCase();
@@ -204,7 +254,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket }) => {
                 {/* Remarks / Message content */}
                 {item.remarks && (
                   <p className="text-zinc-700 text-xs whitespace-pre-wrap leading-relaxed bg-zinc-50/40 p-2.5 rounded border border-zinc-200/50">
-                    {item.remarks}
+                    {highlightMentions(item.remarks)}
                   </p>
                 )}
 

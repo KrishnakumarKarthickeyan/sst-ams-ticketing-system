@@ -123,6 +123,23 @@ export default function ConsultantDashboardPage() {
     );
   }, [myTickets, consultantType]);
 
+  // Status counts for the status summary widget
+  const ticketStatusCounts = useMemo(() => {
+    return {
+      all: myTickets.length,
+      requirementGathering: myTickets.filter(t => t.status === 'Requirement Gathering').length,
+      waitingHours: myTickets.filter(t => t.status === 'Waiting for Hours Approval').length,
+      inProgressFunctional: myTickets.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length,
+      inProgressTechnical: myTickets.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length,
+      customerAction: myTickets.filter(t => t.status === 'Customer Action').length,
+      onHold: myTickets.filter(t => t.status === 'On Hold').length,
+      raisedSap: myTickets.filter(t => t.status === 'Raised to SAP').length,
+      requestClosure: myTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
+      closed: myTickets.filter(t => t.status === 'Closed').length,
+      reopened: myTickets.filter(t => t.status === 'Reopened').length,
+    };
+  }, [myTickets]);
+
   // --- Dynamic Operations Calculator ---
   const monthlyStats = useMemo(() => {
     const now = new Date();
@@ -548,6 +565,55 @@ export default function ConsultantDashboardPage() {
           </div>
         </div>
       </Card>
+
+      {/* --- MY TICKET STATUS SUMMARY --- */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">My Ticket Status Summary</h2>
+          <span className="text-[10px] text-zinc-500 font-mono">Real-time Ticket counts across 11 phases</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[
+            { label: 'All Tickets', count: ticketStatusCounts.all, value: 'all', icon: Layers, color: 'bg-zinc-800', textColor: 'text-zinc-800' },
+            { label: 'Requirement Gathering', count: ticketStatusCounts.requirementGathering, value: 'requirementGathering', icon: FileText, color: 'bg-blue-500', textColor: 'text-blue-600' },
+            { label: 'Waiting for Hours Approval', count: ticketStatusCounts.waitingHours, value: 'waitingHours', icon: Clock, color: 'bg-amber-500', textColor: 'text-amber-600' },
+            { label: 'In Progress Functional', count: ticketStatusCounts.inProgressFunctional, value: 'inProgressFunctional', icon: Zap, color: 'bg-indigo-500', textColor: 'text-indigo-600' },
+            { label: 'In Progress Technical', count: ticketStatusCounts.inProgressTechnical, value: 'inProgressTechnical', icon: Cpu, color: 'bg-purple-500', textColor: 'text-purple-600' },
+            { label: 'Customer Action', count: ticketStatusCounts.customerAction, value: 'customerAction', icon: UserCheck, color: 'bg-orange-500', textColor: 'text-orange-600' },
+            { label: 'On Hold', count: ticketStatusCounts.onHold, value: 'onHold', icon: Hourglass, color: 'bg-slate-500', textColor: 'text-slate-600' },
+            { label: 'Raised to SAP', count: ticketStatusCounts.raisedSap, value: 'raisedSap', icon: ArrowUpRight, color: 'bg-red-500', textColor: 'text-red-600' },
+            { label: 'Request for Closure', count: ticketStatusCounts.requestClosure, value: 'requestClosure', icon: AlertCircle, color: 'bg-teal-500', textColor: 'text-teal-600' },
+            { label: 'Closed', count: ticketStatusCounts.closed, value: 'closed', icon: CheckCircle, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+            { label: 'Reopened', count: ticketStatusCounts.reopened, value: 'reopened', icon: RotateCcw, color: 'bg-rose-500', textColor: 'text-rose-600' },
+          ].map((item, idx) => {
+            const IconComponent = item.icon;
+            const pct = ticketStatusCounts.all > 0 ? (item.count / ticketStatusCounts.all) * 100 : 0;
+            return (
+              <Card 
+                key={idx} 
+                className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-28 hover:shadow-md hover:border-zinc-300 transition duration-200 cursor-pointer"
+              >
+                <div className="flex justify-between items-start text-zinc-400">
+                  <span className="text-[9px] font-bold uppercase tracking-wider line-clamp-1">{item.label}</span>
+                  <IconComponent size={14} className={item.textColor} />
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xl font-bold font-mono text-zinc-950">{item.count}</span>
+                    <span className="text-[9px] text-zinc-450 font-mono">{pct.toFixed(0)}%</span>
+                  </div>
+                  <div className="w-full bg-zinc-100 h-1 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${item.color} transition-all duration-500`} 
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
 
       {/* --- SECTION 6: MY PERFORMANCE COMMAND CENTER --- */}
       <div className="space-y-4">

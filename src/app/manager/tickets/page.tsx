@@ -63,7 +63,10 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   'Closed':                    { label: 'Closed',         color: 'text-zinc-600 bg-zinc-200 border-zinc-300' },
   'Reopened':                  { label: 'Reopened',       color: 'text-red-700 bg-red-50 border-red-200' },
   'New':                       { label: 'New',            color: 'text-zinc-650 bg-zinc-100 border-zinc-200 font-bold' },
-  'Assigned':                  { label: 'Assigned',       color: 'text-blue-650 bg-blue-50 border-blue-150' }
+  'Assigned':                  { label: 'Assigned',       color: 'text-blue-650 bg-blue-50 border-blue-150' },
+  'Awaiting Functional Submission': { label: 'Awaiting Func. Sub', color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+  'Awaiting Technical Submission':  { label: 'Awaiting Tech. Sub', color: 'text-blue-700 bg-blue-50 border-blue-200' },
+  'Awaiting Manager Approval':      { label: 'Awaiting Mgr Appr', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
 };
 
 export default function ManagerTicketsPage() {
@@ -165,7 +168,7 @@ export default function ManagerTicketsPage() {
       case 'customerAction':
         return scopedTickets.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer');
       case 'reqClosure':
-        return scopedTickets.filter(t => t.status === 'Request for Closure');
+        return scopedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval');
       case 'reopened':
         return scopedTickets.filter(t => t.status === 'Reopened');
       case 'closed':
@@ -247,7 +250,7 @@ export default function ManagerTicketsPage() {
       // Closure Status
       if (closureStateFilter !== 'All') {
         if (closureStateFilter === 'Closed' && t.status !== 'Closed') return false;
-        if (closureStateFilter === 'RequestForClosure' && t.status !== 'Request for Closure') return false;
+        if (closureStateFilter === 'RequestForClosure' && t.status !== 'Request for Closure' && t.status !== 'Awaiting Manager Approval') return false;
         if (closureStateFilter === 'Open' && t.status === 'Closed') return false;
       }
 
@@ -288,7 +291,7 @@ export default function ManagerTicketsPage() {
       slaBreached: scopedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && new Date(t.slaDueAt).getTime() < nowTime).length,
       raisedToSap: scopedTickets.filter(t => t.status === 'Raised to SAP' || t.raisedToSap).length,
       customerAction: scopedTickets.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer').length,
-      reqClosure: scopedTickets.filter(t => t.status === 'Request for Closure').length,
+      reqClosure: scopedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
       reopened: scopedTickets.filter(t => t.status === 'Reopened').length,
       closed: scopedTickets.filter(t => t.status === 'Closed').length,
       pendingApprovals: scopedTickets.filter(t => 

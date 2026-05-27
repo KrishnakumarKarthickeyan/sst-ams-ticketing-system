@@ -71,6 +71,9 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   'Request for Closure':       { label: 'Req. Closure',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
   'Closed':                    { label: 'Closed',         color: 'text-slate-600 bg-slate-200 border-slate-300' },
   'Reopened':                  { label: 'Reopened',       color: 'text-red-700 bg-red-50 border-red-200' },
+  'Awaiting Functional Submission': { label: 'Awaiting Func. Sub', color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+  'Awaiting Technical Submission':  { label: 'Awaiting Tech. Sub', color: 'text-blue-700 bg-blue-50 border-blue-200' },
+  'Awaiting Manager Approval':      { label: 'Awaiting Mgr Appr', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -166,13 +169,30 @@ export default function ConsultantMyTicketsPage() {
   );
 
   const tabFilteredTickets = useMemo(() => {
-    if (activeTab === 'active') return myAssignedTickets.filter(t =>
-      ['In Progress', 'In Progress - Technical', 'In Progress - Functional', 'Requirement Gathering'].includes(t.status));
-    if (activeTab === 'pending') return myAssignedTickets.filter(t =>
-      ['Customer Action', 'Raised to SAP', 'Waiting for Hours Approval'].includes(t.status));
-    if (activeTab === 'closure') return myAssignedTickets.filter(t =>
-      ['Request for Closure', 'Closed', 'Reopened'].includes(t.status));
-    return myAssignedTickets;
+    switch (activeTab) {
+      case 'requirement_gathering':
+        return myAssignedTickets.filter(t => t.status === 'Requirement Gathering');
+      case 'waiting_hours':
+        return myAssignedTickets.filter(t => t.status === 'Waiting for Hours Approval');
+      case 'in_progress_functional':
+        return myAssignedTickets.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission');
+      case 'in_progress_technical':
+        return myAssignedTickets.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission');
+      case 'customer_action':
+        return myAssignedTickets.filter(t => t.status === 'Customer Action');
+      case 'on_hold':
+        return myAssignedTickets.filter(t => t.status === 'On Hold');
+      case 'raised_sap':
+        return myAssignedTickets.filter(t => t.status === 'Raised to SAP');
+      case 'request_closure':
+        return myAssignedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval');
+      case 'closed':
+        return myAssignedTickets.filter(t => t.status === 'Closed');
+      case 'reopened':
+        return myAssignedTickets.filter(t => t.status === 'Reopened');
+      default:
+        return myAssignedTickets;
+    }
   }, [myAssignedTickets, activeTab]);
 
   const filteredTickets = useMemo(() => {
@@ -257,10 +277,13 @@ export default function ConsultantMyTicketsPage() {
 
   const handleQuoteHoursSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeTicketId || !estFuncHours || !estTechHours) return;
+    if (!activeTicketId) return;
+    const isFunctional = consultantType === 'Functional';
+    if (isFunctional ? !estFuncHours : !estTechHours) return;
+
     quoteEstimatedHours(activeTicketId, {
-      functionalEstimatedHours: Number(estFuncHours),
-      technicalEstimatedHours: Number(estTechHours),
+      functionalEstimatedHours: isFunctional ? Number(estFuncHours) : 0,
+      technicalEstimatedHours: !isFunctional ? Number(estTechHours) : 0,
       remarks: estRemarks,
       submittedBy: consultantName
     });
@@ -270,12 +293,15 @@ export default function ConsultantMyTicketsPage() {
 
   const handleRevisionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeTicketId || !estFuncHours || !estTechHours || !estRemarks.trim()) {
-      setValidationError('Revision justification is required.'); return;
+    if (!activeTicketId) return;
+    const isFunctional = consultantType === 'Functional';
+    const hours = isFunctional ? estFuncHours : estTechHours;
+    if (!hours || !estRemarks.trim()) {
+      setValidationError('Revision justification and new hours are required.'); return;
     }
     requestEstimateRevision(activeTicketId, {
-      functionalEstimatedHours: Number(estFuncHours),
-      technicalEstimatedHours: Number(estTechHours),
+      functionalEstimatedHours: isFunctional ? Number(estFuncHours) : 0,
+      technicalEstimatedHours: !isFunctional ? Number(estTechHours) : 0,
       remarks: estRemarks,
       submittedBy: consultantName
     });
@@ -347,12 +373,16 @@ export default function ConsultantMyTicketsPage() {
   // ── Summary tabs counts ──
   const counts = useMemo(() => ({
     all: myAssignedTickets.length,
-    active: myAssignedTickets.filter(t =>
-      ['In Progress', 'In Progress - Technical', 'In Progress - Functional', 'Requirement Gathering'].includes(t.status)).length,
-    pending: myAssignedTickets.filter(t =>
-      ['Customer Action', 'Raised to SAP', 'Waiting for Hours Approval'].includes(t.status)).length,
-    closure: myAssignedTickets.filter(t =>
-      ['Request for Closure', 'Closed', 'Reopened'].includes(t.status)).length,
+    requirementGathering: myAssignedTickets.filter(t => t.status === 'Requirement Gathering').length,
+    waitingHoursApproval: myAssignedTickets.filter(t => t.status === 'Waiting for Hours Approval').length,
+    inProgressFunctional: myAssignedTickets.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length,
+    inProgressTechnical: myAssignedTickets.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length,
+    customerAction: myAssignedTickets.filter(t => t.status === 'Customer Action').length,
+    onHold: myAssignedTickets.filter(t => t.status === 'On Hold').length,
+    raisedToSap: myAssignedTickets.filter(t => t.status === 'Raised to SAP').length,
+    requestForClosure: myAssignedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
+    closed: myAssignedTickets.filter(t => t.status === 'Closed').length,
+    reopened: myAssignedTickets.filter(t => t.status === 'Reopened').length,
   }), [myAssignedTickets]);
 
   // ── Ticket Action Dropdown ──
@@ -776,7 +806,7 @@ export default function ConsultantMyTicketsPage() {
                   <textarea value={estRemarks} onChange={e => setEstRemarks(e.target.value)}
                     placeholder="Estimation scope remarks..." className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 h-20 focus:outline-none" />
                 </div>
-                <p className="text-[10px] text-zinc-450 font-mono">First-time quote auto-approved. Ticket moves to "Waiting for Hours Approval".</p>
+                <p className="text-[10px] text-zinc-450 font-mono">First-time quote takes effect immediately.</p>
                 <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
                   <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
                   <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Submit Quote</Button>
@@ -809,7 +839,7 @@ export default function ConsultantMyTicketsPage() {
                   <textarea value={estRemarks} onChange={e => setEstRemarks(e.target.value)}
                     placeholder="Rationale for revision..." className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 h-20 focus:outline-none" required />
                 </div>
-                <p className="text-[10px] text-amber-600 font-bold font-mono">Revision requests require Manager approval.</p>
+                <p className="text-[10px] text-zinc-450 font-mono">Revision requests take effect immediately.</p>
                 <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
                   <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
                   <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Submit Revision</Button>
@@ -950,18 +980,37 @@ export default function ConsultantMyTicketsPage() {
       {/* Tabs */}
       <Tabs defaultValue="all" value={activeTab} onValueChange={val => { setActiveTab(val); setCurrentPage(1); }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <TabsList className="bg-zinc-100 border border-zinc-200 h-auto p-0.5 rounded-lg">
-            <TabsTrigger value="all" className="text-[10px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-4 py-2 cursor-pointer">
+          <TabsList className="bg-zinc-100 border border-zinc-200 h-auto p-0.5 rounded-lg flex flex-wrap gap-1">
+            <TabsTrigger value="all" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
               All <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.all}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="active" className="text-[10px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-4 py-2 cursor-pointer">
-              Active <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.active}</Badge>
+            <TabsTrigger value="requirement_gathering" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              Req. Gathering <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.requirementGathering}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="pending" className="text-[10px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-4 py-2 cursor-pointer">
-              Pending <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.pending}</Badge>
+            {/* Hrs Approval tab hidden because estimates do not require approval */}
+            <TabsTrigger value="in_progress_functional" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              IP Functional <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.inProgressFunctional}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="closure" className="text-[10px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-4 py-2 cursor-pointer">
-              Closure <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.closure}</Badge>
+            <TabsTrigger value="in_progress_technical" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              IP Technical <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.inProgressTechnical}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="customer_action" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              Cust. Action <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.customerAction}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="on_hold" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              On Hold <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.onHold}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="raised_sap" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              Raised To SAP <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.raisedToSap}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="request_closure" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              Req. Closure <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.requestForClosure}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              Closed <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.closed}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="reopened" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
+              Reopened <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.reopened}</Badge>
             </TabsTrigger>
           </TabsList>
 
@@ -989,7 +1038,7 @@ export default function ConsultantMyTicketsPage() {
               className="bg-white border border-zinc-200 rounded-md p-1.5 text-xs text-zinc-700 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition">
               <option value="All">All Statuses</option>
               <option value="Requirement Gathering">Req. Gathering</option>
-              <option value="Waiting for Hours Approval">Hrs Approval</option>
+              {/* <option value="Waiting for Hours Approval">Hrs Approval</option> */}
               {consultantType === 'Functional' ? (
                 <option value="In Progress - Functional">IP Functional</option>
               ) : (

@@ -30,7 +30,7 @@ export default function ManagerEffortApprovalsPage() {
   const router = useRouter();
 
   // State-driven active tab: estimated, actual, closures, reopens, unlocks, others
-  const [activeTab, setActiveTab] = useState<'estimated' | 'actual' | 'closures' | 'reopens' | 'unlocks' | 'others'>('estimated');
+  const [activeTab, setActiveTab] = useState<'estimated' | 'actual' | 'closures' | 'reopens' | 'unlocks' | 'others'>('actual');
 
   // Timesheet / Actual hours filter
   const [timesheetFilter, setTimesheetFilter] = useState<'Pending' | 'Approved' | 'Rejected' | 'All'>('Pending');
@@ -360,7 +360,8 @@ export default function ManagerEffortApprovalsPage() {
 
       {/* 6-Tab Navigation Bar */}
       <div className="flex border-b border-zinc-200 overflow-x-auto whitespace-nowrap bg-zinc-50/50 p-0.5 rounded-lg border">
-        <button
+        {/* Estimated Hours tab hidden as estimates do not require approval */}
+        {/* <button
           type="button"
           onClick={() => setActiveTab('estimated')}
           className={`flex items-center gap-2 py-2 px-4 font-bold uppercase text-[10px] rounded transition ${
@@ -373,7 +374,7 @@ export default function ManagerEffortApprovalsPage() {
           <Badge className="bg-zinc-200 text-zinc-800 hover:bg-zinc-200 border-none font-bold px-1.5 py-0">
             {pendingEstimates.length}
           </Badge>
-        </button>
+        </button> */}
  
         <button
           type="button"

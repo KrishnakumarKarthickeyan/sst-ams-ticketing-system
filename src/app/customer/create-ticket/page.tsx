@@ -1,29 +1,113 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Check, ArrowLeft, Send, Upload, File, X, AlertTriangle, Clock } from 'lucide-react';
+import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
+import { 
+  Check, 
+  ArrowLeft, 
+  Send, 
+  Upload, 
+  File, 
+  X, 
+  AlertTriangle, 
+  Clock, 
+  Search, 
+  ChevronDown, 
+  FileText, 
+  AlertCircle,
+  Layers,
+  Activity,
+  Paperclip,
+  FileSpreadsheet,
+  FileArchive,
+  FileImage,
+  Building
+} from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Label } from '../../../components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
 import { toast } from 'sonner';
 
-interface UploadingFile {
+interface AttachmentQueueItem {
   id: string;
-  name: string;
-  size: number;
-  type: string;
+  fileObj: File;
   progress: number;
   status: 'uploading' | 'success' | 'error';
 }
 
 const AVAILABLE_MODULES = [
   'FICO', 'MM', 'SD', 'PP', 'PM', 'QM', 'HCM', 
-  'SuccessFactors', 'BASIS', 'ABAP', 'Security/GRC', 
-  'CPI/Integration', 'BW/BI', 'Fiori', 'TRM'
+  'SF EC', 'SF ECP', 'SF PMGM', 'SF RCM', 
+  'SAC', 'ABAP', 'BASIS', 'CPI'
+];
+
+const REQUEST_TYPES = [
+  'Incident',
+  'Service Request',
+  'Change Request',
+  'Enhancement Request',
+  'Access Request',
+  'Configuration Request',
+  'Data Correction',
+  'Integration Issue',
+  'Report Issue',
+  'Interface Issue',
+  'Master Data Request',
+  'SAP Authorization Request',
+  'Performance Issue',
+  'Training Request',
+  'Advisory Request'
+];
+
+const CLASSIFICATIONS = [
+  'Functional',
+  'Technical',
+  'Basis',
+  'Integration',
+  'Security',
+  'Reporting',
+  'Infrastructure',
+  'Application Support'
+];
+
+const CATEGORIES = [
+  'Transaction Error',
+  'Posting Error',
+  'Master Data Issue',
+  'Workflow Issue',
+  'Authorization Issue',
+  'Interface Failure',
+  'Integration Failure',
+  'Report Error',
+  'Performance Issue',
+  'Printing Issue',
+  'Background Job Issue',
+  'Configuration Change',
+  'Enhancement',
+  'User Support',
+  'Data Upload',
+  'Data Correction',
+  'Training',
+  'System Issue'
+];
+
+const PRIORITIES = [
+  { value: 'Critical', label: 'Critical (P1)', color: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30' },
+  { value: 'High', label: 'High (P2)', color: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/30' },
+  { value: 'Medium', label: 'Medium (P3)', color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30' },
+  { value: 'Low', label: 'Low (P4)', color: 'bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-950/20 dark:text-zinc-400 dark:border-zinc-900/30' }
+];
+
+const BUSINESS_IMPACTS = [
+  'Business Completely Blocked',
+  'Major Business Impact',
+  'Moderate Business Impact',
+  'Minor Business Impact'
 ];
 
 export default function CustomerCreateTicketPage() {
@@ -31,37 +115,109 @@ export default function CustomerCreateTicketPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Form states
+  // Loading and error states
+  const [success, setSuccess] = useState(false);
+  const [successTicketId, setSuccessTicketId] = useState('');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Resolved Customer Org
+  const [resolvedOrg, setResolvedOrg] = useState('');
+  const [resolvedCode, setResolvedCode] = useState('');
+
+  // Form Section States
+  // Section A: Ticket Information
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [sapModules, setSapModules] = useState<any[]>(['FICO']);
-  const [category, setCategory] = useState<any>('Functional Issue');
-  const [priority, setPriority] = useState<any>('Medium');
-  
-  // New redesign fields
-  const [ticketType, setTicketType] = useState<any>('Incident');
-  const [functionalOrTechnical, setFunctionalOrTechnical] = useState<any>('Functional');
-  const [businessImpact, setBusinessImpact] = useState('');
-  const [expectedResolutionDate, setExpectedResolutionDate] = useState('');
+  const [requestType, setRequestType] = useState('');
+  const [priority, setPriority] = useState('Medium');
 
+  // Section C: SAP Classification (Multi-select + dropdowns)
+  const [sapModules, setSapModules] = useState<string[]>([]);
+  const [showModuleDropdown, setShowModuleDropdown] = useState(false);
+  const [moduleSearchQuery, setModuleSearchQuery] = useState('');
+  const moduleDropdownRef = useRef<HTMLDivElement>(null);
+  const [classification, setClassification] = useState('');
+  const [category, setCategory] = useState('');
+
+  // Section D: Business Impact
+  const [businessImpactLevel, setBusinessImpactLevel] = useState('Minor Business Impact');
+  const [businessImpactDesc, setBusinessImpactDesc] = useState('');
+  const [expectedResolutionDate, setExpectedResolutionDate] = useState('');
+  const [businessJustification, setBusinessJustification] = useState('');
+
+  // Section E: Attachments
+  const [filesQueue, setFilesQueue] = useState<AttachmentQueueItem[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Automatically resolve Customer organization
+  useEffect(() => {
+    const resolveCustomerOrg = async () => {
+      if (user && isSupabaseConfigured && supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('organization_id, organizations(name, customer_code)')
+            .eq('id', user.id)
+            .single();
+          
+          if (!error && data) {
+            const orgs = data.organizations as any;
+            const org = Array.isArray(orgs) ? orgs[0] : orgs;
+            const orgName = org?.name;
+            const custCode = org?.customer_code;
+            if (orgName) {
+              setResolvedOrg(orgName);
+            }
+            if (custCode) {
+              setResolvedCode(custCode);
+            }
+            return;
+          }
+        } catch (e) {
+          console.error('Error resolving customer organization:', e);
+        }
+      }
+      
+      // Local AuthContext fallbacks
+      if (user?.company) {
+        setResolvedOrg(user.company);
+      } else {
+        setResolvedOrg('Apex Global Industries');
+      }
+    };
+    resolveCustomerOrg();
+  }, [user, isSupabaseConfigured]);
+
+  // Click outside handlers for custom dropdowns
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (moduleDropdownRef.current && !moduleDropdownRef.current.contains(event.target as Node)) {
+        setShowModuleDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter modules for combobox
+  const filteredModules = useMemo(() => {
+    if (!moduleSearchQuery.trim()) return AVAILABLE_MODULES;
+    const q = moduleSearchQuery.toLowerCase();
+    return AVAILABLE_MODULES.filter(m => m.toLowerCase().includes(q));
+  }, [moduleSearchQuery]);
+
+  // Toggle SAP module selection
   const handleToggleModule = (mod: string) => {
     if (sapModules.includes(mod)) {
-      if (sapModules.length > 1) {
-        setSapModules(sapModules.filter(m => m !== mod));
-      }
+      setSapModules(sapModules.filter(m => m !== mod));
     } else {
       setSapModules([...sapModules, mod]);
     }
   };
 
-  // Attachments state
-  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
-  const [success, setSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Drag and Drop state
-  const [dragActive, setDragActive] = useState(false);
-
+  // Drag & drop file uploads
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -73,386 +229,679 @@ export default function CustomerCreateTicketPage() {
   };
 
   const processFiles = (files: FileList) => {
-    const newFiles = Array.from(files).map(file => {
-      const id = `f-upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Simulate file upload progress
-      const uploadItem: UploadingFile = {
+    const supportedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'png', 'jpg', 'jpeg', 'zip'];
+    const newItems: AttachmentQueueItem[] = [];
+
+    Array.from(files).forEach(file => {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      if (!supportedExtensions.includes(ext)) {
+        toast.error(`Unsupported file type: ${file.name}. Only PDF, DOC, Excel, CSV, images, and ZIP are supported.`);
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File size exceeds 10MB limit: ${file.name}`);
+        return;
+      }
+
+      const id = `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const item: AttachmentQueueItem = {
         id,
-        name: file.name,
-        size: file.size,
-        type: file.type,
+        fileObj: file,
         progress: 0,
         status: 'uploading'
       };
+      newItems.push(item);
 
-      // Progress simulation timer
+      // Simulate smooth upload progress
       let currentProgress = 0;
       const interval = setInterval(() => {
-        currentProgress += Math.floor(Math.random() * 25) + 12;
+        currentProgress += Math.floor(Math.random() * 20) + 10;
         if (currentProgress >= 100) {
           currentProgress = 100;
           clearInterval(interval);
-          setUploadingFiles(prev =>
-            prev.map(f => (f.id === id ? { ...f, progress: 100, status: 'success' } : f))
+          setFilesQueue(prev => 
+            prev.map(f => f.id === id ? { ...f, progress: 100, status: 'success' } : f)
           );
         } else {
-          setUploadingFiles(prev =>
-            prev.map(f => (f.id === id ? { ...f, progress: currentProgress } : f))
+          setFilesQueue(prev => 
+            prev.map(f => f.id === id ? { ...f, progress: currentProgress } : f)
           );
         }
-      }, 150);
-
-      return uploadItem;
+      }, 120);
     });
 
-    setUploadingFiles(prev => [...prev, ...newFiles]);
+    setFilesQueue(prev => [...prev, ...newItems]);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       processFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files && e.target.files.length > 0) {
       processFiles(e.target.files);
     }
   };
 
-  const removeFile = (id: string) => {
-    setUploadingFiles(prev => prev.filter(f => f.id !== id));
+  const removeQueueFile = (id: string) => {
+    setFilesQueue(prev => prev.filter(f => f.id !== id));
+  };
+
+  // Get helper file icon
+  const getFileIcon = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    if (['png', 'jpg', 'jpeg'].includes(ext)) return <FileImage size={16} className="text-blue-500 shrink-0" />;
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return <FileSpreadsheet size={16} className="text-green-600 shrink-0" />;
+    if (['zip'].includes(ext)) return <FileArchive size={16} className="text-amber-500 shrink-0" />;
+    return <FileText size={16} className="text-zinc-500 shrink-0" />;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim() || !user) return;
+    setValidationErrors([]);
 
-    // Filter successfully uploaded files
-    const attachments = uploadingFiles
-      .filter(f => f.status === 'success')
-      .map(f => ({
-        fileName: f.name,
-        fileSize: f.size,
-        fileType: f.type
-      }));
+    const errors: string[] = [];
+    if (!title.trim()) errors.push('Subject / Title is required');
+    if (!description.trim()) errors.push('Description is required');
+    if (!requestType) errors.push('Request Type is required');
+    if (!classification) errors.push('Classification is required');
+    if (!category) errors.push('Category is required');
+    if (!priority) errors.push('Priority is required');
+    if (sapModules.length === 0) errors.push('At least one SAP Module must be selected');
 
-    const toastId = toast.loading('Registering support ticket in database...');
-    const res = await createTicket({
-      title,
-      description,
-      sapModule: sapModules[0], // primary
-      sapModules, // all selected modules
-      category,
-      priority,
-      organization: user.company || 'Apex Global Industries',
-      requestedBy: user.name,
-      requestedByEmail: user.email,
-      ticketType,
-      functionalOrTechnical,
-      businessImpact,
-      expectedResolutionDate: expectedResolutionDate || undefined,
-      attachments
-    });
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      toast.error('Validation failed. Please fill all required fields.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
-    if (res.success) {
-      toast.success('Ticket registered successfully!', { id: toastId });
-      setSuccess(true);
-      setTitle('');
-      setDescription('');
-      setBusinessImpact('');
-      setExpectedResolutionDate('');
-      setUploadingFiles([]);
-      
-      setTimeout(() => {
-        setSuccess(false);
-        router.push('/customer/tickets');
-      }, 1500);
-    } else {
-      toast.error(`Database Error: ${res.error}`, { id: toastId, duration: 8000 });
+    setSubmitting(true);
+    const toastId = toast.loading('Submitting ticket and uploading attachments...');
+
+    try {
+      // Map files successfully uploaded
+      const attachments = filesQueue
+        .filter(f => f.status === 'success')
+        .map(f => ({
+          fileName: f.fileObj.name,
+          fileSize: f.fileObj.size,
+          fileType: f.fileObj.type,
+          fileObj: f.fileObj // Passed to Context
+        }));
+
+      const ticketPayload = {
+        title,
+        description,
+        sapModule: sapModules[0] as any,
+        sapModules: sapModules as any[],
+        category,
+        priority: priority as any,
+        organization: resolvedOrg,
+        requestedBy: user?.name || 'Customer Requestor',
+        requestedByEmail: user?.email || 'customer@sap.com',
+        ticketType: requestType,
+        functionalOrTechnical: classification === 'Technical' ? 'Technical' : 'Functional',
+        classification,
+        businessImpact: businessImpactLevel,
+        businessImpactLevel,
+        businessJustification,
+        expectedResolutionDate: expectedResolutionDate || undefined,
+        attachments,
+        source: 'Created by Client' as any
+      };
+
+      const res = await createTicket(ticketPayload);
+
+      if (res.success && res.ticketId) {
+        toast.success(`Ticket ${res.ticketId} created successfully!`, { id: toastId });
+        setSuccessTicketId(res.ticketId);
+        setSuccess(true);
+        
+        // Reset form
+        setTitle('');
+        setDescription('');
+        setSapModules([]);
+        setCategory('');
+        setClassification('');
+        setRequestType('');
+        setBusinessImpactDesc('');
+        setExpectedResolutionDate('');
+        setBusinessJustification('');
+        setFilesQueue([]);
+
+        setTimeout(() => {
+          setSuccess(false);
+          router.push('/customer/tickets');
+        }, 3000);
+      } else {
+        throw new Error(res.error || 'Server error occurred while inserting records.');
+      }
+    } catch (err: any) {
+      toast.error(`Failed to create ticket: ${err.message}`, { id: toastId });
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      
-      {/* Back button */}
-      <Link href="/customer/dashboard" className="inline-flex items-center gap-1.5 text-zinc-500 hover:text-zinc-950 font-mono text-xs transition">
-        <ArrowLeft size={13} />
-        Back to Dashboard
-      </Link>
-
-      {/* Header Title */}
-      <div className="border-b border-zinc-200 pb-4">
-        <h1 className="text-xl font-bold tracking-tight font-mono text-zinc-950 uppercase">
-          Submit Service Request
-        </h1>
-        <p className="text-xs text-zinc-500 font-medium">
-          Create functional error logs, technical bug requests, or BASIS customization needs.
-        </p>
-      </div>
-
-      {success && (
-        <div className="bg-zinc-950 text-white border border-zinc-900 rounded-lg p-4 font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 animate-pulse">
-          <Check size={14} className="text-emerald-400" />
-          <span>Ticket Registered Successfully. Redirecting to workspace...</span>
-        </div>
-      )}
-
-      {/* Form Submission Card */}
-      <form onSubmit={handleSubmit} className="bg-white border border-zinc-200 rounded-xl p-6 space-y-6 shadow-sm">
+    <TooltipProvider>
+      <div className="space-y-6 max-w-5xl mx-auto pb-12 px-4">
         
-        {/* Row 1: Title & Ticket Type */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-1.5">
-            <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Brief Title / Incident Summary</Label>
-            <input
-              type="text"
-              required
-              placeholder="e.g., SD pricing condition record missing in billing doc"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
-            />
+        {/* Back link */}
+        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-zinc-500 hover:text-zinc-955 transition text-xs font-sans font-medium">
+          <ArrowLeft size={13} />
+          <span>Back to My Tickets</span>
+        </Link>
+
+        {/* Header */}
+        <div className="border-b border-zinc-200 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 font-sans">
+              Open Support Ticket
+            </h1>
+            <p className="text-zinc-500 text-sm mt-1">
+              Submit a support request directly to your dedicated SAP BASIS, Functional, and Technical support desk.
+            </p>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Request Type</Label>
-            <select
-              value={ticketType}
-              onChange={(e) => setTicketType(e.target.value as any)}
-              className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
-            >
-              <option value="Incident">Incident (SLA Applies)</option>
-              <option value="Service Request">Service Request</option>
-              <option value="Enhancement Request">Enhancement Request</option>
-              <option value="Change Request">Change Request</option>
-              <option value="Training Request">Training Request</option>
-              <option value="Configuration Request">Configuration Request</option>
-              <option value="Report Request">Report Request</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Row 2: SAP Modules (Multi-select) */}
-        <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">
-            SAP Modules <span className="text-zinc-400 font-normal font-sans">(Select all that apply)</span>
-          </Label>
-          <div className="border border-zinc-200 rounded-lg p-3 bg-zinc-50 max-h-36 overflow-y-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 font-mono">
-            {AVAILABLE_MODULES.map((mod) => {
-              const isSelected = sapModules.includes(mod);
-              return (
-                <label
-                  key={mod}
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs font-semibold cursor-pointer transition select-none ${
-                    isSelected
-                      ? 'border-zinc-950 bg-white text-zinc-955 shadow-sm'
-                      : 'border-zinc-200 bg-white text-zinc-500 hover:text-zinc-800'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => handleToggleModule(mod)}
-                    className="accent-zinc-950 h-3.5 w-3.5 rounded border-zinc-350 cursor-pointer"
-                  />
-                  <span>{mod}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Row 3: Category, Priority, Category Classification */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Issue Category</Label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as any)}
-              className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
-            >
-              <option value="Functional Issue">Functional Issue</option>
-              <option value="Technical Issue">Technical Issue</option>
-              <option value="Authorization Issue">Authorization Issue</option>
-              <option value="Integration Issue">Integration Issue</option>
-              <option value="Performance Issue">Performance Issue</option>
-              <option value="Configuration Issue">Configuration Issue</option>
-              <option value="Enhancement Request">Enhancement Request</option>
-              <option value="Bug Fix">Bug Fix</option>
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Severity Priority</Label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value as any)}
-              className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
-            >
-              <option value="Low">Low (P4)</option>
-              <option value="Medium">Medium (P3)</option>
-              <option value="High">High (P2)</option>
-              <option value="Critical">Critical (P1)</option>
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Classification</Label>
-            <select
-              value={functionalOrTechnical}
-              onChange={(e) => setFunctionalOrTechnical(e.target.value as any)}
-              className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
-            >
-              <option value="Functional">Functional (SPRO/Config)</option>
-              <option value="Technical">Technical (ABAP/Code)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Row 3: Expected Date & SLA Notice */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Target Expectation Date</Label>
-            <input
-              type="date"
-              value={expectedResolutionDate}
-              onChange={(e) => setExpectedResolutionDate(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
-            />
-          </div>
-
-          {ticketType === 'Incident' ? (
-            <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex items-start gap-2.5 text-[10px] text-zinc-500 font-mono">
-              <Clock className="text-zinc-650 shrink-0 mt-0.5" size={13} />
-              <div>
-                <span className="font-bold text-zinc-950 uppercase block">SLA Allocation Notice</span>
-                <span>As an **Incident**, this request falls under active SLA response metrics. P1: 4h, P2: 8h, P3: 48h, P4: 120h.</span>
-              </div>
+          {/* Org Display */}
+          <div className="flex items-center gap-2 border border-zinc-200 bg-zinc-50/50 p-3 rounded-xl font-sans shrink-0 max-w-xs self-start md:self-center">
+            <Building size={14} className="text-zinc-500" />
+            <div className="text-left truncate">
+              <span className="text-[9px] uppercase font-bold text-zinc-450 block font-mono">Assigned Account</span>
+              <span className="text-xs font-bold text-zinc-800 truncate block leading-snug">
+                {resolvedOrg} {resolvedCode && <span className="text-zinc-400 font-mono text-[10px]">[{resolvedCode}]</span>}
+              </span>
             </div>
-          ) : (
-            <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex items-start gap-2.5 text-[10px] text-zinc-400 font-mono">
-              <AlertTriangle className="text-zinc-400 shrink-0 mt-0.5" size={13} />
-              <div>
-                <span className="font-bold text-zinc-600 uppercase block">SLA Exemption Notice</span>
-                <span>As a **{ticketType}**, this request is exempted from incident-based SLA countdowns. Resolution will be mapped by expected dates.</span>
-              </div>
+          </div>
+        </div>
+
+        {/* Validation Errors Alert Box */}
+        {validationErrors.length > 0 && (
+          <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-xs font-sans space-y-2 flex items-start gap-3">
+            <AlertCircle className="text-red-600 shrink-0 mt-0.5" size={16} />
+            <div className="space-y-1">
+              <span className="font-bold uppercase text-[10px] tracking-wider block">Submission Blocked (Validation Failures)</span>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {validationErrors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Row 4: Business Impact */}
-        <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Operational & Business Impact</Label>
-          <textarea
-            rows={2}
-            placeholder="Explain how this issue impacts operations (e.g., unable to close SD billing period, blocking warehouse shipments)..."
-            value={businessImpact}
-            onChange={(e) => setBusinessImpact(e.target.value)}
-            className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
-          />
-        </div>
+        {/* Success Alert Banner */}
+        {success && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl p-4 font-sans font-medium flex items-center gap-3 animate-fade-in">
+            <Check size={18} className="text-emerald-600 shrink-0" />
+            <div className="text-xs">
+              <span className="font-bold block uppercase text-[10px] tracking-wider">Ticket Created Successfully</span>
+              <span>Ticket ID: <strong>{successTicketId}</strong>. Records saved, and workspace view refreshing...</span>
+            </div>
+          </div>
+        )}
 
-        {/* Row 5: Detailed Description */}
-        <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Detailed Description & Replication Steps</Label>
-          <textarea
-            required
-            rows={5}
-            placeholder="Provide transaction codes (T-Codes), error dump references, configuration links, or expected result outputs..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
-          />
-        </div>
-
-        {/* Drag and Drop Upload Area */}
-        <div className="space-y-2">
-          <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">File Attachments (Log dumps, Screenshots)</Label>
+        {/* Form Container Grid */}
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          <div
-            onDragEnter={handleDrag}
-            onDragOver={handleDrag}
-            onDragLeave={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-2 ${
-              dragActive 
-                ? 'border-zinc-950 bg-zinc-50' 
-                : 'border-zinc-200 hover:border-zinc-400 bg-white'
-            }`}
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              multiple
-              className="hidden"
-            />
-            <Upload className="text-zinc-400" size={20} />
-            <div>
-              <span className="text-xs font-bold text-zinc-800 font-mono">Drag and drop file here</span>
-              <span className="text-[10px] text-zinc-500 font-mono block mt-1">or click to browse local files (max 10MB each)</span>
-            </div>
-          </div>
+          {/* LEFT 2 COLUMNS: Ticket & Classification Details */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Section A: Ticket Information */}
+            <Card className="shadow-sm border-zinc-200">
+              <CardHeader className="border-b border-zinc-100 bg-zinc-50/50 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-zinc-200/60 rounded">
+                    <FileText size={14} className="text-zinc-700" />
+                  </div>
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-900 font-sans">Section A: Ticket Information</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                
+                {/* Subject Line */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Subject / Title *</Label>
+                    <span className="text-[9px] text-zinc-400 font-sans">Mandatory field</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. MM: Unable to release purchasing requisition 10002345"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-mono shadow-sm transition-all"
+                  />
+                </div>
 
-          {/* Upload progress list */}
-          {uploadingFiles.length > 0 && (
-            <div className="border border-zinc-100 rounded-lg divide-y divide-zinc-100 bg-zinc-50/50 max-h-48 overflow-y-auto">
-              {uploadingFiles.map(file => (
-                <div key={file.id} className="p-3 flex items-center justify-between gap-4 text-xs font-mono">
-                  <div className="flex items-center gap-2 truncate flex-1">
-                    <File size={14} className="text-zinc-400 shrink-0" />
-                    <div className="truncate space-y-0.5">
-                      <span className="font-bold text-zinc-800 text-[11px] block truncate">{file.name}</span>
-                      <span className="text-[9px] text-zinc-400 block font-mono">{(file.size / 1024).toFixed(0)}kb</span>
+                {/* Request Type & Priority Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Request Type Select */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Request Type *</Label>
+                    <select
+                      value={requestType}
+                      onChange={(e) => setRequestType(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-sans cursor-pointer shadow-sm transition-all"
+                    >
+                      <option value="">-- Select Request Type --</option>
+                      {REQUEST_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Priority Select */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Severity Priority *</Label>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={priority}
+                        onChange={(e) => setPriority(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-sans cursor-pointer shadow-sm transition-all flex-1"
+                      >
+                        <option value="Low">Low (P4)</option>
+                        <option value="Medium">Medium (P3)</option>
+                        <option value="High">High (P2)</option>
+                        <option value="Critical">Critical (P1)</option>
+                      </select>
+                      
+                      {/* Priority Color Indicator */}
+                      <Badge className={`border uppercase tracking-widest text-[9px] font-bold font-mono shrink-0 px-2 py-1.5 rounded-md hover:bg-inherit cursor-default shadow-none ${
+                        PRIORITIES.find(p => p.value === priority)?.color
+                      }`}>
+                        {priority}
+                      </Badge>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    {file.status === 'uploading' && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-1.5 bg-zinc-200 rounded-full overflow-hidden border border-zinc-300">
-                          <div className="h-full bg-zinc-950 transition-all" style={{ width: `${file.progress}%` }}></div>
+                </div>
+
+                {/* SLA Indicator Banner */}
+                {requestType === 'Incident' && (
+                  <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-3 flex items-start gap-2.5 text-[10px] text-zinc-500 font-sans">
+                    <Clock className="text-zinc-500 shrink-0 mt-0.5" size={14} />
+                    <div className="space-y-0.5">
+                      <span className="font-bold text-zinc-800 uppercase block text-[9px]">SLA Response Notice</span>
+                      <span>This incident falls under active Service Level Agreements (SLA). Critical: 4h, High: 8h, Medium: 48h, Low: 120h.</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Description Textarea */}
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Detailed Description *</Label>
+                  <textarea
+                    rows={6}
+                    placeholder="Include SAP T-Codes, steps to reproduce, exact error logs, or business impact details..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full bg-white border border-zinc-200 rounded-lg p-3 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-mono shadow-sm transition-all"
+                  />
+                </div>
+
+              </CardContent>
+            </Card>
+
+            {/* Section C: SAP Classification */}
+            <Card className="shadow-sm border-zinc-200">
+              <CardHeader className="border-b border-zinc-100 bg-zinc-50/50 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-zinc-200/60 rounded">
+                    <Layers size={14} className="text-zinc-700" />
+                  </div>
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-900 font-sans">Section C: SAP Classification</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                
+                {/* SAP Modules Searchable Multi-Select Combobox */}
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">SAP Modules Scope *</Label>
+                  <div className="relative" ref={moduleDropdownRef}>
+                    <div 
+                      onClick={() => setShowModuleDropdown(!showModuleDropdown)}
+                      className="min-h-10 w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-900 cursor-pointer shadow-sm flex flex-wrap items-center gap-1.5 pr-8 transition-all hover:border-zinc-350"
+                    >
+                      {sapModules.length === 0 ? (
+                        <span className="text-zinc-400">Search and select SAP modules...</span>
+                      ) : (
+                        sapModules.map(mod => (
+                          <Badge 
+                            key={mod} 
+                            className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200 border-none font-mono text-[9px] rounded flex items-center gap-1 py-0.5 px-1.5"
+                          >
+                            <span>{mod}</span>
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleModule(mod);
+                              }}
+                              className="text-zinc-400 hover:text-zinc-900 font-bold ml-0.5"
+                            >
+                              &times;
+                            </span>
+                          </Badge>
+                        ))
+                      )}
+                      
+                      <ChevronDown size={14} className="text-zinc-400 absolute right-3 top-3 pointer-events-none" />
+                    </div>
+
+                    {showModuleDropdown && (
+                      <div className="absolute z-50 w-full mt-1.5 bg-white border border-zinc-200 rounded-xl shadow-lg p-3 space-y-2 animate-in fade-in-50 slide-in-from-top-1">
+                        
+                        {/* Search Input */}
+                        <div className="flex items-center gap-2 border border-zinc-150 rounded-lg px-2 py-1.5 bg-zinc-50/50">
+                          <Search size={12} className="text-zinc-400" />
+                          <input 
+                            type="text" 
+                            placeholder="Filter modules..." 
+                            value={moduleSearchQuery}
+                            onChange={(e) => setModuleSearchQuery(e.target.value)}
+                            className="w-full bg-transparent text-xs outline-none font-sans font-medium"
+                          />
                         </div>
-                        <span className="text-[9px] font-bold text-zinc-500">{file.progress}%</span>
+
+                        {/* Quick Selection Buttons */}
+                        <div className="flex gap-2 border-b border-zinc-100 pb-2">
+                          <button 
+                            type="button"
+                            onClick={() => setSapModules(AVAILABLE_MODULES)}
+                            className="text-[9px] font-bold text-zinc-800 bg-zinc-100 hover:bg-zinc-200 px-2 py-1 rounded"
+                          >
+                            Select All
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setSapModules([])}
+                            className="text-[9px] font-bold text-zinc-500 bg-zinc-100 hover:bg-zinc-200 px-2 py-1 rounded"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+
+                        {/* List */}
+                        <div className="max-h-40 overflow-y-auto space-y-0.5 pr-1">
+                          {filteredModules.length === 0 ? (
+                            <div className="text-[10px] text-zinc-400 text-center py-2">No matching modules.</div>
+                          ) : (
+                            filteredModules.map(mod => {
+                              const isChecked = sapModules.includes(mod);
+                              return (
+                                <div 
+                                  key={mod}
+                                  onClick={() => handleToggleModule(mod)}
+                                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition ${
+                                    isChecked 
+                                      ? 'bg-zinc-950 text-white font-bold' 
+                                      : 'hover:bg-zinc-50 text-zinc-700'
+                                  }`}
+                                >
+                                  <span>{mod}</span>
+                                  {isChecked && <Check size={11} className="text-white" />}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
                       </div>
                     )}
-                    {file.status === 'success' && (
-                      <Badge className="bg-emerald-100 hover:bg-emerald-100 text-emerald-800 border-0 font-mono text-[9px] rounded py-0.5 px-1.5">Success</Badge>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFile(file.id);
-                      }}
-                      className="p-1 rounded-full text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100"
-                    >
-                      <X size={12} />
-                    </button>
                   </div>
                 </div>
-              ))}
+
+                {/* Classification & Category Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Classification Dropdown */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Classification *</Label>
+                    <select
+                      value={classification}
+                      onChange={(e) => setClassification(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-sans cursor-pointer shadow-sm transition-all"
+                    >
+                      <option value="">-- Select Classification --</option>
+                      {CLASSIFICATIONS.map(cls => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Category Dropdown */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Category Master *</Label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-sans cursor-pointer shadow-sm transition-all"
+                    >
+                      <option value="">-- Select Category --</option>
+                      {CATEGORIES.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                </div>
+
+              </CardContent>
+            </Card>
+
+            {/* Section D: Business Impact */}
+            <Card className="shadow-sm border-zinc-200">
+              <CardHeader className="border-b border-zinc-100 bg-zinc-50/50 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-zinc-200/60 rounded">
+                    <Activity size={14} className="text-zinc-700" />
+                  </div>
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-900 font-sans">Section D: Business Impact</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                
+                {/* Impact Level and Expected Date Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Impact Level */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Business Impact Level</Label>
+                    <select
+                      value={businessImpactLevel}
+                      onChange={(e) => setBusinessImpactLevel(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-sans cursor-pointer shadow-sm transition-all"
+                    >
+                      {BUSINESS_IMPACTS.map(imp => (
+                        <option key={imp} value={imp}>{imp}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Expected Resolution Date */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Expected Resolution Date</Label>
+                    <input
+                      type="date"
+                      value={expectedResolutionDate}
+                      onChange={(e) => setExpectedResolutionDate(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-sans shadow-sm transition-all"
+                    />
+                  </div>
+
+                </div>
+
+                {/* Business Impact Description */}
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Impact Description</Label>
+                  <textarea
+                    rows={2}
+                    placeholder="Describe how the business is impacted (e.g. unable to release stock order updates)..."
+                    value={businessImpactDesc}
+                    onChange={(e) => setBusinessImpactDesc(e.target.value)}
+                    className="w-full bg-white border border-zinc-200 rounded-lg p-3 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-sans shadow-sm transition-all"
+                  />
+                </div>
+
+                {/* Business Justification */}
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-sans">Business Justification</Label>
+                  <textarea
+                    rows={2}
+                    placeholder="Provide justification for resolution priority or expedited processing requests..."
+                    value={businessJustification}
+                    onChange={(e) => setBusinessJustification(e.target.value)}
+                    className="w-full bg-white border border-zinc-200 rounded-lg p-3 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 font-sans shadow-sm transition-all"
+                  />
+                </div>
+
+              </CardContent>
+            </Card>
+
+          </div>
+
+          {/* RIGHT 1 COLUMN: Attachments & Submit Actions */}
+          <div className="space-y-6">
+            
+            {/* Section E: Attachments */}
+            <Card className="shadow-sm border-zinc-200">
+              <CardHeader className="border-b border-zinc-100 bg-zinc-50/50 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-zinc-200/60 rounded">
+                    <Paperclip size={14} className="text-zinc-700" />
+                  </div>
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-900 font-sans">Section E: Attachments</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                
+                {/* Drag and Drop Zone */}
+                <div
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 bg-white ${
+                    dragActive ? 'border-zinc-900 bg-zinc-50' : 'border-zinc-200 hover:border-zinc-300'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    multiple
+                    className="hidden"
+                  />
+                  <Upload className="text-zinc-450" size={20} />
+                  <div>
+                    <span className="text-xs font-bold text-zinc-800 font-sans block">Drag & drop files here</span>
+                    <span className="text-[10px] text-zinc-400 font-sans block mt-1">or click to browse local files</span>
+                  </div>
+                  <span className="text-[8px] font-mono text-zinc-400 mt-1 uppercase">PDF, DOC, Excel, CSV, Images, ZIP (max 10MB)</span>
+                </div>
+
+                {/* Queue Display */}
+                {filesQueue.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[9px] text-zinc-400 font-sans uppercase font-bold border-b border-zinc-100 pb-1.5">
+                      <span>Upload Queue</span>
+                      <span>
+                        {filesQueue.length} {filesQueue.length === 1 ? 'file' : 'files'} (
+                        {(filesQueue.reduce((sum, f) => sum + f.fileObj.size, 0) / (1024 * 1024)).toFixed(2)} MB)
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {filesQueue.map(item => (
+                        <div key={item.id} className="p-2 border border-zinc-150 rounded-lg flex items-center justify-between gap-3 text-[10px] font-mono bg-zinc-50/50">
+                          
+                          {/* File Details */}
+                          <div className="flex items-center gap-2 truncate flex-1">
+                            {getFileIcon(item.fileObj.name)}
+                            <div className="truncate">
+                              <span className="font-bold text-zinc-800 block truncate leading-snug">{item.fileObj.name}</span>
+                              <span className="text-[8px] text-zinc-450 block font-mono">{(item.fileObj.size / 1024).toFixed(0)} KB</span>
+                            </div>
+                          </div>
+
+                          {/* Progress & Actions */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {item.status === 'uploading' && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-12 h-1 bg-zinc-150 rounded-full overflow-hidden border border-zinc-200">
+                                  <div className="h-full bg-zinc-950" style={{ width: `${item.progress}%` }}></div>
+                                </div>
+                                <span className="text-[8px] font-bold text-zinc-500">{item.progress}%</span>
+                              </div>
+                            )}
+                            
+                            {item.status === 'success' && (
+                              <Badge className="bg-emerald-50 hover:bg-emerald-50 text-emerald-800 text-[8px] font-bold border-emerald-100 rounded px-1.5 py-0 leading-none">Ready</Badge>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeQueueFile(item.id);
+                              }}
+                              className="p-1 text-zinc-400 hover:text-zinc-955 hover:bg-zinc-100 rounded transition"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </CardContent>
+            </Card>
+
+            {/* Submission Actions */}
+            <div className="space-y-3">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 bg-zinc-950 hover:bg-zinc-850 disabled:bg-zinc-400 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] flex items-center justify-center gap-2 transition-all shadow-sm font-sans"
+              >
+                {submitting ? (
+                  <>
+                    <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full shrink-0"></span>
+                    <span>Submitting Ticket...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={12} />
+                    <span>Submit Ticket</span>
+                  </>
+                )}
+              </button>
+
+              <Link 
+                href="/customer/tickets"
+                className="w-full py-3 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 hover:text-zinc-950 rounded-xl font-bold uppercase tracking-wider text-[10px] flex items-center justify-center transition-all shadow-sm font-sans"
+              >
+                Cancel Submission
+              </Link>
             </div>
-          )}
-        </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded-lg font-bold uppercase tracking-wider text-[10px] flex items-center justify-center gap-1.5 transition-all shadow-sm"
-        >
-          <Send size={13} />
-          Register Support Request
-        </button>
+          </div>
 
-      </form>
-    </div>
+        </form>
+
+      </div>
+    </TooltipProvider>
   );
 }

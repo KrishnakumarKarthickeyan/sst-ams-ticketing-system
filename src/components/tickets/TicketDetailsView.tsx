@@ -48,10 +48,13 @@ interface TicketDetailsViewProps {
 }
 
 interface ConsultantLookup {
+  id?: string;
   name: string;
   type: 'Functional' | 'Technical';
   expertise: SAPModule[];
   workload: number;
+  roleTitle?: string;
+  phoneNumber?: string;
 }
 
 const CONSULTANTS_DB: ConsultantLookup[] = [];
@@ -60,6 +63,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
   const { user } = useAuth();
   const {
     tickets,
+    contracts,
     addComment,
     logEffort,
     approveEffortLog,
@@ -92,10 +96,13 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
           .eq('role', 'Consultant');
         if (!error && data) {
           setDbConsultants(data.map(c => ({
+            id: c.id,
             name: c.full_name,
             type: (c.consultant_type as 'Functional' | 'Technical') || 'Functional',
             expertise: (c.sap_modules as SAPModule[]) || [],
-            workload: 0
+            workload: 0,
+            roleTitle: c.role_title,
+            phoneNumber: c.phone_number
           })));
         }
       }
@@ -188,9 +195,49 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     }
   }, [ticket]);
 
+  // ── HOURLY AGGREGATES ──
+  const approvedEstimates = useMemo(() => {
+    if (!ticket) {
+      return { func: 0, tech: 0, total: 0 };
+    }
+    const latest = (ticket.hourEstimates || [])
+      .filter(e => e.status === 'Revision Approved' || e.status === 'Submitted')
+      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+    return {
+      func: latest?.functionalEstimatedHours || 0,
+      tech: latest?.technicalEstimatedHours || 0,
+      total: latest?.totalEstimatedHours || 0
+    };
+  }, [ticket]);
+
+  const actualsSummary = useMemo(() => {
+    if (!ticket) {
+      return { func: 0, tech: 0, total: 0 };
+    }
+    const funcEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
+    const techEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
+
+    const funcAct = funcEff.reduce((sum, e) => sum + e.actualHours, 0);
+    const techAct = techEff.reduce((sum, e) => sum + e.actualHours, 0);
+
+    return {
+      func: funcAct,
+      tech: techAct,
+      total: funcAct + techAct
+    };
+  }, [ticket]);
+
+  const varianceSummary = useMemo(() => {
+    return {
+      func: actualsSummary.func - approvedEstimates.func,
+      tech: actualsSummary.tech - approvedEstimates.tech,
+      total: actualsSummary.total - approvedEstimates.total
+    };
+  }, [approvedEstimates, actualsSummary]);
+
   if (!ticket) {
     return (
-      <div className="p-8 text-center text-red-600 font-bold font-mono">
+      <div className="p-8 text-center text-red-650 font-bold font-mono">
         Error: Ticket Registry Mismatch
       </div>
     );
@@ -217,7 +264,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     const newEffort: TicketConsultantEffort = {
       id: `eff-alloc-${Date.now()}`,
       ticketId: ticket.id,
-      consultantId: selectedAllocName.toLowerCase().replace(/\s+/g, '-'),
+      consultantId: dbConsultant.id || selectedAllocName.toLowerCase().replace(/\s+/g, '-'),
       consultantName: selectedAllocName,
       consultantType: dbConsultant.type,
       estimatedHours: Number(allocHours) || 0,
@@ -425,7 +472,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
       if (a.id === effId) {
         return {
           ...a,
-          consultantId: newName.toLowerCase().replace(/\s+/g, '-'),
+          consultantId: dbConsultant.id || newName.toLowerCase().replace(/\s+/g, '-'),
           consultantName: newName,
           consultantType: dbConsultant.type,
           updatedAt: new Date().toISOString()
@@ -530,39 +577,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     showBannerMessage('Ticket resolved and submitted. Awaiting client closure verification.');
   };
 
-  // ── HOURLY AGGREGATES ──
-  const approvedEstimates = useMemo(() => {
-    const latest = (ticket.hourEstimates || [])
-      .filter(e => e.status === 'Revision Approved' || e.status === 'Submitted')
-      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
-    return {
-      func: latest?.functionalEstimatedHours || 0,
-      tech: latest?.technicalEstimatedHours || 0,
-      total: latest?.totalEstimatedHours || 0
-    };
-  }, [ticket]);
-
-  const actualsSummary = useMemo(() => {
-    const funcEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
-    const techEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
-
-    const funcAct = funcEff.reduce((sum, e) => sum + e.actualHours, 0);
-    const techAct = techEff.reduce((sum, e) => sum + e.actualHours, 0);
-
-    return {
-      func: funcAct,
-      tech: techAct,
-      total: funcAct + techAct
-    };
-  }, [ticket]);
-
-  const varianceSummary = useMemo(() => {
-    return {
-      func: actualsSummary.func - approvedEstimates.func,
-      tech: actualsSummary.tech - approvedEstimates.tech,
-      total: actualsSummary.total - approvedEstimates.total
-    };
-  }, [approvedEstimates, actualsSummary]);
+  // Hourly aggregates moved above early return statement to preserve Hooks order rule
 
   const getSlaIndicator = (slaDueAt: string, status: string) => {
     if (status === 'Closed' || status === 'Resolved') {
@@ -675,10 +690,10 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {([
                 { id: 'overview', label: 'Incident Overview' },
                 { id: 'assignments', label: 'Resource allocations' },
-                { id: 'estimates', label: 'Effort estimates' },
+                ...(role !== 'Customer' ? [{ id: 'estimates', label: 'Effort estimates' }] : []),
                 { id: 'actuals', label: 'Actuals & variance' },
                 { id: 'customer', label: 'Client SLA contract' }
-              ] as const).map(tab => (
+              ] as { id: 'overview' | 'assignments' | 'estimates' | 'actuals' | 'customer'; label: string }[]).map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveHubTab(tab.id)}
@@ -705,17 +720,32 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                     </div>
                     <div>
                       <span className="text-[9px] text-zinc-450 uppercase font-bold block">Client Requestor</span>
-                      <span className="font-bold text-zinc-900 block mt-0.5">{ticket.requestedBy} ({ticket.requestedByEmail})</span>
+                      <span className="font-bold text-zinc-900 block mt-0.5">{ticket.requestedBy}</span>
                     </div>
                     <div>
-                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Urgency Classification</span>
-                      <span className="font-semibold text-zinc-900 block mt-0.5">{ticket.category}</span>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Contact Coordinates</span>
+                      <span className="text-zinc-900 block mt-0.5 font-mono text-[11px]">
+                        Email: {ticket.requestedByEmail || 'N/A'}<br/>
+                        Phone: {ticket.requestedByPhone || 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Raised By</span>
+                      <span className="font-bold text-zinc-900 block mt-0.5">{ticket.createdByName || ticket.requestedBy}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Created Date</span>
+                      <span className="font-semibold text-zinc-900 block mt-0.5">{new Date(ticket.createdAt).toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <span className="text-[9px] text-zinc-450 uppercase font-bold block">SAP Module Scope</span>
                       <span className="font-bold text-zinc-950 block mt-0.5 font-mono">{ticket.sapModule}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Urgency Classification</span>
+                      <span className="font-semibold text-zinc-900 block mt-0.5">{ticket.category}</span>
                     </div>
                     <div>
                       <span className="text-[9px] text-zinc-450 uppercase font-bold block">Resolution target boundary</span>
@@ -733,6 +763,79 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {activeHubTab === 'assignments' && (
                 <div className="space-y-4">
                   
+                  {/* Primary Assignment Summary Section */}
+                  <div className="bg-white border border-zinc-200 rounded p-4 space-y-4">
+                    <span className="font-bold text-zinc-900 uppercase text-[10px] tracking-wider block flex items-center gap-1.5 font-mono">
+                      <User size={12} className="text-zinc-650" /> Primary Assignment Summary
+                    </span>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Functional Lead/Resources */}
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest font-mono block">
+                          Functional Assignment
+                        </span>
+                        {(() => {
+                          const funcList = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
+                          const primaryFunc = funcList.find(e => ticket.assignedConsultant === e.consultantName) || funcList[0];
+                          if (!primaryFunc) {
+                            return <div className="text-[10px] text-zinc-450 italic font-mono">Unassigned</div>;
+                          }
+                          const prof = CONSULTANTS_DB.find(c => c.name === primaryFunc.consultantName);
+                          const isLead = ticket.assignedConsultant === primaryFunc.consultantName;
+                          return (
+                            <div className="bg-zinc-50 border border-zinc-150 rounded p-2.5 flex items-center justify-between text-xs font-mono">
+                              <div>
+                                <div className="font-bold text-zinc-900">{primaryFunc.consultantName}</div>
+                                <div className="text-[9px] text-zinc-500">Module: {prof?.expertise?.join(', ') || ticket.sapModule}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[9px] font-semibold text-zinc-600">Role: Functional</div>
+                                <span className={`inline-block text-[8px] uppercase px-1.5 py-0.2 tracking-wider rounded font-bold ${
+                                  isLead ? 'bg-blue-100 text-blue-800' : 'bg-zinc-200 text-zinc-700'
+                                }`}>
+                                  {isLead ? 'Lead' : 'Assigned'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Technical Lead/Resources */}
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest font-mono block">
+                          Technical Assignment
+                        </span>
+                        {(() => {
+                          const techList = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
+                          const primaryTech = techList.find(e => ticket.assignedConsultant === e.consultantName) || techList[0];
+                          if (!primaryTech) {
+                            return <div className="text-[10px] text-zinc-450 italic font-mono">Unassigned</div>;
+                          }
+                          const prof = CONSULTANTS_DB.find(c => c.name === primaryTech.consultantName);
+                          const isLead = ticket.assignedConsultant === primaryTech.consultantName;
+                          return (
+                            <div className="bg-zinc-50 border border-zinc-150 rounded p-2.5 flex items-center justify-between text-xs font-mono">
+                              <div>
+                                <div className="font-bold text-zinc-900">{primaryTech.consultantName}</div>
+                                <div className="text-[9px] text-zinc-500">Module: {prof?.expertise?.join(', ') || ticket.sapModule}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[9px] font-semibold text-zinc-600">Role: Technical</div>
+                                <span className={`inline-block text-[8px] uppercase px-1.5 py-0.2 tracking-wider rounded font-bold ${
+                                  isLead ? 'bg-blue-100 text-blue-800' : 'bg-zinc-200 text-zinc-700'
+                                }`}>
+                                  {isLead ? 'Lead' : 'Assigned'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Primary Lead Reassignment Control */}
                   {(role === 'Manager' || role === 'SuperAdmin') && (
                     <div className="bg-zinc-50 border border-zinc-200 rounded p-4 space-y-2">
@@ -826,201 +929,323 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                   {/* Grouped Resource Roster */}
                   <div className="space-y-4">
                     
-                    {/* A. FUNCTIONAL RESOURCES */}
-                    <div className="space-y-1.5">
-                      <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Functional Resources</span>
-                      <div className="border border-zinc-200 rounded bg-white overflow-hidden">
-                        <table className="w-full text-left text-[10px]">
-                          <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
-                            <tr>
-                              <th className="py-2 px-3">Consultant</th>
-                              <th className="py-2 px-3 text-center">Module Expertise</th>
-                              <th className="py-2 px-3 text-center">Workload</th>
-                              <th className="py-2 px-3 text-center">Estimated Hours</th>
-                              <th className="py-2 px-3 text-center">Actual Hours</th>
-                              {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Actions</th>}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-zinc-150 bg-white">
-                            {(!ticket.consultantEfforts || ticket.consultantEfforts.filter(e => e.consultantType === 'Functional' && !e.isDeleted).length === 0) ? (
-                              <tr>
-                                <td colSpan={6} className="py-4 text-center text-zinc-400 italic">No functional resources allocated to this incident.</td>
-                              </tr>
-                            ) : (
-                              ticket.consultantEfforts.filter(e => e.consultantType === 'Functional' && !e.isDeleted).map(eff => {
-                                const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
-                                return (
-                                  <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
-                                    <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
-                                    <td className="py-2 px-3 text-center font-bold text-zinc-650">{dbInfo?.expertise.join(', ') || '-'}</td>
-                                    <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
-                                    <td className="py-2 px-3 text-center">
-                                      {role === 'Manager' || role === 'SuperAdmin' ? (
-                                        <input
-                                          type="number"
-                                          min={0}
-                                          value={eff.estimatedHours}
-                                          onChange={e => handleInlineEstChange(eff.id, Number(e.target.value) || 0)}
-                                          className="w-12 bg-white border border-zinc-200 rounded p-0.5 text-center font-bold text-[10px] focus:outline-none"
-                                        />
-                                      ) : (
-                                        <span className="font-bold text-zinc-800">{eff.estimatedHours}h</span>
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-center font-bold text-zinc-955 bg-zinc-50/50">{eff.actualHours}h</td>
-                                    {(role === 'Manager' || role === 'SuperAdmin') && (
-                                      <td className="py-2 px-3 text-right">
-                                        {replacingResource?.id === eff.id ? (
-                                          <div className="flex items-center justify-end gap-1">
-                                            <select
-                                              value={replacementConsultantName}
-                                              onChange={(e) => handleReplaceResource(eff.id, eff.consultantName, e.target.value)}
-                                              className="bg-white border border-zinc-200 rounded p-0.5 text-[9px] focus:outline-none cursor-pointer"
-                                            >
-                                              <option value="">Replace...</option>
-                                              {CONSULTANTS_DB.filter(c => c.name !== eff.consultantName && c.type === 'Functional').map(c => (
-                                                <option key={c.name} value={c.name}>{c.name}</option>
-                                              ))}
-                                            </select>
-                                            <button
-                                              type="button"
-                                              onClick={() => setReplacingResource(null)}
-                                              className="text-[9px] font-bold text-red-650 hover:underline px-1"
-                                            >
-                                              Cancel
-                                            </button>
-                                          </div>
-                                        ) : (
-                                          <div className="flex justify-end gap-1.5">
-                                            <button
-                                              type="button"
-                                              onClick={() => { setReplacingResource(eff); setReplacementConsultantName(''); }}
-                                              className="p-1 border border-zinc-200 hover:border-blue-500 hover:text-blue-700 rounded transition"
-                                              title="Replace Consultant"
-                                            >
-                                              <RefreshCw size={11} />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
-                                              className="p-1 border border-zinc-200 hover:border-red-500 hover:text-red-700 rounded transition"
-                                              title="Remove Consultant"
-                                            >
-                                              <Trash2 size={11} />
-                                            </button>
-                                          </div>
-                                        )}
-                                      </td>
-                                    )}
-                                  </tr>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                    {role === 'Customer' ? (
+                      <div className="space-y-6">
+                        {/* A. FUNCTIONAL RESOURCES (Customer View) */}
+                        <div className="space-y-2">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            Functional Consulting Team
+                          </span>
+                          {(() => {
+                            const list = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
+                            if (list.length === 0) {
+                              return <div className="text-[10px] text-zinc-450 italic p-3 bg-zinc-50 border border-zinc-150 rounded">No Functional consultants assigned to this ticket.</div>;
+                            }
+                            return (
+                              <div className="overflow-x-auto border border-zinc-200 rounded-lg">
+                                <table className="w-full text-left border-collapse text-xs font-mono">
+                                  <thead>
+                                    <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-400 font-bold uppercase text-[9px]">
+                                      <th className="p-2">Name</th>
+                                      <th className="p-2">Role</th>
+                                      <th className="p-2">Module</th>
+                                      {ticket.status === 'Closed' && <th className="p-2 text-right">Actual Hours</th>}
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-zinc-100 bg-white">
+                                    {list.map((e, idx) => {
+                                      const prof = CONSULTANTS_DB.find(c => c.name === e.consultantName);
+                                      return (
+                                        <tr key={idx} className="hover:bg-zinc-50/50">
+                                          <td className="p-2 font-bold text-zinc-900">{e.consultantName}</td>
+                                          <td className="p-2 text-zinc-500">{prof?.roleTitle || 'Functional Consultant'}</td>
+                                          <td className="p-2 text-zinc-655">{prof?.expertise?.join(', ') || ticket.sapModule}</td>
+                                          {ticket.status === 'Closed' && <td className="p-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>}
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            );
+                          })()}
+                        </div>
 
-                    {/* B. TECHNICAL RESOURCES */}
-                    <div className="space-y-1.5 pt-2">
-                      <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Technical Resources</span>
-                      <div className="border border-zinc-200 rounded bg-white overflow-hidden">
-                        <table className="w-full text-left text-[10px]">
-                          <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
-                            <tr>
-                              <th className="py-2 px-3">Consultant</th>
-                              <th className="py-2 px-3 text-center">Module Expertise</th>
-                              <th className="py-2 px-3 text-center">Workload</th>
-                              <th className="py-2 px-3 text-center">Estimated Hours</th>
-                              <th className="py-2 px-3 text-center">Actual Hours</th>
-                              {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Actions</th>}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-zinc-150 bg-white">
-                            {(!ticket.consultantEfforts || ticket.consultantEfforts.filter(e => e.consultantType === 'Technical' && !e.isDeleted).length === 0) ? (
-                              <tr>
-                                <td colSpan={6} className="py-4 text-center text-zinc-400 italic">No technical resources allocated to this incident.</td>
-                              </tr>
-                            ) : (
-                              ticket.consultantEfforts.filter(e => e.consultantType === 'Technical' && !e.isDeleted).map(eff => {
-                                const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
-                                return (
-                                  <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
-                                    <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
-                                    <td className="py-2 px-3 text-center font-bold text-zinc-650">{dbInfo?.expertise.join(', ') || '-'}</td>
-                                    <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
-                                    <td className="py-2 px-3 text-center">
-                                      {role === 'Manager' || role === 'SuperAdmin' ? (
-                                        <input
-                                          type="number"
-                                          min={0}
-                                          value={eff.estimatedHours}
-                                          onChange={e => handleInlineEstChange(eff.id, Number(e.target.value) || 0)}
-                                          className="w-12 bg-white border border-zinc-200 rounded p-0.5 text-center font-bold text-[10px] focus:outline-none"
-                                        />
-                                      ) : (
-                                        <span className="font-bold text-zinc-800">{eff.estimatedHours}h</span>
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-center font-bold text-zinc-955 bg-zinc-50/50">{eff.actualHours}h</td>
-                                    {(role === 'Manager' || role === 'SuperAdmin') && (
-                                      <td className="py-2 px-3 text-right">
-                                        {replacingResource?.id === eff.id ? (
-                                          <div className="flex items-center justify-end gap-1">
-                                            <select
-                                              value={replacementConsultantName}
-                                              onChange={(e) => handleReplaceResource(eff.id, eff.consultantName, e.target.value)}
-                                              className="bg-white border border-zinc-200 rounded p-0.5 text-[9px] focus:outline-none cursor-pointer"
-                                            >
-                                              <option value="">Replace...</option>
-                                              {CONSULTANTS_DB.filter(c => c.name !== eff.consultantName && c.type === 'Technical').map(c => (
-                                                <option key={c.name} value={c.name}>{c.name}</option>
-                                              ))}
-                                            </select>
-                                            <button
-                                              type="button"
-                                              onClick={() => setReplacingResource(null)}
-                                              className="text-[9px] font-bold text-red-650 hover:underline px-1"
-                                            >
-                                              Cancel
-                                            </button>
-                                          </div>
-                                        ) : (
-                                          <div className="flex justify-end gap-1.5">
-                                            <button
-                                              type="button"
-                                              onClick={() => { setReplacingResource(eff); setReplacementConsultantName(''); }}
-                                              className="p-1 border border-zinc-200 hover:border-blue-500 hover:text-blue-700 rounded transition"
-                                              title="Replace Consultant"
-                                            >
-                                              <RefreshCw size={11} />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
-                                              className="p-1 border border-zinc-200 hover:border-red-500 hover:text-red-700 rounded transition"
-                                              title="Remove Consultant"
-                                            >
-                                              <Trash2 size={11} />
-                                            </button>
-                                          </div>
-                                        )}
-                                      </td>
-                                    )}
-                                  </tr>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
+                        {/* B. TECHNICAL RESOURCES (Customer View) */}
+                        <div className="space-y-2 pt-2 border-t border-zinc-100">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                            Technical Development Team
+                          </span>
+                          {(() => {
+                            const list = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
+                            if (list.length === 0) {
+                              return <div className="text-[10px] text-zinc-450 italic p-3 bg-zinc-50 border border-zinc-150 rounded">No Technical developers assigned to this ticket.</div>;
+                            }
+                            return (
+                              <div className="overflow-x-auto border border-zinc-200 rounded-lg">
+                                <table className="w-full text-left border-collapse text-xs font-mono">
+                                  <thead>
+                                    <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-400 font-bold uppercase text-[9px]">
+                                      <th className="p-2">Name</th>
+                                      <th className="p-2">Role</th>
+                                      <th className="p-2">Module</th>
+                                      {ticket.status === 'Closed' && <th className="p-2 text-right">Actual Hours</th>}
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-zinc-100 bg-white">
+                                    {list.map((e, idx) => {
+                                      const prof = CONSULTANTS_DB.find(c => c.name === e.consultantName);
+                                      return (
+                                        <tr key={idx} className="hover:bg-zinc-50/50">
+                                          <td className="p-2 font-bold text-zinc-900">{e.consultantName}</td>
+                                          <td className="p-2 text-zinc-500">{prof?.roleTitle || 'ABAP Developer'}</td>
+                                          <td className="p-2 text-zinc-655">{prof?.expertise?.join(', ') || ticket.sapModule}</td>
+                                          {ticket.status === 'Closed' && <td className="p-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>}
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <>
+                        {/* A. FUNCTIONAL RESOURCES */}
+                        <div className="space-y-1.5">
+                          <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Functional Resources</span>
+                          <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                            <table className="w-full text-left text-[10px]">
+                              <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                                <tr>
+                                  <th className="py-2 px-3">Consultant</th>
+                                  <th className="py-2 px-3 text-center">Module Expertise</th>
+                                  <th className="py-2 px-3 text-center">Workload</th>
+                                  <th className="py-2 px-3 text-center">Estimated Hours</th>
+                                  <th className="py-2 px-3 text-center">Actual Hours</th>
+                                  <th className="py-2 px-3 text-center">Submission Status</th>
+                                  <th className="py-2 px-3 text-center">Approval Status</th>
+                                  {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Actions</th>}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-150 bg-white">
+                                {(!ticket.consultantEfforts || ticket.consultantEfforts.filter(e => e.consultantType === 'Functional' && !e.isDeleted).length === 0) ? (
+                                  <tr>
+                                    <td colSpan={8} className="py-4 text-center text-zinc-400 italic">No functional resources allocated to this incident.</td>
+                                  </tr>
+                                ) : (
+                                  ticket.consultantEfforts.filter(e => e.consultantType === 'Functional' && !e.isDeleted).map(eff => {
+                                    const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
+                                    return (
+                                      <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
+                                        <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
+                                        <td className="py-2 px-3 text-center font-bold text-zinc-650">{dbInfo?.expertise.join(', ') || '-'}</td>
+                                        <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
+                                        <td className="py-2 px-3 text-center">
+                                          {role === 'Manager' || role === 'SuperAdmin' ? (
+                                            <input
+                                              type="number"
+                                              min={0}
+                                              value={eff.estimatedHours}
+                                              onChange={e => handleInlineEstChange(eff.id, Number(e.target.value) || 0)}
+                                              className="w-12 bg-white border border-zinc-200 rounded p-0.5 text-center font-bold text-[10px] focus:outline-none"
+                                            />
+                                          ) : (
+                                            <span className="font-bold text-zinc-800">{eff.estimatedHours}h</span>
+                                          )}
+                                        </td>
+                                        <td className="py-2 px-3 text-center font-bold text-zinc-955 bg-zinc-50/50">{eff.actualHours}h</td>
+                                        <td className="py-2 px-3 text-center font-bold">
+                                          <Badge className={`uppercase text-[8px] px-1.5 py-0.2 tracking-wider ${
+                                            eff.closureStatus === 'Submitted' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                          }`}>
+                                            {eff.closureStatus || 'Pending'}
+                                          </Badge>
+                                        </td>
+                                        <td className="py-2 px-3 text-center font-bold">
+                                          <Badge className={`uppercase text-[8px] px-1.5 py-0.2 tracking-wider ${
+                                            ticket.status === 'Closed' ? 'bg-emerald-100 text-emerald-800' :
+                                            (eff.closureStatus === 'Submitted' ? 'bg-blue-100 text-blue-800' : 'bg-zinc-100 text-zinc-800')
+                                          }`}>
+                                            {ticket.status === 'Closed' ? 'Approved' : (eff.closureStatus === 'Submitted' ? 'Awaiting Approval' : 'N/A')}
+                                          </Badge>
+                                        </td>
+                                        {(role === 'Manager' || role === 'SuperAdmin') && (
+                                          <td className="py-2 px-3 text-right">
+                                            {replacingResource?.id === eff.id ? (
+                                              <div className="flex items-center justify-end gap-1">
+                                                <select
+                                                  value={replacementConsultantName}
+                                                  onChange={(e) => handleReplaceResource(eff.id, eff.consultantName, e.target.value)}
+                                                  className="bg-white border border-zinc-200 rounded p-0.5 text-[9px] focus:outline-none cursor-pointer"
+                                                >
+                                                  <option value="">Replace...</option>
+                                                  {CONSULTANTS_DB.filter(c => c.name !== eff.consultantName && c.type === 'Functional').map(c => (
+                                                    <option key={c.name} value={c.name}>{c.name}</option>
+                                                  ))}
+                                                </select>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setReplacingResource(null)}
+                                                  className="text-[9px] font-bold text-red-655 hover:underline px-1"
+                                                >
+                                                  Cancel
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <div className="flex justify-end gap-1.5">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => { setReplacingResource(eff); setReplacementConsultantName(''); }}
+                                                  className="p-1 border border-zinc-200 hover:border-blue-500 hover:text-blue-700 rounded transition"
+                                                  title="Replace Consultant"
+                                                >
+                                                  <RefreshCw size={11} />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
+                                                  className="p-1 border border-zinc-200 hover:border-red-500 hover:text-red-700 rounded transition"
+                                                  title="Remove Consultant"
+                                                >
+                                                  <Trash2 size={11} />
+                                                </button>
+                                              </div>
+                                            )}
+                                          </td>
+                                        )}
+                                      </tr>
+                                    );
+                                  })
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* B. TECHNICAL RESOURCES */}
+                        <div className="space-y-1.5 pt-2">
+                          <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Technical Resources</span>
+                          <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                            <table className="w-full text-left text-[10px]">
+                              <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                                <tr>
+                                  <th className="py-2 px-3">Consultant</th>
+                                  <th className="py-2 px-3 text-center">Module Expertise</th>
+                                  <th className="py-2 px-3 text-center">Workload</th>
+                                  <th className="py-2 px-3 text-center">Estimated Hours</th>
+                                  <th className="py-2 px-3 text-center">Actual Hours</th>
+                                  <th className="py-2 px-3 text-center">Submission Status</th>
+                                  <th className="py-2 px-3 text-center">Approval Status</th>
+                                  {(role === 'Manager' || role === 'SuperAdmin') && <th className="py-2 px-3 text-right">Actions</th>}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-150 bg-white">
+                                {(!ticket.consultantEfforts || ticket.consultantEfforts.filter(e => e.consultantType === 'Technical' && !e.isDeleted).length === 0) ? (
+                                  <tr>
+                                    <td colSpan={8} className="py-4 text-center text-zinc-400 italic">No technical resources allocated to this incident.</td>
+                                  </tr>
+                                ) : (
+                                  ticket.consultantEfforts.filter(e => e.consultantType === 'Technical' && !e.isDeleted).map(eff => {
+                                    const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
+                                    return (
+                                      <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
+                                        <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
+                                        <td className="py-2 px-3 text-center font-bold text-zinc-655">{dbInfo?.expertise.join(', ') || '-'}</td>
+                                        <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
+                                        <td className="py-2 px-3 text-center">
+                                          {role === 'Manager' || role === 'SuperAdmin' ? (
+                                            <input
+                                              type="number"
+                                              min={0}
+                                              value={eff.estimatedHours}
+                                              onChange={e => handleInlineEstChange(eff.id, Number(e.target.value) || 0)}
+                                              className="w-12 bg-white border border-zinc-200 rounded p-0.5 text-center font-bold text-[10px] focus:outline-none"
+                                            />
+                                          ) : (
+                                            <span className="font-bold text-zinc-800">{eff.estimatedHours}h</span>
+                                          )}
+                                        </td>
+                                        <td className="py-2 px-3 text-center font-bold text-zinc-955 bg-zinc-50/50">{eff.actualHours}h</td>
+                                        <td className="py-2 px-3 text-center font-bold">
+                                          <Badge className={`uppercase text-[8px] px-1.5 py-0.2 tracking-wider ${
+                                            eff.closureStatus === 'Submitted' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                          }`}>
+                                            {eff.closureStatus || 'Pending'}
+                                          </Badge>
+                                        </td>
+                                        <td className="py-2 px-3 text-center font-bold">
+                                          <Badge className={`uppercase text-[8px] px-1.5 py-0.2 tracking-wider ${
+                                            ticket.status === 'Closed' ? 'bg-emerald-100 text-emerald-800' :
+                                            (eff.closureStatus === 'Submitted' ? 'bg-blue-100 text-blue-800' : 'bg-zinc-100 text-zinc-800')
+                                          }`}>
+                                            {ticket.status === 'Closed' ? 'Approved' : (eff.closureStatus === 'Submitted' ? 'Awaiting Approval' : 'N/A')}
+                                          </Badge>
+                                        </td>
+                                        {(role === 'Manager' || role === 'SuperAdmin') && (
+                                          <td className="py-2 px-3 text-right">
+                                            {replacingResource?.id === eff.id ? (
+                                              <div className="flex items-center justify-end gap-1">
+                                                <select
+                                                  value={replacementConsultantName}
+                                                  onChange={(e) => handleReplaceResource(eff.id, eff.consultantName, e.target.value)}
+                                                  className="bg-white border border-zinc-200 rounded p-0.5 text-[9px] focus:outline-none cursor-pointer"
+                                                >
+                                                  <option value="">Replace...</option>
+                                                  {CONSULTANTS_DB.filter(c => c.name !== eff.consultantName && c.type === 'Technical').map(c => (
+                                                    <option key={c.name} value={c.name}>{c.name}</option>
+                                                  ))}
+                                                </select>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setReplacingResource(null)}
+                                                  className="text-[9px] font-bold text-red-655 hover:underline px-1"
+                                                >
+                                                  Cancel
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <div className="flex justify-end gap-1.5">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => { setReplacingResource(eff); setReplacementConsultantName(''); }}
+                                                  className="p-1 border border-zinc-200 hover:border-blue-500 hover:text-blue-700 rounded transition"
+                                                  title="Replace Consultant"
+                                                >
+                                                  <RefreshCw size={11} />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
+                                                  className="p-1 border border-zinc-200 hover:border-red-500 hover:text-red-700 rounded transition"
+                                                  title="Remove Consultant"
+                                                >
+                                                  <Trash2 size={11} />
+                                                </button>
+                                              </div>
+                                            )}
+                                          </td>
+                                        )}
+                                      </tr>
+                                    );
+                                  })
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* HUB C: ESTIMATED HOURS BREAKDOWN */}
-              {activeHubTab === 'estimates' && (
+              {activeHubTab === 'estimates' && role !== 'Customer' && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center bg-zinc-50 border border-zinc-200 p-3 rounded">
                     <div>
@@ -1087,121 +1312,175 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {/* HUB D: ACTUAL HOURS & VARIANCE */}
               {activeHubTab === 'actuals' && (
                 <div className="space-y-4">
-                  <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Actual vs Estimated Variance Table</span>
-                  
-                  <div className="border border-zinc-200 rounded overflow-hidden bg-white">
-                    <table className="w-full text-left text-[10px]">
-                      <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
-                        <tr>
-                          <th className="py-2 px-3">Consultant</th>
-                          <th className="py-2 px-3 text-center">Type</th>
-                          <th className="py-2 px-3 text-center">Estimated hours</th>
-                          <th className="py-2 px-3 text-center">Actual Hours logged</th>
-                          <th className="py-2 px-3 text-center">Variance Gap</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-150">
-                        {(!ticket.consultantEfforts || ticket.consultantEfforts.length === 0) ? (
-                          <tr>
-                            <td colSpan={5} className="py-3 text-center text-zinc-400 italic">No allocations recorded.</td>
-                          </tr>
-                        ) : (
-                          <>
-                            {ticket.consultantEfforts.map(eff => {
-                              const varHours = eff.actualHours - eff.estimatedHours;
-                              return (
-                                <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
-                                  <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
-                                  <td className="py-2 px-3 text-center">
-                                    <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
-                                      eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
-                                    }`}>{eff.consultantType}</span>
-                                  </td>
-                                  <td className="py-2 px-3 text-center font-semibold text-zinc-600">{eff.estimatedHours}h</td>
-                                  <td className="py-2 px-3 text-center font-bold text-zinc-850">{eff.actualHours}h</td>
-                                  <td className={`py-2 px-3 text-center font-black ${varHours > 0 ? 'text-red-650' : 'text-green-700'}`}>
-                                    {varHours >= 0 ? `+${varHours}` : varHours}h
+                  {role === 'Customer' ? (
+                    ticket.status !== 'Closed' ? (
+                      <div className="bg-amber-50 border border-amber-300 rounded p-4 text-center text-amber-800 font-bold font-mono">
+                        Actual hours will be visible upon final ticket resolution approval.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Approved Actual Hours Summary</span>
+                        <div className="border border-zinc-200 rounded overflow-hidden bg-white">
+                          <table className="w-full text-left text-[10px]">
+                            <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                              <tr>
+                                <th className="py-2 px-3">Consultant Role Type</th>
+                                <th className="py-2 px-3 text-right">Approved Actual Hours</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-150">
+                              <tr className="hover:bg-zinc-50/50 transition">
+                                <td className="py-2 px-3 font-semibold text-zinc-800">Functional Consulting</td>
+                                <td className="py-2 px-3 text-right font-bold text-zinc-950">{actualsSummary.func}h</td>
+                              </tr>
+                              <tr className="hover:bg-zinc-50/50 transition">
+                                <td className="py-2 px-3 font-semibold text-zinc-800">Technical Development</td>
+                                <td className="py-2 px-3 text-right font-bold text-zinc-950">{actualsSummary.tech}h</td>
+                              </tr>
+                              <tr className="bg-zinc-100 font-black text-zinc-950 border-t border-zinc-200">
+                                <td className="py-2.5 px-3 uppercase text-[9px]">Grand Total Actuals:</td>
+                                <td className="py-2.5 px-3 text-right text-zinc-955">{actualsSummary.total}h</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <>
+                      <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Actual vs Estimated Variance Table</span>
+                      
+                      <div className="border border-zinc-200 rounded overflow-hidden bg-white">
+                        <table className="w-full text-left text-[10px]">
+                          <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                            <tr>
+                              <th className="py-2 px-3">Consultant</th>
+                              <th className="py-2 px-3 text-center">Type</th>
+                              <th className="py-2 px-3 text-center">Estimated hours</th>
+                              <th className="py-2 px-3 text-center">Actual Hours logged</th>
+                              <th className="py-2 px-3 text-center">Variance Gap</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-150">
+                            {(!ticket.consultantEfforts || ticket.consultantEfforts.length === 0) ? (
+                              <tr>
+                                <td colSpan={5} className="py-3 text-center text-zinc-400 italic">No allocations recorded.</td>
+                              </tr>
+                            ) : (
+                              <>
+                                {ticket.consultantEfforts.map(eff => {
+                                  const varHours = eff.actualHours - eff.estimatedHours;
+                                  return (
+                                    <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
+                                      <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
+                                      <td className="py-2 px-3 text-center">
+                                        <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
+                                          eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
+                                        }`}>{eff.consultantType}</span>
+                                      </td>
+                                      <td className="py-2 px-3 text-center font-semibold text-zinc-600">{eff.estimatedHours}h</td>
+                                      <td className="py-2 px-3 text-center font-bold text-zinc-850">{eff.actualHours}h</td>
+                                      <td className={`py-2 px-3 text-center font-black ${varHours > 0 ? 'text-red-650' : 'text-green-700'}`}>
+                                        {varHours >= 0 ? `+${varHours}` : varHours}h
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                                <tr className="bg-zinc-50 border-t border-zinc-200 font-extrabold text-zinc-900">
+                                  <td colSpan={2} className="py-2 px-3">Functional Totals:</td>
+                                  <td className="py-2 px-3 text-center">{approvedEstimates.func}h</td>
+                                  <td className="py-2 px-3 text-center">{actualsSummary.func}h</td>
+                                  <td className={`py-2 px-3 text-center font-black ${varianceSummary.func > 0 ? 'text-red-650' : 'text-green-700'}`}>
+                                    {varianceSummary.func >= 0 ? `+${varianceSummary.func}` : varianceSummary.func}h
                                   </td>
                                 </tr>
-                              );
-                            })}
-                            <tr className="bg-zinc-50 border-t border-zinc-200 font-extrabold text-zinc-900">
-                              <td colSpan={2} className="py-2 px-3">Functional Totals:</td>
-                              <td className="py-2 px-3 text-center">{approvedEstimates.func}h</td>
-                              <td className="py-2 px-3 text-center">{actualsSummary.func}h</td>
-                              <td className={`py-2 px-3 text-center font-black ${varianceSummary.func > 0 ? 'text-red-600' : 'text-green-700'}`}>
-                                {varianceSummary.func >= 0 ? `+${varianceSummary.func}` : varianceSummary.func}h
-                              </td>
-                            </tr>
-                            <tr className="bg-zinc-50 font-extrabold text-zinc-900">
-                              <td colSpan={2} className="py-2 px-3">Technical Totals:</td>
-                              <td className="py-2 px-3 text-center">{approvedEstimates.tech}h</td>
-                              <td className="py-2 px-3 text-center">{actualsSummary.tech}h</td>
-                              <td className={`py-2 px-3 text-center font-black ${varianceSummary.tech > 0 ? 'text-red-600' : 'text-green-700'}`}>
-                                {varianceSummary.tech >= 0 ? `+${varianceSummary.tech}` : varianceSummary.tech}h
-                              </td>
-                            </tr>
-                            <tr className="bg-zinc-100 font-black text-zinc-950 border-t border-zinc-200">
-                              <td colSpan={2} className="py-2.5 px-3 uppercase text-[9px]">Grand Totals:</td>
-                              <td className="py-2.5 px-3 text-center">{approvedEstimates.total}h</td>
-                              <td className="py-2.5 px-3 text-center">{actualsSummary.total}h</td>
-                              <td className={`py-2.5 px-3 text-center font-black ${varianceSummary.total > 0 ? 'text-red-600' : 'text-green-700'}`}>
-                                {varianceSummary.total >= 0 ? `+${varianceSummary.total}` : varianceSummary.total}h
-                              </td>
-                            </tr>
-                          </>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                                <tr className="bg-zinc-50 font-extrabold text-zinc-900">
+                                  <td colSpan={2} className="py-2 px-3">Technical Totals:</td>
+                                  <td className="py-2 px-3 text-center">{approvedEstimates.tech}h</td>
+                                  <td className="py-2 px-3 text-center">{actualsSummary.tech}h</td>
+                                  <td className={`py-2 px-3 text-center font-black ${varianceSummary.tech > 0 ? 'text-red-650' : 'text-green-700'}`}>
+                                    {varianceSummary.tech >= 0 ? `+${varianceSummary.tech}` : varianceSummary.tech}h
+                                  </td>
+                                </tr>
+                                <tr className="bg-zinc-100 font-black text-zinc-950 border-t border-zinc-200">
+                                  <td colSpan={2} className="py-2.5 px-3 uppercase text-[9px]">Grand Totals:</td>
+                                  <td className="py-2.5 px-3 text-center">{approvedEstimates.total}h</td>
+                                  <td className="py-2.5 px-3 text-center">{actualsSummary.total}h</td>
+                                  <td className={`py-2.5 px-3 text-center font-black ${varianceSummary.total > 0 ? 'text-red-650' : 'text-green-700'}`}>
+                                    {varianceSummary.total >= 0 ? `+${varianceSummary.total}` : varianceSummary.total}h
+                                  </td>
+                                </tr>
+                              </>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
               {/* HUB E: CLIENT CONTRACT META */}
-              {activeHubTab === 'customer' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Company Organization</span>
-                      <span className="font-bold text-zinc-950 block mt-0.5">{ticket.organization}</span>
+              {activeHubTab === 'customer' && (() => {
+                const orgContract = contracts?.find(c => c.organizationName === ticket.organization || c.id === ticket.organization);
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[9px] text-zinc-450 uppercase font-bold block">Company Organization</span>
+                        <span className="font-bold text-zinc-950 block mt-0.5">{ticket.organization}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-zinc-450 uppercase font-bold block">Contact Person</span>
+                        <span className="font-bold text-zinc-900 block mt-0.5">{ticket.requestedBy}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-zinc-450 uppercase font-bold block">Support Email</span>
+                        <span className="font-mono text-zinc-800 block mt-0.5">{ticket.requestedByEmail}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-zinc-450 uppercase font-bold block">Phone Number</span>
+                        <span className="font-mono text-zinc-800 block mt-0.5">{ticket.requestedByPhone || 'N/A'}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Contact Person</span>
-                      <span className="font-bold text-zinc-900 block mt-0.5">{ticket.requestedBy}</span>
-                    </div>
-                    <div>
-                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">Support Email</span>
-                      <span className="font-mono text-zinc-800 block mt-0.5">{ticket.requestedByEmail}</span>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[9px] text-zinc-450 uppercase font-bold block">Raised By / Created Date</span>
+                        <span className="text-zinc-900 block mt-0.5 text-xs">
+                          By: <strong className="font-bold">{ticket.createdByName || ticket.requestedBy}</strong><br/>
+                          On: <strong className="font-semibold">{new Date(ticket.createdAt).toLocaleString()}</strong>
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-zinc-450 uppercase font-bold block">AMS Contract Plan</span>
+                        <span className="font-black text-zinc-900 block mt-0.5">
+                          {orgContract ? `${orgContract.contractType} (${orgContract.isActive ? 'Active' : 'Inactive'})` : 'Enterprise Platinum Support (24x7 SLA)'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-zinc-450 uppercase font-bold block">CSAT Satisfaction Rating</span>
+                        {ticket.rating ? (
+                          <div className="mt-1 flex items-center gap-1">
+                            <span className="font-bold text-green-700 flex items-center gap-0.5">
+                              {ticket.rating.score}/5 <Star size={11} className="fill-green-600 text-green-600" />
+                            </span>
+                            <span className="text-zinc-400 italic">"{ticket.rating.feedback}"</span>
+                          </div>
+                        ) : (
+                          <span className="text-zinc-450 italic mt-0.5 block">Pending resolution rating</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">AMS Contract Plan</span>
-                      <span className="font-black text-zinc-900 block mt-0.5">Enterprise Platinum Support (24x7 SLA)</span>
-                    </div>
-                    <div>
-                      <span className="text-[9px] text-zinc-450 uppercase font-bold block">CSAT Satisfaction Rating</span>
-                      {ticket.rating ? (
-                        <div className="mt-1 flex items-center gap-1">
-                          <span className="font-bold text-green-700 flex items-center gap-0.5">
-                            {ticket.rating.score}/5 <Star size={11} className="fill-green-600 text-green-600" />
-                          </span>
-                          <span className="text-zinc-400 italic">"{ticket.rating.feedback}"</span>
-                        </div>
-                      ) : (
-                        <span className="text-zinc-450 italic mt-0.5 block">Pending resolution rating</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
             </div>
           </div>
 
           {/* Timeline and messages flow */}
           <div className="space-y-6">
-            <TicketTimeline ticket={ticket} />
+            <TicketTimeline ticket={ticket} userRole={role} />
 
             {/* Comment Form */}
             {ticket.status !== 'Closed' && (
@@ -1792,81 +2071,89 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                 <span>Mandatory Ticket Closure Review</span>
               </div>
 
-              {/* A. Functional Consultants Hours */}
-              <div className="space-y-1.5">
-                <span className="font-bold text-zinc-500 uppercase text-[9px] block">Functional Consultants Effort</span>
-                <div className="border border-zinc-200 rounded bg-white overflow-hidden">
-                  <table className="w-full text-left text-[10px]">
-                    <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
-                      <tr>
-                        <th className="py-1.5 px-3">Consultant Name</th>
-                        <th className="py-1.5 px-3 text-center w-24">Estimated Hours</th>
-                        <th className="py-1.5 px-3 text-center w-24">Actual Hours</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-150 bg-white">
-                      {functionalConsultants.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="py-3 text-center text-zinc-400 italic">No functional consultants allocated.</td>
-                        </tr>
-                      ) : (
-                        functionalConsultants.map(e => (
-                          <tr key={e.id} className="hover:bg-zinc-50/50">
-                            <td className="py-1.5 px-3 font-semibold text-zinc-800">{e.consultantName}</td>
-                            <td className="py-1.5 px-3 text-center text-zinc-600">{e.estimatedHours}h</td>
-                            <td className="py-1.5 px-3 text-center font-bold text-zinc-900">{e.actualHours}h</td>
+              {role !== 'Customer' && (
+                <>
+                  {/* A. Functional Consultants Hours */}
+                  <div className="space-y-1.5">
+                    <span className="font-bold text-zinc-500 uppercase text-[9px] block">Functional Consultants Effort</span>
+                    <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                      <table className="w-full text-left text-[10px]">
+                        <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                          <tr>
+                            <th className="py-1.5 px-3">Consultant Name</th>
+                            <th className="py-1.5 px-3 text-center w-24">Estimated Hours</th>
+                            <th className="py-1.5 px-3 text-center w-24">Actual Hours</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-150 bg-white">
+                          {functionalConsultants.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="py-3 text-center text-zinc-400 italic">No functional consultants allocated.</td>
+                            </tr>
+                          ) : (
+                            functionalConsultants.map(e => (
+                              <tr key={e.id} className="hover:bg-zinc-50/50">
+                                <td className="py-1.5 px-3 font-semibold text-zinc-800">{e.consultantName}</td>
+                                <td className="py-1.5 px-3 text-center text-zinc-600">{e.estimatedHours}h</td>
+                                <td className="py-1.5 px-3 text-center font-bold text-zinc-900">{e.actualHours}h</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
-              {/* B. Technical Consultants Hours */}
-              <div className="space-y-1.5">
-                <span className="font-bold text-zinc-500 uppercase text-[9px] block">Technical Consultants Effort</span>
-                <div className="border border-zinc-200 rounded bg-white overflow-hidden">
-                  <table className="w-full text-left text-[10px]">
-                    <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
-                      <tr>
-                        <th className="py-1.5 px-3">Consultant Name</th>
-                        <th className="py-1.5 px-3 text-center w-24">Estimated Hours</th>
-                        <th className="py-1.5 px-3 text-center w-24">Actual Hours</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-150 bg-white">
-                      {technicalConsultants.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="py-3 text-center text-zinc-400 italic">No technical consultants allocated.</td>
-                        </tr>
-                      ) : (
-                        technicalConsultants.map(e => (
-                          <tr key={e.id} className="hover:bg-zinc-50/50">
-                            <td className="py-1.5 px-3 font-semibold text-zinc-800">{e.consultantName}</td>
-                            <td className="py-1.5 px-3 text-center text-zinc-600">{e.estimatedHours}h</td>
-                            <td className="py-1.5 px-3 text-center font-bold text-zinc-900">{e.actualHours}h</td>
+                  {/* B. Technical Consultants Hours */}
+                  <div className="space-y-1.5">
+                    <span className="font-bold text-zinc-500 uppercase text-[9px] block">Technical Consultants Effort</span>
+                    <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                      <table className="w-full text-left text-[10px]">
+                        <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                          <tr>
+                            <th className="py-1.5 px-3">Consultant Name</th>
+                            <th className="py-1.5 px-3 text-center w-24">Estimated Hours</th>
+                            <th className="py-1.5 px-3 text-center w-24">Actual Hours</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-150 bg-white">
+                          {technicalConsultants.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="py-3 text-center text-zinc-400 italic">No technical consultants allocated.</td>
+                            </tr>
+                          ) : (
+                            technicalConsultants.map(e => (
+                              <tr key={e.id} className="hover:bg-zinc-50/50">
+                                <td className="py-1.5 px-3 font-semibold text-zinc-800">{e.consultantName}</td>
+                                <td className="py-1.5 px-3 text-center text-zinc-600">{e.estimatedHours}h</td>
+                                <td className="py-1.5 px-3 text-center font-bold text-zinc-900">{e.actualHours}h</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
-              {/* C. Totals Panel */}
-              <div className="bg-zinc-50 border border-zinc-200 rounded p-3 text-[10px] space-y-1.5">
-                <div className="grid grid-cols-2 gap-1.5 font-mono text-zinc-700">
-                  <span>Functional Total Hours:</span>
-                  <span className="text-right font-bold text-zinc-900">{functionalTotalAct}h actual (Est: {functionalTotalEst}h)</span>
-                  <span>Technical Total Hours:</span>
-                  <span className="text-right font-bold text-zinc-900">{technicalTotalAct}h actual (Est: {technicalTotalEst}h)</span>
-                  <span className="border-t border-zinc-200 pt-1.5 font-bold text-zinc-900">Grand Total Actual Hours:</span>
-                  <span className="text-right border-t border-zinc-200 pt-1.5 font-black text-zinc-955 text-xs">
-                    {grandTotalAct}h actual (Grand Est: {grandTotalEst}h)
-                  </span>
-                </div>
-              </div>
+                  {/* C. Totals Panel */}
+                  <div className="bg-zinc-50 border border-zinc-200 rounded p-3 text-[10px] space-y-1.5">
+                    <div className="grid grid-cols-2 gap-1.5 font-mono text-zinc-700">
+                      <span>Functional Total Hours:</span>
+                      <span className="text-right font-bold text-zinc-900">
+                        {functionalTotalAct}h actual (Est: {functionalTotalEst}h)
+                      </span>
+                      <span>Technical Total Hours:</span>
+                      <span className="text-right font-bold text-zinc-900">
+                        {technicalTotalAct}h actual (Est: {technicalTotalEst}h)
+                      </span>
+                      <span className="border-t border-zinc-200 pt-1.5 font-bold text-zinc-900">Grand Total Actual Hours:</span>
+                      <span className="text-right border-t border-zinc-200 pt-1.5 font-black text-zinc-955 text-xs">
+                        {grandTotalAct}h actual (Grand Est: {grandTotalEst}h)
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* D. Resolution Summaries */}
               <div className="bg-zinc-50 border border-zinc-200 rounded p-3 space-y-2.5">

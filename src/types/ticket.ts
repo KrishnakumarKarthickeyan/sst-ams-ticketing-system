@@ -6,14 +6,20 @@ export type SAPModule =
   | 'PM'
   | 'QM'
   | 'HCM'
-  | 'SuccessFactors'
+  | 'SuccessFactors' // legacy
   | 'BASIS'
   | 'ABAP'
-  | 'Security/GRC'
-  | 'CPI/Integration'
-  | 'BW/BI'
-  | 'Fiori'
-  | 'TRM';
+  | 'Security/GRC' // legacy
+  | 'CPI/Integration' // legacy
+  | 'BW/BI' // legacy
+  | 'Fiori' // legacy
+  | 'TRM' // legacy
+  | 'SF EC'
+  | 'SF ECP'
+  | 'SF PMGM'
+  | 'SF RCM'
+  | 'SAC'
+  | 'CPI';
 
 export type IssueCategory =
   | 'Functional Issue'
@@ -54,7 +60,11 @@ export type TicketStatus =
   | 'Customer Action'
   | 'Request for Closure'
   | 'Reopen Requested'
-  | 'Awaiting Closure';
+  | 'Awaiting Closure'
+  | 'On Hold'
+  | 'Awaiting Functional Submission'
+  | 'Awaiting Technical Submission'
+  | 'Awaiting Manager Approval';
 
 export interface Comment {
   id: string;
@@ -196,8 +206,9 @@ export interface Ticket {
   organization: string; // Organization Name
   requestedBy: string; // Requester Full Name
   requestedByEmail: string;
+  requestedByPhone?: string;
   sapModule: SAPModule;
-  category: IssueCategory;
+  category: string;
   priority: TicketPriority;
   status: TicketStatus;
   assignedManager?: string; // Manager Name
@@ -221,9 +232,12 @@ export interface Ticket {
   rating?: SatisfactionRating;
   
   // Extended properties for Customer Portal redesign
-  ticketType?: TicketType;
-  functionalOrTechnical?: FunctionalOrTechnical;
+  ticketType?: string;
+  functionalOrTechnical?: string;
+  classification?: string;
   businessImpact?: string;
+  businessImpactLevel?: string;
+  businessJustification?: string;
   expectedResolutionDate?: string;
   quotedHours?: number;
   raisedToSap?: boolean;
@@ -324,6 +338,9 @@ export interface TicketConsultantEffort {
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
+  closureStatus?: 'Pending' | 'Submitted';
+  workSummary?: string;
+  resolutionNotes?: string;
 }
 
 export interface TicketMention {

@@ -30,8 +30,11 @@ END $$;
 ALTER TABLE public.tickets 
 ADD COLUMN IF NOT EXISTS ticket_type ticket_type_enum NOT NULL DEFAULT 'Incident',
 ADD COLUMN IF NOT EXISTS functional_or_technical functional_or_technical_enum NOT NULL DEFAULT 'Functional',
+ADD COLUMN IF NOT EXISTS classification VARCHAR(100),
 ADD COLUMN IF NOT EXISTS business_impact TEXT,
 ADD COLUMN IF NOT EXISTS expected_resolution_date DATE,
+ADD COLUMN IF NOT EXISTS business_impact_level VARCHAR(100),
+ADD COLUMN IF NOT EXISTS business_justification TEXT,
 ADD COLUMN IF NOT EXISTS quoted_hours NUMERIC(6,2) DEFAULT 0.00,
 ADD COLUMN IF NOT EXISTS raised_to_sap BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS reopened_count INT DEFAULT 0,
@@ -44,6 +47,11 @@ ADD COLUMN IF NOT EXISTS soft_delete_status VARCHAR(50) DEFAULT 'Active';
 
 -- Alter ticket status column to VARCHAR(50) for maximum flexibility
 ALTER TABLE public.tickets ALTER COLUMN status TYPE VARCHAR(50);
+ALTER TABLE public.tickets ALTER COLUMN ticket_type TYPE VARCHAR(100);
+ALTER TABLE public.tickets ALTER COLUMN functional_or_technical TYPE VARCHAR(100);
+
+-- Add customer_code to organizations
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS customer_code VARCHAR(100);
 
 -- ============================================================================
 -- 4. Create Stakeholder & Workflow Tables
