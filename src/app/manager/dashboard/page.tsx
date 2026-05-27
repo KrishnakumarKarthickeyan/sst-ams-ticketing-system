@@ -190,6 +190,16 @@ export default function ManagerDashboardPage() {
     feedback: ''
   });
 
+  const activeTicketForClosure = useMemo(() => {
+    if (!closureDialog.ticketId) return null;
+    return tickets.find(t => t.id === closureDialog.ticketId);
+  }, [closureDialog.ticketId, tickets]);
+
+  const activeRequestForClosure = useMemo(() => {
+    if (!activeTicketForClosure || !closureDialog.requestId) return null;
+    return activeTicketForClosure.closureRequests?.find(r => r.id === closureDialog.requestId);
+  }, [activeTicketForClosure, closureDialog.requestId]);
+
   // Base Scoped Tickets for the Manager (Company scope restriction)
   const scopedTickets = useMemo(() => {
     return tickets.filter(t => {
@@ -510,20 +520,22 @@ export default function ManagerDashboardPage() {
   }, [filteredDashboardTickets]);
 
   const pendingClosureRequests = useMemo(() => {
-    const list: { ticketId: string; ticketTitle: string; requestId: string; requestedBy: string; funcHours: number; techHours: number; rootCause: string; resolutionSummary: string; summary: string }[] = [];
+    const list: { ticketId: string; ticketTitle: string; customerName: string; requestId: string; requestedBy: string; funcHours: number; techHours: number; rootCause: string; resolutionSummary: string; summary: string; submittedAt: string }[] = [];
     filteredDashboardTickets.forEach(t => {
       (t.closureRequests || []).forEach(r => {
         if (r.status === 'Pending Manager Approval') {
           list.push({
             ticketId: t.id,
             ticketTitle: t.title,
+            customerName: t.organization,
             requestId: r.id,
             requestedBy: r.requestedBy,
             funcHours: r.functionalActualHours,
             techHours: r.technicalActualHours,
             rootCause: r.rootCause,
             resolutionSummary: r.resolutionSummary,
-            summary: r.workCompletedSummary
+            summary: r.workCompletedSummary,
+            submittedAt: r.createdAt
           });
         }
       });
@@ -1668,8 +1680,12 @@ export default function ManagerDashboardPage() {
                   {pendingClosureRequests.map(r => (
                     <div key={r.requestId} className="p-3 border-b border-zinc-100 flex justify-between items-start hover:bg-zinc-50/50">
                       <div>
-                        <span className="font-bold text-zinc-800 block text-[10px]">Verify Closure for {r.ticketId}</span>
-                        <span className="text-zinc-450 block text-[8px] font-mono">By: {r.requestedBy} • Total: {r.funcHours + r.techHours}h</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-zinc-800 text-[10px]">{r.ticketId}</span>
+                          <span className="text-zinc-400 text-[8px] font-semibold font-mono">({r.customerName})</span>
+                        </div>
+                        <span className="text-zinc-900 block text-[9px] font-bold truncate max-w-[180px] mt-0.5">{r.ticketTitle}</span>
+                        <span className="text-zinc-450 block text-[8px] font-mono mt-0.5">By: {r.requestedBy} • Total: {r.funcHours + r.techHours}h</span>
                         <span className="text-zinc-500 block mt-1 leading-relaxed text-[9px] truncate max-w-[180px]">{r.summary}</span>
                       </div>
                       <div className="flex gap-1.5">
@@ -1958,13 +1974,113 @@ export default function ManagerDashboardPage() {
 
       {/* ── WORKFLOW MODALS ── */}
 
-      {/* CSAT Closure Modal */}
       <Dialog open={closureDialog.isOpen} onOpenChange={(open) => !open && setClosureDialog(prev => ({ ...prev, isOpen: false }))}>
-        <DialogContent className="max-w-md font-mono text-xs">
+        <DialogContent className="max-w-lg font-mono text-xs">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-955">Verify & Approve Closure</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-3">
+            {activeTicketForClosure && activeRequestForClosure && (() => {
+              const funcEff = (activeTicketForClosure.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
+              const techEff = (activeTicketForClosure.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
+
+              const estFunc = funcEff.reduce((sum, e) => sum + e.estimatedHours, 0);
+              const estTech = techEff.reduce((sum, e) => sum + e.estimatedHours, 0);
+              const estTotal = estFunc + estTech;
+
+              const actFunc = funcEff.reduce((sum, e) => sum + e.actualHours, 0);
+              const actTech = techEff.reduce((sum, e) => sum + e.actualHours, 0);
+              const actTotal = actFunc + actTech;
+
+              const varFunc = actFunc - estFunc;
+              const varTech = actTech - estTech;
+              const varTotal = actTotal - estTotal;
+
+              return (
+                <div className="bg-zinc-50 border border-zinc-200 rounded p-3.5 space-y-3 font-mono text-[10px]">
+                  <div className="grid grid-cols-2 gap-2 border-b border-zinc-200 pb-2">
+                    <div>
+                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Ticket ID</span>
+                      <span className="font-bold text-zinc-900">{activeTicketForClosure.id}</span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Customer Name</span>
+                      <span className="font-bold text-zinc-900">{activeTicketForClosure.organization}</span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Submitted By</span>
+                      <span className="font-bold text-zinc-900">{activeRequestForClosure.requestedBy}</span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Submission Date</span>
+                      <span className="font-bold text-zinc-900">
+                        {activeRequestForClosure.createdAt ? new Date(activeRequestForClosure.createdAt).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-zinc-450 block uppercase font-bold text-[8px]">Efforts & Variance Breakdown</span>
+                    <div className="border border-zinc-200 rounded bg-white overflow-hidden">
+                      <table className="w-full text-left text-[9px] border-collapse">
+                        <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                          <tr>
+                            <th className="py-1 px-2">Type</th>
+                            <th className="py-1 px-2 text-right">Est</th>
+                            <th className="py-1 px-2 text-right">Act</th>
+                            <th className="py-1 px-2 text-right">Var</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-150">
+                          <tr>
+                            <td className="py-1 px-2 font-semibold">Functional</td>
+                            <td className="py-1 px-2 text-right text-zinc-600">{estFunc}h</td>
+                            <td className="py-1 px-2 text-right font-bold text-zinc-900">{actFunc}h</td>
+                            <td className={`py-1 px-2 text-right font-black ${varFunc > 0 ? 'text-red-650' : 'text-green-700'}`}>
+                              {varFunc >= 0 ? `+${varFunc}` : varFunc}h
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="py-1 px-2 font-semibold">Technical</td>
+                            <td className="py-1 px-2 text-right text-zinc-600">{estTech}h</td>
+                            <td className="py-1 px-2 text-right font-bold text-zinc-900">{actTech}h</td>
+                            <td className={`py-1 px-2 text-right font-black ${varTech > 0 ? 'text-red-650' : 'text-green-700'}`}>
+                              {varTech >= 0 ? `+${varTech}` : varTech}h
+                            </td>
+                          </tr>
+                          <tr className="bg-zinc-100 font-extrabold border-t border-zinc-250">
+                            <td className="py-1 px-2 uppercase text-[8px]">Total</td>
+                            <td className="py-1 px-2 text-right">{estTotal}h</td>
+                            <td className="py-1 px-2 text-right">{actTotal}h</td>
+                            <td className={`py-1 px-2 text-right font-black ${varTotal > 0 ? 'text-red-650' : 'text-green-700'}`}>
+                              {varTotal >= 0 ? `+${varTotal}` : varTotal}h
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 pt-1 border-t border-zinc-200">
+                    <div>
+                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Root Cause</span>
+                      <p className="text-zinc-800 leading-normal">{activeRequestForClosure.rootCause || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Resolution Summary</span>
+                      <p className="text-zinc-800 leading-normal whitespace-pre-line">{activeRequestForClosure.resolutionSummary || 'N/A'}</p>
+                    </div>
+                    {activeRequestForClosure.pendingItems && (
+                      <div>
+                        <span className="text-zinc-450 block uppercase font-bold text-[8px]">Pending Items</span>
+                        <p className="text-zinc-800 leading-normal">{activeRequestForClosure.pendingItems}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold text-zinc-500">CSAT Customer Satisfaction Rating *</Label>
               <div className="flex items-center gap-2">

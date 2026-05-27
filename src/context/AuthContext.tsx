@@ -30,19 +30,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const DEMO_USERS: Record<string, UserSession> = {};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserSession | null>(null);
+  const [user, setUser] = useState<UserSession | null>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sap_user_session');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {}
+      }
+    }
+    return null;
+  });
+
   const [loading, setLoading] = useState(() => {
     if (typeof window !== 'undefined') {
-      const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-      if (isConfigured) {
-        // Look for any supabase auth token in localStorage to see if session exists
-        const keys = Object.keys(localStorage);
-        const hasToken = keys.some(key => key.includes('auth-token'));
-        return hasToken;
-      } else {
-        const hasSession = !!localStorage.getItem('sap_user_session');
-        return hasSession;
-      }
+      const stored = localStorage.getItem('sap_user_session');
+      return !stored;
     }
     return true;
   });
@@ -50,10 +53,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let active = true;
-    let currentUserId: string | null = null;
+    let currentUserId: string | null = user?.id || null;
+    let fetchingUserId: string | null = null;
 
     const fetchAndSetProfile = async (session: any) => {
       if (!session || !active) return null;
+      if (fetchingUserId === session.user.id) return null;
+      fetchingUserId = session.user.id;
+
       try {
         const { data: profile, error } = await supabase!
           .from('profiles')
@@ -66,6 +73,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await supabase!.auth.signOut();
             setUser(null);
             currentUserId = null;
+            localStorage.removeItem('sap_user_session');
+            localStorage.removeItem(`sst_profile_${session.user.id}`);
+            fetchingUserId = null;
             return null;
           }
           const userOrg = profile.organizations as any;
@@ -79,8 +89,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             modules: profile.sap_modules || [],
             phoneNumber: profile.phone_number
           };
+          
+          localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
+          localStorage.setItem(`sst_profile_${session.user.id}`, JSON.stringify(sessionUser));
           setUser(sessionUser);
           currentUserId = session.user.id;
+          fetchingUserId = null;
           return sessionUser;
         } else if (active) {
           const sessionUser: UserSession = {
@@ -89,13 +103,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: session.user.email?.split('@')[0] || 'User',
             role: 'Customer'
           };
+          localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
           setUser(sessionUser);
           currentUserId = session.user.id;
+          fetchingUserId = null;
           return sessionUser;
         }
       } catch (e) {
         console.error('Error fetching profile from Supabase', e);
       }
+      fetchingUserId = null;
       return null;
     };
 
@@ -105,6 +122,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { data: { session } } = await supabase.auth.getSession();
           if (session && active) {
             if (session.user.id !== currentUserId) {
+              const cached = localStorage.getItem(`sst_profile_${session.user.id}`);
+              if (cached) {
+                try {
+                  setUser(JSON.parse(cached));
+                  setLoading(false);
+                } catch {}
+              }
               await fetchAndSetProfile(session);
             }
           } else if (active) {
@@ -140,13 +164,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (session) {
           if (session.user.id !== currentUserId) {
-            if (active) setLoading(true);
+            if (active) {
+              const cached = localStorage.getItem(`sst_profile_${session.user.id}`) || localStorage.getItem('sap_user_session');
+              if (cached) {
+                try {
+                  setUser(JSON.parse(cached));
+                } catch {}
+              } else {
+                setLoading(true);
+              }
+            }
             await fetchAndSetProfile(session);
             if (active) setLoading(false);
           }
         } else {
           setUser(null);
           currentUserId = null;
+          localStorage.removeItem('sap_user_session');
           if (active) setLoading(false);
         }
       });

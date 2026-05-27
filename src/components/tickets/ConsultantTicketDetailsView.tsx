@@ -526,6 +526,24 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     .filter(e => !e.isDeleted)
     .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
 
+  const myActualHours = myEffort ? myEffort.actualHours : 0;
+
+  const teamActualHours = (ticket.consultantEfforts || [])
+    .filter(e => e.consultantId !== user?.id && e.consultantName !== consultantName && !e.isDeleted)
+    .reduce((sum, e) => sum + (e.actualHours || 0), 0);
+
+  const functionalTotalAct = (ticket.consultantEfforts || [])
+    .filter(e => e.consultantType === 'Functional' && !e.isDeleted)
+    .reduce((sum, e) => sum + (e.actualHours || 0), 0);
+
+  const technicalTotalAct = (ticket.consultantEfforts || [])
+    .filter(e => e.consultantType === 'Technical' && !e.isDeleted)
+    .reduce((sum, e) => sum + (e.actualHours || 0), 0);
+
+  const grandTotalAct = (ticket.consultantEfforts || [])
+    .filter(e => !e.isDeleted)
+    .reduce((sum, e) => sum + (e.actualHours || 0), 0);
+
   const currentEstimate = (ticket.hourEstimates || [])
     .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
     .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
@@ -541,7 +559,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
   const hasPendingUnlock = latestUnlockReq?.status === 'Pending';
-  const isLocked = ticket.status === 'Closed' || ticket.status === 'Request for Closure' || (latestClosureReq && latestClosureReq.status === 'Pending Manager Approval');
+  const isTicketFullyLocked = ticket.status === 'Closed' || ticket.status === 'Request for Closure' || (latestClosureReq && latestClosureReq.status === 'Pending Manager Approval');
+  const isLockedForMe = isTicketFullyLocked || myEffort?.closureStatus === 'Submitted';
 
   return (
     <div className="space-y-6 bg-slate-50 text-slate-900 min-h-screen p-6 md:p-8 font-sans">
@@ -574,7 +593,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
         </div>
       )}
 
-      {isLocked && (
+      {isTicketFullyLocked && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-semibold">
           <div className="flex items-start gap-2.5">
             <Lock size={16} className="text-red-500 shrink-0 mt-0.5" />
@@ -600,6 +619,39 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 setActiveModal('unlock');
               }}
               className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase font-mono text-[10px] h-8 cursor-pointer"
+            >
+              Request Manager Unlock
+            </Button>
+          )}
+        </div>
+      )}
+
+      {myEffort?.closureStatus === 'Submitted' && !isTicketFullyLocked && (
+        <div className="bg-amber-50 border border-amber-250 text-amber-800 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-semibold">
+          <div className="flex items-start gap-2.5">
+            <Lock size={16} className="text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold uppercase tracking-wider text-[10px] font-mono">My Effort Locked</p>
+              <p className="mt-1 leading-normal text-amber-750 font-mono">
+                You have submitted your effort details for this ticket. Your inputs, comments, and uploads are locked. 
+                Other allocated consultants can still update their efforts.
+              </p>
+            </div>
+          </div>
+          {hasPendingUnlock ? (
+            <Badge className="bg-amber-100 border border-amber-300 text-amber-800 font-mono uppercase px-3 py-1 text-[10px]">
+              Unlock Requested
+            </Badge>
+          ) : (
+            <Button
+              onClick={() => {
+                setUnlockReason('');
+                setUnlockChange('');
+                setUnlockRemarks('');
+                setValidationError(null);
+                setActiveModal('unlock');
+              }}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold uppercase font-mono text-[10px] h-8 cursor-pointer border border-amber-500"
             >
               Request Manager Unlock
             </Button>
@@ -873,7 +925,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               
               {!currentEstimate ? (
                 <Button
-                  disabled={isLocked}
+                  disabled={isLockedForMe}
                   onClick={() => {
                     setEstFuncHours('');
                     setEstTechHours('');
@@ -886,7 +938,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 </Button>
               ) : (
                 <Button
-                  disabled={isLocked}
+                  disabled={isLockedForMe}
                   onClick={() => {
                     setEstFuncHours(String(currentEstimate.functionalEstimatedHours));
                     setEstTechHours(String(currentEstimate.technicalEstimatedHours));
@@ -902,7 +954,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               )}
             </div>
 
-            {currentEstimate ? (
+            {(currentEstimate || grandTotalEst > 0) ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-blue-500">
@@ -927,13 +979,15 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-3 border border-slate-200 rounded text-xs space-y-1.5 text-slate-655 font-mono">
-                  <div>Remarks: <span className="text-slate-900 italic">"{currentEstimate.remarks || 'No remarks listed'}"</span></div>
-                  <div className="flex justify-between text-[10px] pt-1 text-slate-400 border-t border-slate-200/50">
-                    <span>Submitted by: <strong>{currentEstimate.consultantId}</strong></span>
-                    <span>Date: <strong>{new Date(currentEstimate.submittedAt).toLocaleDateString()}</strong></span>
+                {currentEstimate && (
+                  <div className="bg-slate-50 p-3 border border-slate-200 rounded text-xs space-y-1.5 text-slate-655 font-mono">
+                    <div>Remarks: <span className="text-slate-900 italic">"{currentEstimate.remarks || 'No remarks listed'}"</span></div>
+                    <div className="flex justify-between text-[10px] pt-1 text-slate-400 border-t border-slate-200/50">
+                      <span>Submitted by: <strong>{currentEstimate.consultantId}</strong></span>
+                      <span>Date: <strong>{new Date(currentEstimate.submittedAt).toLocaleDateString()}</strong></span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="p-6 text-center border border-slate-200 bg-slate-50/45 rounded text-xs text-slate-400 italic font-mono">
@@ -961,7 +1015,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 Actual Hours & Closure Requests
               </h3>
               
-              {ticket.status !== 'Closed' && ticket.status !== 'Request for Closure' && (
+              {ticket.status !== 'Closed' && ticket.status !== 'Request for Closure' && myEffort?.closureStatus !== 'Submitted' && (
                 <Button
                   onClick={() => {
                     setActFuncHours('');
@@ -980,84 +1034,89 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               )}
             </div>
 
-            {latestClosureReq ? (
+            {(latestClosureReq || grandTotalAct > 0) ? (
               <div className="space-y-4 font-mono text-xs">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-                  {consultantType === 'Functional' ? (
-                    <div className="bg-slate-50 p-3 border border-slate-200 rounded border-l-2 border-l-blue-500">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-mono">Functional Actual</span>
-                      <span className="text-lg font-bold text-slate-900 mt-1 block">{latestClosureReq.functionalActualHours} h</span>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-50 p-3 border border-slate-200 rounded border-l-2 border-l-violet-500">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-mono">Technical Actual</span>
-                      <span className="text-lg font-bold text-slate-900 mt-1 block">{latestClosureReq.technicalActualHours} h</span>
-                    </div>
-                  )}
-                  <div className="bg-slate-50 p-3 border border-slate-200 rounded border-l-2 border-l-emerald-500">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-mono">Role Actual Hours</span>
-                    <span className="text-lg font-bold text-emerald-600 mt-1 block">
-                      {consultantType === 'Functional' ? latestClosureReq.functionalActualHours : latestClosureReq.technicalActualHours} h
-                    </span>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-blue-500">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">My Actual</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{myActualHours} h</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-indigo-500">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Team Actual</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{teamActualHours} h</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-cyan-500">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Functional Total</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{functionalTotalAct} h</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-violet-500">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Technical Total</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{technicalTotalAct} h</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-emerald-500 col-span-2 md:col-span-1">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Grand Total</span>
+                    <span className="text-sm font-bold text-emerald-600 mt-0.5 block font-mono">{grandTotalAct} h</span>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-4 border border-slate-200 rounded space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Work Completed Summary</span>
-                      <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.workCompletedSummary}</p>
-                    </div>
-                    <div>
-                      <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Root Cause</span>
-                      <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.rootCause}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Resolution Summary</span>
-                      <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.resolutionSummary}</p>
-                    </div>
-                    {latestClosureReq.pendingItems && (
+                {latestClosureReq && (
+                  <div className="bg-slate-50 p-4 border border-slate-200 rounded space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Work Completed Summary</span>
+                        <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.workCompletedSummary}</p>
+                      </div>
+                      <div>
+                        <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Root Cause</span>
+                        <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.rootCause}</p>
+                      </div>
                       <div className="md:col-span-2">
-                        <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Pending Items</span>
-                        <p className="text-slate-900">{latestClosureReq.pendingItems}</p>
+                        <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Resolution Summary</span>
+                        <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.resolutionSummary}</p>
+                      </div>
+                      {latestClosureReq.pendingItems && (
+                        <div className="md:col-span-2">
+                          <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Pending Items</span>
+                          <p className="text-slate-900">{latestClosureReq.pendingItems}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between items-center text-[10px] pt-2 text-slate-400 border-t border-slate-200/50">
+                      <span>Requested by: <strong className="text-slate-700">{latestClosureReq.requestedBy}</strong></span>
+                      <div className="flex gap-2 items-center">
+                        <span>Approval Status:</span>
+                        <Badge className={`uppercase text-[9px] ${
+                          latestClosureReq.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' :
+                          latestClosureReq.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-amber-100 text-amber-800'
+                        }`}>{latestClosureReq.status}</Badge>
+                      </div>
+                    </div>
+
+                    {latestClosureReq.status === 'Rejected' && (
+                      <div className="bg-red-50 p-3 rounded border border-red-200 space-y-2 mt-2">
+                        <div className="text-red-850 font-bold text-[10px] uppercase font-mono">Manager Rejection Reason:</div>
+                        <p className="text-slate-900 italic">"{latestClosureReq.rejectionReason || 'No reason specified.'}"</p>
+                        <Button
+                          onClick={() => {
+                            setActFuncHours(String(latestClosureReq.functionalActualHours));
+                            setActTechHours(String(latestClosureReq.technicalActualHours));
+                            setWorkCompletedSummary(latestClosureReq.workCompletedSummary);
+                            setRootCause(latestClosureReq.rootCause);
+                            setResolutionSummary(latestClosureReq.resolutionSummary);
+                            setPendingItems(latestClosureReq.pendingItems || '');
+                            setValidationError(null);
+                            setActiveModal('resubmit_closure');
+                          }}
+                          className="bg-red-650 hover:bg-red-750 text-white font-mono font-bold text-[9px] h-7 cursor-pointer"
+                        >
+                          Resubmit Closure Request
+                        </Button>
                       </div>
                     )}
                   </div>
-
-                  <div className="flex justify-between items-center text-[10px] pt-2 text-slate-400 border-t border-slate-200/50">
-                    <span>Requested by: <strong className="text-slate-700">{latestClosureReq.requestedBy}</strong></span>
-                    <div className="flex gap-2 items-center">
-                      <span>Approval Status:</span>
-                      <Badge className={`uppercase text-[9px] ${
-                        latestClosureReq.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' :
-                        latestClosureReq.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-amber-100 text-amber-800'
-                      }`}>{latestClosureReq.status}</Badge>
-                    </div>
-                  </div>
-
-                  {latestClosureReq.status === 'Rejected' && (
-                    <div className="bg-red-50 p-3 rounded border border-red-200 space-y-2 mt-2">
-                      <div className="text-red-850 font-bold text-[10px] uppercase font-mono">Manager Rejection Reason:</div>
-                      <p className="text-slate-900 italic">"{latestClosureReq.rejectionReason || 'No reason specified.'}"</p>
-                      <Button
-                        onClick={() => {
-                          setActFuncHours(String(latestClosureReq.functionalActualHours));
-                          setActTechHours(String(latestClosureReq.technicalActualHours));
-                          setWorkCompletedSummary(latestClosureReq.workCompletedSummary);
-                          setRootCause(latestClosureReq.rootCause);
-                          setResolutionSummary(latestClosureReq.resolutionSummary);
-                          setPendingItems(latestClosureReq.pendingItems || '');
-                          setValidationError(null);
-                          setActiveModal('resubmit_closure');
-                        }}
-                        className="bg-red-650 hover:bg-red-750 text-white font-mono font-bold text-[9px] h-7 cursor-pointer"
-                      >
-                        Resubmit Closure Request
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             ) : (
               <div className="p-6 text-center border border-slate-200 bg-slate-50/45 rounded text-xs text-slate-400 italic font-mono">
@@ -1077,7 +1136,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 <span className={`text-[10px] font-bold uppercase font-mono ${!isInternalComment ? 'text-slate-900 font-black' : 'text-slate-400'}`}>Public</span>
                 <button
                   type="button"
-                  disabled={isLocked}
+                  disabled={isLockedForMe}
                   onClick={() => setIsInternalComment(!isInternalComment)}
                   className="w-8 h-4 rounded-full bg-slate-100 border border-slate-300 relative transition-all cursor-pointer"
                 >
@@ -1090,17 +1149,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             {/* Comment Composer */}
             <form onSubmit={handleAddComment} className="space-y-4 bg-slate-50 p-4 border border-slate-200 rounded-lg relative">
               <textarea
-                disabled={isLocked}
+                disabled={isLockedForMe}
                 ref={textareaRef}
                 value={commentText}
                 onChange={handleTextareaChange}
                 onKeyDown={handleTextareaKeyDown}
-                placeholder={isLocked ? "This conversation channel is locked." : (isInternalComment ? "Write internal log..." : "Reply to Customer...")}
+                placeholder={isLockedForMe ? "This conversation channel is locked." : (isInternalComment ? "Write internal log..." : "Reply to Customer...")}
                 className="w-full bg-white border border-slate-200 rounded p-3 text-xs h-28 focus:outline-none focus:border-slate-350 text-slate-900 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
                 required
               />
 
-              {showMentionDropdown && filteredMentions.length > 0 && !isLocked && (
+              {showMentionDropdown && filteredMentions.length > 0 && !isLockedForMe && (
                 <div className="absolute left-4 bottom-14 z-50 bg-white border border-slate-200 rounded-md shadow-2xl w-60 py-1 text-xs text-slate-700">
                   <div className="px-3 py-1 text-[9px] uppercase tracking-wider font-bold text-slate-400 border-b border-slate-100">
                     Mention user
@@ -1162,7 +1221,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                           {/* Delete Action */}
                           <button
                             type="button"
-                            disabled={isLocked}
+                            disabled={isLockedForMe}
                             onClick={() => removeAttachmentFromComment(i)}
                             className="text-slate-400 hover:text-red-500 disabled:opacity-30 cursor-pointer p-1 rounded hover:bg-slate-50 shrink-0 transition"
                             title={file.isUploading ? "Cancel upload" : "Remove file"}
@@ -1179,7 +1238,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               <div className="flex items-center justify-between pt-3 border-t border-slate-250/50">
                 <div className="flex items-center gap-2">
                   <label className={`cursor-pointer p-1.5 hover:bg-white border border-slate-200 rounded text-slate-655 transition flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase ${
-                    isLocked || isUploading ? 'opacity-50 cursor-not-allowed' : ''
+                    isLockedForMe || isUploading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}>
                     <Paperclip size={12} />
                     <span>Choose File</span>
@@ -1187,7 +1246,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                       type="file"
                       className="hidden"
                       onChange={handleFileChange}
-                      disabled={isLocked || isUploading}
+                      disabled={isLockedForMe || isUploading}
                     />
                   </label>
                   {isUploading && (
@@ -1197,7 +1256,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
                 <Button
                   type="submit"
-                  disabled={isLocked}
+                  disabled={isLockedForMe}
                   className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send size={11} />
@@ -1268,7 +1327,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             <div className="space-y-2">
               <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Workflow Status</label>
               <select
-                disabled={isLocked}
+                disabled={isLockedForMe}
                 value={selectedStatus}
                 onChange={handleStatusChange}
                 className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 font-mono focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"

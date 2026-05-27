@@ -200,13 +200,16 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     if (!ticket) {
       return { func: 0, tech: 0, total: 0 };
     }
-    const latest = (ticket.hourEstimates || [])
-      .filter(e => e.status === 'Revision Approved' || e.status === 'Submitted')
-      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+    const funcEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
+    const techEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
+
+    const funcEst = funcEff.reduce((sum, e) => sum + e.estimatedHours, 0);
+    const techEst = techEff.reduce((sum, e) => sum + e.estimatedHours, 0);
+
     return {
-      func: latest?.functionalEstimatedHours || 0,
-      tech: latest?.technicalEstimatedHours || 0,
-      total: latest?.totalEstimatedHours || 0
+      func: funcEst,
+      tech: techEst,
+      total: funcEst + techEst
     };
   }, [ticket]);
 
@@ -214,8 +217,8 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     if (!ticket) {
       return { func: 0, tech: 0, total: 0 };
     }
-    const funcEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
-    const techEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
+    const funcEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
+    const techEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
 
     const funcAct = funcEff.reduce((sum, e) => sum + e.actualHours, 0);
     const techAct = techEff.reduce((sum, e) => sum + e.actualHours, 0);
@@ -225,6 +228,11 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
       tech: techAct,
       total: funcAct + techAct
     };
+  }, [ticket]);
+
+  const hasApprovedClosure = useMemo(() => {
+    if (!ticket) return false;
+    return (ticket.closureRequests || []).some(r => r.status === 'Approved') || ticket.status === 'Closed';
   }, [ticket]);
 
   const varianceSummary = useMemo(() => {
@@ -950,7 +958,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                       <th className="p-2">Name</th>
                                       <th className="p-2">Role</th>
                                       <th className="p-2">Module</th>
-                                      {ticket.status === 'Closed' && <th className="p-2 text-right">Actual Hours</th>}
+                                      {hasApprovedClosure && <th className="p-2 text-right">Actual Hours</th>}
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-zinc-100 bg-white">
@@ -961,7 +969,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                           <td className="p-2 font-bold text-zinc-900">{e.consultantName}</td>
                                           <td className="p-2 text-zinc-500">{prof?.roleTitle || 'Functional Consultant'}</td>
                                           <td className="p-2 text-zinc-655">{prof?.expertise?.join(', ') || ticket.sapModule}</td>
-                                          {ticket.status === 'Closed' && <td className="p-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>}
+                                          {hasApprovedClosure && <td className="p-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>}
                                         </tr>
                                       );
                                     })}
@@ -991,7 +999,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                       <th className="p-2">Name</th>
                                       <th className="p-2">Role</th>
                                       <th className="p-2">Module</th>
-                                      {ticket.status === 'Closed' && <th className="p-2 text-right">Actual Hours</th>}
+                                      {hasApprovedClosure && <th className="p-2 text-right">Actual Hours</th>}
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-zinc-100 bg-white">
@@ -1002,7 +1010,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                           <td className="p-2 font-bold text-zinc-900">{e.consultantName}</td>
                                           <td className="p-2 text-zinc-500">{prof?.roleTitle || 'ABAP Developer'}</td>
                                           <td className="p-2 text-zinc-655">{prof?.expertise?.join(', ') || ticket.sapModule}</td>
-                                          {ticket.status === 'Closed' && <td className="p-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>}
+                                          {hasApprovedClosure && <td className="p-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>}
                                         </tr>
                                       );
                                     })}
@@ -1313,7 +1321,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {activeHubTab === 'actuals' && (
                 <div className="space-y-4">
                   {role === 'Customer' ? (
-                    ticket.status !== 'Closed' ? (
+                    !hasApprovedClosure ? (
                       <div className="bg-amber-50 border border-amber-300 rounded p-4 text-center text-amber-800 font-bold font-mono">
                         Actual hours will be visible upon final ticket resolution approval.
                       </div>
@@ -1359,12 +1367,13 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                               <th className="py-2 px-3 text-center">Estimated hours</th>
                               <th className="py-2 px-3 text-center">Actual Hours logged</th>
                               <th className="py-2 px-3 text-center">Variance Gap</th>
+                              <th className="py-2 px-3 text-center">Closure Status</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-zinc-150">
                             {(!ticket.consultantEfforts || ticket.consultantEfforts.length === 0) ? (
                               <tr>
-                                <td colSpan={5} className="py-3 text-center text-zinc-400 italic">No allocations recorded.</td>
+                                <td colSpan={6} className="py-3 text-center text-zinc-400 italic">No allocations recorded.</td>
                               </tr>
                             ) : (
                               <>
@@ -1383,6 +1392,11 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                       <td className={`py-2 px-3 text-center font-black ${varHours > 0 ? 'text-red-650' : 'text-green-700'}`}>
                                         {varHours >= 0 ? `+${varHours}` : varHours}h
                                       </td>
+                                      <td className="py-2 px-3 text-center">
+                                        <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
+                                          eff.closureStatus === 'Submitted' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                                        }`}>{eff.closureStatus || 'Pending'}</span>
+                                      </td>
                                     </tr>
                                   );
                                 })}
@@ -1393,6 +1407,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                   <td className={`py-2 px-3 text-center font-black ${varianceSummary.func > 0 ? 'text-red-650' : 'text-green-700'}`}>
                                     {varianceSummary.func >= 0 ? `+${varianceSummary.func}` : varianceSummary.func}h
                                   </td>
+                                  <td></td>
                                 </tr>
                                 <tr className="bg-zinc-50 font-extrabold text-zinc-900">
                                   <td colSpan={2} className="py-2 px-3">Technical Totals:</td>
@@ -1401,14 +1416,16 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                   <td className={`py-2 px-3 text-center font-black ${varianceSummary.tech > 0 ? 'text-red-650' : 'text-green-700'}`}>
                                     {varianceSummary.tech >= 0 ? `+${varianceSummary.tech}` : varianceSummary.tech}h
                                   </td>
+                                  <td></td>
                                 </tr>
-                                <tr className="bg-zinc-100 font-black text-zinc-950 border-t border-zinc-200">
+                                <tr className="bg-zinc-100 font-black text-zinc-955 border-t border-zinc-200">
                                   <td colSpan={2} className="py-2.5 px-3 uppercase text-[9px]">Grand Totals:</td>
                                   <td className="py-2.5 px-3 text-center">{approvedEstimates.total}h</td>
                                   <td className="py-2.5 px-3 text-center">{actualsSummary.total}h</td>
                                   <td className={`py-2.5 px-3 text-center font-black ${varianceSummary.total > 0 ? 'text-red-650' : 'text-green-700'}`}>
                                     {varianceSummary.total >= 0 ? `+${varianceSummary.total}` : varianceSummary.total}h
                                   </td>
+                                  <td></td>
                                 </tr>
                               </>
                             )}

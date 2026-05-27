@@ -34,14 +34,13 @@ async function run() {
   } else {
     console.log("Query Succeeded! Result count:", data.length);
     if (data.length > 0) {
-      console.log("Sample ticket comments/efforts:", {
-        comments: data[0].comments,
-        efforts: data[0].efforts,
-        ticket_comments: data[0].ticket_comments,
-        ticket_efforts: data[0].ticket_efforts
-      });
+      console.log("First ticket detail:", JSON.stringify(data[0], null, 2));
     }
   }
+  const { data: orgs } = await supabase.from('organizations').select('*');
+  console.log("All organizations in DB:", orgs);
+  const { data: profs } = await supabase.from('profiles').select('id, full_name, email, role');
+  console.log("All profiles in DB:", profs);
 }
 
 run();

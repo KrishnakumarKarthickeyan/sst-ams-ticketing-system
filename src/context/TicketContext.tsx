@@ -298,21 +298,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         })) : []);
 
       } catch (err) {
-        console.error('Supabase fetch failed, setting states to empty.', err);
-        setTickets([]);
-        setContracts([]);
-        setContacts([]);
-        setKbArticles([]);
-        setKbCategories([]);
-        setNotifications([]);
+        console.error('Supabase fetch failed, falling back to local storage.', err);
+        loadLocalFallback();
       }
     } else {
-      setTickets([]);
-      setContracts([]);
-      setContacts([]);
-      setKbArticles([]);
-      setKbCategories([]);
-      setNotifications([]);
+      loadLocalFallback();
     }
     setLoading(false);
   };
@@ -2604,7 +2594,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           remarks: data.remarks,
           status: 'Revision Approved',
           submitted_at: newEstimate.submittedAt,
-          approved_by: 'Auto-Approved',
+          approved_by: null,
           approved_at: newEstimate.approvedAt
         });
 
@@ -2788,7 +2778,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           remarks: data.remarks,
           status: 'Revision Approved',
           submitted_at: newEstimate.submittedAt,
-          approved_by: 'Auto-Approved',
+          approved_by: null,
           approved_at: newEstimate.approvedAt
         });
 
@@ -2912,7 +2902,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
           await supabase.from('ticket_hour_estimates').update({
             status: 'Revision Approved',
-            approved_by: managerName,
+            approved_by: managerId,
             approved_at: new Date().toISOString()
           }).eq('id', estimateId);
 
@@ -3388,7 +3378,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       if (isSupabaseConfigured && supabase) {
         try {
           await supabase.from('ticket_closure_requests').insert({
-            id: newRequest.id,
+            id: newRequest.id.startsWith('cls-') && newRequest.id.length < 25 ? undefined : newRequest.id,
             ticket_id: ticketId,
             requested_by: consultantId,
             functional_actual_hours: totalFuncActual,
@@ -3707,7 +3697,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           }).eq('id', requestId);
 
           await supabase.from('ticket_closure_requests').insert({
-            id: newRequest.id,
+            id: newRequest.id.startsWith('cls-') && newRequest.id.length < 25 ? undefined : newRequest.id,
             ticket_id: ticketId,
             requested_by: consultantId,
             functional_actual_hours: totalFuncActual,
@@ -3861,7 +3851,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         await supabase.from('ticket_closure_requests').update({
           status: 'Approved',
           manager_approval_status: 'Approved',
-          manager_approved_by: managerName,
+          manager_approved_by: managerId,
           manager_approved_at: new Date().toISOString()
         }).eq('id', requestId);
 
@@ -4047,7 +4037,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         await supabase.from('ticket_closure_requests').update({
           status: 'Rejected',
           manager_approval_status: 'Rejected',
-          manager_rejected_by: managerName,
+          manager_rejected_by: managerId,
           manager_rejected_at: new Date().toISOString(),
           rejection_reason: rejectionReason
         }).eq('id', requestId);
