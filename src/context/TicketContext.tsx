@@ -88,7 +88,7 @@ interface TicketContextType {
     authorEmail: string,
     authorRole: Comment['authorRole'],
     isInternal: boolean,
-    attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string }[],
+    attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string; fileObj?: File }[],
     mentions?: string[]
   ) => void;
   logEffort: (data: {
@@ -154,7 +154,7 @@ interface TicketContextType {
       requestedBy: string;
       actualHours?: { consultantId: string; hours: number }[];
     }
-  ) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
   resubmitClosureRequest: (
     ticketId: string,
     requestId: string,
@@ -168,9 +168,20 @@ interface TicketContextType {
       requestedBy: string;
       actualHours?: { consultantId: string; hours: number }[];
     }
-  ) => void;
-  approveClosureRequest: (ticketId: string, requestId: string, managerName: string) => void;
-  rejectClosureRequest: (ticketId: string, requestId: string, managerName: string, rejectionReason: string) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
+  approveClosureRequest: (
+    ticketId: string,
+    requestId: string,
+    managerName: string,
+    score?: number,
+    feedback?: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  rejectClosureRequest: (
+    ticketId: string,
+    requestId: string,
+    managerName: string,
+    rejectionReason: string
+  ) => Promise<{ success: boolean; error?: string }>;
   updateConsultantEfforts: (ticketId: string, efforts: TicketConsultantEffort[]) => void;
   requestUnlock: (
     ticketId: string,
@@ -755,6 +766,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     fileObj?: File,
     fileUrlOrData?: string
   ): Promise<string> => {
+    if (fileUrlOrData && fileUrlOrData.includes('supabase.co/storage/v1/object/public/sap-tickets/')) {
+      return fileUrlOrData;
+    }
     if (isSupabaseConfigured && supabase) {
       try {
         try {
@@ -1459,7 +1473,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     authorEmail: string,
     authorRole: Comment['authorRole'],
     isInternal: boolean,
-    attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string }[],
+    attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string; fileObj?: File }[],
     mentions?: string[]
   ) => {
     const commentId = `c-${Date.now()}`;
@@ -1468,7 +1482,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const newAttachments: Attachment[] = [];
     for (let idx = 0; idx < (attachments || []).length; idx++) {
       const att = attachments![idx];
-      const fileUrl = await uploadAttachmentToSupabase(ticketId, att.fileName, att.fileSize, att.fileType, undefined, att.fileUrl);
+      const fileUrl = await uploadAttachmentToSupabase(ticketId, att.fileName, att.fileSize, att.fileType, att.fileObj, att.fileUrl);
       newAttachments.push({
         id: `a-comment-${Date.now()}-${idx}`,
         ticketId,
@@ -3333,7 +3347,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       requestedBy: string;
       actualHours?: { consultantId: string; hours: number }[];
     }
-  ) => {
+  ): Promise<{ success: boolean; error?: string }> => {
     let consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
     let consultantName = data.requestedBy;
 
@@ -3423,7 +3437,20 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     };
 
     if (isSupabaseConfigured && supabase) {
+      // Keep track of what we insert for rollback
+      let dbClosureReqId: string | null = null;
+      let previousTicketState: any = null;
+
       try {
+        // Save previous ticket state for rollback
+        const { data: oldTicket, error: fetchOldErr } = await supabase
+          .from('tickets')
+          .select('status, closure_status, root_cause, resolution_summary')
+          .eq('id', ticketId)
+          .single();
+        if (fetchOldErr) throw fetchOldErr;
+        previousTicketState = oldTicket;
+
         // 1. Insert closure request
         const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
           ticket_id: ticketId,
@@ -3441,36 +3468,40 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         }).select('id').single();
 
         if (reqErr) throw reqErr;
-        const dbClosureReqId = insertedReq.id;
+        dbClosureReqId = insertedReq.id;
 
         // 2. Insert actual hours logs for each consultant
         for (const rh of resolvedHoursList) {
-          await supabase.from('ticket_actual_hours').insert({
+          const { error: actErr } = await supabase.from('ticket_actual_hours').insert({
             closure_request_id: dbClosureReqId,
             ticket_id: ticketId,
             consultant_id: rh.consultantId,
             consultant_type: rh.consultantType,
             actual_hours: rh.hours
           });
+          if (actErr) throw actErr;
 
           // Also update ticket_consultant_efforts for backwards compatibility
-          const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
+          const { data: existingEff, error: effFetchErr } = await supabase.from('ticket_consultant_efforts')
             .select('id')
             .eq('ticket_id', ticketId)
             .eq('consultant_id', rh.consultantId)
             .eq('is_deleted', false)
             .maybeSingle();
 
+          if (effFetchErr) throw effFetchErr;
+
           if (existingEff) {
-            await supabase.from('ticket_consultant_efforts').update({
+            const { error: effUpdErr } = await supabase.from('ticket_consultant_efforts').update({
               actual_hours: rh.hours,
               closure_status: 'Submitted',
               work_summary: data.workCompletedSummary,
               resolution_notes: data.resolutionSummary,
               updated_at: new Date().toISOString()
             }).eq('id', existingEff.id);
+            if (effUpdErr) throw effUpdErr;
           } else {
-            await supabase.from('ticket_consultant_efforts').insert({
+            const { error: effInsErr } = await supabase.from('ticket_consultant_efforts').insert({
               ticket_id: ticketId,
               consultant_id: rh.consultantId,
               consultant_type: rh.consultantType,
@@ -3480,36 +3511,64 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
               work_summary: data.workCompletedSummary,
               resolution_notes: data.resolutionSummary
             });
+            if (effInsErr) throw effInsErr;
           }
         }
 
         // 3. Update ticket status
-        await supabase.from('tickets').update({
+        const { error: ticketUpdErr } = await supabase.from('tickets').update({
           status: 'Request for Closure',
           closure_status: 'Awaiting Manager Approval',
           root_cause: data.rootCause || null,
           resolution_summary: data.resolutionSummary,
           updated_at: new Date().toISOString()
         }).eq('id', ticketId);
+        if (ticketUpdErr) throw ticketUpdErr;
 
         // 4. Log history
-        await supabase.from('ticket_history').insert({
+        const { error: histErr1 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: consultantId,
           field_changed: 'Status',
-          old_value: currentTicket?.status || 'In Progress',
+          old_value: previousTicketState.status || 'In Progress',
           new_value: 'Request for Closure'
         });
+        if (histErr1) throw histErr1;
 
-        await supabase.from('ticket_history').insert({
+        const { error: histErr2 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: consultantId,
           field_changed: 'Actual Hours Submitted',
           old_value: '0',
           new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
         });
-      } catch (err) {
-        console.error('Error raising closure request in Supabase:', err);
+        if (histErr2) throw histErr2;
+
+      } catch (err: any) {
+        console.error('Error raising closure request in Supabase (initiating rollback):', err);
+        // ROLLBACK
+        if (dbClosureReqId) {
+          await supabase.from('ticket_actual_hours').delete().eq('closure_request_id', dbClosureReqId);
+          await supabase.from('ticket_closure_requests').delete().eq('id', dbClosureReqId);
+        }
+        if (previousTicketState) {
+          await supabase.from('tickets').update({
+            status: previousTicketState.status,
+            closure_status: previousTicketState.closure_status,
+            root_cause: previousTicketState.root_cause,
+            resolution_summary: previousTicketState.resolution_summary,
+            updated_at: new Date().toISOString()
+          }).eq('id', ticketId);
+        }
+        // Rollback legacy efforts values
+        for (const rh of resolvedHoursList) {
+          await supabase.from('ticket_consultant_efforts').update({
+            actual_hours: 0,
+            closure_status: 'Pending',
+            updated_at: new Date().toISOString()
+          }).eq('ticket_id', ticketId).eq('consultant_id', rh.consultantId);
+        }
+        return { success: false, error: err.message || 'Database transaction failed' };
       }
     }
 
@@ -3578,6 +3637,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       `Primary consultant ${consultantName} has submitted actual hours and requested closure for ticket ${ticketId}. Awaiting Manager Approval.`,
       ticketId
     );
+
+    return { success: true };
   };
 
   const resubmitClosureRequest = async (
@@ -3593,7 +3654,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       requestedBy: string;
       actualHours?: { consultantId: string; hours: number }[];
     }
-  ) => {
+  ): Promise<{ success: boolean; error?: string }> => {
     let consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
     let consultantName = data.requestedBy;
 
@@ -3616,7 +3677,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     let totalTechActual = 0;
     const actualHoursList = data.actualHours || [];
 
-    // Fallback: if actualHoursList is empty, try to construct it from functionalActualHours and technicalActualHours for the primary consultant
     if (actualHoursList.length === 0) {
       const isFunctional = currentTicket?.assignments?.find(a => a.consultantId === consultantId)?.consultantType !== 'Technical';
       actualHoursList.push({
@@ -3625,7 +3685,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       });
     }
 
-    // In local fallback or DB, we want to calculate the sums
     const resolvedHoursList: { consultantId: string; consultantName: string; consultantType: 'Functional' | 'Technical'; hours: number }[] = [];
 
     for (const ah of actualHoursList) {
@@ -3684,11 +3743,33 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     };
 
     if (isSupabaseConfigured && supabase) {
+      let dbClosureReqId: string | null = null;
+      let previousTicketState: any = null;
+      let previousRequestState: any = null;
+
       try {
+        // Save previous ticket and closure request state
+        const { data: oldTicket, error: fetchOldErr } = await supabase
+          .from('tickets')
+          .select('status, closure_status, root_cause, resolution_summary')
+          .eq('id', ticketId)
+          .single();
+        if (fetchOldErr) throw fetchOldErr;
+        previousTicketState = oldTicket;
+
+        const { data: oldRequest, error: fetchOldReqErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('status')
+          .eq('id', requestId)
+          .single();
+        if (fetchOldReqErr) throw fetchOldReqErr;
+        previousRequestState = oldRequest;
+
         // 1. Update previous request status to Resubmitted
-        await supabase.from('ticket_closure_requests').update({
+        const { error: oldReqUpdErr } = await supabase.from('ticket_closure_requests').update({
           status: 'Resubmitted'
         }).eq('id', requestId);
+        if (oldReqUpdErr) throw oldReqUpdErr;
 
         // 2. Insert resubmitted request
         const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
@@ -3708,36 +3789,39 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         }).select('id').single();
 
         if (reqErr) throw reqErr;
-        const dbClosureReqId = insertedReq.id;
+        dbClosureReqId = insertedReq.id;
 
         // 3. Insert actual hours logs for each consultant
         for (const rh of resolvedHoursList) {
-          await supabase.from('ticket_actual_hours').insert({
+          const { error: actErr } = await supabase.from('ticket_actual_hours').insert({
             closure_request_id: dbClosureReqId,
             ticket_id: ticketId,
             consultant_id: rh.consultantId,
             consultant_type: rh.consultantType,
             actual_hours: rh.hours
           });
+          if (actErr) throw actErr;
 
-          // Also update ticket_consultant_efforts for backwards compatibility
-          const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
+          const { data: existingEff, error: effFetchErr } = await supabase.from('ticket_consultant_efforts')
             .select('id')
             .eq('ticket_id', ticketId)
             .eq('consultant_id', rh.consultantId)
             .eq('is_deleted', false)
             .maybeSingle();
 
+          if (effFetchErr) throw effFetchErr;
+
           if (existingEff) {
-            await supabase.from('ticket_consultant_efforts').update({
+            const { error: effUpdErr } = await supabase.from('ticket_consultant_efforts').update({
               actual_hours: rh.hours,
               closure_status: 'Submitted',
               work_summary: data.workCompletedSummary,
               resolution_notes: data.resolutionSummary,
               updated_at: new Date().toISOString()
             }).eq('id', existingEff.id);
+            if (effUpdErr) throw effUpdErr;
           } else {
-            await supabase.from('ticket_consultant_efforts').insert({
+            const { error: effInsErr } = await supabase.from('ticket_consultant_efforts').insert({
               ticket_id: ticketId,
               consultant_id: rh.consultantId,
               consultant_type: rh.consultantType,
@@ -3747,43 +3831,73 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
               work_summary: data.workCompletedSummary,
               resolution_notes: data.resolutionSummary
             });
+            if (effInsErr) throw effInsErr;
           }
         }
 
         // 4. Update ticket status
-        await supabase.from('tickets').update({
+        const { error: ticketUpdErr } = await supabase.from('tickets').update({
           status: 'Request for Closure',
           closure_status: 'Awaiting Manager Approval',
           root_cause: data.rootCause || null,
           resolution_summary: data.resolutionSummary,
           updated_at: new Date().toISOString()
         }).eq('id', ticketId);
+        if (ticketUpdErr) throw ticketUpdErr;
 
         // 5. Log history
-        await supabase.from('ticket_history').insert({
+        const { error: histErr1 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: consultantId,
           field_changed: 'Status',
-          old_value: currentTicket?.status || 'In Progress',
+          old_value: previousTicketState.status || 'In Progress',
           new_value: 'Request for Closure'
         });
+        if (histErr1) throw histErr1;
 
-        await supabase.from('ticket_history').insert({
+        const { error: histErr2 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: consultantId,
           field_changed: 'Actual Hours Resubmitted',
           old_value: '0',
           new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
         });
-      } catch (err) {
-        console.error('Error resubmitting closure request in Supabase:', err);
+        if (histErr2) throw histErr2;
+
+      } catch (err: any) {
+        console.error('Error resubmitting closure request in Supabase (initiating rollback):', err);
+        // ROLLBACK
+        if (dbClosureReqId) {
+          await supabase.from('ticket_actual_hours').delete().eq('closure_request_id', dbClosureReqId);
+          await supabase.from('ticket_closure_requests').delete().eq('id', dbClosureReqId);
+        }
+        if (previousRequestState) {
+          await supabase.from('ticket_closure_requests').update({
+            status: previousRequestState.status
+          }).eq('id', requestId);
+        }
+        if (previousTicketState) {
+          await supabase.from('tickets').update({
+            status: previousTicketState.status,
+            closure_status: previousTicketState.closure_status,
+            root_cause: previousTicketState.root_cause,
+            resolution_summary: previousTicketState.resolution_summary,
+            updated_at: new Date().toISOString()
+          }).eq('id', ticketId);
+        }
+        for (const rh of resolvedHoursList) {
+          await supabase.from('ticket_consultant_efforts').update({
+            actual_hours: 0,
+            closure_status: 'Pending',
+            updated_at: new Date().toISOString()
+          }).eq('ticket_id', ticketId).eq('consultant_id', rh.consultantId);
+        }
+        return { success: false, error: err.message || 'Database transaction failed' };
       }
     }
 
-    // Local state fallback update
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
-        // Construct synthesized efforts
         const updatedEfforts = (t.consultantEfforts || []).map(eff => {
           const rh = resolvedHoursList.find(x => x.consultantId === eff.consultantId);
           if (rh) {
@@ -3799,7 +3913,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return eff;
         });
 
-        // Add actual hours logs
         const localActualHoursLogs = [...(t.actualHoursLogs || [])];
         resolvedHoursList.forEach(rh => {
           localActualHoursLogs.push({
@@ -3856,9 +3969,17 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       `Primary consultant ${consultantName} has resubmitted closure details for ticket ${ticketId}.`,
       ticketId
     );
+
+    return { success: true };
   };
 
-  const approveClosureRequest = async (ticketId: string, requestId: string, managerName: string) => {
+  const approveClosureRequest = async (
+    ticketId: string,
+    requestId: string,
+    managerName: string,
+    score?: number,
+    feedback?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     let actualFunc = 0;
     let actualTech = 0;
     let actualTotal = 0;
@@ -3874,20 +3995,53 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     }
 
     if (isSupabaseConfigured && supabase) {
+      let previousTicketState: any = null;
+      let previousRequestState: any = null;
+      let satisfactionRatingId: string | null = null;
+
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
         const managerId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
 
+        // 0. Validate actual hours exist
+        const { data: dbActuals, error: dbActualsErr } = await supabase
+          .from('ticket_actual_hours')
+          .select('id')
+          .eq('closure_request_id', requestId);
+
+        if (dbActualsErr) throw dbActualsErr;
+        if (!dbActuals || dbActuals.length === 0) {
+          throw new Error('Closure approval blocked: No actual hours logs found for this closure request. Re-submit closure or check resource efforts.');
+        }
+
+        // Save states for rollback
+        const { data: oldTicket, error: fetchOldErr } = await supabase
+          .from('tickets')
+          .select('status, closure_status, closed_by, closed_at, resolved_at, updated_at')
+          .eq('id', ticketId)
+          .single();
+        if (fetchOldErr) throw fetchOldErr;
+        previousTicketState = oldTicket;
+
+        const { data: oldReq, error: fetchOldReqErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('status, manager_approval_status, manager_approved_by, manager_approved_at')
+          .eq('id', requestId)
+          .single();
+        if (fetchOldReqErr) throw fetchOldReqErr;
+        previousRequestState = oldReq;
+
         // 1. Update closure request status to Approved
-        await supabase.from('ticket_closure_requests').update({
+        const { error: reqUpdErr } = await supabase.from('ticket_closure_requests').update({
           status: 'Approved',
           manager_approval_status: 'Approved',
           manager_approved_by: managerId,
           manager_approved_at: new Date().toISOString()
         }).eq('id', requestId);
+        if (reqUpdErr) throw reqUpdErr;
 
         // 2. Automatically close the ticket directly
-        await supabase.from('tickets').update({
+        const { error: ticketUpdErr } = await supabase.from('tickets').update({
           status: 'Closed',
           closure_status: 'Approved',
           closed_by: managerId,
@@ -3895,23 +4049,67 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           resolved_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }).eq('id', ticketId);
+        if (ticketUpdErr) throw ticketUpdErr;
 
         // 3. Log to ticket history
-        await supabase.from('ticket_history').insert({
+        const { error: histErr } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: managerId,
           field_changed: 'Status',
           old_value: 'Request for Closure',
           new_value: 'Closed'
         });
+        if (histErr) throw histErr;
 
         // 4. Update legacy ticket_consultant_efforts closure status
-        await supabase.from('ticket_consultant_efforts')
+        const { error: effUpdErr } = await supabase.from('ticket_consultant_efforts')
           .update({ closure_status: 'Approved', updated_at: new Date().toISOString() })
           .eq('ticket_id', ticketId);
+        if (effUpdErr) throw effUpdErr;
 
-      } catch (err) {
-        console.error('Error approving closure request in Supabase:', err);
+        // 5. Save satisfaction rating if provided
+        if (score !== undefined && score > 0 && feedback) {
+          const { data: insRating, error: ratingErr } = await supabase.from('satisfaction_ratings').insert({
+            ticket_id: ticketId,
+            score: score,
+            feedback: feedback
+          }).select('id').maybeSingle();
+
+          if (ratingErr) throw ratingErr;
+          if (insRating) satisfactionRatingId = insRating.id;
+        }
+
+      } catch (err: any) {
+        console.error('Error approving closure request in Supabase (initiating rollback):', err);
+        // ROLLBACK
+        if (previousRequestState) {
+          await supabase.from('ticket_closure_requests').update({
+            status: previousRequestState.status,
+            manager_approval_status: previousRequestState.manager_approval_status,
+            manager_approved_by: previousRequestState.manager_approved_by,
+            manager_approved_at: previousRequestState.manager_approved_at
+          }).eq('id', requestId);
+        }
+        if (previousTicketState) {
+          await supabase.from('tickets').update({
+            status: previousTicketState.status,
+            closure_status: previousTicketState.closure_status,
+            closed_by: previousTicketState.closed_by,
+            closed_at: previousTicketState.closed_at,
+            resolved_at: previousTicketState.resolved_at,
+            updated_at: previousTicketState.updated_at
+          }).eq('id', ticketId);
+        }
+        await supabase.from('ticket_consultant_efforts').update({
+          closure_status: 'Submitted',
+          updated_at: new Date().toISOString()
+        }).eq('ticket_id', ticketId);
+
+        if (satisfactionRatingId) {
+          await supabase.from('satisfaction_ratings').delete().eq('id', satisfactionRatingId);
+        }
+
+        return { success: false, error: err.message || 'Database transaction failed' };
       }
     }
 
@@ -3951,6 +4149,17 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           }
         ];
 
+        let ratingObj = t.rating;
+        if (score !== undefined && score > 0 && feedback) {
+          ratingObj = {
+            id: `r-${Date.now()}`,
+            ticketId,
+            score,
+            feedback,
+            createdAt: new Date().toISOString()
+          };
+        }
+
         return {
           ...t,
           status: 'Closed' as TicketStatus,
@@ -3961,7 +4170,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           closureRequests,
           consultantEfforts: updatedEfforts,
           updatedAt: new Date().toISOString(),
-          history: hist
+          history: hist,
+          rating: ratingObj
         };
       }
       return t;
@@ -3975,53 +4185,113 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       `Closure request for ${ticketId} has been approved. Ticket status is now Closed.`,
       ticketId
     );
+
+    return { success: true };
   };
 
-  const rejectClosureRequest = async (ticketId: string, requestId: string, managerName: string, rejectionReason: string) => {
+  const rejectClosureRequest = async (
+    ticketId: string,
+    requestId: string,
+    managerName: string,
+    rejectionReason: string
+  ): Promise<{ success: boolean; error?: string }> => {
     const currentTicket = tickets.find(t => t.id === ticketId);
     const revertedStatus: TicketStatus = 'In Progress';
 
     if (isSupabaseConfigured && supabase) {
+      let previousTicketState: any = null;
+      let previousRequestState: any = null;
+
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
         const managerId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
 
-        await supabase.from('ticket_closure_requests').update({
+        // Save states for rollback
+        const { data: oldTicket, error: fetchOldErr } = await supabase
+          .from('tickets')
+          .select('status, closure_status, updated_at')
+          .eq('id', ticketId)
+          .single();
+        if (fetchOldErr) throw fetchOldErr;
+        previousTicketState = oldTicket;
+
+        const { data: oldReq, error: fetchOldReqErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('status, manager_approval_status, manager_rejected_by, manager_rejected_at, rejection_reason')
+          .eq('id', requestId)
+          .single();
+        if (fetchOldReqErr) throw fetchOldReqErr;
+        previousRequestState = oldReq;
+
+        // 1. Update closure request status to Rejected
+        const { error: reqUpdErr } = await supabase.from('ticket_closure_requests').update({
           status: 'Rejected',
           manager_approval_status: 'Rejected',
           manager_rejected_by: managerId,
           manager_rejected_at: new Date().toISOString(),
           rejection_reason: rejectionReason
         }).eq('id', requestId);
+        if (reqUpdErr) throw reqUpdErr;
 
-        await supabase.from('ticket_consultant_efforts').update({
+        // 2. Revert legacy consultant efforts closure status
+        const { error: effUpdErr } = await supabase.from('ticket_consultant_efforts').update({
           closure_status: 'Pending',
           updated_at: new Date().toISOString()
         }).eq('ticket_id', ticketId);
+        if (effUpdErr) throw effUpdErr;
 
-        await supabase.from('tickets').update({
+        // 3. Update ticket status
+        const { error: ticketUpdErr } = await supabase.from('tickets').update({
           status: revertedStatus,
           closure_status: 'Pending',
           updated_at: new Date().toISOString()
         }).eq('id', ticketId);
+        if (ticketUpdErr) throw ticketUpdErr;
 
-        await supabase.from('ticket_history').insert({
+        // 4. Log to history
+        const { error: histErr1 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: managerId,
           field_changed: 'Status',
           old_value: 'Request for Closure',
           new_value: revertedStatus
         });
+        if (histErr1) throw histErr1;
 
-        await supabase.from('ticket_history').insert({
+        const { error: histErr2 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: managerId,
           field_changed: 'Closure Request Rejected',
           old_value: '',
           new_value: rejectionReason
         });
-      } catch (err) {
-        console.error('Error rejecting closure request in Supabase:', err);
+        if (histErr2) throw histErr2;
+
+      } catch (err: any) {
+        console.error('Error rejecting closure request in Supabase (initiating rollback):', err);
+        // ROLLBACK
+        if (previousRequestState) {
+          await supabase.from('ticket_closure_requests').update({
+            status: previousRequestState.status,
+            manager_approval_status: previousRequestState.manager_approval_status,
+            manager_rejected_by: previousRequestState.manager_rejected_by,
+            manager_rejected_at: previousRequestState.manager_rejected_at,
+            rejection_reason: previousRequestState.rejection_reason
+          }).eq('id', requestId);
+        }
+        if (previousTicketState) {
+          await supabase.from('tickets').update({
+            status: previousTicketState.status,
+            closure_status: previousTicketState.closure_status,
+            updated_at: previousTicketState.updated_at
+          }).eq('id', ticketId);
+        }
+        await supabase.from('ticket_consultant_efforts').update({
+          closure_status: 'Submitted',
+          updated_at: new Date().toISOString()
+        }).eq('ticket_id', ticketId);
+
+        return { success: false, error: err.message || 'Database transaction failed' };
       }
     }
 
@@ -4091,6 +4361,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       `Your closure request for ${ticketId} was rejected by ${managerName}. Reason: ${rejectionReason}`,
       ticketId
     );
+
+    return { success: true };
   };
 
   const updateConsultantEfforts = async (ticketId: string, efforts: TicketConsultantEffort[]) => {

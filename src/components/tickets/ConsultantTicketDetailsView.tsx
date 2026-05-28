@@ -553,23 +553,22 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
   // Estimates & Closure summaries
   const myEffort = (ticket.consultantEfforts || []).find(e => (e.consultantId === user?.id || e.consultantName === consultantName) && !e.isDeleted);
-  const myEstimatedHours = myEffort ? myEffort.estimatedHours : 0;
+  const myEstimate = (ticket.estimates || []).find(e => e.consultantId === user?.id);
+  const myEstimatedHours = myEstimate ? myEstimate.estimatedHours : 0;
 
-  const teamEstimatedHours = (ticket.consultantEfforts || [])
-    .filter(e => e.consultantId !== user?.id && e.consultantName !== consultantName && !e.isDeleted)
-    .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+  const teamEstimatedHours = (ticket.estimates || [])
+    .filter(e => e.consultantId !== user?.id)
+    .reduce((sum, e) => sum + e.estimatedHours, 0);
 
-  const functionalTotalEst = (ticket.consultantEfforts || [])
-    .filter(e => e.consultantType === 'Functional' && !e.isDeleted)
-    .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+  const functionalTotalEst = (ticket.estimates || [])
+    .filter(e => e.consultantType === 'Functional')
+    .reduce((sum, e) => sum + e.estimatedHours, 0);
 
-  const technicalTotalEst = (ticket.consultantEfforts || [])
-    .filter(e => e.consultantType === 'Technical' && !e.isDeleted)
-    .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+  const technicalTotalEst = (ticket.estimates || [])
+    .filter(e => e.consultantType === 'Technical')
+    .reduce((sum, e) => sum + e.estimatedHours, 0);
 
-  const grandTotalEst = (ticket.consultantEfforts || [])
-    .filter(e => !e.isDeleted)
-    .reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+  const grandTotalEst = functionalTotalEst + technicalTotalEst;
 
   const myActualHours = myEffort ? myEffort.actualHours : 0;
 
@@ -589,9 +588,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     .filter(e => !e.isDeleted)
     .reduce((sum, e) => sum + (e.actualHours || 0), 0);
 
-  const currentEstimate = (ticket.hourEstimates || [])
-    .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
-    .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+  const currentEstimate = myEstimate;
 
   const currentRevisionReq = (ticket.hourEstimates || [])
     .filter(e => e.status === 'Revision Requested')
@@ -978,12 +975,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 Resource Estimates (Quotation)
               </h3>
               
-              {!currentEstimate ? (
+              {!myEstimate ? (
                 <Button
                   disabled={isLockedForMe}
                   onClick={() => {
-                    setEstFuncHours('');
-                    setEstTechHours('');
+                    if (consultantType === 'Functional') {
+                      setEstFuncHours('');
+                      setEstTechHours('0');
+                    } else {
+                      setEstFuncHours('0');
+                      setEstTechHours('');
+                    }
                     setEstRemarks('');
                     setActiveModal('quote');
                   }}
@@ -995,21 +997,26 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 <Button
                   disabled={isLockedForMe}
                   onClick={() => {
-                    setEstFuncHours(String(currentEstimate.functionalEstimatedHours));
-                    setEstTechHours(String(currentEstimate.technicalEstimatedHours));
-                    setEstRemarks('');
+                    if (consultantType === 'Functional') {
+                      setEstFuncHours(String(myEstimate.estimatedHours));
+                      setEstTechHours('0');
+                    } else {
+                      setEstFuncHours('0');
+                      setEstTechHours(String(myEstimate.estimatedHours));
+                    }
+                    setEstRemarks(myEstimate.remarks || '');
                     setValidationError(null);
                     setActiveModal('revision');
                   }}
                   variant="outline"
                   className="text-[10px] font-bold uppercase h-7 cursor-pointer"
                 >
-                  Raise Hours Revision Request
+                  Revise Quoted Estimate
                 </Button>
               )}
             </div>
 
-            {(currentEstimate || grandTotalEst > 0) ? (
+            {(myEstimate || grandTotalEst > 0) ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-blue-500">
@@ -1034,15 +1041,47 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
                 </div>
 
-                {currentEstimate && (
+                {myEstimate && (
                   <div className="bg-slate-50 p-3 border border-slate-200 rounded text-xs space-y-1.5 text-slate-655 font-mono">
-                    <div>Remarks: <span className="text-slate-900 italic">"{currentEstimate.remarks || 'No remarks listed'}"</span></div>
+                    <div>Remarks: <span className="text-slate-900 italic">"{myEstimate.remarks || 'No remarks listed'}"</span></div>
                     <div className="flex justify-between text-[10px] pt-1 text-slate-400 border-t border-slate-200/50">
-                      <span>Submitted by: <strong>{currentEstimate.consultantId}</strong></span>
-                      <span>Date: <strong>{new Date(currentEstimate.submittedAt).toLocaleDateString()}</strong></span>
+                      <span>Submitted by: <strong>{consultantName}</strong></span>
+                      <span>Date: <strong>{new Date(myEstimate.submittedAt).toLocaleDateString()}</strong></span>
                     </div>
                   </div>
                 )}
+
+                {/* Team Estimate Breakdown Card */}
+                <div className="bg-slate-50 p-4 border border-slate-200 rounded-lg space-y-3">
+                  <span className="font-bold text-slate-500 uppercase text-[9px] font-mono tracking-widest block border-b border-slate-200 pb-1.5">Team Estimate Breakdown</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                    {(ticket.estimates || []).length === 0 ? (
+                      <div className="text-slate-400 italic text-[11px] font-mono py-1 col-span-2">No team estimates submitted yet.</div>
+                    ) : (
+                      (ticket.estimates || []).map((est) => {
+                        const assignment = (ticket.assignments || []).find(a => a.consultantId === est.consultantId);
+                        const nameToUse = assignment ? assignment.consultantName : est.consultantId;
+                        return (
+                          <div key={est.id || est.consultantId} className="bg-white p-2.5 border border-slate-200 rounded text-xs font-mono">
+                            <div className="flex justify-between font-bold text-slate-800">
+                              <span>{nameToUse}</span>
+                              <Badge variant="secondary" className="text-[8px] uppercase py-0 px-1 rounded-sm">{est.consultantType}</Badge>
+                            </div>
+                            <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                              <span>Quote: <strong>{est.estimatedHours} h</strong></span>
+                              <span>{new Date(est.submittedAt).toLocaleDateString()}</span>
+                            </div>
+                            {est.remarks && (
+                              <div className="text-[10px] text-slate-400 italic mt-1 bg-slate-50/50 p-1 rounded border border-slate-100">
+                                "{est.remarks}"
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="p-6 text-center border border-slate-200 bg-slate-50/45 rounded text-xs text-slate-400 italic font-mono">

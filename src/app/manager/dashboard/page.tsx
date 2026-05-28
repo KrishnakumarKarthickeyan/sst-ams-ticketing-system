@@ -781,7 +781,7 @@ export default function ManagerDashboardPage() {
     toast.success(`Work log unlock approved for ${requestedBy}`);
   };
 
-  const handleConfirmRejection = () => {
+  const handleConfirmRejection = async () => {
     const { type, ticketId, targetId, reason } = rejectDialog;
     if (!reason.trim()) {
       toast.error('Rejection reason is mandatory.');
@@ -792,8 +792,12 @@ export default function ManagerDashboardPage() {
       approveEffortLog(ticketId, targetId, 'Rejected', managerName, reason);
       toast.success('Timesheet effort log rejected.');
     } else if (type === 'closure') {
-      rejectClosureRequest(ticketId, targetId, managerName, reason);
-      toast.success('Closure request rejected.');
+      const res = await rejectClosureRequest(ticketId, targetId, managerName, reason);
+      if (res.success) {
+        toast.success('Closure request rejected.');
+      } else {
+        toast.error(res.error || 'Failed to reject closure request.');
+      }
     } else if (type === 'unlock') {
       rejectUnlockRequest(ticketId, targetId, managerName, reason);
       toast.success('Unlock request rejected.');
@@ -802,7 +806,7 @@ export default function ManagerDashboardPage() {
     setRejectDialog({ isOpen: false, type: 'effort', ticketId: '', targetId: '', reason: '' });
   };
 
-  const handleConfirmClosure = () => {
+  const handleConfirmClosure = async () => {
     const { ticketId, requestId, rating, feedback } = closureDialog;
     if (rating === 0) {
       toast.error('Please select a CSAT satisfaction rating.');
@@ -813,10 +817,13 @@ export default function ManagerDashboardPage() {
       return;
     }
 
-    approveClosureRequest(ticketId, requestId, managerName);
-    closeTicket(ticketId, rating, feedback, managerName);
-    toast.success('Ticket closed successfully with CSAT record.');
-    setClosureDialog({ isOpen: false, ticketId: '', requestId: '', rating: 0, feedback: '' });
+    const res = await approveClosureRequest(ticketId, requestId, managerName, rating, feedback);
+    if (res.success) {
+      toast.success('Ticket closed successfully with CSAT record.');
+      setClosureDialog({ isOpen: false, ticketId: '', requestId: '', rating: 0, feedback: '' });
+    } else {
+      toast.error(res.error || 'Failed to approve closure request and close ticket.');
+    }
   };
 
   return (

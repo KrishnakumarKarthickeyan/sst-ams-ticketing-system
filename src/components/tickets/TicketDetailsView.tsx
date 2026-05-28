@@ -443,7 +443,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     });
   };
 
-  const handleRejectionConfirm = () => {
+  const handleRejectionConfirm = async () => {
     const { type, targetId, reason } = rejectionModal;
     if (!reason.trim()) return;
 
@@ -452,8 +452,12 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
       rejectRevisionRequest(ticket.id, targetId, actor, reason);
       showBannerMessage('Hour estimate request rejected.');
     } else if (type === 'closure') {
-      rejectClosureRequest(ticket.id, targetId, actor, reason);
-      showBannerMessage('Closure request rejected.');
+      const res = await rejectClosureRequest(ticket.id, targetId, actor, reason);
+      if (res.success) {
+        showBannerMessage('Closure request rejected.');
+      } else {
+        showBannerMessage(`Error: ${res.error || 'Failed to reject closure request.'}`);
+      }
     } else if (type === 'unlock') {
       rejectUnlockRequest(ticket.id, targetId, actor, reason);
       showBannerMessage('Unlock work log request rejected.');
@@ -523,7 +527,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     setClosureModalOpen(true);
   };
 
-  const handleCloseSubmit = () => {
+  const handleCloseSubmit = async () => {
     if (closureRating === 0) {
       showBannerMessage('Error: CSAT Satisfaction Rating is mandatory before closing the ticket.');
       return;
@@ -535,13 +539,19 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
 
     const actor = user?.name || role;
     if (pendingClosureId) {
-      approveClosureRequest(ticket.id, pendingClosureId, actor);
+      const res = await approveClosureRequest(ticket.id, pendingClosureId, actor, closureRating, closureFeedback);
+      if (res.success) {
+        showBannerMessage('Ticket has been successfully resolved and closed with CSAT rating.');
+      } else {
+        showBannerMessage(`Error: ${res.error || 'Failed to approve closure request and close ticket.'}`);
+      }
+    } else {
+      closeTicket(ticket.id, closureRating, closureFeedback, actor);
+      showBannerMessage('Ticket has been successfully resolved and closed with CSAT rating.');
     }
-    closeTicket(ticket.id, closureRating, closureFeedback, actor);
     
     setClosureModalOpen(false);
     setPendingClosureId(null);
-    showBannerMessage('Ticket has been successfully resolved and closed with CSAT rating.');
   };
 
   const handleApproveReopen = () => {
