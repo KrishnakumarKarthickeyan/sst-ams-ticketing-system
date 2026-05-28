@@ -64,6 +64,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
   const {
     tickets,
     contracts,
+    loading,
     addComment,
     logEffort,
     approveEffortLog,
@@ -242,6 +243,17 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
       total: actualsSummary.total - approvedEstimates.total
     };
   }, [approvedEstimates, actualsSummary]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
+        <div className="text-center space-y-3">
+          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
+          <p className="tracking-wider">Loading Ticket Details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!ticket) {
     return (

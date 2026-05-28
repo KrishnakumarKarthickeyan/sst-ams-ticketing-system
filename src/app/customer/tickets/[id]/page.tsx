@@ -67,6 +67,7 @@ export default function CustomerTicketDetailPage() {
   const { user } = useAuth();
   const {
     tickets,
+    loading,
     addComment,
     closeTicket,
     reopenTicket,
@@ -126,6 +127,17 @@ export default function CustomerTicketDetailPage() {
       }
     }
   }, [searchParams, ticket]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white text-zinc-955 font-mono text-xs">
+        <div className="text-center space-y-3">
+          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
+          <p className="tracking-wider">Loading Ticket Details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!ticket) {
     return (

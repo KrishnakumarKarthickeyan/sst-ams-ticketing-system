@@ -478,18 +478,36 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
       }) : [],
 
-      attachments: t.ticket_attachments ? t.ticket_attachments.map((a: any) => ({
-        id: a.id,
-        ticketId: a.ticket_id,
-        fileName: a.file_name,
-        filePath: a.file_path,
-        fileUrl: a.file_path,
-        fileType: a.mime_type || '',
-        fileSize: a.file_size || 0,
-        uploadedBy: a.uploaded_by,
-        visibility: 'public',
-        createdAt: a.created_at
-      })) : [],
+      attachments: [
+        ...(t.ticket_attachments ? t.ticket_attachments.map((a: any) => ({
+          id: a.id,
+          ticketId: a.ticket_id,
+          fileName: a.file_name,
+          filePath: a.file_path,
+          fileUrl: a.file_path,
+          fileType: a.mime_type || '',
+          fileSize: a.file_size || 0,
+          uploadedBy: getProfile(a.uploaded_by)?.full_name || a.uploaded_by,
+          visibility: 'public',
+          createdAt: a.created_at
+        })) : []),
+        ...(t.ticket_comment_attachments ? t.ticket_comment_attachments.map((a: any) => {
+          const comment = (t.ticket_comments || t.comments || []).find((c: any) => c.id === a.comment_id);
+          return {
+            id: a.id,
+            ticketId: a.ticket_id,
+            commentId: a.comment_id,
+            fileName: a.file_name,
+            filePath: a.file_url,
+            fileUrl: a.file_url,
+            fileType: a.file_type || '',
+            fileSize: a.file_size || 0,
+            uploadedBy: getProfile(a.uploaded_by)?.full_name || a.uploaded_by,
+            visibility: comment?.is_internal ? 'internal' : 'public',
+            createdAt: a.created_at
+          };
+        }) : [])
+      ],
 
       efforts: (t.ticket_efforts || t.efforts) ? (t.ticket_efforts || t.efforts).map((e: any) => {
         const effortConsultant = getProfile(e.consultant_id);
@@ -1545,13 +1563,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         const dbCommentId = commData ? commData.id : commentId;
 
-        if (attachments && attachments.length > 0) {
-          for (const att of attachments) {
+        if (newAttachments && newAttachments.length > 0) {
+          for (const att of newAttachments) {
             await supabase.from('ticket_comment_attachments').insert({
               comment_id: dbCommentId,
               ticket_id: ticketId,
               file_name: att.fileName,
-              file_url: att.fileUrl || `/files/${att.fileName}`,
+              file_url: att.fileUrl,
               file_type: att.fileType,
               file_size: att.fileSize,
               uploaded_by: authorId
@@ -3463,8 +3481,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           resolution_summary: data.resolutionSummary,
           pending_items: data.pendingItems || null,
           status: 'Pending Manager Approval',
-          manager_approval_status: 'Pending',
-          primary_consultant_id: consultantId
+          manager_approval_status: 'Pending'
         }).select('id').single();
 
         if (reqErr) throw reqErr;
@@ -3784,7 +3801,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           pending_items: data.pendingItems || null,
           status: 'Pending Manager Approval',
           manager_approval_status: 'Pending',
-          primary_consultant_id: consultantId,
           resubmitted_from_id: requestId
         }).select('id').single();
 
