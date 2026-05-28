@@ -167,8 +167,24 @@ CREATE TABLE IF NOT EXISTS public.ticket_consultant_efforts (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP WITH TIME ZONE,
-    deleted_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL
+    deleted_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    original_consultant_id UUID
 );
+
+-- Add column for original consultant reference (if not already added)
+ALTER TABLE public.ticket_consultant_efforts
+  ADD COLUMN IF NOT EXISTS original_consultant_id UUID;
+
+-- Update RLS policy for consultant efforts (allow current user)
+DROP POLICY IF EXISTS efforts_access_policy ON public.ticket_consultant_efforts;
+CREATE POLICY efforts_access_policy ON public.ticket_consultant_efforts
+    FOR ALL TO authenticated
+    USING (
+        (is_deleted = FALSE) AND (
+            public.is_manager_or_admin() OR
+            consultant_id = auth.uid()
+        )
+    );
 
 -- H. ticket_mentions Table
 CREATE TABLE IF NOT EXISTS public.ticket_mentions (
@@ -236,6 +252,19 @@ BEGIN
             SELECT 1 FROM public.profiles 
             WHERE id = auth.uid() 
             AND role IN ('SuperAdmin', 'Manager')
+        )
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION public.is_consultant_on_ticket(t_id VARCHAR(50), u_id UUID)
+RETURNS BOOLEAN SECURITY DEFINER AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.tickets
+        WHERE id = t_id AND (
+            assigned_consultant_id = u_id OR
+            primary_consultant_id = u_id
         )
     );
 END;
@@ -390,13 +419,51 @@ CREATE POLICY closure_requests_access_policy ON public.ticket_closure_requests
 -- Consultant Efforts
 ALTER TABLE public.ticket_consultant_efforts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS efforts_access_policy ON public.ticket_consultant_efforts;
-CREATE POLICY efforts_access_policy ON public.ticket_consultant_efforts
-    FOR ALL TO authenticated
+DROP POLICY IF EXISTS efforts_select_policy ON public.ticket_consultant_efforts;
+DROP POLICY IF EXISTS efforts_update_policy ON public.ticket_consultant_efforts;
+DROP POLICY IF EXISTS efforts_delete_policy ON public.ticket_consultant_efforts;
+DROP POLICY IF EXISTS efforts_insert_policy ON public.ticket_consultant_efforts;
+
+-- SELECT policy (respect soft delete)
+CREATE POLICY efforts_select_policy ON public.ticket_consultant_efforts
+    FOR SELECT TO authenticated
     USING (
         (is_deleted = FALSE) AND (
             public.is_manager_or_admin() OR
-            consultant_id = auth.uid()
+            consultant_id = auth.uid() OR
+            public.is_consultant_on_ticket(ticket_id, auth.uid())
         )
+    );
+
+-- UPDATE policy (respect soft delete)
+CREATE POLICY efforts_update_policy ON public.ticket_consultant_efforts
+    FOR UPDATE TO authenticated
+    USING (
+        (is_deleted = FALSE) AND (
+            public.is_manager_or_admin() OR
+            consultant_id = auth.uid() OR
+            public.is_consultant_on_ticket(ticket_id, auth.uid())
+        )
+    );
+
+-- DELETE policy (respect soft delete)
+CREATE POLICY efforts_delete_policy ON public.ticket_consultant_efforts
+    FOR DELETE TO authenticated
+    USING (
+        (is_deleted = FALSE) AND (
+            public.is_manager_or_admin() OR
+            consultant_id = auth.uid() OR
+            public.is_consultant_on_ticket(ticket_id, auth.uid())
+        )
+    );
+
+-- INSERT policy (no is_deleted check needed for new rows)
+CREATE POLICY efforts_insert_policy ON public.ticket_consultant_efforts
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        public.is_manager_or_admin() OR
+        consultant_id = auth.uid() OR
+        public.is_consultant_on_ticket(ticket_id, auth.uid())
     );
 
 -- Mentions
@@ -447,7 +514,7 @@ ALTER TABLE public.satisfaction_ratings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS csat_select_policy ON public.satisfaction_ratings;
 DROP POLICY IF EXISTS csat_insert_policy ON public.satisfaction_ratings;
 CREATE POLICY csat_select_policy ON public.satisfaction_ratings FOR SELECT TO authenticated USING (public.is_manager_or_admin() OR ticket_id IN (SELECT id FROM public.tickets WHERE organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid())));
-CREATE POLICY csat_insert_policy ON public.satisfaction_ratings FOR INSERT TO authenticated WITH CHECK (ticket_id IN (SELECT id FROM public.tickets WHERE organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid())));
+CREATE POLICY csat_insert_policy ON public.satisfaction_ratings FOR INSERT TO authenticated WITH CHECK (public.is_manager_or_admin() OR ticket_id IN (SELECT id FROM public.tickets WHERE organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid())));
 
 -- Knowledgebase Articles
 ALTER TABLE public.knowledgebase_articles ENABLE ROW LEVEL SECURITY;

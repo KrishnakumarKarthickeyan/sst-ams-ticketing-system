@@ -6,7 +6,8 @@
     "dev": "NODE_OPTIONS='--max-old-space-size=8192' next dev",
     "build": "NODE_OPTIONS='--max-old-space-size=8192' next build",
     "start": "NODE_OPTIONS='--max-old-space-size=8192' next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "graphify": "graphify update ."
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",

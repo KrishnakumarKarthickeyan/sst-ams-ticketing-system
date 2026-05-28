@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent and graphify files
+.agents/
+graphify-out/
+
+# test scripts
+inspect_*.js
+test_*.js
+scratch/

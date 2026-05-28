@@ -229,3 +229,20 @@ export async function provisionUser(params: {
     return { success: false, error: e.message || 'Provisioning failed' };
   }
 }
+
+export async function getOrganizationMap() {
+  const client = getAdminClient();
+  if (!client) return {};
+  try {
+    const { data, error } = await client.from('organizations').select('id, name');
+    if (error || !data) return {};
+    const map: Record<string, string> = {};
+    data.forEach(org => {
+      map[org.id] = org.name;
+    });
+    return map;
+  } catch (e) {
+    console.error('Failed to fetch organization map:', e);
+    return {};
+  }
+}

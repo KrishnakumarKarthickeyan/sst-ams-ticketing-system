@@ -43,6 +43,7 @@ import {
 } from '../utils/mockData';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import { useAuth } from './AuthContext';
+import { getOrganizationMap } from '../app/actions/auth';
 
 interface TicketContextType {
   tickets: Ticket[];
@@ -233,6 +234,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [kbCategories, setKbCategories] = useState<KnowledgebaseCategory[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orgMap, setOrgMap] = useState<Record<string, string>>({});
 
   const fetchData = async () => {
     if (authLoading) {
@@ -251,6 +253,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     if (isSupabaseConfigured && supabase) {
       try {
+        const organizationMap = await getOrganizationMap();
+        setOrgMap(organizationMap);
+
         const { data: dbProfiles, error: profErr } = await supabase.from('profiles').select('*');
         if (profErr) {
           console.error('[DATABASE SELECT ERROR] profiles query:', { message: profErr.message, code: profErr.code, userId: user?.id });
@@ -258,7 +263,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         const { data: dbTickets, error: tickErr } = await supabase
           .from('tickets')
-          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
+          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)');
         if (tickErr) {
           console.error('[DATABASE SELECT ERROR] tickets query:', { message: tickErr.message, code: tickErr.code, userId: user?.id });
         }
@@ -293,11 +298,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         const profilesList = dbProfiles || [];
 
-        setTickets(dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList, dbContacts || [])) : []);
+        setTickets(dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList, dbContacts || [], organizationMap)) : []);
 
         setContracts(dbContracts ? dbContracts.map(c => ({
           id: c.id,
-          organizationName: (c.organizations as any)?.name || c.organization_id,
+          organizationName: organizationMap[c.organization_id] || (c.organizations as any)?.name || c.organization_id,
           contractType: c.contract_type as SupportContractType,
           startDate: c.start_date,
           endDate: c.end_date,
@@ -309,7 +314,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         setContacts(dbContacts ? dbContacts.map(c => ({
           id: c.id,
-          organizationName: c.organization_name || c.organization_id || '',
+          organizationName: c.organization_name || organizationMap[c.organization_id] || c.organization_id || '',
           name: c.name,
           designation: c.designation,
           email: c.email,
@@ -355,6 +360,23 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setLoading(false);
   };
 
+  const fetchDataRef = React.useRef(fetchData);
+
+  useEffect(() => {
+    fetchDataRef.current = fetchData;
+  }, [fetchData]);
+
+  const debouncedRefetch = React.useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log('[REALTIME DEBOUNCED REFETCH]: Triggering database fetch.');
+        fetchDataRef.current();
+      }, 250);
+    };
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, [user, authLoading]);
@@ -370,8 +392,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             schema: 'public',
           },
           (payload) => {
-            console.log('Realtime change detected, re-fetching...', payload);
-            fetchData();
+            console.log('Realtime change detected, queuing debounced re-fetch...', payload);
+            debouncedRefetch();
           }
         )
         .subscribe();
@@ -380,7 +402,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         supabase?.removeChannel(channel);
       };
     }
-  }, []);
+  }, [debouncedRefetch]);
 
   const loadMockTickets = () => {
     setTickets(MOCK_TICKETS);
@@ -410,11 +432,22 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     setTickets(parsedTickets);
-    setContracts(c ? JSON.parse(c) : MOCK_CONTRACTS);
-    setContacts(co ? JSON.parse(co) : MOCK_CONTACTS);
-    setKbArticles(a ? JSON.parse(a) : MOCK_ARTICLES);
-    setKbCategories(cat ? JSON.parse(cat) : MOCK_CATEGORIES);
-    setNotifications(n ? JSON.parse(n) : MOCK_NOTIFICATIONS);
+    
+    const parseSafe = (val: string | null, fallback: any) => {
+      if (!val) return fallback;
+      try {
+        return JSON.parse(val);
+      } catch (e) {
+        console.error('Error parsing local storage fallback key:', e);
+        return fallback;
+      }
+    };
+
+    setContracts(parseSafe(c, MOCK_CONTRACTS));
+    setContacts(parseSafe(co, MOCK_CONTACTS));
+    setKbArticles(parseSafe(a, MOCK_ARTICLES));
+    setKbCategories(parseSafe(cat, MOCK_CATEGORIES));
+    setNotifications(parseSafe(n, MOCK_NOTIFICATIONS));
   };
 
   const resetMockData = () => {
@@ -434,17 +467,19 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Helper mapper for Supabase format
-  const mapDbTicket = (t: any, dbProfiles: any[], dbContacts: any[] = []): Ticket => {
+  const mapDbTicket = (t: any, dbProfiles: any[], dbContacts: any[] = [], currentOrgMap?: Record<string, string>): Ticket => {
+    const activeOrgMap = currentOrgMap || orgMap;
     const getProfile = (id: string) => dbProfiles.find(p => p.id === id || p.full_name === id || p.email === id);
-    const customer = getProfile(t.requested_by);
+    const reqProfile = t.requested_by_profile || getProfile(t.requested_by);
+    const createdProfile = t.created_by_profile || getProfile(t.created_by_user);
     const consultant = getProfile(t.assigned_consultant_id);
     const manager = getProfile(t.assigned_manager_id);
 
-    let requestedByPhone = customer?.phone_number || undefined;
+    let requestedByPhone = reqProfile?.phone_number || undefined;
     if (!requestedByPhone && dbContacts) {
       const contact = dbContacts.find((c: any) => 
-        (c.name && customer?.full_name && c.name.toLowerCase() === customer.full_name.toLowerCase()) || 
-        (c.email && customer?.email && c.email.toLowerCase() === customer.email.toLowerCase()) ||
+        (c.name && reqProfile?.full_name && c.name.toLowerCase() === reqProfile.full_name.toLowerCase()) || 
+        (c.email && reqProfile?.email && c.email.toLowerCase() === reqProfile.email.toLowerCase()) ||
         (c.name && t.created_by_name && c.name.toLowerCase() === t.created_by_name.toLowerCase())
       );
       if (contact) {
@@ -456,9 +491,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       id: t.id,
       title: t.title,
       description: t.description,
-      organization: (t.organizations as any)?.name || t.organization_id, // Organization Name
-      requestedBy: customer?.full_name || t.created_by_name || t.requested_by,
-      requestedByEmail: customer?.email || '',
+      organization: (t.organization_id ? activeOrgMap[t.organization_id] : null) || (t.organizations as any)?.name || t.organization_id, // Organization Name
+      requestedBy: reqProfile?.full_name || t.created_by_name || t.requested_by,
+      requestedByEmail: reqProfile?.email || '',
       requestedByPhone: requestedByPhone,
       sapModule: t.sap_module as SAPModule,
       category: t.category as IssueCategory,
@@ -611,7 +646,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
       }) : [],
 
-      createdByName: t.created_by_name || customer?.full_name || t.requested_by,
+      createdByName: t.created_by_name || createdProfile?.full_name || reqProfile?.full_name || t.requested_by,
       createdByUser: t.created_by_user,
       softDeleteStatus: (t.soft_delete_status as 'Active' | 'Pending Delete' | 'Archived') || 'Active',
       sapModules: t.ticket_modules && t.ticket_modules.length > 0
@@ -727,7 +762,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         // Find the latest active closure request to read actual hours from
         const latestRequest = closureRequests.length > 0 
-          ? [...closureRequests].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+          ? [...closureRequests].sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime())[0]
           : null;
 
         return assignments.map((a: any) => {
@@ -1193,7 +1228,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
         const { data: dbTicket, error: selectErr } = await supabase
           .from('tickets')
-          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)')
+          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
           .eq('id', ticketId)
           .single();
 
@@ -1207,7 +1242,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         if (dbTicket) {
-          const mappedTicket = mapDbTicket(dbTicket, dbProfiles || [], dbContacts || []);
+          const mappedTicket = mapDbTicket(dbTicket, dbProfiles || [], dbContacts || [], orgMap);
           setTickets(prev => [mappedTicket, ...prev]);
 
           // Send asynchronous background notifications
@@ -3010,6 +3045,19 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
     if (isSupabaseConfigured && supabase) {
       try {
+        // 1. Insert/upsert into new ticket_estimates table
+        await supabase.from('ticket_estimates').upsert({
+          ticket_id: ticketId,
+          consultant_id: consultantUUID,
+          consultant_type: consultantType,
+          estimated_hours: total,
+          remarks: data.remarks || 'Consultant Revision Estimate',
+          submitted_at: new Date().toISOString()
+        }, {
+          onConflict: 'ticket_id,consultant_id'
+        });
+
+        // 2. Insert into legacy tables for safety
         await supabase.from('ticket_hour_estimates').insert({
           id: newEstimate.id.startsWith('est-') && newEstimate.id.length < 25 ? undefined : newEstimate.id,
           ticket_id: ticketId,
@@ -3568,10 +3616,11 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           pending_items: data.pendingItems || null,
           status: 'Pending Manager Approval',
           manager_approval_status: 'Pending'
-        }).select('id').single();
+        }).select('id');
 
         if (reqErr) throw reqErr;
-        dbClosureReqId = insertedReq.id;
+        const insertedReqRow = Array.isArray(insertedReq) ? insertedReq[0] : insertedReq;
+        dbClosureReqId = insertedReqRow.id;
 
         // 2. Insert actual hours logs for each consultant
         for (const rh of resolvedHoursList) {

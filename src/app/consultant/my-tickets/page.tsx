@@ -357,12 +357,49 @@ export default function ConsultantMyTicketsPage() {
     const pendingClosure = (t.closureRequests || []).find(c => c.status === 'Pending Manager Approval');
     const rejectedClosure = (t.closureRequests || []).find(c => c.status === 'Rejected');
 
-    const estHours = consultantType === 'Functional'
-      ? (latestEst?.functionalEstimatedHours ?? t.quotedHours ?? 0)
-      : (latestEst?.technicalEstimatedHours ?? t.quotedHours ?? 0);
-    const actHours = consultantType === 'Functional'
-      ? ((approvedClosure || pendingClosure)?.functionalActualHours ?? 0)
-      : ((approvedClosure || pendingClosure)?.technicalActualHours ?? 0);
+    // Find current consultant's effort
+    const myEffort = t.consultantEfforts?.find(e => 
+      (user?.id && e.consultantId === user.id) || 
+      (user?.name && e.consultantName && e.consultantName.toLowerCase() === user.name.toLowerCase())
+    );
+
+    let estHours = 0;
+    if (myEffort && myEffort.estimatedHours > 0) {
+      estHours = myEffort.estimatedHours;
+    } else {
+      // Fallback to type-specific totals
+      const teamTypeEst = t.consultantEfforts
+        ?.filter(e => e.consultantType === consultantType)
+        .reduce((sum, e) => sum + (e.estimatedHours || 0), 0) || 0;
+      
+      if (teamTypeEst > 0) {
+        estHours = teamTypeEst;
+      } else {
+        // Fallback to legacy ticket hour estimate
+        estHours = consultantType === 'Functional'
+          ? (latestEst?.functionalEstimatedHours ?? t.quotedHours ?? 0)
+          : (latestEst?.technicalEstimatedHours ?? t.quotedHours ?? 0);
+      }
+    }
+
+    let actHours = 0;
+    if (myEffort && myEffort.closureStatus === 'Approved' && myEffort.actualHours > 0) {
+      actHours = myEffort.actualHours;
+    } else {
+      // Fallback to approved team actual totals
+      const teamTypeAct = t.consultantEfforts
+        ?.filter(e => e.consultantType === consultantType && e.closureStatus === 'Approved')
+        .reduce((sum, e) => sum + (e.actualHours || 0), 0) || 0;
+
+      if (teamTypeAct > 0) {
+        actHours = teamTypeAct;
+      } else {
+        // Fallback to approved closure request
+        actHours = consultantType === 'Functional'
+          ? (approvedClosure?.functionalActualHours ?? 0)
+          : (approvedClosure?.technicalActualHours ?? 0);
+      }
+    }
 
     const isLocked = t.status === 'Closed' || t.status === 'Request for Closure' || !!pendingClosure;
     const age = Math.max(0, Math.floor((Date.now() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24)));

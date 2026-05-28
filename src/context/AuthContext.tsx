@@ -36,7 +36,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let active = true;
-    let currentUserId: string | null = user?.id || null;
     let fetchingUserId: string | null = null;
 
     const fetchAndSetProfile = async (session: any) => {
@@ -44,31 +43,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (fetchingUserId === session.user.id) return null;
       fetchingUserId = session.user.id;
 
+      // 1. Try to load cached profile first for instant UI response
+      let cachedUser: UserSession | null = null;
       try {
-        const { data: profile, error } = await supabase!
+        const cached = localStorage.getItem(`sst_profile_${session.user.id}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.role) {
+            cachedUser = parsed;
+            setUser(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading cached profile:', e);
+      }
+
+      try {
+        const profilePromise = supabase!
           .from('profiles')
           .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
           .eq('id', session.user.id)
           .single();
 
-        if (error || !profile) {
-          console.error("Failed to load user profile. Logging out to prevent loops:", error);
-          await supabase!.auth.signOut();
-          setUser(null);
-          currentUserId = null;
-          localStorage.removeItem('sap_user_session');
-          localStorage.removeItem(`sst_profile_${session.user.id}`);
+        const timeoutPromise = new Promise<any>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: { message: 'Profile fetch timeout' } }), 20000)
+        );
+
+        const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
+
+        const isTimeout = error && error.message === 'Profile fetch timeout';
+        const isNetworkError = error && (error.status === 0 || error.message?.includes('Failed to fetch') || error.message?.includes('network'));
+
+        if (isTimeout || isNetworkError) {
+          console.warn("Temporary network issue or database waking up. Using cached profile if available:", error);
+          if (cachedUser) {
+            setUser(cachedUser);
+            setLoading(false);
+            fetchingUserId = null;
+            return cachedUser;
+          }
           fetchingUserId = null;
           setLoading(false);
           return null;
         }
 
-        if (!profile.is_active) {
+        if (error || !profile || !profile.is_active) {
+          console.error("Failed or inactive user profile. Clearing auth session:", error);
+          
           await supabase!.auth.signOut();
           setUser(null);
-          currentUserId = null;
-          localStorage.removeItem('sap_user_session');
-          localStorage.removeItem(`sst_profile_${session.user.id}`);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('sap_user_session');
+            localStorage.removeItem(`sst_profile_${session.user.id}`);
+          }
           fetchingUserId = null;
           setLoading(false);
           return null;
@@ -86,81 +114,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phoneNumber: profile.phone_number
         };
         
-        localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
-        localStorage.setItem(`sst_profile_${session.user.id}`, JSON.stringify(sessionUser));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
+          localStorage.setItem(`sst_profile_${session.user.id}`, JSON.stringify(sessionUser));
+        }
+        
         setUser(sessionUser);
-        currentUserId = session.user.id;
         fetchingUserId = null;
         setLoading(false);
         return sessionUser;
 
-      } catch (e) {
+      } catch (e: any) {
         console.error('Fatal profile query exception:', e);
-        // Force signout to break retry loops
-        try {
+        const isNetworkException = e && (e.status === 0 || e.message?.includes('Failed to fetch') || e.message?.includes('network') || e.message?.includes('timeout'));
+        if (!isNetworkException) {
           await supabase!.auth.signOut();
-        } catch {}
-        setUser(null);
-        currentUserId = null;
-        localStorage.removeItem('sap_user_session');
-      }
-      fetchingUserId = null;
-      setLoading(false);
-      return null;
-    };
-
-    const initAuth = async () => {
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session && active) {
-            if (session.user.id !== currentUserId) {
-              await fetchAndSetProfile(session);
-            } else {
-              setLoading(false);
-            }
-          } else if (active) {
-            setUser(null);
-            currentUserId = null;
+          setUser(null);
+          if (typeof window !== 'undefined') {
             localStorage.removeItem('sap_user_session');
-            setLoading(false);
+            localStorage.removeItem(`sst_profile_${session.user.id}`);
           }
-        } catch (e) {
-          console.error('Error in initAuth getSession:', e);
-          setLoading(false);
-        }
-      } else {
-        // Fallback local storage (only in demo mode if Supabase isn't configured)
-        const stored = localStorage.getItem('sap_user_session');
-        if (stored && active) {
-          try {
-            const parsed = JSON.parse(stored);
-            setUser(parsed);
-            currentUserId = parsed.id || null;
-          } catch (e) {
-            console.error('Failed to parse local user session:', e);
-          }
+        } else if (cachedUser) {
+          setUser(cachedUser);
         }
         setLoading(false);
       }
+      fetchingUserId = null;
+      return null;
     };
 
-    initAuth();
+    if (isSupabaseConfigured && supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!active) return;
 
-    // Setup Supabase auth state listener if active
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (session) {
-          if (session.user.id !== currentUserId) {
-            await fetchAndSetProfile(session);
-            if (active) setLoading(false);
-          }
+          await fetchAndSetProfile(session);
         } else {
           setUser(null);
-          currentUserId = null;
-          localStorage.removeItem('sap_user_session');
-          if (active) setLoading(false);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('sap_user_session');
+          }
+          setLoading(false);
         }
       });
 
@@ -168,6 +162,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         active = false;
         subscription.unsubscribe();
       };
+    } else {
+      // Fallback local storage (only in demo mode if Supabase isn't configured)
+      const stored = localStorage.getItem('sap_user_session');
+      if (stored && active) {
+        try {
+          setUser(JSON.parse(stored));
+        } catch (e) {
+          console.error('Failed to parse local user session:', e);
+        }
+      }
+      setLoading(false);
     }
   }, []);
 
@@ -216,6 +221,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               modules: profile.sap_modules || [],
               phoneNumber: profile.phone_number
             };
+            
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
+              localStorage.setItem(`sst_profile_${data.user.id}`, JSON.stringify(sessionUser));
+            }
+            
             setUser(sessionUser);
             return { success: true, user: sessionUser };
           }
@@ -231,10 +242,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.error('Error signing out from Supabase:', e);
+      }
     }
     setUser(null);
-    localStorage.removeItem('sap_user_session');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sap_user_session');
+      
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sst_profile_') || key.startsWith('sap_') || key.startsWith('sst_role_') || key.startsWith('sst_user_'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    }
     router.push('/login');
   };
 
