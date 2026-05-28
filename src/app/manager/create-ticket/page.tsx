@@ -458,8 +458,8 @@ export default function ManagerCreateTicketPage() {
 
         setTimeout(() => {
           setSuccess(false);
-          router.push('/manager/tickets');
-        }, 3000);
+          router.push(`/manager/tickets/${res.ticketId}`);
+        }, 1500);
       } else {
         throw new Error(res.error || 'Server error occurred while inserting records.');
       }

@@ -127,7 +127,7 @@ export default function AdminCreateTicketPage() {
       attachments: attachments
     });
 
-    if (res.success) {
+    if (res.success && res.ticketId) {
       toast.success('Ticket registered successfully!', { id: toastId });
       setSuccess(true);
       setTitle('');
@@ -138,7 +138,7 @@ export default function AdminCreateTicketPage() {
 
       setTimeout(() => {
         setSuccess(false);
-        router.push('/admin/tickets');
+        router.push(`/admin/tickets/${res.ticketId}`);
       }, 1500);
     } else {
       toast.error(`Database Error: ${res.error}`, { id: toastId, duration: 8000 });

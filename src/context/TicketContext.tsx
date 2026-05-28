@@ -247,13 +247,45 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: dbProfiles } = await supabase.from('profiles').select('*');
-        const { data: dbTickets } = await supabase.from('tickets').select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
-        const { data: dbContracts } = await supabase.from('customer_contracts').select('*, organizations(name)');
-        const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
-        const { data: dbArticles } = await supabase.from('knowledgebase_articles').select('*');
-        const { data: dbCategories } = await supabase.from('knowledgebase_categories').select('*');
-        const { data: dbNotifications } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+        const { data: dbProfiles, error: profErr } = await supabase.from('profiles').select('*');
+        if (profErr) {
+          console.error('[DATABASE SELECT ERROR] profiles query:', { message: profErr.message, code: profErr.code, userId: user?.id });
+        }
+
+        const { data: dbTickets, error: tickErr } = await supabase
+          .from('tickets')
+          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
+        if (tickErr) {
+          console.error('[DATABASE SELECT ERROR] tickets query:', { message: tickErr.message, code: tickErr.code, userId: user?.id });
+        }
+
+        const { data: dbContracts, error: contErr } = await supabase.from('customer_contracts').select('*, organizations(name)');
+        if (contErr) {
+          console.error('[DATABASE SELECT ERROR] contracts query:', { message: contErr.message, code: contErr.code, userId: user?.id });
+        }
+
+        const { data: dbContacts, error: contactErr } = await supabase.from('customer_contacts').select('*');
+        if (contactErr) {
+          console.error('[DATABASE SELECT ERROR] contacts query:', { message: contactErr.message, code: contactErr.code, userId: user?.id });
+        }
+
+        const { data: dbArticles, error: artErr } = await supabase.from('knowledgebase_articles').select('*');
+        if (artErr) {
+          console.error('[DATABASE SELECT ERROR] knowledgebase_articles query:', { message: artErr.message, code: artErr.code, userId: user?.id });
+        }
+
+        const { data: dbCategories, error: catErr } = await supabase.from('knowledgebase_categories').select('*');
+        if (catErr) {
+          console.error('[DATABASE SELECT ERROR] knowledgebase_categories query:', { message: catErr.message, code: catErr.code, userId: user?.id });
+        }
+
+        const { data: dbNotifications, error: notifErr } = await supabase
+          .from('notifications')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (notifErr) {
+          console.error('[DATABASE SELECT ERROR] notifications query:', { message: notifErr.message, code: notifErr.code, userId: user?.id });
+        }
 
         const profilesList = dbProfiles || [];
 
@@ -310,9 +342,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           createdAt: n.created_at
         })) : []);
 
-      } catch (err) {
-        console.error('Supabase fetch failed, falling back to local storage.', err);
-        loadLocalFallback();
+      } catch (err: any) {
+        console.error('[DATABASE FETCH FATAL RUNTIME ERROR]:', err);
       }
     } else {
       loadLocalFallback();
@@ -854,8 +885,28 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     sapModules?: SAPModule[];
   }): Promise<{ success: boolean; error?: string; ticketId?: string }> => {
     const tType = data.ticketType || 'Incident';
+    const classification = data.classification || data.functionalOrTechnical || 'Functional';
+
+    // 1. Mandatory Fields Validation
+    const missingFields: string[] = [];
+    if (!data.title?.trim()) missingFields.push('title');
+    if (!data.description?.trim()) missingFields.push('description');
+    if (!data.sapModule) missingFields.push('sapModule');
+    if (!data.category) missingFields.push('category');
+    if (!data.priority) missingFields.push('priority');
+    if (!data.organization?.trim()) missingFields.push('organization');
+    if (!data.requestedBy?.trim()) missingFields.push('requestedBy');
+    if (!data.requestedByEmail?.trim()) missingFields.push('requestedByEmail');
+    if (!tType) missingFields.push('ticketType');
+    if (!classification) missingFields.push('classification');
+
+    if (missingFields.length > 0) {
+      const errorMsg = `Validation Error: Missing required registry fields: ${missingFields.join(', ')}`;
+      console.error(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+
     const isIncident = tType === 'Incident';
-    
     let slaHours = 48;
     if (data.priority === 'Critical') slaHours = 4;
     else if (data.priority === 'High') slaHours = 8;
@@ -868,7 +919,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const ticketId = `SST-${data.sapModule}-${nextIdNum}`;
 
-    // Map Attachments
+    // Map Attachments local objects (will link to public bucket files on upload)
     const newAttachments: Attachment[] = [];
     for (let idx = 0; idx < (data.attachments || []).length; idx++) {
       const att = data.attachments![idx];
@@ -893,31 +944,79 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // SUPABASE DB CREATION
     if (isSupabaseConfigured && supabase) {
       try {
-        let orgId = data.organization;
-        const { data: orgData, error: orgFindErr } = await supabase.from('organizations').select('id').eq('name', data.organization).maybeSingle();
-        if (orgFindErr) throw orgFindErr;
+        let orgId = '';
+        const { data: orgData, error: orgFindErr } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('name', data.organization.trim())
+          .maybeSingle();
+
+        if (orgFindErr) {
+          console.error('[DATABASE SELECT ERROR] organization query:', {
+            message: orgFindErr.message,
+            code: orgFindErr.code,
+            context: { organization: data.organization },
+            userId: user?.id
+          });
+          return { success: false, error: `Organization lookup failed: [${orgFindErr.code}] ${orgFindErr.message}` };
+        }
 
         if (orgData) {
           orgId = orgData.id;
         } else {
-          const { data: newOrg, error: orgInsErr } = await supabase.from('organizations').insert({ name: data.organization }).select('id').single();
-          if (orgInsErr) throw orgInsErr;
+          // Managers can provision a new company if missing
+          if (user?.role !== 'Manager' && user?.role !== 'SuperAdmin') {
+            return { success: false, error: `Validation Error: Organization "${data.organization}" not registered in the system.` };
+          }
+          const { data: newOrg, error: orgInsErr } = await supabase
+            .from('organizations')
+            .insert({ name: data.organization.trim() })
+            .select('id')
+            .single();
+
+          if (orgInsErr) {
+            console.error('[DATABASE INSERT ERROR] organization creation:', {
+              message: orgInsErr.message,
+              code: orgInsErr.code,
+              context: { organization: data.organization },
+              userId: user?.id
+            });
+            return { success: false, error: `Organization registration failed: [${orgInsErr.code}] ${orgInsErr.message}` };
+          }
           if (newOrg) orgId = newOrg.id;
         }
 
-        let requestorId = user?.id || '7d1be7f4-01b8-4b66-a842-d28a2b63c4f3'; // Dynamic fallback
-        
-        // If a Manager or SuperAdmin is creating the ticket on behalf of a Customer, look up the Customer's profile id
+        if (!orgId) {
+          return { success: false, error: 'Validation Error: Target organization could not be resolved.' };
+        }
+
+        let requestorId = user?.id || '';
+        // If created by manager on behalf of customer, resolve requestor's profile id
         if (data.requestedByEmail && (user?.role === 'Manager' || user?.role === 'SuperAdmin')) {
           const { data: profData, error: profErr } = await supabase
             .from('profiles')
             .select('id')
             .ilike('email', data.requestedByEmail.trim())
             .maybeSingle();
-          if (profErr) throw profErr;
+
+          if (profErr) {
+            console.error('[DATABASE SELECT ERROR] profiles query:', {
+              message: profErr.message,
+              code: profErr.code,
+              context: { email: data.requestedByEmail },
+              userId: user?.id
+            });
+            return { success: false, error: `Customer profile check failed: [${profErr.code}] ${profErr.message}` };
+          }
           if (profData) {
             requestorId = profData.id;
+          } else {
+            return { success: false, error: `Validation Error: Profile with email ${data.requestedByEmail} does not exist.` };
           }
+        }
+
+        if (!requestorId) {
+          return { success: false, error: 'Validation Error: Unable to resolve ticket requested_by client.' };
         }
 
         let consultantId = null;
@@ -927,7 +1026,15 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .select('id')
             .ilike('full_name', data.assignedConsultant.trim())
             .maybeSingle();
-          if (consErr) throw consErr;
+
+          if (consErr) {
+            console.error('[DATABASE SELECT ERROR] profiles query (consultant):', {
+              message: consErr.message,
+              code: consErr.code,
+              context: { name: data.assignedConsultant }
+            });
+            return { success: false, error: `Consultant lookup failed: ${consErr.message}` };
+          }
           if (consData) consultantId = consData.id;
         }
 
@@ -938,11 +1045,20 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .select('id')
             .ilike('full_name', data.assignedManager.trim())
             .maybeSingle();
-          if (mgrErr) throw mgrErr;
+
+          if (mgrErr) {
+            console.error('[DATABASE SELECT ERROR] profiles query (manager):', {
+              message: mgrErr.message,
+              code: mgrErr.code,
+              context: { name: data.assignedManager }
+            });
+            return { success: false, error: `Manager lookup failed: ${mgrErr.message}` };
+          }
           if (mgrData) managerId = mgrData.id;
         }
 
-        const { error: ticketInsErr } = await supabase.from('tickets').insert({
+        // Insert ticket registry entry using select().single() for transactional validation
+        const ticketPayload = {
           id: ticketId,
           organization_id: orgId,
           requested_by: requestorId,
@@ -959,8 +1075,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           escalation_flag: false,
           approval_required: data.priority === 'Critical',
           ticket_type: tType,
-          functional_or_technical: data.classification || data.functionalOrTechnical || 'Functional',
-          classification: data.classification || data.functionalOrTechnical || 'Functional',
+          functional_or_technical: classification,
+          classification: classification,
           business_impact: data.businessImpactLevel || data.businessImpact || null,
           business_impact_level: data.businessImpactLevel || data.businessImpact || null,
           business_justification: data.businessJustification || null,
@@ -970,25 +1086,53 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           created_by_name: data.requestedBy,
           created_by_user: requestorId,
           soft_delete_status: 'Active'
-        });
-        if (ticketInsErr) throw ticketInsErr;
+        };
 
+        const { data: insertedTicket, error: ticketInsErr } = await supabase
+          .from('tickets')
+          .insert(ticketPayload)
+          .select()
+          .single();
+
+        if (ticketInsErr) {
+          console.error('[DATABASE INSERT ERROR] tickets insertion:', {
+            message: ticketInsErr.message,
+            code: ticketInsErr.code,
+            context: ticketPayload,
+            userId: user?.id,
+            ticketId
+          });
+          return { success: false, error: `Supabase ticket registry insert failed: [${ticketInsErr.code}] ${ticketInsErr.message}` };
+        }
+
+        if (!insertedTicket) {
+          return { success: false, error: 'Database transaction returned empty response.' };
+        }
+
+        // Create ticket module links
         if (data.sapModules && data.sapModules.length > 0) {
           for (const m of data.sapModules) {
             const { error: modErr } = await supabase.from('ticket_modules').insert({
               ticket_id: ticketId,
               module_id: m
             });
-            if (modErr) throw modErr;
+            if (modErr) {
+              console.error('[DATABASE INSERT ERROR] ticket_modules scope:', { message: modErr.message, code: modErr.code, ticketId });
+              return { success: false, error: `Module scoping error: ${modErr.message}` };
+            }
           }
         } else {
           const { error: modErr } = await supabase.from('ticket_modules').insert({
             ticket_id: ticketId,
             module_id: data.sapModule
           });
-          if (modErr) throw modErr;
+          if (modErr) {
+            console.error('[DATABASE INSERT ERROR] primary ticket_module:', { message: modErr.message, code: modErr.code, ticketId });
+            return { success: false, error: `Primary module link error: ${modErr.message}` };
+          }
         }
 
+        // Upload attachment records
         for (const att of newAttachments) {
           const { error: attErr } = await supabase.from('ticket_attachments').insert({
             ticket_id: ticketId,
@@ -998,9 +1142,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             file_size: att.fileSize,
             mime_type: att.fileType
           });
-          if (attErr) throw attErr;
+          if (attErr) {
+            console.error('[DATABASE INSERT ERROR] ticket_attachments registration:', { message: attErr.message, code: attErr.code, ticketId });
+            return { success: false, error: `Attachment linking error: ${attErr.message}` };
+          }
         }
 
+        // Write initial history log
         const { error: histErr } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: requestorId,
@@ -1008,8 +1156,12 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           old_value: 'Created',
           new_value: initialStatus
         });
-        if (histErr) throw histErr;
+        if (histErr) {
+          console.error('[DATABASE INSERT ERROR] ticket_history entry:', { message: histErr.message, code: histErr.code, ticketId });
+          return { success: false, error: `History audit failed: ${histErr.message}` };
+        }
 
+        // Write consultant assignment history & roster if assigned
         if (data.assignedConsultant) {
           const { error: histConsErr } = await supabase.from('ticket_history').insert({
             ticket_id: ticketId,
@@ -1018,141 +1170,71 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             old_value: 'Unassigned',
             new_value: data.assignedConsultant
           });
-          if (histConsErr) throw histConsErr;
+          if (histConsErr) console.error('[DATABASE INSERT ERROR] consultant history entry:', histConsErr.message);
 
           if (consultantId) {
             const { error: effortErr } = await supabase.from('ticket_consultant_efforts').insert({
               ticket_id: ticketId,
               consultant_id: consultantId,
-              consultant_type: (data.classification === 'Technical' || data.functionalOrTechnical === 'Technical') ? 'Technical' : 'Functional',
+              consultant_type: (classification === 'Technical') ? 'Technical' : 'Functional',
               estimated_hours: 0,
               actual_hours: 0
             });
-            if (effortErr) throw effortErr;
+            if (effortErr) console.error('[DATABASE INSERT ERROR] consultant efforts registry:', effortErr.message);
           }
         }
 
-        const { data: mgrProfile } = await supabase.from('profiles').select('id').eq('email', 'manager@supportstudio.com').maybeSingle();
-        if (mgrProfile) {
-          const { error: notifErr } = await supabase.from('notifications').insert({
-            user_id: mgrProfile.id,
-            title: `New Ticket: ${ticketId}`,
-            message: `Ticket "${data.title}" was submitted. Source: ${ticketSource}`,
-            ticket_id: ticketId
+        // Hydrate newly created ticket from the database with joins
+        const { data: dbProfiles } = await supabase.from('profiles').select('*');
+        const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
+        const { data: dbTicket, error: selectErr } = await supabase
+          .from('tickets')
+          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)')
+          .eq('id', ticketId)
+          .single();
+
+        if (selectErr) {
+          console.error('[DATABASE SELECT ERROR] ticket hydration query:', {
+            message: selectErr.message,
+            code: selectErr.code,
+            ticketId
           });
-          if (notifErr) console.warn('Non-blocking notification error:', notifErr.message);
+          return { success: false, error: `Hydration select query failed: [${selectErr.code}] ${selectErr.message}` };
         }
 
-        if (consultantId) {
-          const { error: notifConsErr } = await supabase.from('notifications').insert({
-            user_id: consultantId,
-            title: 'New Ticket Assigned',
-            message: `You have been assigned to ${ticketId} during creation.`,
-            ticket_id: ticketId
-          });
-          if (notifConsErr) console.warn('Non-blocking notification error:', notifConsErr.message);
+        if (dbTicket) {
+          const mappedTicket = mapDbTicket(dbTicket, dbProfiles || [], dbContacts || []);
+          setTickets(prev => [mappedTicket, ...prev]);
+
+          // Send asynchronous background notifications
+          const { data: mgrProfile } = await supabase.from('profiles').select('id').eq('email', 'manager@supportstudio.com').maybeSingle();
+          if (mgrProfile) {
+            await supabase.from('notifications').insert({
+              user_id: mgrProfile.id,
+              title: `New Ticket: ${ticketId}`,
+              message: `Ticket "${data.title}" was submitted. Source: ${ticketSource}`,
+              ticket_id: ticketId
+            });
+          }
+          if (consultantId) {
+            await supabase.from('notifications').insert({
+              user_id: consultantId,
+              title: 'New Ticket Assigned',
+              message: `You have been assigned to ${ticketId} during creation.`,
+              ticket_id: ticketId
+            });
+          }
+
+          return { success: true, ticketId: mappedTicket.id };
         }
 
       } catch (err: any) {
-        console.error('Error creating ticket in Supabase:', err);
-        return { success: false, error: err.message || 'Database write failed' };
+        console.error('[TICKET CREATION FATAL RUNTIME ERROR]:', err);
+        return { success: false, error: err.message || 'Fatal database transaction error' };
       }
     }
 
-    const newTicket: Ticket = {
-      id: ticketId,
-      title: data.title,
-      description: data.description,
-      organization: data.organization,
-      requestedBy: data.requestedBy,
-      requestedByEmail: data.requestedByEmail,
-      sapModule: data.sapModule,
-      category: data.category,
-      priority: data.priority,
-      status: initialStatus,
-      assignedManager: data.assignedManager || undefined,
-      assignedConsultant: data.assignedConsultant || undefined,
-      slaDueAt: isIncident ? getFutureDate(slaHours) : 'SLA Not Applicable',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      billable: true,
-      escalationFlag: false,
-      approvalRequiredFlag: data.priority === 'Critical',
-      source: ticketSource,
-      comments: [],
-      attachments: newAttachments,
-      efforts: [],
-      history: [
-        {
-          id: `h-init-${Date.now()}`,
-          ticketId,
-          changedBy: data.requestedBy,
-          fieldChanged: 'Ticket',
-          oldValue: 'Created',
-          newValue: initialStatus,
-          createdAt: new Date().toISOString()
-        }
-      ],
-      ticketType: tType,
-      functionalOrTechnical: data.functionalOrTechnical || 'Functional',
-      businessImpact: data.businessImpact || '',
-      expectedResolutionDate: data.expectedResolutionDate || undefined,
-      quotedHours: undefined,
-      raisedToSap: false,
-      reopenedCount: 0,
-      customerActionRequired: false,
-      currentOwner: data.assignedConsultant || undefined,
-      nextActionOwner: data.assignedConsultant ? data.assignedConsultant : 'Support Desk',
-      escalations: [],
-      sapModules: data.sapModules || [data.sapModule],
-      createdByName: data.requestedBy,
-      softDeleteStatus: 'Active',
-      deleteRequests: []
-    };
-
-    if (data.assignedConsultant) {
-      newTicket.history.push({
-        id: `h-init-consultant-${Date.now()}`,
-        ticketId,
-        changedBy: data.requestedBy,
-        fieldChanged: 'Assigned Consultant',
-        oldValue: 'Unassigned',
-        newValue: data.assignedConsultant,
-        createdAt: new Date().toISOString()
-      });
-      newTicket.consultantEfforts = [{
-        id: `eff-${Date.now()}`,
-        ticketId,
-        consultantId: data.assignedConsultant.toLowerCase().replace(/\s+/g, '-'),
-        consultantName: data.assignedConsultant,
-        consultantType: (data.classification === 'Technical' || data.functionalOrTechnical === 'Technical') ? 'Technical' : 'Functional',
-        estimatedHours: 0,
-        actualHours: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }];
-    }
-
-    const updated = [newTicket, ...tickets];
-    syncTickets(updated);
-
-    createSystemNotification(
-      'manager@supportstudio.com',
-      `New Ticket: ${ticketId}`,
-      `Ticket "${data.title}" was submitted. Source: ${ticketSource}`,
-      ticketId
-    );
-
-    if (data.assignedConsultant) {
-      createSystemNotification(
-        'consultant@supportstudio.com',
-        'New Ticket Assigned',
-        `You have been assigned to ${ticketId} during creation.`,
-        ticketId
-      );
-    }
-
-    return { success: true, ticketId };
+    return { success: false, error: 'Database connection is not configured.' };
   };
 
   const requestEscalation = async (

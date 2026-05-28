@@ -377,8 +377,8 @@ export default function CustomerCreateTicketPage() {
 
         setTimeout(() => {
           setSuccess(false);
-          router.push('/customer/tickets');
-        }, 3000);
+          router.push(`/customer/tickets/${res.ticketId}`);
+        }, 1500);
       } else {
         throw new Error(res.error || 'Server error occurred while inserting records.');
       }

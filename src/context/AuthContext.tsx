@@ -51,51 +51,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('id', session.user.id)
           .single();
 
-        if (profile && !error && active) {
-          if (!profile.is_active) {
-            await supabase!.auth.signOut();
-            setUser(null);
-            currentUserId = null;
-            localStorage.removeItem('sap_user_session');
-            localStorage.removeItem(`sst_profile_${session.user.id}`);
-            fetchingUserId = null;
-            return null;
-          }
-          const userOrg = profile.organizations as any;
-          const sessionUser: UserSession = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: profile.full_name,
-            role: profile.role as UserRole,
-            company: userOrg ? userOrg.name : undefined,
-            consultantType: profile.consultant_type as any,
-            modules: profile.sap_modules || [],
-            phoneNumber: profile.phone_number
-          };
-          
-          localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
-          localStorage.setItem(`sst_profile_${session.user.id}`, JSON.stringify(sessionUser));
-          setUser(sessionUser);
-          currentUserId = session.user.id;
+        if (error || !profile) {
+          console.error("Failed to load user profile. Logging out to prevent loops:", error);
+          await supabase!.auth.signOut();
+          setUser(null);
+          currentUserId = null;
+          localStorage.removeItem('sap_user_session');
+          localStorage.removeItem(`sst_profile_${session.user.id}`);
           fetchingUserId = null;
-          return sessionUser;
-        } else if (active) {
-          const sessionUser: UserSession = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.email?.split('@')[0] || 'User',
-            role: 'Customer'
-          };
-          localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
-          setUser(sessionUser);
-          currentUserId = session.user.id;
-          fetchingUserId = null;
-          return sessionUser;
+          setLoading(false);
+          return null;
         }
+
+        if (!profile.is_active) {
+          await supabase!.auth.signOut();
+          setUser(null);
+          currentUserId = null;
+          localStorage.removeItem('sap_user_session');
+          localStorage.removeItem(`sst_profile_${session.user.id}`);
+          fetchingUserId = null;
+          setLoading(false);
+          return null;
+        }
+
+        const userOrg = profile.organizations as any;
+        const sessionUser: UserSession = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: profile.full_name,
+          role: profile.role as UserRole,
+          company: userOrg ? userOrg.name : undefined,
+          consultantType: profile.consultant_type as any,
+          modules: profile.sap_modules || [],
+          phoneNumber: profile.phone_number
+        };
+        
+        localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
+        localStorage.setItem(`sst_profile_${session.user.id}`, JSON.stringify(sessionUser));
+        setUser(sessionUser);
+        currentUserId = session.user.id;
+        fetchingUserId = null;
+        return sessionUser;
+
       } catch (e) {
-        console.error('Error fetching profile from Supabase', e);
+        console.error('Fatal profile query exception:', e);
+        // Force signout to break retry loops
+        try {
+          await supabase!.auth.signOut();
+        } catch {}
+        setUser(null);
+        currentUserId = null;
+        localStorage.removeItem('sap_user_session');
       }
       fetchingUserId = null;
+      setLoading(false);
       return null;
     };
 
@@ -105,24 +114,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { data: { session } } = await supabase.auth.getSession();
           if (session && active) {
             if (session.user.id !== currentUserId) {
-              const cached = localStorage.getItem(`sst_profile_${session.user.id}`);
-              if (cached) {
-                try {
-                  setUser(JSON.parse(cached));
-                  setLoading(false);
-                } catch {}
-              }
               await fetchAndSetProfile(session);
+            } else {
+              setLoading(false);
             }
           } else if (active) {
             setUser(null);
             currentUserId = null;
+            localStorage.removeItem('sap_user_session');
+            setLoading(false);
           }
         } catch (e) {
-          console.error('Error in initAuth getSession', e);
+          console.error('Error in initAuth getSession:', e);
+          setLoading(false);
         }
       } else {
-        // Fallback local storage
+        // Fallback local storage (only in demo mode if Supabase isn't configured)
         const stored = localStorage.getItem('sap_user_session');
         if (stored && active) {
           try {
@@ -130,11 +137,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(parsed);
             currentUserId = parsed.id || null;
           } catch (e) {
-            console.error('Failed to parse local user session', e);
+            console.error('Failed to parse local user session:', e);
           }
         }
-      }
-      if (active) {
         setLoading(false);
       }
     };
@@ -147,16 +152,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (session) {
           if (session.user.id !== currentUserId) {
-            if (active) {
-              const cached = localStorage.getItem(`sst_profile_${session.user.id}`) || localStorage.getItem('sap_user_session');
-              if (cached) {
-                try {
-                  setUser(JSON.parse(cached));
-                } catch {}
-              } else {
-                setLoading(true);
-              }
-            }
             await fetchAndSetProfile(session);
             if (active) setLoading(false);
           }
@@ -180,19 +175,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const loginPromise = supabase.auth.signInWithPassword({
           email: normalizedEmail,
           password: password || ''
         });
 
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Authentication service timeout. Please verify your connection status.')), 10000)
+        );
+
+        // Enforce a strict 10s network timeout safety check
+        const { data, error } = await Promise.race([loginPromise, timeoutPromise]) as any;
+
         if (error) {
-          // Check if it is a demo account, let it authenticate client side as fallback if needed
-          if (DEMO_USERS[normalizedEmail] && password === 'Manager@12345') {
-            const demoSession = DEMO_USERS[normalizedEmail];
-            setUser(demoSession);
-            localStorage.setItem('sap_user_session', JSON.stringify(demoSession));
-            return { success: true, user: demoSession };
-          }
           return { success: false, error: error.message };
         }
 
@@ -224,19 +219,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return { success: true, user: sessionUser };
           }
         }
-        return { success: false, error: 'User details missing.' };
+        return { success: false, error: 'User profile mapping failed.' };
       } catch (e: any) {
         return { success: false, error: e.message || 'An error occurred during authentication.' };
       }
     } else {
-      // Local demo mode check
-      const matched = DEMO_USERS[normalizedEmail];
-      if (matched && password === 'Manager@12345') {
-        setUser(matched);
-        localStorage.setItem('sap_user_session', JSON.stringify(matched));
-        return { success: true, user: matched };
-      }
-      return { success: false, error: 'Invalid credentials. Use email manager@supportstudio.com and password Manager@12345.' };
+      return { success: false, error: 'Database auth server is not online.' };
     }
   };
 
