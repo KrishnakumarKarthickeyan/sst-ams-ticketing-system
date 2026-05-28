@@ -151,3 +151,36 @@ The Ticket Creation flow has been overhauled for both the **Manager Portal** and
 * **Stabilization Fix**: Integrated `loadLocalFallback()` into the `catch` and `else` blocks of `fetchData` in [TicketContext.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/context/TicketContext.tsx). When Supabase is not active, the context instantly pulls standard high-fidelity mock data from LocalStorage/JSON fallbacks, guaranteeing seamless client-side page rendering and data persistence.
 * **Build Integrity**: The fix has been verified against the full production Next.js build pipeline and compiles with zero warnings or errors.
 
+---
+
+## Part 5: Enterprise Multi-Consultant Resource Allocation and Automatic Closure Workflow Overhaul
+
+We have implemented an end-to-end resource assignment, hour estimation, actual effort tracking, and automatic ticket closure workflow.
+
+### 1. Database Migration & RLS Shielding
+* **Table Schema**: Designed and implemented three new database tables in [fix_workflow_db_v2.sql](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_workflow_db_v2.sql):
+  - `ticket_assignments`: Tracks multiple consultant assignments (Functional & Technical) per ticket and flags the designated Primary Lead.
+  - `ticket_estimates`: Stores individual estimates per consultant (Functional / Technical) with remarks.
+  - `ticket_actual_hours`: Tracks actual hours logged by each assigned resource for a specific closure request.
+* **Database RLS Policies**: Enforced security policies where only the designated Primary Consultant or Manager can write actual hours records, and customers cannot read estimates or unapproved actual hours.
+* **Data Migration**: Added seed scripts to migrate existing consultant assignments, efforts, estimates, and approved actual hours to the new normalized schema.
+
+### 2. Multi-Resource Allocations & Lead Assignment
+* **Manager Controls**: Managers can assign multiple functional and technical specialists to a ticket. One consultant must be selected as the "Primary Consultant / Lead".
+* **Audit Trails & Alerts**: Changing the designated Lead writes an audit entry in the ticket history and fires a system notification to the newly assigned Lead.
+* **Roster Visuals**: Displays all assigned consultants in both the Manager/Customer View and Consultant View with a prominent gold "Lead" badge next to the Primary Consultant.
+
+### 3. Separation of Hours (Estimates vs Actuals)
+* **Resource Estimates**: All assigned consultants can view the ticket and submit their own internal hourly estimate (Functional / Technical). These estimates are hidden from the Customer Portal.
+* **Secondary Consultant Restrictions**: Secondary assigned consultants are restricted from submitting closure requests or entering actual hours. The "Raise Closure Request" and "Resubmit" buttons are disabled for them with clear, helpful tooltips.
+* **Lead Actual Hours Submission**: Only the Primary Consultant can submit a closure request. The submission presents a dynamic form that prompts the Lead to input the actual hours worked by every assigned team member, alongside mandatory Root Cause, Resolution Summary, and Validation summaries.
+
+### 4. Direct Automatic Closure Workflow
+* **Manager Auditing**: When a Manager approves a pending closure request, the system:
+  - Updates the closure request status to `Approved`.
+  - Sets the ticket status directly to `Closed` (marking the `closed_by` and `closed_at` fields).
+  - Copies the logged actual hours to the legacy efforts table for compatibility.
+  - Triggers the mandatory customer satisfaction (CSAT) review popup.
+* **Customer Visibility**: Customers do not see individual estimates or pending actual hours. Once the ticket status transitions to `Closed`, the customer details page displays the final validated actual hours (Functional, Technical, and Grand Total) in a clean table card.
+
+

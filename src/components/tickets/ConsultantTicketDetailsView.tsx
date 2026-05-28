@@ -34,6 +34,12 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../../components/ui/tooltip';
 
 interface ConsultantTicketDetailsViewProps {
   ticketId: string;
@@ -57,6 +63,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   const ticket = tickets.find((t) => t.id === ticketId || t.id === decodeURIComponent(ticketId));
   const consultantName = user?.name || 'Unassigned';
   const consultantType = user?.consultantType || 'Functional';
+  const isPrimaryConsultant = ticket?.primaryConsultantId === user?.id || ticket?.assignedConsultant === consultantName || (ticket?.assignments?.find(a => a.consultantId === user?.id || a.consultantName === consultantName)?.isPrimary);
 
   const [dbMentionableUsers, setDbMentionableUsers] = useState<any[]>([]);
   const MOCK_MENTIONABLE_USERS = dbMentionableUsers;
@@ -122,6 +129,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   const [rootCause, setRootCause] = useState('');
   const [resolutionSummary, setResolutionSummary] = useState('');
   const [pendingItems, setPendingItems] = useState('');
+  const [resourceActualHours, setResourceActualHours] = useState<Record<string, string>>({});
 
   const filteredMentions = useMemo(() => {
     if (!ticket) return [];
@@ -434,28 +442,44 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
   const handleRaiseClosure = (e: React.FormEvent) => {
     e.preventDefault();
-    const fHours = Number(actFuncHours) || 0;
-    const tHours = Number(actTechHours) || 0;
 
     if (!workCompletedSummary.trim() || !rootCause.trim() || !resolutionSummary.trim()) {
       setValidationError('Work Summary, Root Cause, and Resolution are required fields.');
       return;
     }
 
-    if (fHours === 0 && tHours === 0) {
-      setValidationError('At least one actual hours value (Functional/Technical) must be greater than 0.');
+    const activeAllocations = ticket?.consultantEfforts || [];
+    const actualHoursPayload: { consultantId: string; hours: number }[] = [];
+
+    // Verify all active allocations have a valid hours value
+    let hasZeroOrEmpty = false;
+    for (const alloc of activeAllocations) {
+      const val = resourceActualHours[alloc.consultantId];
+      const hours = Number(val) || 0;
+      if (!val || hours <= 0) {
+        hasZeroOrEmpty = true;
+      }
+      actualHoursPayload.push({
+        consultantId: alloc.consultantId,
+        hours
+      });
+    }
+
+    if (hasZeroOrEmpty) {
+      setValidationError('Actual hours must be greater than 0 for all assigned consultants.');
       return;
     }
 
     setValidationError(null);
     raiseClosureRequest(ticket.id, {
-      functionalActualHours: fHours,
-      technicalActualHours: tHours,
+      functionalActualHours: 0,
+      technicalActualHours: 0,
       workCompletedSummary,
       rootCause,
       resolutionSummary,
       pendingItems: pendingItems || undefined,
-      requestedBy: consultantName
+      requestedBy: consultantName,
+      actualHours: actualHoursPayload
     });
     showBannerMessage('Closure request logged successfully. Ticket is now locked.');
     setActiveModal(null);
@@ -463,11 +487,31 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
   const handleResubmitClosure = (e: React.FormEvent) => {
     e.preventDefault();
-    const fHours = Number(actFuncHours) || 0;
-    const tHours = Number(actTechHours) || 0;
 
     if (!workCompletedSummary.trim() || !rootCause.trim() || !resolutionSummary.trim()) {
       setValidationError('Work Summary, Root Cause, and Resolution are required fields.');
+      return;
+    }
+
+    const activeAllocations = ticket?.consultantEfforts || [];
+    const actualHoursPayload: { consultantId: string; hours: number }[] = [];
+
+    // Verify all active allocations have a valid hours value
+    let hasZeroOrEmpty = false;
+    for (const alloc of activeAllocations) {
+      const val = resourceActualHours[alloc.consultantId];
+      const hours = Number(val) || 0;
+      if (!val || hours <= 0) {
+        hasZeroOrEmpty = true;
+      }
+      actualHoursPayload.push({
+        consultantId: alloc.consultantId,
+        hours
+      });
+    }
+
+    if (hasZeroOrEmpty) {
+      setValidationError('Actual hours must be greater than 0 for all assigned consultants.');
       return;
     }
 
@@ -476,13 +520,14 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
     setValidationError(null);
     resubmitClosureRequest(ticket.id, latestCls.id, {
-      functionalActualHours: fHours,
-      technicalActualHours: tHours,
+      functionalActualHours: 0,
+      technicalActualHours: 0,
       workCompletedSummary,
       rootCause,
       resolutionSummary,
       pendingItems: pendingItems || undefined,
-      requestedBy: consultantName
+      requestedBy: consultantName,
+      actualHours: actualHoursPayload
     });
     showBannerMessage('Closure request resubmitted to Manager.');
     setActiveModal(null);
@@ -840,7 +885,12 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                             const prof = MOCK_MENTIONABLE_USERS.find(u => u.name === e.consultantName);
                             return (
                               <tr key={idx} className="hover:bg-slate-50/50">
-                                <td className="p-2 font-bold text-slate-900">{e.consultantName}</td>
+                                <td className="p-2 font-bold text-slate-900 flex items-center gap-1.5">
+                                  {e.consultantName}
+                                  {((ticket.assignments?.find(a => a.consultantId === e.consultantId || a.consultantName === e.consultantName)?.isPrimary) || e.consultantName === ticket.assignedConsultant) && (
+                                    <span className="px-1.5 py-0.2 rounded font-black text-[8px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
+                                  )}
+                                </td>
                                 <td className="p-2 text-slate-655">{prof?.sapModules?.join(', ') || ticket.sapModule}</td>
                                 <td className="p-2 text-slate-500">{prof?.roleTitle || 'Functional Consultant'}</td>
                                 <td className="p-2 text-center">
@@ -891,7 +941,12 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                             const prof = MOCK_MENTIONABLE_USERS.find(u => u.name === e.consultantName);
                             return (
                               <tr key={idx} className="hover:bg-slate-50/50">
-                                <td className="p-2 font-bold text-slate-900">{e.consultantName}</td>
+                                <td className="p-2 font-bold text-slate-900 flex items-center gap-1.5">
+                                  {e.consultantName}
+                                  {((ticket.assignments?.find(a => a.consultantId === e.consultantId || a.consultantName === e.consultantName)?.isPrimary) || e.consultantName === ticket.assignedConsultant) && (
+                                    <span className="px-1.5 py-0.2 rounded font-black text-[8px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
+                                  )}
+                                </td>
                                 <td className="p-2 text-slate-655">{prof?.sapModules?.join(', ') || ticket.sapModule}</td>
                                 <td className="p-2 text-slate-500">{prof?.roleTitle || 'ABAP Developer'}</td>
                                 <td className="p-2 text-center">
@@ -1015,22 +1070,45 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 Actual Hours & Closure Requests
               </h3>
               
-              {ticket.status !== 'Closed' && ticket.status !== 'Request for Closure' && myEffort?.closureStatus !== 'Submitted' && (
-                <Button
-                  onClick={() => {
-                    setActFuncHours('');
-                    setActTechHours('');
-                    setWorkCompletedSummary('');
-                    setRootCause('');
-                    setResolutionSummary('');
-                    setPendingItems('');
-                    setValidationError(null);
-                    setActiveModal('closure');
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase h-7 cursor-pointer"
-                >
-                  Raise Closure Request
-                </Button>
+              {ticket.status !== 'Closed' && ticket.status !== 'Request for Closure' && (
+                !isPrimaryConsultant ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button
+                            disabled
+                            className="bg-emerald-600/50 text-white text-[10px] font-bold uppercase h-7 cursor-not-allowed"
+                          >
+                            Raise Closure Request
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-slate-900 text-white text-xs font-mono p-2 rounded">
+                        <p>Only the Primary Consultant can raise closure request and enter actual hours.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <Button
+                    onClick={() => {
+                      const initialHours: Record<string, string> = {};
+                      (ticket.consultantEfforts || []).forEach(eff => {
+                        initialHours[eff.consultantId] = eff.actualHours > 0 ? String(eff.actualHours) : '';
+                      });
+                      setResourceActualHours(initialHours);
+                      setWorkCompletedSummary('');
+                      setRootCause('');
+                      setResolutionSummary('');
+                      setPendingItems('');
+                      setValidationError(null);
+                      setActiveModal('closure');
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase h-7 cursor-pointer"
+                  >
+                    Raise Closure Request
+                  </Button>
+                )
               )}
             </div>
 
@@ -1098,21 +1176,44 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                       <div className="bg-red-50 p-3 rounded border border-red-200 space-y-2 mt-2">
                         <div className="text-red-850 font-bold text-[10px] uppercase font-mono">Manager Rejection Reason:</div>
                         <p className="text-slate-900 italic">"{latestClosureReq.rejectionReason || 'No reason specified.'}"</p>
-                        <Button
-                          onClick={() => {
-                            setActFuncHours(String(latestClosureReq.functionalActualHours));
-                            setActTechHours(String(latestClosureReq.technicalActualHours));
-                            setWorkCompletedSummary(latestClosureReq.workCompletedSummary);
-                            setRootCause(latestClosureReq.rootCause);
-                            setResolutionSummary(latestClosureReq.resolutionSummary);
-                            setPendingItems(latestClosureReq.pendingItems || '');
-                            setValidationError(null);
-                            setActiveModal('resubmit_closure');
-                          }}
-                          className="bg-red-650 hover:bg-red-750 text-white font-mono font-bold text-[9px] h-7 cursor-pointer"
-                        >
-                          Resubmit Closure Request
-                        </Button>
+                        {isPrimaryConsultant ? (
+                          <Button
+                            onClick={() => {
+                              const initialHours: Record<string, string> = {};
+                              (ticket.consultantEfforts || []).forEach(eff => {
+                                initialHours[eff.consultantId] = eff.actualHours > 0 ? String(eff.actualHours) : '';
+                              });
+                              setResourceActualHours(initialHours);
+                              setWorkCompletedSummary(latestClosureReq.workCompletedSummary);
+                              setRootCause(latestClosureReq.rootCause);
+                              setResolutionSummary(latestClosureReq.resolutionSummary);
+                              setPendingItems(latestClosureReq.pendingItems || '');
+                              setValidationError(null);
+                              setActiveModal('resubmit_closure');
+                            }}
+                            className="bg-red-650 hover:bg-red-750 text-white font-mono font-bold text-[9px] h-7 cursor-pointer"
+                          >
+                            Resubmit Closure Request
+                          </Button>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <Button
+                                    disabled
+                                    className="bg-red-650/50 text-white font-mono font-bold text-[9px] h-7 cursor-not-allowed"
+                                  >
+                                    Resubmit Closure Request
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-slate-900 text-white text-xs font-mono p-2 rounded">
+                                <p>Only the Primary Consultant can resubmit closure request and enter actual hours.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1611,99 +1712,69 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {/* RAISE CLOSURE REQUEST */}
               {activeModal === 'closure' && (
                 <form onSubmit={handleRaiseClosure} className="space-y-3">
-                  {consultantType === 'Functional' ? (
-                    <>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Functional Actual Hours</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          placeholder="e.g. 6.0"
-                          value={actFuncHours}
-                          onChange={(e) => setActFuncHours(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
-                          min="0"
-                          required
-                        />
+                  {/* Dynamic Actual Hours inputs for all assigned team members */}
+                  <div className="space-y-3 bg-slate-50/50 p-3 rounded border border-slate-200">
+                    <span className="font-bold text-slate-500 uppercase text-[9px] font-mono block mb-1">Assigned Team Actual Hours</span>
+                    {(ticket?.consultantEfforts || []).map((eff) => (
+                      <div key={eff.consultantId} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
+                          {eff.consultantName}
+                          <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
+                            eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
+                          }`}>{eff.consultantType}</span>
+                        </span>
+                        <div className="flex items-center gap-1 font-mono">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0.5"
+                            placeholder="Hours"
+                            value={resourceActualHours[eff.consultantId] || ''}
+                            onChange={(e) => setResourceActualHours(prev => ({
+                              ...prev,
+                              [eff.consultantId]: e.target.value
+                            }))}
+                            className="w-20 bg-white border border-slate-200 rounded p-1 text-center font-bold text-xs focus:outline-none"
+                            required
+                          />
+                          <span className="text-slate-400 text-[10px]">h</span>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Business Validation Summary (Mandatory)</label>
-                        <textarea
-                          value={workCompletedSummary}
-                          onChange={(e) => setWorkCompletedSummary(e.target.value)}
-                          placeholder="Detail functional testing and business validation results..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
-                        <textarea
-                          value={rootCause}
-                          onChange={(e) => setRootCause(e.target.value)}
-                          placeholder="Detail root cause..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Functional Closure Notes (Mandatory)</label>
-                        <textarea
-                          value={resolutionSummary}
-                          onChange={(e) => setResolutionSummary(e.target.value)}
-                          placeholder="Specify the functional alignment and configuration changes made..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
-                          required
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Technical Actual Hours</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          placeholder="e.g. 8.0"
-                          value={actTechHours}
-                          onChange={(e) => setActTechHours(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
-                          min="0"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Work Completed Summary (Mandatory)</label>
-                        <textarea
-                          value={workCompletedSummary}
-                          onChange={(e) => setWorkCompletedSummary(e.target.value)}
-                          placeholder="Outline completed development, code fixes, and technical deliverables..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
-                        <textarea
-                          value={rootCause}
-                          onChange={(e) => setRootCause(e.target.value)}
-                          placeholder="Detail root cause..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Technical Resolution Notes (Mandatory)</label>
-                        <textarea
-                          value={resolutionSummary}
-                          onChange={(e) => setResolutionSummary(e.target.value)}
-                          placeholder="Specify the technical resolution, code modules modified, or SAP notes applied..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
+                    ))}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Work Completed Summary (Mandatory)</label>
+                    <textarea
+                      value={workCompletedSummary}
+                      onChange={(e) => setWorkCompletedSummary(e.target.value)}
+                      placeholder="Outline completed development, business testing validation, and technical deliverables..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
+                    <textarea
+                      value={rootCause}
+                      onChange={(e) => setRootCause(e.target.value)}
+                      placeholder="Detail root cause..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Resolution Notes / Summary (Mandatory)</label>
+                    <textarea
+                      value={resolutionSummary}
+                      onChange={(e) => setResolutionSummary(e.target.value)}
+                      placeholder="Specify the functional alignment, configuration changes, or code modules modified..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                      required
+                    />
+                  </div>
 
                   <div className="space-y-1">
                     <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Pending Items (Optional)</label>
@@ -1726,91 +1797,69 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {/* RESUBMIT CLOSURE */}
               {activeModal === 'resubmit_closure' && (
                 <form onSubmit={handleResubmitClosure} className="space-y-3">
-                  {consultantType === 'Functional' ? (
-                    <>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Revised Functional Actual Hours</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={actFuncHours}
-                          onChange={(e) => setActFuncHours(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
-                          min="0"
-                          required
-                        />
+                  {/* Dynamic Actual Hours inputs for all assigned team members */}
+                  <div className="space-y-3 bg-slate-50/50 p-3 rounded border border-slate-200">
+                    <span className="font-bold text-slate-500 uppercase text-[9px] font-mono block mb-1">Revised Team Actual Hours</span>
+                    {(ticket?.consultantEfforts || []).map((eff) => (
+                      <div key={eff.consultantId} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
+                          {eff.consultantName}
+                          <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
+                            eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
+                          }`}>{eff.consultantType}</span>
+                        </span>
+                        <div className="flex items-center gap-1 font-mono">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0.5"
+                            placeholder="Hours"
+                            value={resourceActualHours[eff.consultantId] || ''}
+                            onChange={(e) => setResourceActualHours(prev => ({
+                              ...prev,
+                              [eff.consultantId]: e.target.value
+                            }))}
+                            className="w-20 bg-white border border-slate-200 rounded p-1 text-center font-bold text-xs focus:outline-none"
+                            required
+                          />
+                          <span className="text-slate-400 text-[10px]">h</span>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-550 uppercase text-[9px] font-mono block">Business Validation Summary</label>
-                        <textarea
-                          value={workCompletedSummary}
-                          onChange={(e) => setWorkCompletedSummary(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause</label>
-                        <textarea
-                          value={rootCause}
-                          onChange={(e) => setRootCause(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Functional Closure Notes</label>
-                        <textarea
-                          value={resolutionSummary}
-                          onChange={(e) => setResolutionSummary(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
-                          required
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Revised Technical Actual Hours</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={actTechHours}
-                          onChange={(e) => setActTechHours(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
-                          min="0"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-550 uppercase text-[9px] font-mono block">Work Completed Summary</label>
-                        <textarea
-                          value={workCompletedSummary}
-                          onChange={(e) => setWorkCompletedSummary(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause</label>
-                        <textarea
-                          value={rootCause}
-                          onChange={(e) => setRootCause(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Technical Resolution Notes</label>
-                        <textarea
-                          value={resolutionSummary}
-                          onChange={(e) => setResolutionSummary(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
+                    ))}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Work Completed Summary (Mandatory)</label>
+                    <textarea
+                      value={workCompletedSummary}
+                      onChange={(e) => setWorkCompletedSummary(e.target.value)}
+                      placeholder="Outline completed development, business testing validation, and deliverables..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
+                    <textarea
+                      value={rootCause}
+                      onChange={(e) => setRootCause(e.target.value)}
+                      placeholder="Detail root cause..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-16 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Resolution Notes / Summary (Mandatory)</label>
+                    <textarea
+                      value={resolutionSummary}
+                      onChange={(e) => setResolutionSummary(e.target.value)}
+                      placeholder="Specify the functional alignment, configuration changes, or code modules modified..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 h-20 focus:outline-none"
+                      required
+                    />
+                  </div>
 
                   <div className="space-y-1">
                     <label className="font-bold text-slate-550 uppercase text-[9px] font-mono block">Pending Items</label>

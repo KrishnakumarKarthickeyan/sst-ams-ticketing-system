@@ -966,7 +966,12 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                       const prof = CONSULTANTS_DB.find(c => c.name === e.consultantName);
                                       return (
                                         <tr key={idx} className="hover:bg-zinc-50/50">
-                                          <td className="p-2 font-bold text-zinc-900">{e.consultantName}</td>
+                                          <td className="p-2 font-bold text-zinc-900 flex items-center gap-1.5">
+                                            {e.consultantName}
+                                            {((ticket.assignments?.find(a => a.consultantId === e.consultantId || a.consultantName === e.consultantName)?.isPrimary) || e.consultantName === ticket.assignedConsultant) && (
+                                              <span className="px-1.5 py-0.2 rounded font-black text-[8px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
+                                            )}
+                                          </td>
                                           <td className="p-2 text-zinc-500">{prof?.roleTitle || 'Functional Consultant'}</td>
                                           <td className="p-2 text-zinc-655">{prof?.expertise?.join(', ') || ticket.sapModule}</td>
                                           {hasApprovedClosure && <td className="p-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>}
@@ -979,7 +984,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                             );
                           })()}
                         </div>
-
+ 
                         {/* B. TECHNICAL RESOURCES (Customer View) */}
                         <div className="space-y-2 pt-2 border-t border-zinc-100">
                           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
@@ -1007,7 +1012,12 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                       const prof = CONSULTANTS_DB.find(c => c.name === e.consultantName);
                                       return (
                                         <tr key={idx} className="hover:bg-zinc-50/50">
-                                          <td className="p-2 font-bold text-zinc-900">{e.consultantName}</td>
+                                          <td className="p-2 font-bold text-zinc-900 flex items-center gap-1.5">
+                                            {e.consultantName}
+                                            {((ticket.assignments?.find(a => a.consultantId === e.consultantId || a.consultantName === e.consultantName)?.isPrimary) || e.consultantName === ticket.assignedConsultant) && (
+                                              <span className="px-1.5 py-0.2 rounded font-black text-[8px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
+                                            )}
+                                          </td>
                                           <td className="p-2 text-zinc-500">{prof?.roleTitle || 'ABAP Developer'}</td>
                                           <td className="p-2 text-zinc-655">{prof?.expertise?.join(', ') || ticket.sapModule}</td>
                                           {hasApprovedClosure && <td className="p-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>}
@@ -1050,7 +1060,12 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                     const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
                                     return (
                                       <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
-                                        <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
+                                        <td className="py-2 px-3 font-semibold text-zinc-800 flex items-center gap-1.5">
+                                          {eff.consultantName}
+                                          {((ticket.assignments?.find(a => a.consultantId === eff.consultantId || a.consultantName === eff.consultantName)?.isPrimary) || eff.consultantName === ticket.assignedConsultant) && (
+                                            <span className="px-1.5 py-0.2 rounded font-black text-[8px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
+                                          )}
+                                        </td>
                                         <td className="py-2 px-3 text-center font-bold text-zinc-650">{dbInfo?.expertise.join(', ') || '-'}</td>
                                         <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
                                         <td className="py-2 px-3 text-center">
@@ -1162,7 +1177,12 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                     const dbInfo = CONSULTANTS_DB.find(c => c.name === eff.consultantName);
                                     return (
                                       <tr key={eff.id} className="hover:bg-zinc-50/50 transition">
-                                        <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
+                                        <td className="py-2 px-3 font-semibold text-zinc-800 flex items-center gap-1.5">
+                                          {eff.consultantName}
+                                          {((ticket.assignments?.find(a => a.consultantId === eff.consultantId || a.consultantName === eff.consultantName)?.isPrimary) || eff.consultantName === ticket.assignedConsultant) && (
+                                            <span className="px-1.5 py-0.2 rounded font-black text-[8px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
+                                          )}
+                                        </td>
                                         <td className="py-2 px-3 text-center font-bold text-zinc-655">{dbInfo?.expertise.join(', ') || '-'}</td>
                                         <td className="py-2 px-3 text-center text-zinc-600 font-bold">{dbInfo?.workload || 0} active</td>
                                         <td className="py-2 px-3 text-center">

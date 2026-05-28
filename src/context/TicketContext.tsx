@@ -152,6 +152,7 @@ interface TicketContextType {
       resolutionSummary: string;
       pendingItems?: string;
       requestedBy: string;
+      actualHours?: { consultantId: string; hours: number }[];
     }
   ) => void;
   resubmitClosureRequest: (
@@ -165,6 +166,7 @@ interface TicketContextType {
       resolutionSummary: string;
       pendingItems?: string;
       requestedBy: string;
+      actualHours?: { consultantId: string; hours: number }[];
     }
   ) => void;
   approveClosureRequest: (ticketId: string, requestId: string, managerName: string) => void;
@@ -235,7 +237,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: dbProfiles } = await supabase.from('profiles').select('*');
-        const { data: dbTickets } = await supabase.from('tickets').select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_consultant_efforts(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
+        const { data: dbTickets } = await supabase.from('tickets').select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*)');
         const { data: dbContracts } = await supabase.from('customer_contracts').select('*, organizations(name)');
         const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
         const { data: dbArticles } = await supabase.from('knowledgebase_articles').select('*');
@@ -432,6 +434,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       approvalRequiredFlag: t.approval_required,
       transportRequest: t.transport_request,
       source: t.source || 'Created by Client',
+      primaryConsultantId: t.primary_consultant_id,
+      closureStatus: t.closure_status || 'Pending',
+      closedBy: t.closed_by,
       
       comments: (t.ticket_comments || t.comments) ? (t.ticket_comments || t.comments).map((c: any) => {
         const commentAuthor = getProfile(c.author_id);
@@ -619,56 +624,78 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
       }) : [],
 
-      consultantEfforts: (() => {
-        const efforts = t.ticket_consultant_efforts ? t.ticket_consultant_efforts
-          .filter((e: any) => !e.is_deleted)
-          .map((e: any) => {
-            const effortConsultant = getProfile(e.consultant_id);
-            return {
-              id: e.id,
-              ticketId: e.ticket_id,
-              consultantId: e.consultant_id,
-              consultantName: effortConsultant?.full_name || e.consultant_name || e.consultant_id,
-              consultantType: e.consultant_type as 'Functional' | 'Technical',
-              estimatedHours: Number(e.estimated_hours),
-              actualHours: Number(e.actual_hours),
-              remarks: e.remarks,
-              createdAt: e.created_at,
-              updatedAt: e.updated_at,
-              isDeleted: e.is_deleted,
-              deletedAt: e.deleted_at,
-              deletedBy: e.deleted_by,
-              closureStatus: e.closure_status || 'Pending',
-              workSummary: e.work_summary || '',
-              resolutionNotes: e.resolution_notes || ''
-            };
-          }) : [];
+      assignments: t.ticket_assignments ? t.ticket_assignments.map((a: any) => {
+        const profile = getProfile(a.consultant_id);
+        return {
+          ticketId: a.ticket_id,
+          consultantId: a.consultant_id,
+          consultantName: profile?.full_name || 'Consultant',
+          consultantType: a.consultant_type,
+          isPrimary: a.is_primary,
+          active: a.active,
+          assignedBy: a.assigned_by,
+          assignedAt: a.assigned_at
+        };
+      }) : [],
 
-        if (t.assigned_consultant_id) {
-          const isAssignedPresent = efforts.some((e: any) => e.consultantId === t.assigned_consultant_id);
-          if (!isAssignedPresent) {
-            const primaryProfile = getProfile(t.assigned_consultant_id);
-            if (primaryProfile) {
-              efforts.push({
-                id: `synthesized-${t.assigned_consultant_id}-${t.id}`,
-                ticketId: t.id,
-                consultantId: t.assigned_consultant_id,
-                consultantName: primaryProfile.full_name || 'Consultant',
-                consultantType: (primaryProfile.consultant_type === 'Technical' || t.functional_or_technical === 'Technical') ? 'Technical' : 'Functional',
-                estimatedHours: 0,
-                actualHours: 0,
-                remarks: 'Primary assignment',
-                createdAt: t.created_at,
-                updatedAt: t.updated_at,
-                isDeleted: false,
-                closureStatus: 'Pending',
-                workSummary: '',
-                resolutionNotes: ''
-              });
-            }
-          }
-        }
-        return efforts;
+      estimates: t.ticket_estimates ? t.ticket_estimates.map((e: any) => ({
+        id: e.id,
+        ticketId: e.ticket_id,
+        consultantId: e.consultant_id,
+        consultantType: e.consultant_type,
+        estimatedHours: Number(e.estimated_hours),
+        remarks: e.remarks || '',
+        submittedAt: e.submitted_at
+      })) : [],
+
+      actualHoursLogs: t.ticket_actual_hours ? t.ticket_actual_hours.map((ah: any) => ({
+        id: ah.id,
+        closureRequestId: ah.closure_request_id,
+        ticketId: ah.ticket_id,
+        consultantId: ah.consultant_id,
+        consultantType: ah.consultant_type,
+        actualHours: Number(ah.actual_hours)
+      })) : [],
+
+      consultantEfforts: (() => {
+        const assignments = t.ticket_assignments || [];
+        const estimates = t.ticket_estimates || [];
+        const actualHoursLogs = t.ticket_actual_hours || [];
+        const closureRequests = t.ticket_closure_requests || [];
+
+        // Find the latest active closure request to read actual hours from
+        const latestRequest = closureRequests.length > 0 
+          ? [...closureRequests].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+          : null;
+
+        return assignments.map((a: any) => {
+          const profile = getProfile(a.consultant_id);
+          const est = estimates.find((e: any) => e.consultant_id === a.consultant_id);
+          
+          // Actual hours are retrieved from ticket_actual_hours table for this consultant under the latest request
+          const actLog = latestRequest 
+            ? actualHoursLogs.find((ah: any) => ah.closure_request_id === latestRequest.id && ah.consultant_id === a.consultant_id)
+            : null;
+
+          return {
+            id: `synthesized-${a.consultant_id}-${t.id}`,
+            ticketId: t.id,
+            consultantId: a.consultant_id,
+            consultantName: profile?.full_name || 'Consultant',
+            consultantType: a.consultant_type as 'Functional' | 'Technical',
+            estimatedHours: est ? Number(est.estimated_hours) : 0,
+            actualHours: actLog ? Number(actLog.actual_hours) : 0,
+            remarks: est?.remarks || '',
+            createdAt: a.assigned_at,
+            updatedAt: a.assigned_at,
+            isDeleted: !a.active,
+            closureStatus: latestRequest 
+              ? (latestRequest.status === 'Approved' ? 'Approved' : 'Submitted') 
+              : 'Pending',
+            workSummary: latestRequest?.work_completed_summary || '',
+            resolutionNotes: latestRequest?.resolution_summary || ''
+          };
+        }).filter((eff: any) => !eff.isDeleted);
       })(),
 
       unlockRequests: t.ticket_unlock_requests ? t.ticket_unlock_requests.map((u: any) => {
@@ -1158,9 +1185,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const assignTicket = async (ticketId: string, managerName?: string, consultantName?: string, actorName?: string) => {
+    const changeActor = actorName || 'System';
     if (isSupabaseConfigured && supabase) {
       try {
-        const changeActor = actorName || 'System';
         const { data: profActor } = await supabase.from('profiles').select('id').eq('full_name', changeActor).maybeSingle();
         const actorId = profActor ? profActor.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
 
@@ -1183,16 +1210,48 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const { data: cons } = await supabase.from('profiles').select('id, consultant_type').eq('full_name', consultantName).maybeSingle();
           const consultantId = cons ? cons.id : null;
           dbData.assigned_consultant_id = consultantId;
+          dbData.primary_consultant_id = consultantId;
+          
+          const oldPrimaryName = ticketObj?.assignedConsultant || 'Unassigned';
           
           await supabase.from('ticket_history').insert({
             ticket_id: ticketId,
             changed_by: actorId,
-            field_changed: 'Assigned Consultant',
-            old_value: ticketObj?.assignedConsultant || 'Unassigned',
+            field_changed: 'Assigned Lead Consultant',
+            old_value: oldPrimaryName,
             new_value: consultantName || 'Unassigned'
           });
 
-          if (consultantName) {
+          // Set all assignments to is_primary = false first
+          await supabase.from('ticket_assignments')
+            .update({ is_primary: false })
+            .eq('ticket_id', ticketId);
+
+          if (consultantId) {
+            // Check if this assignment already exists
+            const { data: existingAsg } = await supabase.from('ticket_assignments')
+              .select('ticket_id')
+              .eq('ticket_id', ticketId)
+              .eq('consultant_id', consultantId)
+              .maybeSingle();
+
+            if (existingAsg) {
+              await supabase.from('ticket_assignments')
+                .update({ is_primary: true, active: true })
+                .eq('ticket_id', ticketId)
+                .eq('consultant_id', consultantId);
+            } else {
+              await supabase.from('ticket_assignments').insert({
+                ticket_id: ticketId,
+                consultant_id: consultantId,
+                consultant_type: cons?.consultant_type || 'Functional',
+                is_primary: true,
+                active: true,
+                assigned_by: actorId
+              });
+            }
+
+            // Sync ticket status if New -> Assigned
             if (ticketObj?.status === 'New') {
               dbData.status = 'Assigned';
               await supabase.from('ticket_history').insert({
@@ -1204,94 +1263,106 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               });
             }
 
-            if (consultantId) {
-              const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
-                .select('id')
-                .eq('ticket_id', ticketId)
-                .eq('consultant_id', consultantId)
-                .maybeSingle();
+            // Send notification to the new primary consultant
+            await supabase.from('notifications').insert({
+              user_id: consultantId,
+              title: 'Assigned as Primary Lead',
+              message: `You have been designated as the Primary Lead Consultant for ticket ${ticketId} by ${changeActor}.`,
+              ticket_id: ticketId
+            });
+          }
 
-              if (!existingEff) {
-                await supabase.from('ticket_consultant_efforts').insert({
-                  ticket_id: ticketId,
-                  consultant_id: consultantId,
-                  consultant_type: cons?.consultant_type || 'Functional',
-                  estimated_hours: 0,
-                  actual_hours: 0
-                });
-              }
-            }
+          // Send notification to the old primary consultant (if any)
+          if (ticketObj?.primaryConsultantId && ticketObj.primaryConsultantId !== consultantId) {
+            await supabase.from('notifications').insert({
+              user_id: ticketObj.primaryConsultantId,
+              title: 'Lead Assignment Changed',
+              message: `The Lead Consultant assignment for ticket ${ticketId} has been changed. You are now a secondary resource.`,
+              ticket_id: ticketId
+            });
           }
         }
 
         await supabase.from('tickets').update(dbData).eq('id', ticketId);
+        await fetchData();
       } catch (err) {
         console.error('Error in assignTicket Supabase update:', err);
       }
-    }
-    const updated = tickets.map(t => {
-      if (t.id === ticketId) {
-        const hist: AuditHistory[] = [...t.history];
-        const updates: Partial<Ticket> = { updatedAt: new Date().toISOString() };
-        const changeActor = actorName || 'System';
+    } else {
+      // Local fallback mode
+      const updated = tickets.map(t => {
+        if (t.id === ticketId) {
+          const hist: AuditHistory[] = [...t.history];
+          const updates: Partial<Ticket> = { updatedAt: new Date().toISOString() };
 
-        if (managerName !== undefined) {
-          hist.push({
-            id: `h-mgr-${Date.now()}`,
-            ticketId,
-            changedBy: changeActor,
-            fieldChanged: 'Assigned Manager',
-            oldValue: t.assignedManager || 'None',
-            newValue: managerName || 'None',
-            createdAt: new Date().toISOString()
-          });
-          updates.assignedManager = managerName || undefined;
-        }
-
-        if (consultantName !== undefined) {
-          hist.push({
-            id: `h-cons-${Date.now()}`,
-            ticketId,
-            changedBy: changeActor,
-            fieldChanged: 'Assigned Consultant',
-            oldValue: t.assignedConsultant || 'Unassigned',
-            newValue: consultantName || 'Unassigned',
-            createdAt: new Date().toISOString()
-          });
-          updates.assignedConsultant = consultantName || undefined;
-          
-          // Auto transition status from New -> Assigned
-          if (consultantName && t.status === 'New') {
+          if (managerName !== undefined) {
+            updates.assignedManager = managerName || undefined;
             hist.push({
-              id: `h-status-auto-${Date.now()}`,
+              id: `h-mgr-${Date.now()}`,
               ticketId,
               changedBy: changeActor,
-              fieldChanged: 'Status',
-              oldValue: t.status,
-              newValue: 'Assigned',
+              fieldChanged: 'Assigned Manager',
+              oldValue: t.assignedManager || 'None',
+              newValue: managerName || 'None',
               createdAt: new Date().toISOString()
             });
-            updates.status = 'Assigned';
           }
 
-          // Notify Consultant if a consultant is assigned
-          if (consultantName) {
-            createSystemNotification(
-              'consultant@supportstudio.com',
-              'Ticket Assigned',
-              `You have been assigned to ${t.id} by ${changeActor}.`,
-              ticketId
-            );
+          if (consultantName !== undefined) {
+            updates.assignedConsultant = consultantName || undefined;
+            updates.primaryConsultantId = consultantName ? (consultantName.toLowerCase() === 'keerthana' ? '7408c315-ab62-475d-af67-6471b926efbc' : 'fe03e764-f139-4739-a0f7-44a966c1840a') : undefined;
+            
+            hist.push({
+              id: `h-cons-${Date.now()}`,
+              ticketId,
+              changedBy: changeActor,
+              fieldChanged: 'Assigned Lead Consultant',
+              oldValue: t.assignedConsultant || 'Unassigned',
+              newValue: consultantName || 'Unassigned',
+              createdAt: new Date().toISOString()
+            });
+
+            if (consultantName && t.status === 'New') {
+              updates.status = 'Assigned';
+              hist.push({
+                id: `h-status-${Date.now()}`,
+                ticketId,
+                changedBy: changeActor,
+                fieldChanged: 'Status',
+                oldValue: 'New',
+                newValue: 'Assigned',
+                createdAt: new Date().toISOString()
+              });
+            }
+
+            // Update local assignments array
+            const newAsgs = (t.assignments || []).map(a => ({
+              ...a,
+              isPrimary: a.consultantName === consultantName
+            }));
+
+            if (consultantName && !newAsgs.some(a => a.consultantName === consultantName)) {
+              newAsgs.push({
+                ticketId,
+                consultantId: updates.primaryConsultantId || `cons-${Date.now()}`,
+                consultantName: consultantName,
+                consultantType: consultantName.toLowerCase() === 'keerthana' ? 'Technical' : 'Functional',
+                isPrimary: true,
+                active: true,
+                assignedAt: new Date().toISOString()
+              });
+            }
+            updates.assignments = newAsgs;
           }
+
+          return { ...t, ...updates, history: hist };
         }
-
-        return { ...t, ...updates, history: hist };
-      }
-      return t;
-    });
-
-    syncTickets(updated);
+        return t;
+      });
+      syncTickets(updated);
+    }
   };
+
 
   const updateTicketStatus = async (ticketId: string, status: TicketStatus, actorName: string) => {
     const currentTicket = tickets.find(t => t.id === ticketId);
@@ -2584,6 +2655,19 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
     if (isSupabaseConfigured && supabase) {
       try {
+        // 1. Insert into new ticket_estimates table
+        await supabase.from('ticket_estimates').upsert({
+          ticket_id: ticketId,
+          consultant_id: consultantUUID,
+          consultant_type: consultantType,
+          estimated_hours: total,
+          remarks: data.remarks || 'Consultant Estimate',
+          submitted_at: new Date().toISOString()
+        }, {
+          onConflict: 'ticket_id,consultant_id'
+        });
+
+        // 2. Insert/update legacy tables for safety
         await supabase.from('ticket_hour_estimates').insert({
           id: newEstimate.id.startsWith('est-') && newEstimate.id.length < 25 ? undefined : newEstimate.id,
           ticket_id: ticketId,
@@ -2596,19 +2680,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           submitted_at: newEstimate.submittedAt,
           approved_by: null,
           approved_at: newEstimate.approvedAt
-        });
-
-        await supabase.from('tickets').update({
-          quoted_hours: total,
-          updated_at: new Date().toISOString()
-        }).eq('id', ticketId);
-
-        await supabase.from('ticket_history').insert({
-          ticket_id: ticketId,
-          changed_by: consultantUUID,
-          field_changed: 'Estimated Hours Quoted',
-          old_value: '0',
-          new_value: `${total} (Func: ${data.functionalEstimatedHours}, Tech: ${data.technicalEstimatedHours})`
         });
 
         for (const eff of newEfforts) {
@@ -2638,6 +2709,23 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             });
           }
         }
+
+        // 3. Recalculate aggregate estimated hours for this ticket
+        const { data: ests } = await supabase.from('ticket_estimates').select('estimated_hours').eq('ticket_id', ticketId);
+        const aggregateTotal = ests ? ests.reduce((sum, curr) => sum + Number(curr.estimated_hours || 0), 0) : total;
+
+        await supabase.from('tickets').update({
+          quoted_hours: aggregateTotal,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantUUID,
+          field_changed: 'Estimated Hours Quoted',
+          old_value: '0',
+          new_value: `${total} (Func: ${data.functionalEstimatedHours}, Tech: ${data.technicalEstimatedHours})`
+        });
       } catch (err) {
         console.error('Error quoting hours in Supabase:', err);
       }
@@ -2658,6 +2746,27 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           }
         ];
 
+        // Update local estimates array
+        const newEstRecord = {
+          id: `est-${Date.now()}`,
+          ticketId,
+          consultantId: consultantUUID,
+          consultantType,
+          estimatedHours: total,
+          remarks: data.remarks,
+          submittedAt: new Date().toISOString()
+        };
+
+        const newEstimates = [...(t.estimates || [])];
+        const estIdx = newEstimates.findIndex(e => e.consultantId === consultantUUID);
+        if (estIdx >= 0) {
+          newEstimates[estIdx] = newEstRecord;
+        } else {
+          newEstimates.push(newEstRecord);
+        }
+
+        const aggregateTotal = newEstimates.reduce((sum, est) => sum + est.estimatedHours, 0);
+
         let mergedEfforts = [...(t.consultantEfforts || [])];
         newEfforts.forEach(ne => {
           const idx = mergedEfforts.findIndex(e => e.consultantId === ne.consultantId && e.consultantType === ne.consultantType && !e.isDeleted);
@@ -2675,8 +2784,9 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         return {
           ...t,
           status: t.status,
-          quotedHours: total,
+          quotedHours: aggregateTotal,
           hourEstimates: [...(t.hourEstimates || []), newEstimate],
+          estimates: newEstimates,
           consultantEfforts: mergedEfforts,
           updatedAt: new Date().toISOString(),
           history: hist
@@ -3207,18 +3317,19 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       resolutionSummary: string;
       pendingItems?: string;
       requestedBy: string;
+      actualHours?: { consultantId: string; hours: number }[];
     }
   ) => {
     let consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
-    let consultantType: 'Functional' | 'Technical' = 'Functional';
     let consultantName = data.requestedBy;
+
+    const currentTicket = tickets.find(t => t.id === ticketId);
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: prof } = await supabase.from('profiles').select('id, consultant_type, full_name').eq('full_name', data.requestedBy).maybeSingle();
+        const { data: prof } = await supabase.from('profiles').select('id, full_name').eq('full_name', data.requestedBy).maybeSingle();
         if (prof) {
           consultantId = prof.id;
-          consultantType = (prof.consultant_type as any) || 'Functional';
           consultantName = prof.full_name;
         }
       } catch (err) {
@@ -3226,277 +3337,218 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       }
     }
 
-    const actualHoursToLog = consultantType === 'Functional' ? data.functionalActualHours : data.technicalActualHours;
-    const workSummaryToLog = data.workCompletedSummary;
-    const resolutionNotesToLog = data.resolutionSummary;
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: allocations } = await supabase
-          .from('ticket_consultant_efforts')
-          .select('id')
-          .eq('ticket_id', ticketId)
-          .eq('consultant_id', consultantId)
-          .eq('is_deleted', false)
-          .maybeSingle();
-
-        if (allocations) {
-          await supabase
-            .from('ticket_consultant_efforts')
-            .update({
-              actual_hours: actualHoursToLog,
-              closure_status: 'Submitted',
-              work_summary: workSummaryToLog,
-              resolution_notes: resolutionNotesToLog,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', allocations.id);
-        } else {
-          await supabase
-            .from('ticket_consultant_efforts')
-            .insert({
-              ticket_id: ticketId,
-              consultant_id: consultantId,
-              consultant_type: consultantType,
-              estimated_hours: 0,
-              actual_hours: actualHoursToLog,
-              closure_status: 'Submitted',
-              work_summary: workSummaryToLog,
-              resolution_notes: resolutionNotesToLog
-            });
-        }
-      } catch (err) {
-        console.error('Error updating consultant effort details:', err);
-      }
-    }
-
-    let dbAllocations: any[] = [];
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: allAlloc } = await supabase
-          .from('ticket_consultant_efforts')
-          .select('*')
-          .eq('ticket_id', ticketId)
-          .eq('is_deleted', false);
-        if (allAlloc) {
-          dbAllocations = allAlloc;
-        }
-      } catch (err) {
-        console.error('Error fetching allocations:', err);
-      }
-    }
-
-    if (dbAllocations.length === 0) {
-      const currentTicket = tickets.find(t => t.id === ticketId);
-      dbAllocations = (currentTicket?.consultantEfforts || []).map(e => ({
-        id: e.id,
-        consultant_id: e.consultantId,
-        consultant_name: e.consultantName,
-        consultant_type: e.consultantType,
-        estimated_hours: e.estimatedHours,
-        actual_hours: e.consultantId === consultantId ? actualHoursToLog : e.actualHours,
-        closure_status: e.consultantId === consultantId ? 'Submitted' : (e.closureStatus || 'Pending'),
-        work_summary: e.consultantId === consultantId ? workSummaryToLog : (e.workSummary || ''),
-        resolution_notes: e.consultantId === consultantId ? resolutionNotesToLog : (e.resolutionNotes || '')
-      }));
-    }
-
-    const activeAllocations = dbAllocations.filter((e: any) => !(e.is_deleted || e.isDeleted));
-
-    const hasFunctional = activeAllocations.some((e: any) => (e.consultant_type || e.consultantType) === 'Functional');
-    const hasTechnical = activeAllocations.some((e: any) => (e.consultant_type || e.consultantType) === 'Technical');
-
-    const functionalAllocations = activeAllocations.filter((e: any) => (e.consultant_type || e.consultantType) === 'Functional');
-    const technicalAllocations = activeAllocations.filter((e: any) => (e.consultant_type || e.consultantType) === 'Technical');
-
-    const allFunctionalSubmitted = functionalAllocations.length > 0 && functionalAllocations.every((e: any) => (e.closure_status || e.closureStatus) === 'Submitted');
-    const allTechnicalSubmitted = technicalAllocations.length > 0 && technicalAllocations.every((e: any) => (e.closure_status || e.closureStatus) === 'Submitted');
-
-    let nextStatus: TicketStatus = 'Awaiting Closure';
-    if (hasFunctional && hasTechnical) {
-      if (allFunctionalSubmitted && allTechnicalSubmitted) {
-        nextStatus = 'Request for Closure';
-      } else if (allTechnicalSubmitted && !allFunctionalSubmitted) {
-        nextStatus = 'Awaiting Functional Submission';
-      } else if (allFunctionalSubmitted && !allTechnicalSubmitted) {
-        nextStatus = 'Awaiting Technical Submission';
-      } else {
-        nextStatus = 'Awaiting Closure';
-      }
-    } else if (hasFunctional || hasTechnical) {
-      const allSubmitted = activeAllocations.every((e: any) => (e.closure_status || e.closureStatus) === 'Submitted');
-      if (allSubmitted) {
-        nextStatus = 'Request for Closure';
-      } else {
-        nextStatus = 'Awaiting Closure';
-      }
-    } else {
-      nextStatus = 'Request for Closure';
-    }
-
-    let newRequest: TicketClosureRequest | null = null;
+    // Classify actual hours by functional or technical type
     let totalFuncActual = 0;
     let totalTechActual = 0;
+    const actualHoursList = data.actualHours || [];
 
-    if (nextStatus === 'Request for Closure') {
-      dbAllocations.forEach((e: any) => {
-        const type = e.consultant_type || e.consultantType;
-        const hrs = Number(e.actual_hours || e.actualHours || 0);
-        if (type === 'Functional') {
-          totalFuncActual += hrs;
-        } else {
-          totalTechActual += hrs;
-        }
+    // Fallback: if actualHoursList is empty, try to construct it from functionalActualHours and technicalActualHours for the primary consultant
+    if (actualHoursList.length === 0) {
+      const isFunctional = currentTicket?.assignments?.find(a => a.consultantId === consultantId)?.consultantType !== 'Technical';
+      actualHoursList.push({
+        consultantId: consultantId,
+        hours: isFunctional ? data.functionalActualHours : data.technicalActualHours
       });
+    }
 
-      const grandTotal = totalFuncActual + totalTechActual;
-      const summaries = dbAllocations
-        .map((e: any) => `${e.consultant_name || e.consultantName} (${e.consultant_type || e.consultantType}): ${e.work_summary || e.workSummary || 'No summary'}`)
-        .join('\n\n');
+    // In local fallback or DB, we want to calculate the sums
+    const resolvedHoursList: { consultantId: string; consultantName: string; consultantType: 'Functional' | 'Technical'; hours: number }[] = [];
 
-      const notes = dbAllocations
-        .map((e: any) => `${e.consultant_name || e.consultantName} (${e.consultant_type || e.consultantType}): ${e.resolution_notes || e.resolutionNotes || 'No notes'}`)
-        .join('\n\n');
-
-      newRequest = {
-        id: `cls-${Date.now()}`,
-        ticketId,
-        requestedBy: consultantName,
-        functionalActualHours: totalFuncActual,
-        technicalActualHours: totalTechActual,
-        totalActualHours: grandTotal,
-        workCompletedSummary: summaries,
-        rootCause: data.rootCause || 'SAP Configuration/Process Alignment',
-        resolutionSummary: notes,
-        pendingItems: data.pendingItems,
-        status: 'Pending Manager Approval',
-        managerApprovalStatus: 'Pending',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      if (isSupabaseConfigured && supabase) {
-        try {
-          await supabase.from('ticket_closure_requests').insert({
-            id: newRequest.id.startsWith('cls-') && newRequest.id.length < 25 ? undefined : newRequest.id,
-            ticket_id: ticketId,
-            requested_by: consultantId,
-            functional_actual_hours: totalFuncActual,
-            technical_actual_hours: totalTechActual,
-            total_actual_hours: grandTotal,
-            work_completed_summary: summaries,
-            root_cause: data.rootCause || 'SAP Configuration/Process Alignment',
-            resolution_summary: notes,
-            pending_items: data.pendingItems || null,
-            status: 'Pending Manager Approval',
-            manager_approval_status: 'Pending'
-          });
-
-          await supabase.from('tickets').update({
-            status: 'Request for Closure',
-            root_cause: data.rootCause || null,
-            resolution_summary: notes,
-            updated_at: new Date().toISOString()
-          }).eq('id', ticketId);
-
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: consultantId,
-            field_changed: 'Status',
-            old_value: tickets.find(t => t.id === ticketId)?.status || 'In Progress',
-            new_value: 'Request for Closure'
-          });
-
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: consultantId,
-            field_changed: 'Actual Hours Submitted',
-            old_value: '0',
-            new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
-          });
-        } catch (err) {
-          console.error('Error creating unified closure request:', err);
+    for (const ah of actualHoursList) {
+      let type: 'Functional' | 'Technical' = 'Functional';
+      let name = 'Consultant';
+      const asg = currentTicket?.assignments?.find(a => a.consultantId === ah.consultantId);
+      if (asg) {
+        type = asg.consultantType;
+        name = asg.consultantName;
+      } else {
+        if (isSupabaseConfigured && supabase) {
+          try {
+            const { data: prof } = await supabase.from('profiles').select('full_name, consultant_type').eq('id', ah.consultantId).maybeSingle();
+            if (prof) {
+              type = (prof.consultant_type as any) || 'Functional';
+              name = prof.full_name;
+            }
+          } catch (e) {
+            console.error('Error resolving profile for actual hours entry:', e);
+          }
         }
       }
-    } else {
-      if (isSupabaseConfigured && supabase) {
-        try {
-          await supabase.from('tickets').update({
-            status: nextStatus,
-            updated_at: new Date().toISOString()
-          }).eq('id', ticketId);
+      resolvedHoursList.push({
+        consultantId: ah.consultantId,
+        consultantName: name,
+        consultantType: type,
+        hours: ah.hours
+      });
 
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: consultantId,
-            field_changed: 'Status',
-            old_value: tickets.find(t => t.id === ticketId)?.status || 'In Progress',
-            new_value: nextStatus
-          });
-
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: consultantId,
-            field_changed: 'Consultant Closure Submitted',
-            old_value: 'Pending',
-            new_value: `Submitted by ${consultantName} (${consultantType})`
-          });
-        } catch (err) {
-          console.error('Error updating status to nextStatus:', err);
-        }
+      if (type === 'Functional') {
+        totalFuncActual += ah.hours;
+      } else {
+        totalTechActual += ah.hours;
       }
     }
 
+    const grandTotal = totalFuncActual + totalTechActual;
+    const closureRequestId = `cls-${Date.now()}`;
+
+    const newRequest: TicketClosureRequest = {
+      id: closureRequestId,
+      ticketId,
+      requestedBy: consultantName,
+      functionalActualHours: totalFuncActual,
+      technicalActualHours: totalTechActual,
+      totalActualHours: grandTotal,
+      workCompletedSummary: data.workCompletedSummary,
+      rootCause: data.rootCause || 'SAP Configuration/Process Alignment',
+      resolutionSummary: data.resolutionSummary,
+      pendingItems: data.pendingItems,
+      status: 'Pending Manager Approval',
+      managerApprovalStatus: 'Pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // 1. Insert closure request
+        const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
+          ticket_id: ticketId,
+          requested_by: consultantId,
+          functional_actual_hours: totalFuncActual,
+          technical_actual_hours: totalTechActual,
+          total_actual_hours: grandTotal,
+          work_completed_summary: data.workCompletedSummary,
+          root_cause: data.rootCause || 'SAP Configuration/Process Alignment',
+          resolution_summary: data.resolutionSummary,
+          pending_items: data.pendingItems || null,
+          status: 'Pending Manager Approval',
+          manager_approval_status: 'Pending',
+          primary_consultant_id: consultantId
+        }).select('id').single();
+
+        if (reqErr) throw reqErr;
+        const dbClosureReqId = insertedReq.id;
+
+        // 2. Insert actual hours logs for each consultant
+        for (const rh of resolvedHoursList) {
+          await supabase.from('ticket_actual_hours').insert({
+            closure_request_id: dbClosureReqId,
+            ticket_id: ticketId,
+            consultant_id: rh.consultantId,
+            consultant_type: rh.consultantType,
+            actual_hours: rh.hours
+          });
+
+          // Also update ticket_consultant_efforts for backwards compatibility
+          const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
+            .select('id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', rh.consultantId)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (existingEff) {
+            await supabase.from('ticket_consultant_efforts').update({
+              actual_hours: rh.hours,
+              closure_status: 'Submitted',
+              work_summary: data.workCompletedSummary,
+              resolution_notes: data.resolutionSummary,
+              updated_at: new Date().toISOString()
+            }).eq('id', existingEff.id);
+          } else {
+            await supabase.from('ticket_consultant_efforts').insert({
+              ticket_id: ticketId,
+              consultant_id: rh.consultantId,
+              consultant_type: rh.consultantType,
+              estimated_hours: 0,
+              actual_hours: rh.hours,
+              closure_status: 'Submitted',
+              work_summary: data.workCompletedSummary,
+              resolution_notes: data.resolutionSummary
+            });
+          }
+        }
+
+        // 3. Update ticket status
+        await supabase.from('tickets').update({
+          status: 'Request for Closure',
+          closure_status: 'Awaiting Manager Approval',
+          root_cause: data.rootCause || null,
+          resolution_summary: data.resolutionSummary,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        // 4. Log history
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantId,
+          field_changed: 'Status',
+          old_value: currentTicket?.status || 'In Progress',
+          new_value: 'Request for Closure'
+        });
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantId,
+          field_changed: 'Actual Hours Submitted',
+          old_value: '0',
+          new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
+        });
+      } catch (err) {
+        console.error('Error raising closure request in Supabase:', err);
+      }
+    }
+
+    // Local state fallback update
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
+        // Construct synthesized efforts
         const updatedEfforts = (t.consultantEfforts || []).map(eff => {
-          if (eff.consultantId === consultantId) {
+          const rh = resolvedHoursList.find(x => x.consultantId === eff.consultantId);
+          if (rh) {
             return {
               ...eff,
-              actualHours: actualHoursToLog,
+              actualHours: rh.hours,
               closureStatus: 'Submitted' as const,
-              workSummary: workSummaryToLog,
-              resolutionNotes: resolutionNotesToLog,
+              workSummary: data.workCompletedSummary,
+              resolutionNotes: data.resolutionSummary,
               updatedAt: new Date().toISOString()
             };
           }
           return eff;
         });
 
-        const hasEffort = updatedEfforts.some(e => e.consultantId === consultantId);
-        if (!hasEffort) {
-          updatedEfforts.push({
-            id: `eff-${Date.now()}`,
+        // Add actual hours logs
+        const localActualHoursLogs = [...(t.actualHoursLogs || [])];
+        resolvedHoursList.forEach(rh => {
+          localActualHoursLogs.push({
+            id: `act-${Date.now()}-${Math.random()}`,
+            closureRequestId,
             ticketId,
-            consultantId,
-            consultantName,
-            consultantType,
-            estimatedHours: 0,
-            actualHours: actualHoursToLog,
-            closureStatus: 'Submitted',
-            workSummary: workSummaryToLog,
-            resolutionNotes: resolutionNotesToLog,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            consultantId: rh.consultantId,
+            consultantType: rh.consultantType,
+            actualHours: rh.hours
           });
-        }
+        });
 
         const hist = [...t.history];
         hist.push({
           id: `h-cls-log-${Date.now()}`,
           ticketId,
           changedBy: consultantName,
-          fieldChanged: nextStatus === 'Request for Closure' ? 'Status' : 'Consultant Closure Submitted',
+          fieldChanged: 'Status',
           oldValue: t.status,
-          newValue: nextStatus,
+          newValue: 'Request for Closure',
           createdAt: new Date().toISOString()
         });
 
         return {
           ...t,
-          status: nextStatus,
+          status: 'Request for Closure' as TicketStatus,
+          closureStatus: 'Awaiting Manager Approval',
           consultantEfforts: updatedEfforts,
-          closureRequests: newRequest ? [...(t.closureRequests || []), newRequest] : (t.closureRequests || []),
+          actualHoursLogs: localActualHoursLogs,
+          closureRequests: [...(t.closureRequests || []), newRequest],
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -3506,21 +3558,12 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
     syncTickets(updated);
 
-    if (nextStatus === 'Request for Closure') {
-      createSystemNotification(
-        'manager@supportstudio.com',
-        'Closure Request Raised',
-        `All allocated consultants on ticket ${ticketId} have submitted actual hours. Awaiting Manager Approval.`,
-        ticketId
-      );
-    } else {
-      createSystemNotification(
-        'manager@supportstudio.com',
-        'Consultant Closure Submitted',
-        `${consultantName} has submitted actual hours. Ticket is awaiting remaining allocations to complete closure.`,
-        ticketId
-      );
-    }
+    createSystemNotification(
+      'manager@supportstudio.com',
+      'Closure Request Raised',
+      `Primary consultant ${consultantName} has submitted actual hours and requested closure for ticket ${ticketId}. Awaiting Manager Approval.`,
+      ticketId
+    );
   };
 
   const resubmitClosureRequest = async (
@@ -3534,18 +3577,19 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       resolutionSummary: string;
       pendingItems?: string;
       requestedBy: string;
+      actualHours?: { consultantId: string; hours: number }[];
     }
   ) => {
     let consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
-    let consultantType: 'Functional' | 'Technical' = 'Functional';
     let consultantName = data.requestedBy;
+
+    const currentTicket = tickets.find(t => t.id === ticketId);
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: prof } = await supabase.from('profiles').select('id, consultant_type, full_name').eq('full_name', data.requestedBy).maybeSingle();
+        const { data: prof } = await supabase.from('profiles').select('id, full_name').eq('full_name', data.requestedBy).maybeSingle();
         if (prof) {
           consultantId = prof.id;
-          consultantType = (prof.consultant_type as any) || 'Functional';
           consultantName = prof.full_name;
         }
       } catch (err) {
@@ -3553,223 +3597,207 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       }
     }
 
-    const actualHoursToLog = consultantType === 'Functional' ? data.functionalActualHours : data.technicalActualHours;
-    const workSummaryToLog = data.workCompletedSummary;
-    const resolutionNotesToLog = data.resolutionSummary;
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: allocations } = await supabase
-          .from('ticket_consultant_efforts')
-          .select('id')
-          .eq('ticket_id', ticketId)
-          .eq('consultant_id', consultantId)
-          .eq('is_deleted', false)
-          .maybeSingle();
-
-        if (allocations) {
-          await supabase
-            .from('ticket_consultant_efforts')
-            .update({
-              actual_hours: actualHoursToLog,
-              closure_status: 'Submitted',
-              work_summary: workSummaryToLog,
-              resolution_notes: resolutionNotesToLog,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', allocations.id);
-        }
-      } catch (err) {
-        console.error('Error updating consultant effort details:', err);
-      }
-    }
-
-    let dbAllocations: any[] = [];
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: allAlloc } = await supabase
-          .from('ticket_consultant_efforts')
-          .select('*')
-          .eq('ticket_id', ticketId)
-          .eq('is_deleted', false);
-        if (allAlloc) {
-          dbAllocations = allAlloc;
-        }
-      } catch (err) {
-        console.error('Error fetching allocations:', err);
-      }
-    }
-
-    if (dbAllocations.length === 0) {
-      const currentTicket = tickets.find(t => t.id === ticketId);
-      dbAllocations = (currentTicket?.consultantEfforts || []).map(e => ({
-        id: e.id,
-        consultant_id: e.consultantId,
-        consultant_name: e.consultantName,
-        consultant_type: e.consultantType,
-        estimated_hours: e.estimatedHours,
-        actual_hours: e.consultantId === consultantId ? actualHoursToLog : e.actualHours,
-        closure_status: e.consultantId === consultantId ? 'Submitted' : (e.closureStatus || 'Pending'),
-        work_summary: e.consultantId === consultantId ? workSummaryToLog : (e.workSummary || ''),
-        resolution_notes: e.consultantId === consultantId ? resolutionNotesToLog : (e.resolutionNotes || '')
-      }));
-    }
-
-    const activeAllocations = dbAllocations.filter((e: any) => !(e.is_deleted || e.isDeleted));
-
-    const hasFunctional = activeAllocations.some((e: any) => (e.consultant_type || e.consultantType) === 'Functional');
-    const hasTechnical = activeAllocations.some((e: any) => (e.consultant_type || e.consultantType) === 'Technical');
-
-    const functionalAllocations = activeAllocations.filter((e: any) => (e.consultant_type || e.consultantType) === 'Functional');
-    const technicalAllocations = activeAllocations.filter((e: any) => (e.consultant_type || e.consultantType) === 'Technical');
-
-    const allFunctionalSubmitted = functionalAllocations.length > 0 && functionalAllocations.every((e: any) => (e.closure_status || e.closureStatus) === 'Submitted');
-    const allTechnicalSubmitted = technicalAllocations.length > 0 && technicalAllocations.every((e: any) => (e.closure_status || e.closureStatus) === 'Submitted');
-
-    let nextStatus: TicketStatus = 'Awaiting Closure';
-    if (hasFunctional && hasTechnical) {
-      if (allFunctionalSubmitted && allTechnicalSubmitted) {
-        nextStatus = 'Request for Closure';
-      } else if (allTechnicalSubmitted && !allFunctionalSubmitted) {
-        nextStatus = 'Awaiting Functional Submission';
-      } else if (allFunctionalSubmitted && !allTechnicalSubmitted) {
-        nextStatus = 'Awaiting Technical Submission';
-      } else {
-        nextStatus = 'Awaiting Closure';
-      }
-    } else if (hasFunctional || hasTechnical) {
-      const allSubmitted = activeAllocations.every((e: any) => (e.closure_status || e.closureStatus) === 'Submitted');
-      if (allSubmitted) {
-        nextStatus = 'Request for Closure';
-      } else {
-        nextStatus = 'Awaiting Closure';
-      }
-    } else {
-      nextStatus = 'Request for Closure';
-    }
-
-    let newRequest: TicketClosureRequest | null = null;
+    // Classify actual hours by functional or technical type
     let totalFuncActual = 0;
     let totalTechActual = 0;
+    const actualHoursList = data.actualHours || [];
 
-    if (nextStatus === 'Request for Closure') {
-      dbAllocations.forEach((e: any) => {
-        const type = e.consultant_type || e.consultantType;
-        const hrs = Number(e.actual_hours || e.actualHours || 0);
-        if (type === 'Functional') {
-          totalFuncActual += hrs;
-        } else {
-          totalTechActual += hrs;
-        }
+    // Fallback: if actualHoursList is empty, try to construct it from functionalActualHours and technicalActualHours for the primary consultant
+    if (actualHoursList.length === 0) {
+      const isFunctional = currentTicket?.assignments?.find(a => a.consultantId === consultantId)?.consultantType !== 'Technical';
+      actualHoursList.push({
+        consultantId: consultantId,
+        hours: isFunctional ? data.functionalActualHours : data.technicalActualHours
       });
+    }
 
-      const grandTotal = totalFuncActual + totalTechActual;
-      const summaries = dbAllocations
-        .map((e: any) => `${e.consultant_name || e.consultantName} (${e.consultant_type || e.consultantType}): ${e.work_summary || e.workSummary || 'No summary'}`)
-        .join('\n\n');
+    // In local fallback or DB, we want to calculate the sums
+    const resolvedHoursList: { consultantId: string; consultantName: string; consultantType: 'Functional' | 'Technical'; hours: number }[] = [];
 
-      const notes = dbAllocations
-        .map((e: any) => `${e.consultant_name || e.consultantName} (${e.consultant_type || e.consultantType}): ${e.resolution_notes || e.resolutionNotes || 'No notes'}`)
-        .join('\n\n');
-
-      newRequest = {
-        id: `cls-${Date.now()}`,
-        ticketId,
-        requestedBy: consultantName,
-        functionalActualHours: totalFuncActual,
-        technicalActualHours: totalTechActual,
-        totalActualHours: grandTotal,
-        workCompletedSummary: summaries,
-        rootCause: data.rootCause || 'SAP Configuration/Process Alignment',
-        resolutionSummary: notes,
-        pendingItems: data.pendingItems,
-        status: 'Pending Manager Approval',
-        managerApprovalStatus: 'Pending',
-        resubmittedFromId: requestId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      if (isSupabaseConfigured && supabase) {
-        try {
-          await supabase.from('ticket_closure_requests').update({
-            status: 'Resubmitted'
-          }).eq('id', requestId);
-
-          await supabase.from('ticket_closure_requests').insert({
-            id: newRequest.id.startsWith('cls-') && newRequest.id.length < 25 ? undefined : newRequest.id,
-            ticket_id: ticketId,
-            requested_by: consultantId,
-            functional_actual_hours: totalFuncActual,
-            technical_actual_hours: totalTechActual,
-            total_actual_hours: grandTotal,
-            work_completed_summary: summaries,
-            root_cause: data.rootCause || 'SAP Configuration/Process Alignment',
-            resolution_summary: notes,
-            pending_items: data.pendingItems || null,
-            status: 'Pending Manager Approval',
-            manager_approval_status: 'Pending',
-            resubmitted_from_id: requestId
-          });
-
-          await supabase.from('tickets').update({
-            status: 'Request for Closure',
-            root_cause: data.rootCause || null,
-            resolution_summary: notes,
-            updated_at: new Date().toISOString()
-          }).eq('id', ticketId);
-
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: consultantId,
-            field_changed: 'Status',
-            old_value: tickets.find(t => t.id === ticketId)?.status || 'In Progress',
-            new_value: 'Request for Closure'
-          });
-
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: consultantId,
-            field_changed: 'Actual Hours Resubmitted',
-            old_value: '0',
-            new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
-          });
-        } catch (err) {
-          console.error('Error resubmitting unified closure request:', err);
+    for (const ah of actualHoursList) {
+      let type: 'Functional' | 'Technical' = 'Functional';
+      let name = 'Consultant';
+      const asg = currentTicket?.assignments?.find(a => a.consultantId === ah.consultantId);
+      if (asg) {
+        type = asg.consultantType;
+        name = asg.consultantName;
+      } else {
+        if (isSupabaseConfigured && supabase) {
+          try {
+            const { data: prof } = await supabase.from('profiles').select('full_name, consultant_type').eq('id', ah.consultantId).maybeSingle();
+            if (prof) {
+              type = (prof.consultant_type as any) || 'Functional';
+              name = prof.full_name;
+            }
+          } catch (e) {
+            console.error('Error resolving profile for actual hours entry:', e);
+          }
         }
       }
-    } else {
-      if (isSupabaseConfigured && supabase) {
-        try {
-          await supabase.from('tickets').update({
-            status: nextStatus,
-            updated_at: new Date().toISOString()
-          }).eq('id', ticketId);
+      resolvedHoursList.push({
+        consultantId: ah.consultantId,
+        consultantName: name,
+        consultantType: type,
+        hours: ah.hours
+      });
 
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: consultantId,
-            field_changed: 'Status',
-            old_value: tickets.find(t => t.id === ticketId)?.status || 'In Progress',
-            new_value: nextStatus
-          });
-
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: consultantId,
-            field_changed: 'Closure Request Resubmitted',
-            oldValue: '',
-            newValue: `${actualHoursToLog} hrs`,
-            createdAt: new Date().toISOString()
-          });
-        } catch (err) {
-          console.error('Error updating status to nextStatus:', err);
-        }
+      if (type === 'Functional') {
+        totalFuncActual += ah.hours;
+      } else {
+        totalTechActual += ah.hours;
       }
     }
 
+    const grandTotal = totalFuncActual + totalTechActual;
+    const closureRequestId = `cls-${Date.now()}`;
+
+    const newRequest: TicketClosureRequest = {
+      id: closureRequestId,
+      ticketId,
+      requestedBy: consultantName,
+      functionalActualHours: totalFuncActual,
+      technicalActualHours: totalTechActual,
+      totalActualHours: grandTotal,
+      workCompletedSummary: data.workCompletedSummary,
+      rootCause: data.rootCause || 'SAP Configuration/Process Alignment',
+      resolutionSummary: data.resolutionSummary,
+      pendingItems: data.pendingItems,
+      status: 'Pending Manager Approval',
+      managerApprovalStatus: 'Pending',
+      resubmittedFromId: requestId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // 1. Update previous request status to Resubmitted
+        await supabase.from('ticket_closure_requests').update({
+          status: 'Resubmitted'
+        }).eq('id', requestId);
+
+        // 2. Insert resubmitted request
+        const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
+          ticket_id: ticketId,
+          requested_by: consultantId,
+          functional_actual_hours: totalFuncActual,
+          technical_actual_hours: totalTechActual,
+          total_actual_hours: grandTotal,
+          work_completed_summary: data.workCompletedSummary,
+          root_cause: data.rootCause || 'SAP Configuration/Process Alignment',
+          resolution_summary: data.resolutionSummary,
+          pending_items: data.pendingItems || null,
+          status: 'Pending Manager Approval',
+          manager_approval_status: 'Pending',
+          primary_consultant_id: consultantId,
+          resubmitted_from_id: requestId
+        }).select('id').single();
+
+        if (reqErr) throw reqErr;
+        const dbClosureReqId = insertedReq.id;
+
+        // 3. Insert actual hours logs for each consultant
+        for (const rh of resolvedHoursList) {
+          await supabase.from('ticket_actual_hours').insert({
+            closure_request_id: dbClosureReqId,
+            ticket_id: ticketId,
+            consultant_id: rh.consultantId,
+            consultant_type: rh.consultantType,
+            actual_hours: rh.hours
+          });
+
+          // Also update ticket_consultant_efforts for backwards compatibility
+          const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
+            .select('id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', rh.consultantId)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (existingEff) {
+            await supabase.from('ticket_consultant_efforts').update({
+              actual_hours: rh.hours,
+              closure_status: 'Submitted',
+              work_summary: data.workCompletedSummary,
+              resolution_notes: data.resolutionSummary,
+              updated_at: new Date().toISOString()
+            }).eq('id', existingEff.id);
+          } else {
+            await supabase.from('ticket_consultant_efforts').insert({
+              ticket_id: ticketId,
+              consultant_id: rh.consultantId,
+              consultant_type: rh.consultantType,
+              estimated_hours: 0,
+              actual_hours: rh.hours,
+              closure_status: 'Submitted',
+              work_summary: data.workCompletedSummary,
+              resolution_notes: data.resolutionSummary
+            });
+          }
+        }
+
+        // 4. Update ticket status
+        await supabase.from('tickets').update({
+          status: 'Request for Closure',
+          closure_status: 'Awaiting Manager Approval',
+          root_cause: data.rootCause || null,
+          resolution_summary: data.resolutionSummary,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        // 5. Log history
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantId,
+          field_changed: 'Status',
+          old_value: currentTicket?.status || 'In Progress',
+          new_value: 'Request for Closure'
+        });
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantId,
+          field_changed: 'Actual Hours Resubmitted',
+          old_value: '0',
+          new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
+        });
+      } catch (err) {
+        console.error('Error resubmitting closure request in Supabase:', err);
+      }
+    }
+
+    // Local state fallback update
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
+        // Construct synthesized efforts
+        const updatedEfforts = (t.consultantEfforts || []).map(eff => {
+          const rh = resolvedHoursList.find(x => x.consultantId === eff.consultantId);
+          if (rh) {
+            return {
+              ...eff,
+              actualHours: rh.hours,
+              closureStatus: 'Submitted' as const,
+              workSummary: data.workCompletedSummary,
+              resolutionNotes: data.resolutionSummary,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return eff;
+        });
+
+        // Add actual hours logs
+        const localActualHoursLogs = [...(t.actualHoursLogs || [])];
+        resolvedHoursList.forEach(rh => {
+          localActualHoursLogs.push({
+            id: `act-${Date.now()}-${Math.random()}`,
+            closureRequestId,
+            ticketId,
+            consultantId: rh.consultantId,
+            consultantType: rh.consultantType,
+            actualHours: rh.hours
+          });
+        });
+
         const closureRequests = (t.closureRequests || []).map(r => {
           if (r.id === requestId) {
             return {
@@ -3781,20 +3809,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return r;
         });
 
-        const updatedEfforts = (t.consultantEfforts || []).map(eff => {
-          if (eff.consultantId === consultantId) {
-            return {
-              ...eff,
-              actualHours: actualHoursToLog,
-              closureStatus: 'Submitted' as const,
-              workSummary: workSummaryToLog,
-              resolutionNotes: resolutionNotesToLog,
-              updatedAt: new Date().toISOString()
-            };
-          }
-          return eff;
-        });
-
         const hist = [...t.history];
         hist.push({
           id: `h-cls-resub-${Date.now()}`,
@@ -3802,15 +3816,17 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           changedBy: consultantName,
           fieldChanged: 'Closure Request Resubmitted',
           oldValue: '',
-          newValue: `${totalFuncActual + totalTechActual} hrs`,
+          newValue: `${grandTotal} hrs`,
           createdAt: new Date().toISOString()
         });
 
         return {
           ...t,
-          status: nextStatus,
+          status: 'Request for Closure' as TicketStatus,
+          closureStatus: 'Awaiting Manager Approval',
           consultantEfforts: updatedEfforts,
-          closureRequests: newRequest ? [...closureRequests, newRequest] : closureRequests,
+          actualHoursLogs: localActualHoursLogs,
+          closureRequests: [...closureRequests, newRequest],
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -3823,7 +3839,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     createSystemNotification(
       'manager@supportstudio.com',
       'Closure Request Resubmitted',
-      `Consultant ${consultantName} resubmitted their closure details for ${ticketId}.`,
+      `Primary consultant ${consultantName} has resubmitted closure details for ticket ${ticketId}.`,
       ticketId
     );
   };
@@ -3848,6 +3864,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
         const managerId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
 
+        // 1. Update closure request status to Approved
         await supabase.from('ticket_closure_requests').update({
           status: 'Approved',
           manager_approval_status: 'Approved',
@@ -3855,75 +3872,36 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           manager_approved_at: new Date().toISOString()
         }).eq('id', requestId);
 
+        // 2. Automatically close the ticket directly
         await supabase.from('tickets').update({
-          status: 'Awaiting Closure',
+          status: 'Closed',
+          closure_status: 'Approved',
+          closed_by: managerId,
+          closed_at: new Date().toISOString(),
           resolved_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }).eq('id', ticketId);
 
+        // 3. Log to ticket history
         await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: managerId,
           field_changed: 'Status',
           old_value: 'Request for Closure',
-          new_value: 'Awaiting Closure'
+          new_value: 'Closed'
         });
 
-        const { data: consProf } = await supabase.from('profiles').select('id').eq('full_name', requester).maybeSingle();
-        const consultantUUID = consProf ? consProf.id : requester;
+        // 4. Update legacy ticket_consultant_efforts closure status
+        await supabase.from('ticket_consultant_efforts')
+          .update({ closure_status: 'Approved', updated_at: new Date().toISOString() })
+          .eq('ticket_id', ticketId);
 
-        if (actualFunc > 0) {
-          const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
-            .select('id')
-            .eq('ticket_id', ticketId)
-            .eq('consultant_id', consultantUUID)
-            .eq('consultant_type', 'Functional')
-            .maybeSingle();
-
-          if (existingEff) {
-            await supabase.from('ticket_consultant_efforts').update({
-              actual_hours: actualFunc,
-              updated_at: new Date().toISOString()
-            }).eq('id', existingEff.id);
-          } else {
-            await supabase.from('ticket_consultant_efforts').insert({
-              ticket_id: ticketId,
-              consultant_id: consultantUUID,
-              consultant_type: 'Functional',
-              estimated_hours: 0,
-              actual_hours: actualFunc
-            });
-          }
-        }
-
-        if (actualTech > 0) {
-          const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
-            .select('id')
-            .eq('ticket_id', ticketId)
-            .eq('consultant_id', consultantUUID)
-            .eq('consultant_type', 'Technical')
-            .maybeSingle();
-
-          if (existingEff) {
-            await supabase.from('ticket_consultant_efforts').update({
-              actual_hours: actualTech,
-              updated_at: new Date().toISOString()
-            }).eq('id', existingEff.id);
-          } else {
-            await supabase.from('ticket_consultant_efforts').insert({
-              ticket_id: ticketId,
-              consultant_id: consultantUUID,
-              consultant_type: 'Technical',
-              estimated_hours: 0,
-              actual_hours: actualTech
-            });
-          }
-        }
       } catch (err) {
         console.error('Error approving closure request in Supabase:', err);
       }
     }
 
+    // Local fallback update
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const closureRequests = (t.closureRequests || []).map(r => {
@@ -3940,54 +3918,11 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return r;
         });
 
-        const currentEfforts = t.consultantEfforts || [];
-        const updatedEfforts = [...currentEfforts];
-
-        if (actualFunc > 0) {
-          const fEffortIdx = updatedEfforts.findIndex(e => e.consultantId === requester && e.consultantType === 'Functional');
-          if (fEffortIdx > -1) {
-            updatedEfforts[fEffortIdx] = {
-              ...updatedEfforts[fEffortIdx],
-              actualHours: actualFunc,
-              updatedAt: new Date().toISOString()
-            };
-          } else {
-            updatedEfforts.push({
-              id: `eff-${Date.now()}-f`,
-              ticketId,
-              consultantId: requester,
-              consultantName: requester,
-              consultantType: 'Functional',
-              estimatedHours: 0,
-              actualHours: actualFunc,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
-
-        if (actualTech > 0) {
-          const tEffortIdx = updatedEfforts.findIndex(e => e.consultantId === requester && e.consultantType === 'Technical');
-          if (tEffortIdx > -1) {
-            updatedEfforts[tEffortIdx] = {
-              ...updatedEfforts[tEffortIdx],
-              actualHours: actualTech,
-              updatedAt: new Date().toISOString()
-            };
-          } else {
-            updatedEfforts.push({
-              id: `eff-${Date.now()}-t`,
-              ticketId,
-              consultantId: requester,
-              consultantName: requester,
-              consultantType: 'Technical',
-              estimatedHours: 0,
-              actualHours: actualTech,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
+        const updatedEfforts = (t.consultantEfforts || []).map(eff => ({
+          ...eff,
+          closureStatus: 'Approved' as const,
+          updatedAt: new Date().toISOString()
+        }));
 
         const hist = [
           ...t.history,
@@ -3997,14 +3932,17 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             changedBy: managerName,
             fieldChanged: 'Status',
             oldValue: t.status,
-            newValue: 'Awaiting Closure',
+            newValue: 'Closed',
             createdAt: new Date().toISOString()
           }
         ];
 
         return {
           ...t,
-          status: 'Awaiting Closure' as TicketStatus,
+          status: 'Closed' as TicketStatus,
+          closureStatus: 'Approved',
+          closedBy: managerName,
+          closedAt: new Date().toISOString(),
           resolvedAt: new Date().toISOString(),
           closureRequests,
           consultantEfforts: updatedEfforts,
@@ -4020,14 +3958,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     createSystemNotification(
       'consultant@supportstudio.com',
       'Closure Request Approved',
-      `Your closure request for ${ticketId} has been approved. Ticket is now Awaiting Closure.`,
+      `Closure request for ${ticketId} has been approved. Ticket status is now Closed.`,
       ticketId
     );
   };
 
   const rejectClosureRequest = async (ticketId: string, requestId: string, managerName: string, rejectionReason: string) => {
     const currentTicket = tickets.find(t => t.id === ticketId);
-    const revertedStatus: TicketStatus = currentTicket?.functionalOrTechnical === 'Technical' ? 'In Progress - Technical' : 'In Progress - Functional';
+    const revertedStatus: TicketStatus = 'In Progress';
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -4049,6 +3987,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         await supabase.from('tickets').update({
           status: revertedStatus,
+          closure_status: 'Pending',
           updated_at: new Date().toISOString()
         }).eq('id', ticketId);
 
@@ -4120,6 +4059,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         return {
           ...t,
           status: revertedStatus,
+          closureStatus: 'Pending',
           closureRequests,
           consultantEfforts: updatedEfforts,
           updatedAt: new Date().toISOString(),
@@ -4142,36 +4082,12 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
   const updateConsultantEfforts = async (ticketId: string, efforts: TicketConsultantEffort[]) => {
     const currentTicket = tickets.find(t => t.id === ticketId);
     if (!currentTicket) return;
-    const existingEfforts = currentTicket.consultantEfforts || [];
-    const existingActive = existingEfforts.filter(e => !e.isDeleted);
+    
+    const existingAssignments = currentTicket.assignments || [];
+    const existingActiveAsgs = existingAssignments.filter(a => a.active);
 
-    const addedConsultants = efforts.filter(e => !existingActive.some(x => x.consultantId === e.consultantId));
-    const removedConsultants = existingActive.filter(e => !efforts.some(x => x.consultantId === e.consultantId));
-
-    const updatedEfforts: TicketConsultantEffort[] = [];
-
-    existingEfforts.forEach(e => {
-      if (e.isDeleted) {
-        updatedEfforts.push(e);
-      }
-    });
-
-    efforts.forEach(e => {
-      if (!updatedEfforts.some(x => x.id === e.id)) {
-        updatedEfforts.push(e);
-      }
-    });
-
-    existingEfforts.forEach(e => {
-      if (!e.isDeleted && !efforts.some(x => x.consultantId === e.consultantId)) {
-        updatedEfforts.push({
-          ...e,
-          isDeleted: true,
-          deletedAt: new Date().toISOString(),
-          deletedBy: 'System'
-        });
-      }
-    });
+    const addedConsultants = efforts.filter(e => !existingActiveAsgs.some(x => x.consultantId === e.consultantId));
+    const removedConsultants = existingActiveAsgs.filter(a => !efforts.some(x => x.consultantId === a.consultantId));
 
     const actorName = user?.name || 'System';
     const actorEmail = user?.email || 'manager@supportstudio.com';
@@ -4181,29 +4097,101 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         const { data: profActor } = await supabase.from('profiles').select('id').eq('email', actorEmail).maybeSingle();
         const actorId = profActor ? profActor.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
 
-        for (const e of updatedEfforts) {
+        // 1. Process all active assignments and their estimates from the new efforts list
+        for (const e of efforts) {
           let consultantUUID = e.consultantId;
-          const { data: consProf } = await supabase.from('profiles').select('id').eq('full_name', e.consultantName).maybeSingle();
+          const { data: consProf } = await supabase.from('profiles').select('id, consultant_type').eq('full_name', e.consultantName).maybeSingle();
           if (consProf) {
             consultantUUID = consProf.id;
           }
 
-          const { error } = await supabase.from('ticket_consultant_efforts').upsert({
-            id: (e.id.startsWith('eff-') || e.id.startsWith('mock-')) && e.id.length < 25 ? undefined : e.id,
-            ticket_id: ticketId,
-            consultant_id: consultantUUID,
-            consultant_type: e.consultantType,
-            estimated_hours: e.estimatedHours,
-            actual_hours: e.actualHours,
-            remarks: e.remarks || null,
-            is_deleted: e.isDeleted || false,
-            deleted_at: e.deletedAt || null,
-            deleted_by: e.deletedBy || null
-          });
-          if (error) console.error('Error syncing consultant effort:', error);
+          // Check if this assignment exists
+          const { data: existingAsg } = await supabase.from('ticket_assignments')
+            .select('ticket_id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', consultantUUID)
+            .maybeSingle();
+
+          if (existingAsg) {
+            await supabase.from('ticket_assignments')
+              .update({ active: true })
+              .eq('ticket_id', ticketId)
+              .eq('consultant_id', consultantUUID);
+          } else {
+            await supabase.from('ticket_assignments').insert({
+              ticket_id: ticketId,
+              consultant_id: consultantUUID,
+              consultant_type: e.consultantType,
+              is_primary: false, // default false, changed through assignTicket
+              active: true,
+              assigned_by: actorId
+            });
+          }
+
+          // Upsert estimate
+          if (e.estimatedHours >= 0) {
+            await supabase.from('ticket_estimates').upsert({
+              ticket_id: ticketId,
+              consultant_id: consultantUUID,
+              consultant_type: e.consultantType,
+              estimated_hours: e.estimatedHours,
+              remarks: e.remarks || 'Updated by Manager',
+              submitted_at: new Date().toISOString()
+            }, {
+              onConflict: 'ticket_id,consultant_id'
+            });
+          }
+
+          // For legacy compatibility, also upsert into ticket_consultant_efforts
+          const { data: legacyEff } = await supabase.from('ticket_consultant_efforts')
+            .select('id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', consultantUUID)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (legacyEff) {
+            await supabase.from('ticket_consultant_efforts').update({
+              estimated_hours: e.estimatedHours,
+              remarks: e.remarks || 'Updated by Manager',
+              updated_at: new Date().toISOString()
+            }).eq('id', legacyEff.id);
+          } else {
+            await supabase.from('ticket_consultant_efforts').insert({
+              ticket_id: ticketId,
+              consultant_id: consultantUUID,
+              consultant_type: e.consultantType,
+              estimated_hours: e.estimatedHours,
+              actual_hours: 0,
+              remarks: e.remarks || 'Updated by Manager'
+            });
+          }
         }
 
+        // 2. Mark removed consultants as inactive
+        for (const r of removedConsultants) {
+          await supabase.from('ticket_assignments')
+            .update({ active: false })
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', r.consultantId);
+
+          // For legacy compatibility, mark as deleted
+          await supabase.from('ticket_consultant_efforts')
+            .update({
+              is_deleted: true,
+              deleted_at: new Date().toISOString(),
+              deleted_by: actorId
+            })
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', r.consultantId);
+        }
+
+        // 3. Log history and send notifications for added consultants
         for (const added of addedConsultants) {
+          let targetUUID = added.consultantId;
+          const { data: consProf } = await supabase.from('profiles').select('id').eq('full_name', added.consultantName).maybeSingle();
+          if (consProf) targetUUID = consProf.id;
+
           await supabase.from('ticket_history').insert({
             ticket_id: ticketId,
             changed_by: actorId,
@@ -4211,10 +4199,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             old_value: 'None',
             new_value: `${added.consultantName} (${added.consultantType})`
           });
-
-          let targetUUID = added.consultantId;
-          const { data: consProf } = await supabase.from('profiles').select('id').eq('full_name', added.consultantName).maybeSingle();
-          if (consProf) targetUUID = consProf.id;
 
           await supabase.from('notifications').insert({
             user_id: targetUUID,
@@ -4224,6 +4208,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           });
         }
 
+        // 4. Log history and send notifications for removed consultants
         for (const removed of removedConsultants) {
           await supabase.from('ticket_history').insert({
             ticket_id: ticketId,
@@ -4233,71 +4218,143 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             new_value: 'None'
           });
 
-          let targetUUID = removed.consultantId;
-          const { data: consProf } = await supabase.from('profiles').select('id').eq('full_name', removed.consultantName).maybeSingle();
-          if (consProf) targetUUID = consProf.id;
-
           await supabase.from('notifications').insert({
-            user_id: targetUUID,
+            user_id: removed.consultantId,
             title: 'Resource Removed',
             message: `You have been removed from ticket ${ticketId} by ${actorName}.`,
             ticket_id: ticketId
           });
         }
+
+        await fetchData();
       } catch (err) {
         console.error('Supabase updateConsultantEfforts failed:', err);
       }
-    }
+    } else {
+      // Local fallback mode
+      const localHistories: AuditHistory[] = [];
+      const updatedAssignments = [...(currentTicket.assignments || [])];
+      const updatedEstimates = [...(currentTicket.estimates || [])];
 
-    const localHistories: AuditHistory[] = [];
-    addedConsultants.forEach((added, idx) => {
-      localHistories.push({
-        id: `h-add-res-${Date.now()}-${idx}`,
-        ticketId,
-        changedBy: actorName,
-        fieldChanged: 'Resource Assigned',
-        oldValue: 'None',
-        newValue: `${added.consultantName} (${added.consultantType})`,
-        createdAt: new Date().toISOString()
+      // Mark removed active assignments as active = false
+      removedConsultants.forEach((removed, idx) => {
+        const asgIdx = updatedAssignments.findIndex(a => a.consultantId === removed.consultantId && a.active);
+        if (asgIdx >= 0) {
+          updatedAssignments[asgIdx] = { ...updatedAssignments[asgIdx], active: false };
+        }
+
+        localHistories.push({
+          id: `h-rem-res-${Date.now()}-${idx}`,
+          ticketId,
+          changedBy: actorName,
+          fieldChanged: 'Resource Removed',
+          oldValue: `${removed.consultantName} (${removed.consultantType})`,
+          newValue: 'None',
+          createdAt: new Date().toISOString()
+        });
+
+        createSystemNotification(
+          removed.consultantId,
+          'Resource Removed',
+          `You have been removed from ticket ${ticketId} by ${actorName}.`,
+          ticketId
+        );
       });
-      createSystemNotification(
-        added.consultantId,
-        'Resource Assigned',
-        `You have been assigned to ticket ${ticketId} as a ${added.consultantType} resource by ${actorName}.`,
-        ticketId
-      );
-    });
 
-    removedConsultants.forEach((removed, idx) => {
-      localHistories.push({
-        id: `h-rem-res-${Date.now()}-${idx}`,
-        ticketId,
-        changedBy: actorName,
-        fieldChanged: 'Resource Removed',
-        oldValue: `${removed.consultantName} (${removed.consultantType})`,
-        newValue: 'None',
-        createdAt: new Date().toISOString()
+      // Update/add new assignments and estimates
+      efforts.forEach((e) => {
+        const asgIdx = updatedAssignments.findIndex(a => a.consultantId === e.consultantId);
+        if (asgIdx >= 0) {
+          updatedAssignments[asgIdx] = { ...updatedAssignments[asgIdx], active: true };
+        } else {
+          updatedAssignments.push({
+            ticketId,
+            consultantId: e.consultantId,
+            consultantName: e.consultantName,
+            consultantType: e.consultantType,
+            isPrimary: false,
+            active: true,
+            assignedAt: new Date().toISOString()
+          });
+        }
+
+        const estIdx = updatedEstimates.findIndex(est => est.consultantId === e.consultantId);
+        if (estIdx >= 0) {
+          updatedEstimates[estIdx] = {
+            ...updatedEstimates[estIdx],
+            estimatedHours: e.estimatedHours,
+            remarks: e.remarks || 'Updated by Manager',
+            submittedAt: new Date().toISOString()
+          };
+        } else {
+          updatedEstimates.push({
+            id: `est-${Date.now()}-${Math.random()}`,
+            ticketId,
+            consultantId: e.consultantId,
+            consultantType: e.consultantType,
+            estimatedHours: e.estimatedHours,
+            remarks: e.remarks || 'Updated by Manager',
+            submittedAt: new Date().toISOString()
+          });
+        }
       });
-      createSystemNotification(
-        removed.consultantId,
-        'Resource Removed',
-        `You have been removed from ticket ${ticketId} by ${actorName}.`,
-        ticketId
-      );
-    });
 
-    const updated = tickets.map(t => {
-      if (t.id === ticketId) {
+      addedConsultants.forEach((added, idx) => {
+        localHistories.push({
+          id: `h-add-res-${Date.now()}-${idx}`,
+          ticketId,
+          changedBy: actorName,
+          fieldChanged: 'Resource Assigned',
+          oldValue: 'None',
+          newValue: `${added.consultantName} (${added.consultantType})`,
+          createdAt: new Date().toISOString()
+        });
+
+        createSystemNotification(
+          added.consultantId,
+          'Resource Assigned',
+          `You have been assigned to ticket ${ticketId} as a ${added.consultantType} resource by ${actorName}.`,
+          ticketId
+        );
+      });
+
+      // Synthesize consultantEfforts locally
+      const synthesizedEfforts = updatedAssignments.map(a => {
+        const est = updatedEstimates.find(est => est.consultantId === a.consultantId);
         return {
-          ...t,
-          consultantEfforts: updatedEfforts.filter(e => !e.isDeleted),
-          updatedAt: new Date().toISOString(),
-          history: [...t.history, ...localHistories]
+          id: `synthesized-${a.consultantId}-${ticketId}`,
+          ticketId,
+          consultantId: a.consultantId,
+          consultantName: a.consultantName,
+          consultantType: a.consultantType,
+          estimatedHours: est ? est.estimatedHours : 0,
+          actualHours: 0,
+          remarks: est?.remarks || '',
+          createdAt: a.assignedAt,
+          updatedAt: a.assignedAt,
+          isDeleted: !a.active,
+          closureStatus: 'Pending' as const,
+          workSummary: '',
+          resolutionNotes: ''
         };
-      }
-      return t;
-    });
-    syncTickets(updated);
+      }).filter(eff => !eff.isDeleted);
+
+      const updated = tickets.map(t => {
+        if (t.id === ticketId) {
+          return {
+            ...t,
+            assignments: updatedAssignments,
+            estimates: updatedEstimates,
+            consultantEfforts: synthesizedEfforts,
+            updatedAt: new Date().toISOString(),
+            history: [...t.history, ...localHistories]
+          };
+        }
+        return t;
+      });
+
+      syncTickets(updated);
+    }
   };
 
   const requestUnlock = async (

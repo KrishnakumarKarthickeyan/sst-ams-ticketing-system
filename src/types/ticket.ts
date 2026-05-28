@@ -261,6 +261,44 @@ export interface Ticket {
   mentions?: TicketMention[];
   commentAttachments?: TicketCommentAttachment[];
   unlockRequests?: TicketUnlockRequest[];
+
+  // Overhauled workflow fields
+  primaryConsultantId?: string;
+  closureStatus?: string;
+  closedBy?: string;
+  assignments?: TicketAssignment[];
+  estimates?: TicketEstimate[];
+  actualHoursLogs?: TicketActualHours[];
+}
+
+export interface TicketAssignment {
+  ticketId: string;
+  consultantId: string;
+  consultantName: string;
+  consultantType: 'Functional' | 'Technical';
+  isPrimary: boolean;
+  active: boolean;
+  assignedBy?: string;
+  assignedAt: string;
+}
+
+export interface TicketEstimate {
+  id: string;
+  ticketId: string;
+  consultantId: string;
+  consultantType: 'Functional' | 'Technical';
+  estimatedHours: number;
+  remarks?: string;
+  submittedAt: string;
+}
+
+export interface TicketActualHours {
+  id: string;
+  closureRequestId: string;
+  ticketId: string;
+  consultantId: string;
+  consultantType: 'Functional' | 'Technical';
+  actualHours: number;
 }
 
 export interface TicketUnlockRequest {
@@ -338,7 +376,7 @@ export interface TicketConsultantEffort {
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
-  closureStatus?: 'Pending' | 'Submitted';
+  closureStatus?: 'Pending' | 'Submitted' | 'Approved' | 'Rejected';
   workSummary?: string;
   resolutionNotes?: string;
 }
