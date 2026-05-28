@@ -353,13 +353,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (t) {
       try {
         const parsed = JSON.parse(t);
-        if (Array.isArray(parsed) && parsed.length >= 50 && parsed.some((x: any) => x.assignedConsultant === 'Priya Raman')) {
+        if (Array.isArray(parsed)) {
           parsedTickets = parsed;
-        } else {
-          localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
         }
       } catch (e) {
-        localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
+        console.error('Error parsing local tickets fallback:', e);
       }
     } else {
       localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
@@ -876,22 +874,38 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         let requestorId = user?.id || '7d1be7f4-01b8-4b66-a842-d28a2b63c4f3'; // Dynamic fallback
-        const { data: profData, error: profErr } = await supabase.from('profiles').select('id').eq('email', data.requestedByEmail || 'customer@supportstudio.com').maybeSingle();
-        if (profErr) throw profErr;
-        if (profData) {
-          requestorId = profData.id;
+        
+        // If a Manager or SuperAdmin is creating the ticket on behalf of a Customer, look up the Customer's profile id
+        if (data.requestedByEmail && (user?.role === 'Manager' || user?.role === 'SuperAdmin')) {
+          const { data: profData, error: profErr } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('email', data.requestedByEmail.trim())
+            .maybeSingle();
+          if (profErr) throw profErr;
+          if (profData) {
+            requestorId = profData.id;
+          }
         }
 
         let consultantId = null;
         if (data.assignedConsultant) {
-          const { data: consData, error: consErr } = await supabase.from('profiles').select('id').eq('full_name', data.assignedConsultant).maybeSingle();
+          const { data: consData, error: consErr } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('full_name', data.assignedConsultant.trim())
+            .maybeSingle();
           if (consErr) throw consErr;
           if (consData) consultantId = consData.id;
         }
 
         let managerId = null;
         if (data.assignedManager) {
-          const { data: mgrData, error: mgrErr } = await supabase.from('profiles').select('id').eq('full_name', data.assignedManager).maybeSingle();
+          const { data: mgrData, error: mgrErr } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('full_name', data.assignedManager.trim())
+            .maybeSingle();
           if (mgrErr) throw mgrErr;
           if (mgrData) managerId = mgrData.id;
         }
