@@ -225,7 +225,7 @@ interface TicketContextType {
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
 
 export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [contracts, setContracts] = useState<CustomerContract[]>([]);
   const [contacts, setContacts] = useState<CustomerContact[]>([]);
@@ -235,6 +235,10 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
     if (!user) {
       setTickets([]);
       setContracts([]);
@@ -353,7 +357,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {

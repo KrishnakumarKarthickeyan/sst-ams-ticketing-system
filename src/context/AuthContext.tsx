@@ -91,6 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(sessionUser);
         currentUserId = session.user.id;
         fetchingUserId = null;
+        setLoading(false);
         return sessionUser;
 
       } catch (e) {

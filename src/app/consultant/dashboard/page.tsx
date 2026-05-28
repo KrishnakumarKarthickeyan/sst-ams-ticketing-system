@@ -167,18 +167,27 @@ export default function ConsultantDashboardPage() {
     let dbClosureRequests = 0;
 
     dbMonthTickets.forEach(t => {
+      // Find my specific effort entry for this ticket
+      const myEff = t.consultantEfforts?.find(e => e.consultantId === user?.id || e.consultantName === consultantName);
+      
       const latestEst = (t.hourEstimates || [])
         .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
-      const est = consultantType === 'Functional'
+      const fallbackEst = consultantType === 'Functional'
         ? (latestEst?.functionalEstimatedHours || t.quotedHours || 0)
         : (latestEst?.technicalEstimatedHours || t.quotedHours || 0);
+
+      const est = myEff ? (myEff.estimatedHours || 0) : fallbackEst;
       dbPlannedHours += est;
 
-      // Sum hours logged by this consultant from the efforts table if database structure supports efforts
-      const consultantEffortLogs = (t.efforts || []).filter(e => e.status === 'Approved');
-      if (consultantEffortLogs.length > 0) {
-        consultantEffortLogs.forEach(log => {
+      // Filter and sum approved timesheet efforts for THIS consultant
+      const myEffortLogs = (t.efforts || []).filter(e => 
+        (e.consultantId === user?.id || e.consultantName === consultantName) && 
+        e.status === 'Approved'
+      );
+
+      if (myEffortLogs.length > 0) {
+        myEffortLogs.forEach(log => {
           const hrs = log.hoursLogged || log.hoursWorked || 0;
           dbActualHours += hrs;
           if (log.billable) {
@@ -190,14 +199,31 @@ export default function ConsultantDashboardPage() {
       } else {
         const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
         if (approvedClosure) {
-          const act = consultantType === 'Functional'
+          // Find actual hours for this consultant under this approved closure request
+          const actLog = (t.actualHoursLogs || []).find(ah => 
+            ah.closureRequestId === approvedClosure.id && 
+            ah.consultantId === user?.id
+          );
+          
+          const fallbackAct = consultantType === 'Functional'
             ? approvedClosure.functionalActualHours
             : approvedClosure.technicalActualHours;
+            
+          const act = actLog ? actLog.actualHours : (myEff ? myEff.actualHours : fallbackAct);
+          
           dbActualHours += act;
           if (t.billable) {
             dbBillableHours += act;
           } else {
             dbNonBillableHours += act;
+          }
+        } else if (myEff && myEff.actualHours > 0) {
+          // Fallback to active efforts actual hours if closed or in closure sequence
+          dbActualHours += myEff.actualHours;
+          if (t.billable) {
+            dbBillableHours += myEff.actualHours;
+          } else {
+            dbNonBillableHours += myEff.actualHours;
           }
         }
       }
