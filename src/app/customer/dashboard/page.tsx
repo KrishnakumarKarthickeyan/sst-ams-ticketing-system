@@ -283,7 +283,7 @@ export default function CustomerDashboardPage() {
           type: 'comment',
           timestamp: c.createdAt,
           title: `New Comment on ${t.id}`,
-          desc: `[${c.authorRole}] ${c.authorName}: "${c.content.slice(0, 80)}${c.content.length > 80 ? '...' : ''}"`,
+          desc: `[${c.authorRole || 'Customer'}] ${c.authorName || 'User'}: "${(c.content || '').slice(0, 80)}${(c.content || '').length > 80 ? '...' : ''}"`,
           ticketId: t.id
         });
       });
