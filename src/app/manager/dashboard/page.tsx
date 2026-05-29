@@ -96,7 +96,7 @@ export default function ManagerDashboardPage() {
 
   const [customersCount, setCustomersCount] = useState(0);
   const [consultantsCount, setConsultantsCount] = useState(0);
-  const [consultantsDbList, setConsultantsDbList] = useState<{ name: string; type: string; expertise: string[] }[]>([]);
+  const [consultantsDbList, setConsultantsDbList] = useState<{ id: string; name: string; type: string; expertise: string[] }[]>([]);
 
   useEffect(() => {
     const fetchStakeholders = async () => {
@@ -105,7 +105,7 @@ export default function ManagerDashboardPage() {
       if (isSupabaseConfigured && client) {
         const { data: consProfs } = await client
           .from('profiles')
-          .select('full_name, role, consultant_type, sap_modules')
+          .select('id, full_name, role, consultant_type, sap_modules')
           .eq('role', 'Consultant');
 
         const { data: custProfs } = await client
@@ -116,6 +116,7 @@ export default function ManagerDashboardPage() {
         if (consProfs) {
           setConsultantsCount(consProfs.length);
           setConsultantsDbList(consProfs.map((c: any) => ({
+            id: c.id,
             name: c.full_name,
             type: c.consultant_type || 'Technical',
             expertise: c.sap_modules || []
@@ -138,6 +139,7 @@ export default function ManagerDashboardPage() {
         const parsed = JSON.parse(storedConsultants);
         setConsultantsCount(parsed.length);
         setConsultantsDbList(parsed.map((c: any) => ({
+          id: c.id || c.email || c.name,
           name: c.name,
           type: c.consultantType,
           expertise: c.modules
@@ -200,15 +202,15 @@ export default function ManagerDashboardPage() {
     return activeTicketForClosure.closureRequests?.find(r => r.id === closureDialog.requestId);
   }, [activeTicketForClosure, closureDialog.requestId]);
 
-  // Base Scoped Tickets for the Manager (Company scope restriction)
+  // Base Scoped Tickets for the Manager (Company and Manager scope restriction)
   const scopedTickets = useMemo(() => {
     return tickets.filter(t => {
       if (user?.company && user.company !== 'SST SAP Operations') {
-        return t.organization === user.company;
+        if (t.organization !== user.company) return false;
       }
-      return true;
+      return t.assignedManager === managerName;
     });
-  }, [tickets, user]);
+  }, [tickets, user, managerName]);
 
   // Unique dropdown options extracted from data
   const customersList = useMemo(() => {
@@ -219,12 +221,23 @@ export default function ManagerDashboardPage() {
     const list = new Set<string>();
     scopedTickets.forEach(t => {
       if (t.assignedConsultant) list.add(t.assignedConsultant);
-      (t.consultantEfforts || []).forEach(e => {
-        if (e.consultantName) list.add(e.consultantName);
+      (t.assignments || []).forEach(a => {
+        if (a.consultantName) list.add(a.consultantName);
+      });
+      (t.actualHoursLogs || []).forEach(ah => {
+        const matchingAss = (t.assignments || []).find(a => a.consultantId === ah.consultantId);
+        if (matchingAss?.consultantName) {
+          list.add(matchingAss.consultantName);
+        }
       });
     });
     return Array.from(list).sort();
   }, [scopedTickets]);
+
+  const managedCustomersList = customersList;
+  const managedConsultantsList = consultantsList;
+  const managedCustomersCount = managedCustomersList.length;
+  const managedConsultantsCount = managedConsultantsList.length;
 
   // Filtered dataset for dashboard metrics
   const filteredDashboardTickets = useMemo(() => {
@@ -270,15 +283,17 @@ export default function ManagerDashboardPage() {
   // Capacity & Load dynamic calculations for individual consultants
   const consultantsLoad = useMemo(() => {
     const expectedCapacity = workingDaysInMonth * 8;
-    return consultantsDbList.map(consultant => {
+    // Show only managed consultants
+    const activeConsultantsList = consultantsDbList.filter(c => managedConsultantsList.includes(c.name));
+    return activeConsultantsList.map(consultant => {
       const activeCount = filteredDashboardTickets.filter(t => 
         t.status !== 'Closed' && 
-        (t.assignedConsultant === consultant.name || t.consultantEfforts?.some(e => e.consultantName === consultant.name && !e.isDeleted))
+        (t.assignedConsultant === consultant.name || t.assignments?.some(a => a.consultantName === consultant.name && a.active))
       ).length;
 
-      const loggedHours = filteredDashboardTickets.flatMap(t => t.efforts || [])
-        .filter(e => e.consultantName === consultant.name && e.status === 'Approved')
-        .reduce((sum, e) => sum + (e.hoursLogged || e.hoursWorked || 0), 0);
+      const loggedHours = filteredDashboardTickets.flatMap(t => t.actualHoursLogs || [])
+        .filter(ah => (ah.consultantId === consultant.id || ah.approvedBy === consultant.name) && ah.approvalStatus === 'approved')
+        .reduce((sum, ah) => sum + ah.actualHours, 0);
 
       const actualLogged = loggedHours;
       let loadPercentage = expectedCapacity > 0 ? Math.round((actualLogged / expectedCapacity) * 100) : 0;
@@ -300,7 +315,7 @@ export default function ManagerDashboardPage() {
         loadStatus
       };
     });
-  }, [filteredDashboardTickets, workingDaysInMonth, consultantsDbList]);
+  }, [filteredDashboardTickets, workingDaysInMonth, consultantsDbList, managedConsultantsList]);
 
   // Dynamic calculations for all requested sections
   const dashboardData = useMemo(() => {
@@ -308,15 +323,15 @@ export default function ManagerDashboardPage() {
     const ticketsList = filteredDashboardTickets;
 
     // --- 1. EXECUTIVE HEALTH OVERVIEW ---
-    const totalCustomersCount = customersCount;
-    const activeCustomersCount = customersCount;
+    const totalCustomersCount = managedCustomersCount;
+    const activeCustomersCount = managedCustomersCount;
     const customersWithOpenTickets = new Set(ticketsList.filter(t => t.status !== 'Closed').map(t => t.organization)).size;
     const customersWithCriticalTickets = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.priority === 'Critical').map(t => t.organization)).size;
     const customersWithSlaBreaches = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime).map(t => t.organization)).size;
     const customersAwaitingClosure = new Set(ticketsList.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').map(t => t.organization)).size;
 
     const openCount = ticketsList.filter(t => t.status !== 'Closed').length;
-    const unassignedCount = ticketsList.filter(t => !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0) && t.status !== 'Closed').length;
+    const unassignedCount = ticketsList.filter(t => !t.assignedConsultant && (!t.assignments || t.assignments.length === 0) && t.status !== 'Closed').length;
     const reqGatheringCount = ticketsList.filter(t => t.status === 'Requirement Gathering').length;
     const ipFuncCount = ticketsList.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length;
     const ipTechCount = ticketsList.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length;
@@ -327,9 +342,9 @@ export default function ManagerDashboardPage() {
     const closedCount = ticketsList.filter(t => t.status === 'Closed').length;
     const reopenedCount = ticketsList.filter(t => t.status === 'Reopened').length;
 
-    const functionalConsultantsCount = consultantsDbList.filter(c => c.type === 'Functional').length;
-    const technicalConsultantsCount = consultantsDbList.filter(c => c.type === 'Technical').length;
-    const totalConsultantsCount = consultantsCount;
+    const functionalConsultantsCount = consultantsDbList.filter(c => managedConsultantsList.includes(c.name) && c.type === 'Functional').length;
+    const technicalConsultantsCount = consultantsDbList.filter(c => managedConsultantsList.includes(c.name) && c.type === 'Technical').length;
+    const totalConsultantsCount = managedConsultantsCount;
 
     const estPendingApproval = ticketsList.flatMap(t => t.hourEstimates || []).filter(e => e.status === 'Submitted').length;
     const actPendingApproval = ticketsList.flatMap(t => t.efforts || []).filter(e => e.status === 'Pending' || e.status === 'Pending Approval').length;
@@ -396,32 +411,30 @@ export default function ManagerDashboardPage() {
     let nonBillableHrs = 0;
 
     ticketsList.forEach(t => {
-      (t.consultantEfforts || []).forEach(e => {
-        if (e.isDeleted) return;
+      (t.estimates || []).forEach(e => {
         totalEstHrs += e.estimatedHours;
-        totalActHrs += e.actualHours;
         if (e.consultantType === 'Functional') {
           funcEstHrs += e.estimatedHours;
-          funcActHrs += e.actualHours;
         } else {
           techEstHrs += e.estimatedHours;
-          techActHrs += e.actualHours;
         }
       });
-      (t.efforts || []).forEach(l => {
-        if (l.status === 'Approved') {
-          const hrs = l.hoursLogged || l.hoursWorked || 0;
-          if (l.billable) billableHrs += hrs;
-          else nonBillableHrs += hrs;
+      (t.actualHoursLogs || []).forEach(ah => {
+        if (ah.approvalStatus === 'approved') {
+          totalActHrs += ah.actualHours;
+          if (ah.consultantType === 'Functional') {
+            funcActHrs += ah.actualHours;
+          } else {
+            techActHrs += ah.actualHours;
+          }
+          if (ah.billable) {
+            billableHrs += ah.actualHours;
+          } else {
+            nonBillableHrs += ah.actualHours;
+          }
         }
       });
     });
-
-    // Handle empty billable hours fallback from total logged
-    if (billableHrs === 0 && totalActHrs > 0) {
-      billableHrs = Math.round(totalActHrs * 0.85);
-      nonBillableHrs = Math.round(totalActHrs * 0.15);
-    }
 
     return {
       executive: {
@@ -930,7 +943,7 @@ export default function ManagerDashboardPage() {
       </div>
 
       {/* ── CLEAN DB EMPTY STATES OVERVIEW ── */}
-      {(customersCount === 0 || consultantsCount === 0 || tickets.length === 0 || pendingApprovalsCount === 0) && (
+      {(managedCustomersCount === 0 || managedConsultantsCount === 0 || tickets.length === 0 || pendingApprovalsCount === 0) && (
         <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3 font-sans text-xs shadow-sm">
           <div className="flex items-center gap-2 border-b border-zinc-150 pb-2">
             <AlertCircle size={14} className="text-zinc-500" />
@@ -939,29 +952,29 @@ export default function ManagerDashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
             
             {/* Customers State */}
-            <div className={`p-3 rounded border flex flex-col justify-between ${customersCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+            <div className={`p-3 rounded border flex flex-col justify-between ${managedCustomersCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-zinc-700">Customers</span>
-                {customersCount === 0 ? (
+                {managedCustomersCount === 0 ? (
                   <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
                 ) : (
                   <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
                 )}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{customersCount === 0 ? 'No customers created yet' : `${customersCount} customers active`}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{managedCustomersCount === 0 ? 'No customers created yet' : `${managedCustomersCount} customers active`}</p>
             </div>
 
             {/* Consultants State */}
-            <div className={`p-3 rounded border flex flex-col justify-between ${consultantsCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+            <div className={`p-3 rounded border flex flex-col justify-between ${managedConsultantsCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-zinc-700">Consultants</span>
-                {consultantsCount === 0 ? (
+                {managedConsultantsCount === 0 ? (
                   <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
                 ) : (
                   <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
                 )}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{consultantsCount === 0 ? 'No consultants created yet' : `${consultantsCount} consultants active`}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{managedConsultantsCount === 0 ? 'No consultants created yet' : `${managedConsultantsCount} consultants active`}</p>
             </div>
 
             {/* Tickets State */}
@@ -1525,10 +1538,10 @@ export default function ManagerDashboardPage() {
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={consultantsLoad.map(c => {
-                      const logged = filteredDashboardTickets.flatMap(t => t.efforts || [])
-                        .filter(e => e.consultantName === c.name && e.status === 'Approved')
-                        .reduce((sum, e) => sum + (e.hoursLogged || e.hoursWorked || 0), 0);
-                      return { name: c.name, Expected: workingDaysInMonth * 8, Logged: logged || 45 };
+                      const logged = filteredDashboardTickets.flatMap(t => t.actualHoursLogs || [])
+                        .filter(ah => (ah.consultantId === c.id || ah.approvedBy === c.name) && ah.approvalStatus === 'approved')
+                        .reduce((sum, ah) => sum + ah.actualHours, 0);
+                      return { name: c.name, Expected: workingDaysInMonth * 8, Logged: logged || 0 };
                     })} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
                       <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
@@ -1848,14 +1861,14 @@ export default function ManagerDashboardPage() {
                     <tbody className="divide-y divide-zinc-150">
                       {SAP_MODULES_LIST.map(m => {
                         const mTickets = filteredDashboardTickets.filter(t => t.sapModule === m);
-                        const mHours = mTickets.flatMap(t => t.consultantEfforts || []).reduce((sum, e) => sum + (e.actualHours || 0), 0);
+                        const mHours = mTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0);
                         const mCritical = mTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed').length;
 
                         return (
                           <tr key={m} className="hover:bg-zinc-50/50">
                             <td className="py-2.5 px-4 font-bold text-zinc-900">{m}</td>
                             <td className="py-2.5 px-4 text-center font-semibold">{mTickets.filter(t => t.status !== 'Closed').length}</td>
-                            <td className="py-2.5 px-4 text-center font-bold">{mHours || 12}h</td>
+                            <td className="py-2.5 px-4 text-center font-bold">{mHours}h</td>
                             <td className={`py-2.5 px-4 text-center font-bold ${mCritical > 0 ? 'text-red-650' : 'text-zinc-400'}`}>{mCritical}</td>
                           </tr>
                         );

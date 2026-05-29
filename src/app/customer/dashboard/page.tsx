@@ -77,11 +77,11 @@ export default function CustomerDashboardPage() {
     return Math.max(0, (end - start) / (1000 * 60 * 60 * 24));
   };
 
-  // Helper: Sum Approved effort hours logged on ticket
+  // Helper: Sum Approved actual hours logged on ticket
   const getConsumedHours = (t: any) => {
-    return (t.efforts || [])
-      .filter((e: any) => e.status === 'Approved')
-      .reduce((sum: number, e: any) => sum + e.hoursLogged, 0);
+    return (t.actualHoursLogs || [])
+      .filter((ah: any) => ah.approvalStatus === 'approved')
+      .reduce((sum: number, ah: any) => sum + ah.actualHours, 0);
   };
 
   // Helper: Determine SLA status for incident tickets
@@ -159,7 +159,80 @@ export default function CustomerDashboardPage() {
   const consumptionPercentage = totalQuotedHours > 0 ? (totalConsumedHours / totalQuotedHours) * 100 : 0;
 
   // Active Contract details for verification
-  const activeContract = contracts.find(c => c.organizationName === customerCompany && c.isActive);
+  const activeContract = useMemo(() => {
+    return contracts.find(c => c.organizationName === customerCompany && c.isActive);
+  }, [contracts, customerCompany]);
+
+  const contractMetrics = useMemo(() => {
+    if (!activeContract) return null;
+
+    const startDate = new Date(activeContract.startDate);
+    const endDate = new Date(activeContract.endDate);
+    
+    // Contract Duration in Days
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    const durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Expiry Status
+    const today = new Date();
+    let expiryStatus: 'Active' | 'Expiring Soon' | 'Expired' = 'Active';
+    if (today > endDate) {
+      expiryStatus = 'Expired';
+    } else {
+      const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntilExpiry <= 30) {
+        expiryStatus = 'Expiring Soon';
+      }
+    }
+
+    // Total Contracted Hours
+    const totalHours = activeContract.totalHours;
+
+    // Monthly Allocated Hours
+    const monthlyBudgetHours = activeContract.monthlyBudgetHours;
+
+    // Total Utilized Hours (Sum of all approved actual hours for the company's tickets)
+    const totalUtilizedHours = companyTickets.reduce((sum, t) => {
+      const approvedLogs = (t.actualHoursLogs || []).filter((ah: any) => ah.approvalStatus === 'approved');
+      return sum + approvedLogs.reduce((s: number, ah: any) => s + ah.actualHours, 0);
+    }, 0);
+
+    // Total Remaining Hours
+    const totalRemainingHours = Math.max(0, totalHours - totalUtilizedHours);
+
+    // Current Month Utilized Hours
+    const currentMonthUtilizedHours = companyTickets.reduce((sum, t) => {
+      const approvedLogs = (t.actualHoursLogs || []).filter((ah: any) => {
+        if (ah.approvalStatus !== 'approved') return false;
+        if (!ah.approvedAt) return false;
+        const approvedDate = new Date(ah.approvedAt);
+        const currentDate = new Date();
+        return approvedDate.getMonth() === currentDate.getMonth() &&
+               approvedDate.getFullYear() === currentDate.getFullYear();
+      });
+      return sum + approvedLogs.reduce((s: number, ah: any) => s + ah.actualHours, 0);
+    }, 0);
+
+    // Current Month Remaining Hours
+    const currentMonthRemainingHours = Math.max(0, monthlyBudgetHours - currentMonthUtilizedHours);
+
+    // Usage Percentage
+    const usagePercentage = totalHours > 0 ? (totalUtilizedHours / totalHours) * 100 : 0;
+
+    return {
+      startDate: activeContract.startDate,
+      endDate: activeContract.endDate,
+      durationDays,
+      expiryStatus,
+      totalHours,
+      monthlyBudgetHours,
+      totalUtilizedHours,
+      totalRemainingHours,
+      currentMonthUtilizedHours,
+      currentMonthRemainingHours,
+      usagePercentage
+    };
+  }, [activeContract, companyTickets]);
 
   // --- SECTIONS DATA SOURCES ---
 
@@ -1150,29 +1223,80 @@ export default function CustomerDashboardPage() {
                 </p>
               </div>
 
-              {/* Active Contract block if present */}
-              {activeContract && (
-                <div className="mt-4 p-4 border border-emerald-250 bg-emerald-50/30 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="font-black text-emerald-900">Active Support Contract: {activeContract.contractType}</span>
-                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 text-[8px] font-mono">ACTIVE</Badge>
+              {/* Active Contract Block */}
+              {activeContract && contractMetrics && (
+                <div className="mt-6 border border-zinc-200 bg-zinc-50/50 rounded-lg p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold font-mono text-zinc-900 uppercase">
+                        Active Support Contract: {activeContract.contractType}
+                      </span>
+                      <Badge variant="outline" className={`text-[8px] font-mono font-bold ${
+                        contractMetrics.expiryStatus === 'Expired'
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : contractMetrics.expiryStatus === 'Expiring Soon'
+                            ? 'bg-amber-50 text-amber-700 border-amber-250 animate-pulse'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}>
+                        {contractMetrics.expiryStatus.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <span className="text-[10px] font-mono text-zinc-400">
+                      ID: {activeContract.id}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[11px] font-mono text-zinc-700">
-                    <div>
-                      <span className="text-zinc-400 font-semibold block text-[9px] uppercase">Contract Start</span>
-                      <span className="font-bold">{new Date(activeContract.startDate).toLocaleDateString()}</span>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-zinc-950 font-mono">
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Contract Start</span>
+                      <span className="text-xs font-bold">{new Date(contractMetrics.startDate).toLocaleDateString()}</span>
                     </div>
-                    <div>
-                      <span className="text-zinc-400 font-semibold block text-[9px] uppercase">Contract End</span>
-                      <span className="font-bold">{new Date(activeContract.endDate).toLocaleDateString()}</span>
+
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Contract End</span>
+                      <span className="text-xs font-bold">{new Date(contractMetrics.endDate).toLocaleDateString()}</span>
                     </div>
-                    <div>
-                      <span className="text-zinc-400 font-semibold block text-[9px] uppercase">Contract Total Hours</span>
-                      <span className="font-bold">{activeContract.totalHours}h</span>
+
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Duration</span>
+                      <span className="text-xs font-bold">{contractMetrics.durationDays} Days</span>
                     </div>
-                    <div>
-                      <span className="text-zinc-400 font-semibold block text-[9px] uppercase">Contract Used Hours</span>
-                      <span className="font-bold">{activeContract.usedHours}h</span>
+
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Total Allocated</span>
+                      <span className="text-xs font-bold">{contractMetrics.totalHours.toFixed(1)}h</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Monthly Allocated</span>
+                      <span className="text-xs font-bold">{contractMetrics.monthlyBudgetHours.toFixed(1)}h</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Usage Burn %</span>
+                      <span className="text-xs font-bold">{contractMetrics.usagePercentage.toFixed(1)}%</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3 border-t border-zinc-200 text-zinc-950 font-mono">
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Total Utilized</span>
+                      <span className="text-sm font-black text-zinc-900">{contractMetrics.totalUtilizedHours.toFixed(1)}h</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Total Remaining</span>
+                      <span className="text-sm font-black text-emerald-700">{contractMetrics.totalRemainingHours.toFixed(1)}h</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Current Month Utilized</span>
+                      <span className="text-sm font-black text-zinc-900">{contractMetrics.currentMonthUtilizedHours.toFixed(1)}h</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Current Month Remaining</span>
+                      <span className="text-sm font-black text-emerald-700">{contractMetrics.currentMonthRemainingHours.toFixed(1)}h</span>
                     </div>
                   </div>
                 </div>

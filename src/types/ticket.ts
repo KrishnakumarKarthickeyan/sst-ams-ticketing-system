@@ -271,6 +271,7 @@ export interface Ticket {
   assignments?: TicketAssignment[];
   estimates?: TicketEstimate[];
   actualHoursLogs?: TicketActualHours[];
+  organizationId?: string;
 }
 
 export interface TicketAssignment {
@@ -301,6 +302,10 @@ export interface TicketActualHours {
   consultantId: string;
   consultantType: 'Functional' | 'Technical';
   actualHours: number;
+  billable?: boolean;
+  approvalStatus?: string;
+  approvedBy?: string;
+  approvedAt?: string;
 }
 
 export interface TicketUnlockRequest {
@@ -447,6 +452,8 @@ export interface CustomerContract {
   usedHours: number;
   monthlyBudgetHours: number;
   isActive: boolean;
+  customerId?: string;
+  status?: string;
 }
 
 export interface ReportPreset {

@@ -1,10 +1,39 @@
 'use client';
 
 import React from 'react';
-import { MOCK_AUDIT_LOGS } from '../../../utils/mockData';
-import { ShieldCheck, Calendar, Activity } from 'lucide-react';
+import { useTickets } from '../../../context/TicketContext';
+import { ShieldCheck, Calendar, Activity, Loader2 } from 'lucide-react';
 
 export default function AdminAuditLogsPage() {
+  const { tickets, loading } = useTickets();
+
+  // Extract all history events from all tickets to build system audit logs
+  const logs = React.useMemo(() => {
+    return tickets
+      .flatMap((ticket) =>
+        (ticket.history || []).map((h) => ({
+          id: h.id,
+          timestamp: h.createdAt,
+          actor: h.changedBy || 'System',
+          action: `Update ${h.fieldChanged || 'Ticket'}`,
+          target: ticket.title || `Ticket #${ticket.id.slice(0, 8)}`,
+          details: h.fieldChanged
+            ? `Changed ${h.fieldChanged} from "${h.oldValue}" to "${h.newValue}"`
+            : `Ticket activity logged.`
+        }))
+      )
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [tickets]);
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center font-mono text-zinc-500">
+        <Loader2 className="animate-spin mr-2" size={16} />
+        LOADING SYSTEM AUDIT LEDGER...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 font-mono text-xs text-zinc-900">
       <div className="border-b border-zinc-200 pb-4">
@@ -13,7 +42,7 @@ export default function AdminAuditLogsPage() {
       </div>
 
       {/* Log list */}
-      {MOCK_AUDIT_LOGS.length === 0 ? (
+      {logs.length === 0 ? (
         <div className="bg-white border border-zinc-200 rounded-lg p-8 text-center space-y-3">
           <Activity className="mx-auto text-zinc-400" size={32} />
           <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No audit logs recorded yet</h3>
@@ -32,9 +61,9 @@ export default function AdminAuditLogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-700">
-              {MOCK_AUDIT_LOGS.map((log) => (
+              {logs.map((log) => (
                 <tr key={log.id} className="hover:bg-zinc-50/50">
-                  <td className="p-4 text-zinc-400 font-mono flex items-center gap-1.5">
+                  <td className="p-4 text-zinc-400 font-mono flex items-center gap-1.5 whitespace-nowrap">
                     <Calendar size={12} />
                     {new Date(log.timestamp).toLocaleString()}
                   </td>
@@ -45,7 +74,7 @@ export default function AdminAuditLogsPage() {
                       {log.action}
                     </span>
                   </td>
-                  <td className="p-4 font-mono font-bold text-zinc-600">{log.target}</td>
+                  <td className="p-4 font-mono font-bold text-zinc-600 truncate max-w-[180px]">{log.target}</td>
                   <td className="p-4 text-right font-mono text-[11px] text-zinc-500">{log.details}</td>
                 </tr>
               ))}

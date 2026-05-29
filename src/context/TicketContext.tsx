@@ -310,14 +310,16 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         setContracts(dbContracts ? dbContracts.map(c => ({
           id: c.id,
-          organizationName: organizationMap[c.organization_id] || (c.organizations as any)?.name || c.organization_id,
+          organizationName: organizationMap[c.customer_id || c.organization_id] || (c.organizations as any)?.name || c.customer_id || c.organization_id,
           contractType: c.contract_type as SupportContractType,
-          startDate: c.start_date,
-          endDate: c.end_date,
-          totalHours: Number(c.total_hours),
+          startDate: c.contract_start_date || c.start_date,
+          endDate: c.contract_end_date || c.end_date,
+          totalHours: Number(c.total_contract_hours !== undefined && c.total_contract_hours !== null ? c.total_contract_hours : c.total_hours),
           usedHours: Number(c.used_hours),
-          monthlyBudgetHours: Number(c.monthly_budget_hours),
-          isActive: c.is_active
+          monthlyBudgetHours: Number(c.monthly_allocated_hours !== undefined && c.monthly_allocated_hours !== null ? c.monthly_allocated_hours : c.monthly_budget_hours),
+          isActive: c.status !== undefined && c.status !== null ? c.status === 'Active' : c.is_active,
+          customerId: c.customer_id || c.organization_id,
+          status: c.status || (c.is_active ? 'Active' : 'Inactive')
         })) : []);
 
         setContacts(dbContacts ? dbContacts.map(c => ({
@@ -500,6 +502,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       title: t.title,
       description: t.description,
       organization: (t.organization_id ? activeOrgMap[t.organization_id] : null) || (t.organizations as any)?.name || t.organization_id, // Organization Name
+      organizationId: t.organization_id,
       requestedBy: reqProfile?.full_name || t.created_by_name || t.requested_by,
       requestedByEmail: reqProfile?.email || '',
       requestedByPhone: requestedByPhone,
@@ -762,7 +765,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ticketId: ah.ticket_id,
         consultantId: ah.consultant_id,
         consultantType: ah.consultant_type,
-        actualHours: Number(ah.actual_hours)
+        actualHours: Number(ah.actual_hours),
+        billable: ah.billable !== false,
+        approvalStatus: ah.approval_status || 'pending',
+        approvedBy: ah.approved_by,
+        approvedAt: ah.approved_at
       })) : [],
 
       consultantEfforts: (() => {
@@ -1992,8 +1999,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
           if (loggedHours > 0) {
             const ticketObj = tickets.find(t => t.id === ticketId);
-            if (ticketObj) {
-              const { data: contr } = await supabase.from('customer_contracts').select('id, used_hours').eq('organization_id', ticketObj.organization).maybeSingle();
+            if (ticketObj && ticketObj.organizationId) {
+              const { data: contr } = await supabase.from('customer_contracts').select('id, used_hours').eq('organization_id', ticketObj.organizationId).maybeSingle();
               if (contr) {
                 await supabase.from('customer_contracts').update({
                   used_hours: Number(contr.used_hours) + loggedHours
@@ -3716,7 +3723,9 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             ticket_id: ticketId,
             consultant_id: rh.consultantId,
             consultant_type: rh.consultantType,
-            actual_hours: rh.hours
+            actual_hours: rh.hours,
+            billable: true,
+            approval_status: 'pending'
           });
           if (actErr) throw actErr;
 
@@ -4081,7 +4090,9 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             ticket_id: ticketId,
             consultant_id: rh.consultantId,
             consultant_type: rh.consultantType,
-            actual_hours: rh.hours
+            actual_hours: rh.hours,
+            billable: true,
+            approval_status: 'pending'
           });
           if (actErr) throw actErr;
 
@@ -4372,6 +4383,34 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           .eq('ticket_id', ticketId);
         if (effUpdErr) throw effUpdErr;
 
+        // 4.5. Update actual hours approval status in database
+        const { error: actUpdErr } = await supabase
+          .from('ticket_actual_hours')
+          .update({
+            approval_status: 'approved',
+            approved_by: managerId,
+            approved_at: new Date().toISOString()
+          })
+          .eq('closure_request_id', requestId);
+        if (actUpdErr) throw actUpdErr;
+
+        // 4.6. Update contract utilized hours in Supabase
+        if (currentTicket && currentTicket.organizationId) {
+          const { data: contr } = await supabase
+            .from('customer_contracts')
+            .select('id, used_hours')
+            .eq('organization_id', currentTicket.organizationId)
+            .maybeSingle();
+
+          if (contr) {
+            const newUsedHours = Number(contr.used_hours) + Number(actualTotal);
+            await supabase
+              .from('customer_contracts')
+              .update({ used_hours: newUsedHours })
+              .eq('id', contr.id);
+          }
+        }
+
         // 5. Save satisfaction rating if provided
         if (score !== undefined && score > 0 && feedback) {
           const { data: insRating, error: ratingErr } = await supabase.from('satisfaction_ratings').insert({
@@ -4409,6 +4448,11 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           closure_status: 'Submitted',
           updated_at: new Date().toISOString()
         }).eq('ticket_id', ticketId);
+        await supabase.from('ticket_actual_hours').update({
+          approval_status: 'pending',
+          approved_by: null,
+          approved_at: null
+        }).eq('closure_request_id', requestId);
 
         if (satisfactionRatingId) {
           await supabase.from('satisfaction_ratings').delete().eq('id', satisfactionRatingId);
@@ -4441,6 +4485,18 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           updatedAt: new Date().toISOString()
         }));
 
+        const updatedActualHours = (t.actualHoursLogs || []).map(ah => {
+          if (ah.closureRequestId === requestId) {
+            return {
+              ...ah,
+              approvalStatus: 'approved',
+              approvedBy: managerName,
+              approvedAt: new Date().toISOString()
+            };
+          }
+          return ah;
+        });
+
         const hist = [
           ...t.history,
           {
@@ -4465,6 +4521,19 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           };
         }
 
+        // Update contracts locally
+        const updatedContracts = contracts.map(c => {
+          if (c.organizationName === t.organization || (t.organizationId && c.customerId === t.organizationId)) {
+            return {
+              ...c,
+              usedHours: Number(c.usedHours) + Number(actualTotal)
+            };
+          }
+          return c;
+        });
+        setContracts(updatedContracts);
+        localStorage.setItem('sst_contracts', JSON.stringify(updatedContracts));
+
         return {
           ...t,
           status: 'Closed' as TicketStatus,
@@ -4474,6 +4543,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           resolvedAt: new Date().toISOString(),
           closureRequests,
           consultantEfforts: updatedEfforts,
+          actualHoursLogs: updatedActualHours,
           updatedAt: new Date().toISOString(),
           history: hist,
           rating: ratingObj
@@ -4544,6 +4614,15 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           updated_at: new Date().toISOString()
         }).eq('ticket_id', ticketId);
         if (effUpdErr) throw effUpdErr;
+
+        // 2.5. Update actual hours approval status to rejected in database
+        const { error: actUpdErr } = await supabase
+          .from('ticket_actual_hours')
+          .update({
+            approval_status: 'rejected'
+          })
+          .eq('closure_request_id', requestId);
+        if (actUpdErr) throw actUpdErr;
 
         // 3. Update ticket status
         const { error: ticketUpdErr } = await supabase.from('tickets').update({
@@ -4623,6 +4702,16 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           updatedAt: new Date().toISOString()
         }));
 
+        const updatedActualHours = (t.actualHoursLogs || []).map(ah => {
+          if (ah.closureRequestId === requestId) {
+            return {
+              ...ah,
+              approvalStatus: 'rejected'
+            };
+          }
+          return ah;
+        });
+
         const hist = [
           ...t.history,
           {
@@ -4651,6 +4740,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           closureStatus: 'Pending',
           closureRequests,
           consultantEfforts: updatedEfforts,
+          actualHoursLogs: updatedActualHours,
           updatedAt: new Date().toISOString(),
           history: hist
         };

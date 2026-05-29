@@ -66,17 +66,21 @@ export default function AdminSettingsPage() {
           Platform Data Diagnostics
         </h3>
         <p className="text-zinc-500 leading-normal max-w-xl">
-          Resetting database states empties local edits and re-populates default organizations, tickets, efforts, and categories.
+          {isSupabaseConfigured
+            ? 'Local storage state seeding is disabled when Supabase is active as the single source of truth.'
+            : 'Resetting database states empties local edits and re-populates default organizations, tickets, efforts, and categories.'}
         </p>
 
-        <button
-          onClick={handleReset}
-          className="px-4 py-2 border border-zinc-900 hover:bg-zinc-950 hover:text-white rounded font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5 transition disabled:opacity-50"
-          disabled={resetting}
-        >
-          <RefreshCw size={12} className={resetting ? 'animate-spin' : ''} />
-          {resetting ? 'Seeding Local Database...' : 'Re-Seed Local Storage'}
-        </button>
+        {!isSupabaseConfigured && (
+          <button
+            onClick={handleReset}
+            className="px-4 py-2 border border-zinc-900 hover:bg-zinc-950 hover:text-white rounded font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5 transition disabled:opacity-50"
+            disabled={resetting}
+          >
+            <RefreshCw size={12} className={resetting ? 'animate-spin' : ''} />
+            {resetting ? 'Seeding Local Database...' : 'Re-Seed Local Storage'}
+          </button>
+        )}
       </div>
 
       {/* Diagnostics Panel */}

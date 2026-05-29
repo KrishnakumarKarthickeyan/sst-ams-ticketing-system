@@ -111,9 +111,9 @@ export default function ConsultantDashboardPage() {
   const myTickets = useMemo(() => {
     return tickets.filter(t => 
       t.assignedConsultant === consultantName || 
-      t.consultantEfforts?.some(e => e.consultantName === consultantName && !e.isDeleted)
+      t.assignments?.some(a => a.consultantName === consultantName || a.consultantId === user?.id)
     );
-  }, [tickets, consultantName]);
+  }, [tickets, consultantName, user?.id]);
 
   // Role-specific ticket filter: only show functionally/technically relevant tickets
   const roleTickets = useMemo(() => {
@@ -167,66 +167,23 @@ export default function ConsultantDashboardPage() {
     let dbClosureRequests = 0;
 
     dbMonthTickets.forEach(t => {
-      // Find my specific effort entry for this ticket
-      const myEff = t.consultantEfforts?.find(e => e.consultantId === user?.id || e.consultantName === consultantName);
-      
-      const latestEst = (t.hourEstimates || [])
-        .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
-        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
-      const fallbackEst = consultantType === 'Functional'
-        ? (latestEst?.functionalEstimatedHours || t.quotedHours || 0)
-        : (latestEst?.technicalEstimatedHours || t.quotedHours || 0);
+      const myEst = (t.estimates || []).find(e => e.consultantId === user?.id || e.consultantId === consultantEmail);
+      dbPlannedHours += myEst ? myEst.estimatedHours : 0;
 
-      const est = myEff ? (myEff.estimatedHours || 0) : fallbackEst;
-      dbPlannedHours += est;
-
-      // Filter and sum approved timesheet efforts for THIS consultant
-      const myEffortLogs = (t.efforts || []).filter(e => 
-        (e.consultantId === user?.id || e.consultantName === consultantName) && 
-        e.status === 'Approved'
+      const myApprovedActualLogs = (t.actualHoursLogs || []).filter(ah => 
+        (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
+        ah.approvalStatus === 'approved'
       );
 
-      if (myEffortLogs.length > 0) {
-        myEffortLogs.forEach(log => {
-          const hrs = log.hoursLogged || log.hoursWorked || 0;
-          dbActualHours += hrs;
-          if (log.billable) {
-            dbBillableHours += hrs;
-          } else {
-            dbNonBillableHours += hrs;
-          }
-        });
-      } else {
-        const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
-        if (approvedClosure) {
-          // Find actual hours for this consultant under this approved closure request
-          const actLog = (t.actualHoursLogs || []).find(ah => 
-            ah.closureRequestId === approvedClosure.id && 
-            ah.consultantId === user?.id
-          );
-          
-          const fallbackAct = consultantType === 'Functional'
-            ? approvedClosure.functionalActualHours
-            : approvedClosure.technicalActualHours;
-            
-          const act = actLog ? actLog.actualHours : (myEff ? myEff.actualHours : fallbackAct);
-          
-          dbActualHours += act;
-          if (t.billable) {
-            dbBillableHours += act;
-          } else {
-            dbNonBillableHours += act;
-          }
-        } else if (myEff && myEff.actualHours > 0) {
-          // Fallback to active efforts actual hours if closed or in closure sequence
-          dbActualHours += myEff.actualHours;
-          if (t.billable) {
-            dbBillableHours += myEff.actualHours;
-          } else {
-            dbNonBillableHours += myEff.actualHours;
-          }
+      myApprovedActualLogs.forEach(ah => {
+        dbActualHours += ah.actualHours;
+        if (ah.billable) {
+          dbBillableHours += ah.actualHours;
+        } else {
+          dbNonBillableHours += ah.actualHours;
         }
-      }
+      });
+
       dbClosureRequests += (t.closureRequests || []).length;
     });
 
@@ -261,17 +218,11 @@ export default function ConsultantDashboardPage() {
       
       let clientHours = 0;
       clientTickets.forEach(t => {
-        const approvedEfforts = (t.efforts || []).filter(e => e.status === 'Approved');
-        if (approvedEfforts.length > 0) {
-          clientHours += approvedEfforts.reduce((sum, e) => sum + (e.hoursLogged || e.hoursWorked || 0), 0);
-        } else {
-          const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
-          if (approvedClosure) {
-            clientHours += consultantType === 'Functional'
-              ? approvedClosure.functionalActualHours
-              : approvedClosure.technicalActualHours;
-          }
-        }
+        const approvedLogs = (t.actualHoursLogs || []).filter(ah => 
+          (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
+          ah.approvalStatus === 'approved'
+        );
+        clientHours += approvedLogs.reduce((sum, ah) => sum + ah.actualHours, 0);
       });
       return { name: client, hours: clientHours, volume: vol, open: op };
     }).sort((a, b) => b.hours - a.hours);
@@ -285,17 +236,11 @@ export default function ConsultantDashboardPage() {
       
       let modHours = 0;
       modTickets.forEach(t => {
-        const approvedEfforts = (t.efforts || []).filter(e => e.status === 'Approved');
-        if (approvedEfforts.length > 0) {
-          modHours += approvedEfforts.reduce((sum, e) => sum + (e.hoursLogged || e.hoursWorked || 0), 0);
-        } else {
-          const approvedClosure = (t.closureRequests || []).find(req => req.status === 'Approved');
-          if (approvedClosure) {
-            modHours += consultantType === 'Functional'
-              ? approvedClosure.functionalActualHours
-              : approvedClosure.technicalActualHours;
-          }
-        }
+        const approvedLogs = (t.actualHoursLogs || []).filter(ah => 
+          (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
+          ah.approvalStatus === 'approved'
+        );
+        modHours += approvedLogs.reduce((sum, ah) => sum + ah.actualHours, 0);
       });
       return { name: mod, hours: modHours, count, open };
     }).sort((a, b) => b.hours - a.hours);
@@ -377,19 +322,33 @@ export default function ConsultantDashboardPage() {
       const d = new Date(selectedYear, selectedMonth - i, 1);
       const mName = monthNames[d.getMonth()];
       const yr = d.getFullYear() === 2026 ? '' : ` '${String(d.getFullYear()).substring(2)}`;
-      const seed = (d.getFullYear() * 12 + d.getMonth() + (consultantName.charCodeAt(0) || 0)) % 100;
-      const created = 12 + (seed % 10);
-      const closed = Math.round(created * (0.78 + (seed % 12) / 100));
-      const reopened = seed % 6 === 0 ? 1 : 0;
+      
+      const createdCount = roleTickets.filter(t => {
+        const date = new Date(t.createdAt);
+        return date.getFullYear() === d.getFullYear() && date.getMonth() === d.getMonth();
+      }).length;
+
+      const closedCount = roleTickets.filter(t => {
+        if (!t.closedAt) return false;
+        const date = new Date(t.closedAt);
+        return date.getFullYear() === d.getFullYear() && date.getMonth() === d.getMonth();
+      }).length;
+
+      const reopenedCount = roleTickets.filter(t => {
+        const isReopened = t.status === 'Reopened';
+        const date = new Date(t.updatedAt);
+        return isReopened && date.getFullYear() === d.getFullYear() && date.getMonth() === d.getMonth();
+      }).length;
+
       data.push({
         month: `${mName}${yr}`,
-        Created: created,
-        Closed: closed,
-        Reopened: reopened
+        Created: createdCount,
+        Closed: closedCount,
+        Reopened: reopenedCount
       });
     }
     return data;
-  }, [selectedYear, selectedMonth, consultantName]);
+  }, [selectedYear, selectedMonth, roleTickets]);
 
   const monthlyHoursTrend = useMemo(() => {
     const data = [];
@@ -398,10 +357,27 @@ export default function ConsultantDashboardPage() {
       const d = new Date(selectedYear, selectedMonth - i, 1);
       const mName = monthNames[d.getMonth()];
       const yr = d.getFullYear() === 2026 ? '' : ` '${String(d.getFullYear()).substring(2)}`;
-      const seed = (d.getFullYear() * 12 + d.getMonth() + (consultantName.charCodeAt(0) || 0)) % 100;
-      const actual = 115 + (seed % 35);
-      const billable = Math.round(actual * (0.81 + (seed % 10) / 100));
-      const nonBillable = actual - billable;
+
+      let actual = 0;
+      let billable = 0;
+      let nonBillable = 0;
+
+      roleTickets.forEach(t => {
+        (t.actualHoursLogs || []).forEach(ah => {
+          if ((ah.consultantId === user?.id || ah.consultantId === consultantEmail) && ah.approvalStatus === 'approved' && ah.approvedAt) {
+            const approvedDate = new Date(ah.approvedAt);
+            if (approvedDate.getFullYear() === d.getFullYear() && approvedDate.getMonth() === d.getMonth()) {
+              actual += ah.actualHours;
+              if (ah.billable) {
+                billable += ah.actualHours;
+              } else {
+                nonBillable += ah.actualHours;
+              }
+            }
+          }
+        });
+      });
+
       data.push({
         month: `${mName}${yr}`,
         Actual: actual,
@@ -410,7 +386,7 @@ export default function ConsultantDashboardPage() {
       });
     }
     return data;
-  }, [selectedYear, selectedMonth, consultantName]);
+  }, [selectedYear, selectedMonth, roleTickets, user?.id, consultantEmail]);
 
   const monthlyProductivityTrend = useMemo(() => {
     const data = [];
@@ -419,19 +395,38 @@ export default function ConsultantDashboardPage() {
       const d = new Date(selectedYear, selectedMonth - i, 1);
       const mName = monthNames[d.getMonth()];
       const yr = d.getFullYear() === 2026 ? '' : ` '${String(d.getFullYear()).substring(2)}`;
-      const seed = (d.getFullYear() * 12 + d.getMonth() + (consultantName.charCodeAt(0) || 0)) % 100;
-      const closed = 7 + (seed % 9);
-      const sla = 91 + (seed % 8) * 1.1;
-      const resTime = 14.8 + (seed % 7) * 1.3;
+
+      const monthClosedList = roleTickets.filter(t => {
+        if (!t.closedAt) return false;
+        const date = new Date(t.closedAt);
+        return date.getFullYear() === d.getFullYear() && date.getMonth() === d.getMonth();
+      });
+
+      const metSlaCount = monthClosedList.filter(t => {
+        const resolvedOrClosed = t.resolvedAt || t.closedAt;
+        if (!resolvedOrClosed) return true;
+        return new Date(resolvedOrClosed).getTime() <= new Date(t.slaDueAt).getTime();
+      }).length;
+
+      const sla = monthClosedList.length > 0 ? (metSlaCount / monthClosedList.length) * 100 : 100;
+
+      const totalResTimeMs = monthClosedList.reduce((sum, t) => {
+        const resolvedOrClosed = t.resolvedAt || t.closedAt || t.updatedAt;
+        return sum + (new Date(resolvedOrClosed).getTime() - new Date(t.createdAt).getTime());
+      }, 0);
+      const avgResTimeHours = monthClosedList.length > 0
+        ? (totalResTimeMs / (1000 * 60 * 60)) / monthClosedList.length
+        : 0;
+
       data.push({
         month: `${mName}${yr}`,
-        Closed: closed,
+        Closed: monthClosedList.length,
         SLA: Math.round(sla),
-        'Resolution (h)': Math.round(resTime * 10) / 10
+        'Resolution (h)': Math.round(avgResTimeHours * 10) / 10
       });
     }
     return data;
-  }, [selectedYear, selectedMonth, consultantName]);
+  }, [selectedYear, selectedMonth, roleTickets]);
 
   // Export CSV Helper
   const triggerCSVDownload = (filename: string, content: string) => {
@@ -1041,73 +1036,105 @@ export default function ConsultantDashboardPage() {
         </div>
       </div>
 
-      {/* --- SECTION 8: UPCOMING COMMITMENTS PANEL --- */}
-      <div className="space-y-4">
-        <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Upcoming Commitments</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Dynamic commitments memos */}
+      {(() => {
+        const now = Date.now();
+        const nextWeek = now + 7 * 24 * 60 * 60 * 1000;
+        const slaDueThisWeek = roleTickets.filter(t => {
+          if (t.status === 'Closed' || t.status === 'Resolved' || !t.slaDueAt || t.slaDueAt === 'SLA Not Applicable') return false;
+          const dueTime = new Date(t.slaDueAt).getTime();
+          return dueTime >= now && dueTime <= nextWeek;
+        });
 
-          {/* SLA Due This Week */}
-          <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
-            <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-              <span className="text-xs font-bold text-zinc-800 font-sans">SLA Due This Week</span>
-              <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
-                2 Tickets
-              </Badge>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="font-mono text-zinc-900 font-semibold">SST-FICO-1008</span>
-                <span className="text-red-655 font-bold">14h left</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-mono text-zinc-900 font-semibold">SST-MM-1015</span>
-                <span className="text-amber-600 font-bold">36h left</span>
-              </div>
-            </div>
-          </Card>
+        const customerActionPendingTickets = roleTickets.filter(t => 
+          t.status === 'Customer Action' || 
+          t.status === 'Waiting for Customer' || 
+          t.customerActionRequired === true
+        );
 
-          {/* Customer Action Pending */}
-          <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
-            <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-              <span className="text-xs font-bold text-zinc-800 font-sans">Customer Action Pending</span>
-              <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
-                {monthlyStats.customerActionTickets} Tickets
-              </Badge>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="font-mono text-zinc-900 font-semibold">SST-SD-1019</span>
-                <span className="text-zinc-450">Awaiting config validation</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-mono text-zinc-900 font-semibold">SST-HCM-1022</span>
-                <span className="text-zinc-450">Pending user test confirm</span>
-              </div>
-            </div>
-          </Card>
+        const closureAwaitingApproval = roleTickets.filter(t => 
+          t.status === 'Request for Closure' || 
+          t.status === 'Awaiting Manager Approval'
+        );
 
-          {/* Closure Approvals */}
-          <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
-            <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-              <span className="text-xs font-bold text-zinc-800 font-sans">Closure Awaiting Approval</span>
-              <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
-                2 Requests
-              </Badge>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="font-mono text-zinc-900 font-semibold">SST-PM-1025</span>
-                <span className="text-zinc-500 font-mono">12.0h actuals</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-mono text-zinc-900 font-semibold">SST-FICO-1011</span>
-                <span className="text-zinc-500 font-mono">8.5h actuals</span>
-              </div>
-            </div>
-          </Card>
+        const getSlaHoursLeft = (dueAtStr: string) => {
+          const diffMs = new Date(dueAtStr).getTime() - Date.now();
+          const hrs = Math.max(0, diffMs / (1000 * 60 * 60));
+          return `${Math.round(hrs)}h left`;
+        };
 
-        </div>
-      </div>
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Upcoming Commitments</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+              {/* SLA Due This Week */}
+              <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                  <span className="text-xs font-bold text-zinc-800 font-sans">SLA Due This Week</span>
+                  <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
+                    {slaDueThisWeek.length} Tickets
+                  </Badge>
+                </div>
+                <div className="space-y-2 text-xs">
+                  {slaDueThisWeek.slice(0, 3).map(t => (
+                    <div key={t.id} className="flex justify-between items-center">
+                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.id}</Link>
+                      <span className="text-red-655 font-bold">{getSlaHoursLeft(t.slaDueAt)}</span>
+                    </div>
+                  ))}
+                  {slaDueThisWeek.length === 0 && (
+                    <span className="text-zinc-400 italic">No SLAs due this week</span>
+                  )}
+                </div>
+              </Card>
+
+              {/* Customer Action Pending */}
+              <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                  <span className="text-xs font-bold text-zinc-800 font-sans">Customer Action Pending</span>
+                  <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
+                    {customerActionPendingTickets.length} Tickets
+                  </Badge>
+                </div>
+                <div className="space-y-2 text-xs">
+                  {customerActionPendingTickets.slice(0, 3).map(t => (
+                    <div key={t.id} className="flex justify-between items-center">
+                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.id}</Link>
+                      <span className="text-zinc-550 truncate max-w-[150px]">{t.title}</span>
+                    </div>
+                  ))}
+                  {customerActionPendingTickets.length === 0 && (
+                    <span className="text-zinc-400 italic">No actions pending client</span>
+                  )}
+                </div>
+              </Card>
+
+              {/* Closure Approvals */}
+              <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                  <span className="text-xs font-bold text-zinc-800 font-sans">Closure Awaiting Approval</span>
+                  <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
+                    {closureAwaitingApproval.length} Requests
+                  </Badge>
+                </div>
+                <div className="space-y-2 text-xs">
+                  {closureAwaitingApproval.slice(0, 3).map(t => (
+                    <div key={t.id} className="flex justify-between items-center">
+                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.id}</Link>
+                      <span className="text-zinc-550 truncate max-w-[150px]">{t.title}</span>
+                    </div>
+                  ))}
+                  {closureAwaitingApproval.length === 0 && (
+                    <span className="text-zinc-400 italic">No closures pending approval</span>
+                  )}
+                </div>
+              </Card>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* --- ADVANCED ANALYTICS TABBED CHARTS --- */}
       <div className="space-y-4">
