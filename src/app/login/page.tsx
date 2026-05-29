@@ -15,6 +15,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
+  const [showColdStartWarning, setShowColdStartWarning] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (authenticating) {
+      timer = setTimeout(() => {
+        setShowColdStartWarning(true);
+      }, 2500);
+    } else {
+      setShowColdStartWarning(false);
+    }
+    return () => clearTimeout(timer);
+  }, [authenticating]);
 
   // Auto redirect to correct dashboard if already logged in
   useEffect(() => {
@@ -166,6 +179,11 @@ export default function LoginPage() {
                 >
                   {authenticating ? 'Connecting...' : 'Validate & Authenticate'}
                 </button>
+                {showColdStartWarning && (
+                  <p className="text-[9px] text-amber-600 font-bold text-center animate-pulse font-mono uppercase mt-2">
+                    ⚠️ Database warming up (Free Tier cold start)... Please wait 10-15s
+                  </p>
+                )}
               </form>
             </>
           )}

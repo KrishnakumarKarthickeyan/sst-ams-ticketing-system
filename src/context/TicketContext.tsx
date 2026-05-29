@@ -274,7 +274,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           getOrganizationMap(),
           supabase.from('profiles').select('*'),
           supabase.from('tickets').select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)'),
-          supabase.from('customer_contracts').select('*, organizations(name)'),
+          supabase.from('customer_contracts').select('*'),
           supabase.from('customer_contacts').select('*'),
           supabase.from('knowledgebase_articles').select('*'),
           supabase.from('knowledgebase_categories').select('*'),
