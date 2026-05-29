@@ -1142,11 +1142,9 @@ export default function ManagerDashboardPage() {
                     <span className="text-zinc-500 font-medium">approvals waiting manager</span>
                   </div>
                 </div>
-                <button onClick={() => setSelectedTab('approvals')} className="mt-4 w-full">
-                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
-                    Open Approvals Console <ArrowRight size={10} className="ml-1" />
-                  </Button>
-                </button>
+                <Button onClick={() => setSelectedTab('approvals')} variant="outline" className="mt-4 w-full text-[9px] uppercase font-bold py-1 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  Open Approvals Console <ArrowRight size={10} className="ml-1" />
+                </Button>
               </Card>
 
               {/* Box C: SLA Mitigation */}
