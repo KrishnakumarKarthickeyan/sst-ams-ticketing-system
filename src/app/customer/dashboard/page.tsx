@@ -298,7 +298,7 @@ export default function CustomerDashboardPage() {
             type: 'status',
             timestamp: h.createdAt,
             title: `State Transition on ${t.id}`,
-            desc: `Status mutated from "${h.oldValue}" to "${h.newValue}" by ${h.changedBy}`,
+            desc: `Status mutated from "${h.oldValue || ''}" to "${h.newValue || ''}" by ${h.changedBy || 'System'}`,
             ticketId: t.id
           });
         });

@@ -690,10 +690,11 @@ export default function ManagerDashboardPage() {
       });
       // Audit logs
       t.history.forEach(h => {
+        const actorName = h.changedBy || 'System';
         list.push({
-          actor: h.changedBy,
-          role: h.changedBy.includes('Priya') || h.changedBy.includes('Arjun') || h.changedBy.includes('Elena') ? 'Consultant' : 'Manager',
-          action: `updated ${h.fieldChanged} from "${h.oldValue}" to "${h.newValue}"`,
+          actor: actorName,
+          role: actorName.includes('Priya') || actorName.includes('Arjun') || actorName.includes('Elena') ? 'Consultant' : 'Manager',
+          action: `updated ${h.fieldChanged || 'ticket'} from "${h.oldValue || ''}" to "${h.newValue || ''}"`,
           ticketId: t.id,
           time: new Date(h.createdAt).toLocaleTimeString() + ' ' + new Date(h.createdAt).toLocaleDateString(),
           timestamp: new Date(h.createdAt).getTime()
