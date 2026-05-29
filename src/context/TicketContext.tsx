@@ -79,7 +79,13 @@ interface TicketContextType {
   }) => Promise<{ success: boolean; error?: string; ticketId?: string }>;
   updateTicket: (ticketId: string, data: Partial<Ticket>) => void;
   requestDelete: (ticketId: string, reason: string, requester: string) => void;
-  requestEscalation: (ticketId: string, reason: string, severity: 'Low' | 'Medium' | 'High', actorName: string) => void;
+  requestEscalation: (
+    ticketId: string,
+    reason: string,
+    severity: 'Low' | 'Medium' | 'High',
+    actorName: string,
+    files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[]
+  ) => Promise<{ success: boolean; error?: string }>;
   assignTicket: (ticketId: string, managerName?: string, consultantName?: string, actorName?: string) => void;
   updateTicketStatus: (ticketId: string, status: TicketStatus, actorName: string) => void;
   addComment: (
@@ -154,6 +160,7 @@ interface TicketContextType {
       pendingItems?: string;
       requestedBy: string;
       actualHours?: { consultantId: string; hours: number }[];
+      files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
   ) => Promise<{ success: boolean; error?: string }>;
   resubmitClosureRequest: (
@@ -168,6 +175,7 @@ interface TicketContextType {
       pendingItems?: string;
       requestedBy: string;
       actualHours?: { consultantId: string; hours: number }[];
+      files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
   ) => Promise<{ success: boolean; error?: string }>;
   approveClosureRequest: (
@@ -552,6 +560,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ...(t.ticket_attachments ? t.ticket_attachments.map((a: any) => ({
           id: a.id,
           ticketId: a.ticket_id,
+          commentId: a.comment_id || undefined,
+          closureRequestId: a.closure_request_id || undefined,
+          escalationId: a.escalation_id || undefined,
           fileName: a.file_name,
           filePath: a.file_path,
           fileUrl: a.file_path,
@@ -1280,19 +1291,48 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     ticketId: string,
     reason: string,
     severity: 'Low' | 'Medium' | 'High',
-    actorName: string
-  ) => {
+    actorName: string,
+    files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[]
+  ): Promise<{ success: boolean; error?: string }> => {
+    let escalationId = `esc-${Date.now()}`;
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
         const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
-        await supabase.from('ticket_escalations').insert({
+        
+        const { data: insertedEsc, error: escErr } = await supabase.from('ticket_escalations').insert({
           ticket_id: ticketId,
           escalated_by: actorId,
           reason,
           severity,
           status: 'Pending'
-        });
+        }).select('id');
+        
+        if (escErr) throw escErr;
+        const escId = insertedEsc && insertedEsc.length > 0 ? insertedEsc[0].id : null;
+        if (escId) {
+          escalationId = escId;
+        }
+
+        // Upload attachment records linked to the escalation
+        if (escId && files && files.length > 0) {
+          for (const f of files) {
+            const fileUrl = await uploadAttachmentToSupabase(ticketId, f.fileName, f.fileSize, f.fileType, f.fileObj);
+            const { error: attErr } = await supabase.from('ticket_attachments').insert({
+              ticket_id: ticketId,
+              uploaded_by: actorId,
+              file_name: f.fileName,
+              file_path: fileUrl,
+              file_size: f.fileSize,
+              mime_type: f.fileType,
+              escalation_id: escId
+            });
+            if (attErr) {
+              console.error('[DATABASE INSERT ERROR] ticket_attachments registration for escalation:', attErr);
+            }
+          }
+        }
+
         await supabase.from('tickets').update({ escalation_flag: true, updated_at: new Date().toISOString() }).eq('id', ticketId);
         await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
@@ -1301,12 +1341,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           old_value: 'None',
           new_value: `${severity} Severity Escalation`
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error in requestEscalation Supabase update:', err);
+        return { success: false, error: err.message || 'Database error occurred' };
       }
     }
     const newEscalation: TicketEscalation = {
-      id: `esc-${Date.now()}`,
+      id: escalationId,
       ticketId,
       escalatedBy: actorName,
       reason,
@@ -1318,6 +1359,26 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const currentEscalations = t.escalations || [];
+        const localAttachments = [...(t.attachments || [])];
+
+        if (files && files.length > 0) {
+          files.forEach((f, idx) => {
+            localAttachments.push({
+              id: `att-esc-${Date.now()}-${idx}`,
+              ticketId,
+              escalationId,
+              fileName: f.fileName,
+              filePath: `/files/${f.fileName}`,
+              fileUrl: `/files/${f.fileName}`,
+              fileType: f.fileType || '',
+              fileSize: f.fileSize || 0,
+              uploadedBy: actorName,
+              visibility: 'public',
+              createdAt: new Date().toISOString()
+            });
+          });
+        }
+
         const hist = [
           ...t.history,
           {
@@ -1334,6 +1395,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           ...t,
           escalationFlag: true,
           escalations: [...currentEscalations, newEscalation],
+          attachments: localAttachments,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -1349,6 +1411,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       `A ${severity} severity escalation was requested by ${actorName}. Reason: ${reason}`,
       ticketId
     );
+
+    return { success: true };
   };
 
   const assignTicket = async (ticketId: string, managerName?: string, consultantName?: string, actorName?: string) => {
@@ -3498,6 +3562,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       pendingItems?: string;
       requestedBy: string;
       actualHours?: { consultantId: string; hours: number }[];
+      files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
   ): Promise<{ success: boolean; error?: string }> => {
     let consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
@@ -3569,7 +3634,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     }
 
     const grandTotal = totalFuncActual + totalTechActual;
-    const closureRequestId = `cls-${Date.now()}`;
+    let closureRequestId = `cls-${Date.now()}`;
 
     const newRequest: TicketClosureRequest = {
       id: closureRequestId,
@@ -3621,8 +3686,30 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         if (reqErr) throw reqErr;
         const insertedReqRow = Array.isArray(insertedReq) ? insertedReq[0] : insertedReq;
         dbClosureReqId = insertedReqRow.id;
+        if (dbClosureReqId) {
+          closureRequestId = dbClosureReqId;
+        }
 
-        // 2. Insert actual hours logs for each consultant
+        // 2. Upload and insert files linked to this closure request
+        if (dbClosureReqId && data.files && data.files.length > 0) {
+          for (const f of data.files) {
+            const fileUrl = await uploadAttachmentToSupabase(ticketId, f.fileName, f.fileSize, f.fileType, f.fileObj);
+            const { error: attErr } = await supabase.from('ticket_attachments').insert({
+              ticket_id: ticketId,
+              uploaded_by: consultantId,
+              file_name: f.fileName,
+              file_path: fileUrl,
+              file_size: f.fileSize,
+              mime_type: f.fileType,
+              closure_request_id: dbClosureReqId
+            });
+            if (attErr) {
+              console.error('[DATABASE INSERT ERROR] ticket_attachments registration for closure:', attErr);
+            }
+          }
+        }
+
+        // 3. Insert actual hours logs for each consultant
         for (const rh of resolvedHoursList) {
           const { error: actErr } = await supabase.from('ticket_actual_hours').insert({
             closure_request_id: dbClosureReqId,
@@ -3667,7 +3754,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           }
         }
 
-        // 3. Update ticket status
+        // 4. Update ticket status
         const { error: ticketUpdErr } = await supabase.from('tickets').update({
           status: 'Request for Closure',
           closure_status: 'Awaiting Manager Approval',
@@ -3677,7 +3764,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         }).eq('id', ticketId);
         if (ticketUpdErr) throw ticketUpdErr;
 
-        // 4. Log history
+        // 5. Log history
         const { error: histErr1 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: consultantId,
@@ -3700,6 +3787,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         console.error('Error raising closure request in Supabase (initiating rollback):', err);
         // ROLLBACK
         if (dbClosureReqId) {
+          await supabase.from('ticket_attachments').delete().eq('closure_request_id', dbClosureReqId);
           await supabase.from('ticket_actual_hours').delete().eq('closure_request_id', dbClosureReqId);
           await supabase.from('ticket_closure_requests').delete().eq('id', dbClosureReqId);
         }
@@ -3756,6 +3844,26 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           });
         });
 
+        // Add attachments locally
+        const localAttachments = [...(t.attachments || [])];
+        if (data.files && data.files.length > 0) {
+          data.files.forEach((f, idx) => {
+            localAttachments.push({
+              id: `att-cls-${Date.now()}-${idx}`,
+              ticketId,
+              closureRequestId,
+              fileName: f.fileName,
+              filePath: `/files/${f.fileName}`,
+              fileUrl: `/files/${f.fileName}`,
+              fileType: f.fileType || '',
+              fileSize: f.fileSize || 0,
+              uploadedBy: consultantName,
+              visibility: 'public',
+              createdAt: new Date().toISOString()
+            });
+          });
+        }
+
         const hist = [...t.history];
         hist.push({
           id: `h-cls-log-${Date.now()}`,
@@ -3774,6 +3882,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           consultantEfforts: updatedEfforts,
           actualHoursLogs: localActualHoursLogs,
           closureRequests: [...(t.closureRequests || []), newRequest],
+          attachments: localAttachments,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -3805,6 +3914,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       pendingItems?: string;
       requestedBy: string;
       actualHours?: { consultantId: string; hours: number }[];
+      files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
   ): Promise<{ success: boolean; error?: string }> => {
     let consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
@@ -3874,7 +3984,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     }
 
     const grandTotal = totalFuncActual + totalTechActual;
-    const closureRequestId = `cls-${Date.now()}`;
+    let closureRequestId = `cls-${Date.now()}`;
 
     const newRequest: TicketClosureRequest = {
       id: closureRequestId,
@@ -3941,6 +4051,28 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         if (reqErr) throw reqErr;
         dbClosureReqId = insertedReq.id;
+        if (dbClosureReqId) {
+          closureRequestId = dbClosureReqId;
+        }
+
+        // 2.5. Upload and insert files linked to this closure request
+        if (dbClosureReqId && data.files && data.files.length > 0) {
+          for (const f of data.files) {
+            const fileUrl = await uploadAttachmentToSupabase(ticketId, f.fileName, f.fileSize, f.fileType, f.fileObj);
+            const { error: attErr } = await supabase.from('ticket_attachments').insert({
+              ticket_id: ticketId,
+              uploaded_by: consultantId,
+              file_name: f.fileName,
+              file_path: fileUrl,
+              file_size: f.fileSize,
+              mime_type: f.fileType,
+              closure_request_id: dbClosureReqId
+            });
+            if (attErr) {
+              console.error('[DATABASE INSERT ERROR] ticket_attachments registration for resubmitted closure:', attErr);
+            }
+          }
+        }
 
         // 3. Insert actual hours logs for each consultant
         for (const rh of resolvedHoursList) {
@@ -4019,6 +4151,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         console.error('Error resubmitting closure request in Supabase (initiating rollback):', err);
         // ROLLBACK
         if (dbClosureReqId) {
+          await supabase.from('ticket_attachments').delete().eq('closure_request_id', dbClosureReqId);
           await supabase.from('ticket_actual_hours').delete().eq('closure_request_id', dbClosureReqId);
           await supabase.from('ticket_closure_requests').delete().eq('id', dbClosureReqId);
         }
@@ -4087,6 +4220,26 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return r;
         });
 
+        // Add attachments locally
+        const localAttachments = [...(t.attachments || [])];
+        if (data.files && data.files.length > 0) {
+          data.files.forEach((f, idx) => {
+            localAttachments.push({
+              id: `att-cls-${Date.now()}-${idx}`,
+              ticketId,
+              closureRequestId,
+              fileName: f.fileName,
+              filePath: `/files/${f.fileName}`,
+              fileUrl: `/files/${f.fileName}`,
+              fileType: f.fileType || '',
+              fileSize: f.fileSize || 0,
+              uploadedBy: consultantName,
+              visibility: 'public',
+              createdAt: new Date().toISOString()
+            });
+          });
+        }
+
         const hist = [...t.history];
         hist.push({
           id: `h-cls-resub-${Date.now()}`,
@@ -4105,6 +4258,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           consultantEfforts: updatedEfforts,
           actualHoursLogs: localActualHoursLogs,
           closureRequests: [...closureRequests, newRequest],
+          attachments: localAttachments,
           updatedAt: new Date().toISOString(),
           history: hist
         };

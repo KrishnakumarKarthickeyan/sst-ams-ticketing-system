@@ -58,8 +58,8 @@ export default function LoginPage() {
       redirectToDashboard('Customer');
     } else {
       setError(res.error || 'Invalid credentials.');
+      setAuthenticating(false);
     }
-    setAuthenticating(false);
   };
 
   const handleDemoLogin = async (demoEmail: string) => {
@@ -72,8 +72,8 @@ export default function LoginPage() {
       redirectToDashboard('Manager');
     } else {
       setError(res.error || 'Failed to authenticate manager account.');
+      setAuthenticating(false);
     }
-    setAuthenticating(false);
   };
 
   return (

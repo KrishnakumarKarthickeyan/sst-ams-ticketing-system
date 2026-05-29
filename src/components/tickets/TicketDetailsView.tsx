@@ -86,6 +86,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
 
   const [dbConsultants, setDbConsultants] = useState<ConsultantLookup[]>([]);
   const CONSULTANTS_DB = dbConsultants;
+  const [dbManagers, setDbManagers] = useState<{ id: string; name: string; email: string }[]>([]);
 
   useEffect(() => {
     const fetchDbConsultants = async () => {
@@ -108,8 +109,26 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
         }
       }
     };
+    const fetchDbManagers = async () => {
+      const { isSupabaseConfigured, supabase } = await import('../../lib/supabase/client');
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'Manager');
+        if (!error && data) {
+          setDbManagers(data.map(m => ({
+            id: m.id,
+            name: m.full_name,
+            email: m.email
+          })));
+        }
+      }
+    };
     fetchDbConsultants();
+    fetchDbManagers();
   }, []);
+
 
   // States
   const [commentText, setCommentText] = useState('');
@@ -166,6 +185,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     progress: number;
     isInternal: boolean;
     storagePath: string;
+    fileObj?: File;
   }[]>([]);
   const [simFileName, setSimFileName] = useState('');
   const [simFileSize, setSimFileSize] = useState('150'); // KB
@@ -365,7 +385,8 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
         fileName: f.fileName,
         fileSize: f.fileSize,
         fileType: f.fileName.split('.').pop() || 'pdf',
-        fileUrl: f.storagePath
+        fileUrl: f.storagePath,
+        fileObj: f.fileObj
       }));
 
     addComment(
@@ -394,7 +415,8 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
       fileSize: sizeBytes,
       progress: 0,
       isInternal: isInternalComment,
-      storagePath: `supabase://bucket/sap-tickets/${ticket.id}/${Date.now()}_${file.name}`
+      storagePath: `supabase://bucket/sap-tickets/${ticket.id}/${Date.now()}_${file.name}`,
+      fileObj: file
     };
 
     setCommentAttachments(prev => [...prev, newFile]);
@@ -650,6 +672,68 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
         </div>
       )}
 
+      {/* ── RED ALERT CARD (Escalation Alert) ── */}
+      {ticket.escalationFlag && (() => {
+        const latestEsc = ticket.escalations && ticket.escalations.length > 0 
+          ? ticket.escalations[ticket.escalations.length - 1]
+          : null;
+        const escDate = latestEsc ? new Date(latestEsc.createdAt) : null;
+        const escAgeStr = escDate 
+          ? `${Math.floor((Date.now() - escDate.getTime()) / (1000 * 60 * 60))} hours ago`
+          : 'Unknown';
+          
+        return (
+          <div className="bg-red-50 border-2 border-red-500 rounded-lg p-5 space-y-3 text-red-955 font-mono shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 border-b border-red-200 pb-2">
+              <ShieldAlert className="text-red-600 animate-pulse" size={18} />
+              <span className="font-bold text-xs uppercase tracking-wider">CRITICAL INCIDENT ESCALATION ALERT</span>
+              <Badge className="bg-red-600 text-white font-bold ml-auto uppercase text-[9px] px-2">
+                {latestEsc?.severity || 'HIGH'} SEVERITY
+              </Badge>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[10px] pt-1">
+              <div>
+                <span className="font-bold text-red-700 block uppercase text-[8px]">Escalated By:</span>
+                <span className="font-bold text-zinc-900 block mt-0.5">{latestEsc?.escalatedBy || 'Customer'}</span>
+              </div>
+              <div>
+                <span className="font-bold text-red-700 block uppercase text-[8px]">Date & Time:</span>
+                <span className="font-semibold text-zinc-900 block mt-0.5">{escDate ? escDate.toLocaleString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-bold text-red-700 block uppercase text-[8px]">Escalation Age:</span>
+                <span className="font-semibold text-zinc-900 block mt-0.5">{escAgeStr}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[10px] pt-2 border-t border-red-200/50">
+              <div>
+                <span className="font-bold text-red-700 block uppercase text-[8px]">Escalation Reason:</span>
+                <p className="bg-white border border-red-100 p-2.5 rounded text-zinc-800 leading-relaxed font-mono whitespace-pre-wrap mt-1">
+                  {latestEsc?.reason || 'No details provided.'}
+                </p>
+              </div>
+              <div>
+                <span className="font-bold text-red-700 block uppercase text-[8px]">Current Incident Assignees:</span>
+                <div className="bg-white border border-red-100 p-2.5 rounded text-zinc-800 leading-relaxed font-mono mt-1 space-y-1">
+                  <div>Manager: <strong className="font-bold text-zinc-900">{ticket.assignedManager || 'Unassigned'}</strong></div>
+                  <div>Lead Consultant: <strong className="font-bold text-zinc-900">{ticket.assignedConsultant || 'Unassigned'}</strong></div>
+                  <div>Status: <strong className="font-bold text-red-700 uppercase">{ticket.status}</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-red-100/50 border border-red-200 rounded p-2.5 text-[9px] text-red-900 flex items-center justify-between">
+              <div>
+                <span className="font-bold uppercase tracking-wider block mb-0.5">Required Administrative Action:</span>
+                Manager must review SLA threshold parameters and initiate resolution or assign additional Functional/Technical resources immediately.
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── BACK NAVIGATION ── */}
       <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
         <Link href="/manager/tickets" className="inline-flex items-center gap-1.5 text-zinc-500 hover:text-zinc-950 transition font-bold uppercase text-[10px]">
@@ -866,11 +950,43 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                     </div>
                   </div>
 
+                  {/* Primary Lead Manager Control */}
+                  {role === 'SuperAdmin' && (
+                    <div className="bg-zinc-50 border border-zinc-200 rounded p-4 space-y-2 animate-in fade-in duration-200">
+                      <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider block flex items-center gap-1.5 font-mono">
+                        <User size={12} className="text-zinc-650" /> Primary Lead Manager Control
+                      </span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1">
+                          <select
+                            value={ticket.assignedManager || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              assignTicket(ticket.id, val || undefined, ticket.assignedConsultant || undefined, user?.name || role);
+                              showBannerMessage(`Primary lead manager changed to ${val || 'Unassigned'}.`);
+                            }}
+                            className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none font-mono"
+                          >
+                            <option value="">Unassigned</option>
+                            {dbManagers.map(m => (
+                              <option key={m.name} value={m.name}>
+                                {m.name} ({m.email})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 italic font-mono">
+                          Current Assigned Manager: <strong className="text-zinc-800">{ticket.assignedManager || 'Unassigned'}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Primary Lead Reassignment Control */}
                   {(role === 'Manager' || role === 'SuperAdmin') && (
                     <div className="bg-zinc-50 border border-zinc-200 rounded p-4 space-y-2">
                       <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider block flex items-center gap-1.5 font-mono">
-                        <User size={12} className="text-zinc-650" /> Primary Lead Consultant Control
+                        <User size={12} className="text-zinc-655" /> Primary Lead Consultant Control
                       </span>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex-1">

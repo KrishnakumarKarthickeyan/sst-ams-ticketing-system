@@ -28,7 +28,8 @@ import {
   Users,
   Briefcase,
   Lock,
-  Unlock
+  Unlock,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -117,6 +118,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   const [validationError, setValidationError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [isUploading, setIsUploading] = useState(false);
+  const [closureFiles, setClosureFiles] = useState<Array<{ id: string; fileName: string; fileSize: number; fileType: string; fileUrl: string; progress: number; isUploading: boolean; fileObj?: File }>>([]);
+  const [isUploadingClosure, setIsUploadingClosure] = useState(false);
 
   // Estimate Quotation / Revision States
   const [estFuncHours, setEstFuncHours] = useState('');
@@ -339,6 +342,86 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     return parts.length > 0 ? parts : content;
   };
 
+  // Closure File Upload Helper
+  const handleClosureFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingClosure(true);
+    const filesList = Array.from(files);
+
+    for (const file of filesList) {
+      const fileId = `file-cls-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      
+      const newAttachment = {
+        id: fileId,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        fileUrl: '',
+        progress: 5,
+        isUploading: true,
+        fileObj: file
+      };
+
+      setClosureFiles(prev => [...prev, newAttachment]);
+
+      if (file.size > 10 * 1024 * 1024) {
+        setClosureFiles(prev => prev.map(a => a.id === fileId ? { ...a, progress: 0, isUploading: false, fileName: `${a.fileName} (Exceeds 10MB limit)` } : a));
+        continue;
+      }
+
+      try {
+        if (isSupabaseConfigured && supabase) {
+          const filePath = `tickets/${ticket.id}/closure/${fileId}/${file.name}`;
+          
+          let prog = 10;
+          const interval = setInterval(() => {
+            prog = Math.min(90, prog + 15);
+            setClosureFiles(prev => prev.map(a => a.id === fileId && a.isUploading ? { ...a, progress: prog } : a));
+          }, 150);
+
+          const { error: uploadError } = await supabase.storage
+            .from('sap-tickets')
+            .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+          clearInterval(interval);
+
+          if (uploadError) {
+            console.error("Storage upload error:", uploadError);
+            setClosureFiles(prev => prev.filter(a => a.id !== fileId));
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage.from('sap-tickets').getPublicUrl(filePath);
+          const fileUrl = urlData?.publicUrl || '';
+          
+          setClosureFiles(prev => prev.map(a => a.id === fileId ? { ...a, fileUrl, progress: 100, isUploading: false } : a));
+        } else {
+          // Simulated upload for mock mode
+          let prog = 10;
+          const interval = setInterval(() => {
+            prog += 20;
+            if (prog >= 100) {
+              clearInterval(interval);
+              setClosureFiles(prev => prev.map(a => a.id === fileId ? { ...a, fileUrl: `/files/${file.name}`, progress: 100, isUploading: false } : a));
+            } else {
+              setClosureFiles(prev => prev.map(a => a.id === fileId ? { ...a, progress: prog } : a));
+            }
+          }, 150);
+        }
+      } catch (err) {
+        console.error("Upload exception:", err);
+        setClosureFiles(prev => prev.filter(a => a.id !== fileId));
+      }
+    }
+    setIsUploadingClosure(false);
+  };
+
+  const removeAttachmentFromClosure = (idx: number) => {
+    setClosureFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
   // File Upload Helper
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -482,6 +565,15 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       return;
     }
 
+    const filesPayload = closureFiles
+      .filter(f => !f.isUploading && f.progress >= 100)
+      .map(f => ({
+        fileName: f.fileName,
+        fileSize: f.fileSize,
+        fileType: f.fileType || f.fileName.split('.').pop() || 'pdf',
+        fileObj: f.fileObj
+      }));
+
     setValidationError(null);
     raiseClosureRequest(ticket.id, {
       functionalActualHours: 0,
@@ -491,8 +583,10 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       resolutionSummary,
       pendingItems: pendingItems || undefined,
       requestedBy: consultantName,
-      actualHours: actualHoursPayload
+      actualHours: actualHoursPayload,
+      files: filesPayload.length > 0 ? filesPayload : undefined
     });
+    setClosureFiles([]);
     showBannerMessage('Closure request logged successfully. Ticket is now locked.');
     setActiveModal(null);
   };
@@ -530,6 +624,15 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     const latestCls = ticket.closureRequests?.[ticket.closureRequests.length - 1];
     if (!latestCls) return;
 
+    const filesPayload = closureFiles
+      .filter(f => !f.isUploading && f.progress >= 100)
+      .map(f => ({
+        fileName: f.fileName,
+        fileSize: f.fileSize,
+        fileType: f.fileType || f.fileName.split('.').pop() || 'pdf',
+        fileObj: f.fileObj
+      }));
+
     setValidationError(null);
     resubmitClosureRequest(ticket.id, latestCls.id, {
       functionalActualHours: 0,
@@ -539,8 +642,10 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       resolutionSummary,
       pendingItems: pendingItems || undefined,
       requestedBy: consultantName,
-      actualHours: actualHoursPayload
+      actualHours: actualHoursPayload,
+      files: filesPayload.length > 0 ? filesPayload : undefined
     });
+    setClosureFiles([]);
     showBannerMessage('Closure request resubmitted to Manager.');
     setActiveModal(null);
   };
@@ -1838,6 +1943,58 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     />
                   </div>
 
+                  {/* File Upload for Closure Request */}
+                  <div className="space-y-2 border-t border-slate-100 pt-3">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase block font-mono">Closure Deliverables & Attachments</span>
+                    <div className="flex flex-col sm:flex-row gap-2 items-center">
+                      <input
+                        type="file"
+                        id="closure-file-upload"
+                        onChange={handleClosureFileChange}
+                        className="hidden"
+                        multiple
+                      />
+                      <label
+                        htmlFor="closure-file-upload"
+                        className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:border-slate-800 rounded bg-white font-bold uppercase text-[9px] tracking-wider text-slate-700 transition"
+                      >
+                        <Paperclip size={11} /> Select Closure Files
+                      </label>
+                      {isUploadingClosure && <span className="text-[9px] text-slate-500 animate-pulse font-sans">Uploading...</span>}
+                    </div>
+
+                    {closureFiles.length > 0 && (
+                      <div className="space-y-2 border border-slate-200 p-2.5 rounded bg-slate-50/50 mt-2">
+                        {closureFiles.map((file, i) => (
+                          <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px] bg-white border border-slate-150 p-2 rounded shadow-sm">
+                            <div className="flex-1 space-y-1">
+                              <div className="flex justify-between items-center font-bold">
+                                <span className="text-slate-800 font-mono">{file.fileName}</span>
+                                <span className="text-slate-450 font-mono">{(file.fileSize / 1024).toFixed(0)} KB</span>
+                              </div>
+                              <div className="w-full h-1 bg-slate-100 border rounded overflow-hidden">
+                                <div className="h-full bg-slate-900 transition-all duration-200" style={{ width: `${file.progress}%` }}></div>
+                              </div>
+                              <div className="flex justify-between text-[8px] font-bold text-slate-450 uppercase font-mono">
+                                <span>Upload: {file.progress < 100 ? `Syncing (${file.progress}%)` : 'Stored'}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => removeAttachmentFromClosure(i)}
+                                className="p-1 border border-slate-200 text-slate-400 hover:text-red-700 hover:border-red-500 rounded transition cursor-pointer"
+                                title="Remove"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
                     <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
                     <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">Submit Closure Request</Button>
@@ -1920,6 +2077,58 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                       onChange={(e) => setPendingItems(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900"
                     />
+                  </div>
+
+                  {/* File Upload for Resubmit Closure Request */}
+                  <div className="space-y-2 border-t border-slate-100 pt-3">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase block font-mono">Closure Deliverables & Attachments</span>
+                    <div className="flex flex-col sm:flex-row gap-2 items-center">
+                      <input
+                        type="file"
+                        id="closure-resubmit-file-upload"
+                        onChange={handleClosureFileChange}
+                        className="hidden"
+                        multiple
+                      />
+                      <label
+                        htmlFor="closure-resubmit-file-upload"
+                        className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:border-slate-800 rounded bg-white font-bold uppercase text-[9px] tracking-wider text-slate-700 transition"
+                      >
+                        <Paperclip size={11} /> Select Closure Files
+                      </label>
+                      {isUploadingClosure && <span className="text-[9px] text-slate-500 animate-pulse font-sans">Uploading...</span>}
+                    </div>
+
+                    {closureFiles.length > 0 && (
+                      <div className="space-y-2 border border-slate-200 p-2.5 rounded bg-slate-50/50 mt-2">
+                        {closureFiles.map((file, i) => (
+                          <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px] bg-white border border-slate-150 p-2 rounded shadow-sm">
+                            <div className="flex-1 space-y-1">
+                              <div className="flex justify-between items-center font-bold">
+                                <span className="text-slate-800 font-mono">{file.fileName}</span>
+                                <span className="text-slate-450 font-mono">{(file.fileSize / 1024).toFixed(0)} KB</span>
+                              </div>
+                              <div className="w-full h-1 bg-slate-100 border rounded overflow-hidden">
+                                <div className="h-full bg-slate-900 transition-all duration-200" style={{ width: `${file.progress}%` }}></div>
+                              </div>
+                              <div className="flex justify-between text-[8px] font-bold text-slate-450 uppercase font-mono">
+                                <span>Upload: {file.progress < 100 ? `Syncing (${file.progress}%)` : 'Stored'}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => removeAttachmentFromClosure(i)}
+                                className="p-1 border border-slate-200 text-slate-400 hover:text-red-700 hover:border-red-500 rounded transition cursor-pointer"
+                                title="Remove"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">

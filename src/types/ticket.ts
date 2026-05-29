@@ -82,6 +82,8 @@ export interface Attachment {
   id: string;
   ticketId: string;
   commentId?: string; // Nullable if attached to ticket directly
+  closureRequestId?: string; // Nullable if attached to closure request
+  escalationId?: string; // Nullable if attached to escalation
   fileName: string;
   filePath: string;
   fileUrl: string;

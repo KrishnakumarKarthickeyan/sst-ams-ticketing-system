@@ -20,7 +20,9 @@ import {
   Clock,
   HelpCircle,
   AlertTriangle,
-  FolderOpen
+  FolderOpen,
+  Upload,
+  X
 } from 'lucide-react';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
@@ -44,6 +46,13 @@ import {
   DialogTitle
 } from '../../../components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../../components/ui/tooltip';
+
+interface PendingAttachment {
+  id: string;
+  file: File;
+  progress: number;
+  previewUrl?: string;
+}
 
 export default function CustomerTicketsPage() {
   const { tickets, loading, requestEscalation, requestDelete, updateTicket, addComment } = useTickets();
@@ -81,6 +90,7 @@ export default function CustomerTicketsPage() {
   const [isEscalateOpen, setIsEscalateOpen] = useState(false);
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateSeverity, setEscalateSeverity] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  const [escalateFiles, setEscalateFiles] = useState<PendingAttachment[]>([]);
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
@@ -463,10 +473,43 @@ export default function CustomerTicketsPage() {
     }, 1200);
   };
 
-  const submitEscalate = () => {
+  const handleEscalateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const selected = Array.from(e.target.files);
+    const newFiles = selected.map(file => {
+      const id = `${Date.now()}-${file.name}`;
+      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+      const pendingFile: PendingAttachment = { id, file, progress: 0, previewUrl };
+      let currentProgress = 0;
+      const interval = setInterval(() => {
+        currentProgress += 10;
+        setEscalateFiles(prev => prev.map(f => f.id === id ? { ...f, progress: currentProgress } : f));
+        if (currentProgress >= 100) clearInterval(interval);
+      }, 50);
+      return pendingFile;
+    });
+    setEscalateFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const removeEscalateFile = (id: string) => {
+    setEscalateFiles(prev => {
+      const target = prev.find(f => f.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter(f => f.id !== id);
+    });
+  };
+
+  const submitEscalate = async () => {
     if (!activeTicketId || !escalateReason.trim() || !user) return;
-    requestEscalation(activeTicketId, escalateReason, escalateSeverity, user.name);
+    const filesToSubmit = escalateFiles.filter(f => f.progress >= 100).map(f => ({
+      fileName: f.file.name,
+      fileSize: f.file.size,
+      fileType: f.file.type || f.file.name.split('.').pop() || 'pdf',
+      fileObj: f.file
+    }));
+    await requestEscalation(activeTicketId, escalateReason, escalateSeverity, user.name, filesToSubmit.length > 0 ? filesToSubmit : undefined);
     setIsEscalateOpen(false);
+    setEscalateFiles([]);
   };
 
   const submitDelete = () => {
@@ -1180,7 +1223,7 @@ ${ticket.description}
                 <select
                   value={escalateSeverity}
                   onChange={(e: any) => setEscalateSeverity(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950"
+                  className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950"
                 >
                   <option value="Medium">Medium Alarm</option>
                   <option value="High">High Severity Alarm</option>
@@ -1196,6 +1239,45 @@ ${ticket.description}
                   onChange={(e) => setEscalateReason(e.target.value)}
                   className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider block">Escalation Attachments</label>
+                <div className="relative border-2 border-dashed border-zinc-200 rounded-xl p-4 bg-zinc-50/50 hover:bg-orange-50/30 hover:border-orange-300 transition flex flex-col items-center justify-center gap-1 cursor-pointer group">
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleEscalateFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    accept="image/*,application/pdf,application/zip,application/x-zip-compressed"
+                  />
+                  <Upload size={16} className="text-zinc-400 group-hover:text-orange-500 transition" />
+                  <span className="text-xs text-zinc-650 font-medium">Select files to attach</span>
+                  <span className="text-[10px] text-zinc-400">Max 10MB per file</span>
+                </div>
+
+                {escalateFiles.length > 0 && (
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    {escalateFiles.map((pf) => (
+                      <div key={pf.id} className="relative flex items-center gap-3 p-2 bg-zinc-50 border border-zinc-200 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-zinc-900 truncate pr-6">{pf.file.name}</p>
+                          <p className="text-[10px] text-zinc-450">{(pf.file.size / 1024).toFixed(0)} KB</p>
+                          <div className="w-full bg-zinc-200 rounded-full h-1 mt-1 overflow-hidden">
+                            <div className="bg-orange-500 h-full transition-all duration-300 rounded-full" style={{ width: `${pf.progress}%` }}></div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeEscalateFile(pf.id)}
+                          className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 p-0.5 rounded-full hover:bg-red-50 transition"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter className="gap-2">

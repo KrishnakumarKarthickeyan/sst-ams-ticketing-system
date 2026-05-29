@@ -64,13 +64,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
   // Custom menu definitions per role
   const adminMenu: MenuItem[] = [
     { title: 'Dashboard', href: '/admin/dashboard', icon: <LayoutDashboard size={16} /> },
-    { title: 'Create Ticket', href: '/admin/create-ticket', icon: <FileCode2 size={16} /> },
-    { title: 'Organizations', href: '/admin/organizations', icon: <Building2 size={16} /> },
-    { title: 'Users', href: '/admin/users', icon: <Users size={16} /> },
-    { title: 'Tickets', href: '/admin/tickets', icon: <Ticket size={16} /> },
-    { title: 'SLA Engine', href: '/admin/sla', icon: <Clock size={16} /> },
-    { title: 'Contracts', href: '/admin/contracts', icon: <FolderLock size={16} /> },
-    { title: 'Consultant Efforts', href: '/admin/effort-logs', icon: <Activity size={16} /> },
+    { title: 'Service Desk', href: '/admin/tickets', icon: <Ticket size={16} /> },
+    { title: 'SAP Managers', href: '/admin/managers', icon: <UserCheck size={16} /> },
+    { title: 'Consultants', href: '/admin/consultants', icon: <Users size={16} /> },
+    { title: 'Customers 360', href: '/admin/organizations', icon: <Building2 size={16} /> },
     { title: 'Global Reports', href: '/admin/reports', icon: <FileSpreadsheet size={16} /> },
     { title: 'Audit Logs', href: '/admin/audit-logs', icon: <History size={16} /> },
     { title: 'Settings', href: '/admin/settings', icon: <Settings size={16} /> }

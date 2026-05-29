@@ -33,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const isLoggingInRef = React.useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -40,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchAndSetProfile = async (session: any) => {
       if (!session || !active) return null;
+      if (isLoggingInRef.current) return null;
       if (fetchingUserId === session.user.id) return null;
       fetchingUserId = session.user.id;
 
@@ -178,6 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password?: string): Promise<{ success: boolean; user?: UserSession; error?: string }> => {
     const normalizedEmail = email.trim().toLowerCase();
+    isLoggingInRef.current = true;
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -194,6 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data, error } = await Promise.race([loginPromise, timeoutPromise]) as any;
 
         if (error) {
+          isLoggingInRef.current = false;
           return { success: false, error: error.message };
         }
 
@@ -208,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!profile.is_active) {
               await supabase.auth.signOut();
               setUser(null);
+              isLoggingInRef.current = false;
               return { success: false, error: 'Your account has been disabled. Please contact your administrator.' };
             }
             const userOrg = profile.organizations as any;
@@ -228,14 +233,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             
             setUser(sessionUser);
+            setLoading(false);
             return { success: true, user: sessionUser };
           }
         }
+        isLoggingInRef.current = false;
         return { success: false, error: 'User profile mapping failed.' };
       } catch (e: any) {
+        isLoggingInRef.current = false;
         return { success: false, error: e.message || 'An error occurred during authentication.' };
+      } finally {
+        isLoggingInRef.current = false;
       }
     } else {
+      isLoggingInRef.current = false;
       return { success: false, error: 'Database auth server is not online.' };
     }
   };
