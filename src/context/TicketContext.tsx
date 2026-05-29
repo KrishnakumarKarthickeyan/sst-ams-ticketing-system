@@ -3739,6 +3739,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       let dbClosureReqId: string | null = null;
       let previousTicketState: any = null;
 
+      console.log(`[CLOSURE WORKFLOW] Initiating closure request for ticket: ${ticketId} by consultant: ${consultantName}`);
+
       try {
         // Save previous ticket state for rollback
         const { data: oldTicket, error: fetchOldErr } = await supabase
@@ -3746,10 +3748,15 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           .select('status, closure_status, root_cause, resolution_summary')
           .eq('id', ticketId)
           .single();
-        if (fetchOldErr) throw fetchOldErr;
+        if (fetchOldErr) {
+          console.error('[CLOSURE WORKFLOW] Error fetching current ticket state:', fetchOldErr);
+          throw fetchOldErr;
+        }
         previousTicketState = oldTicket;
+        console.log('[CLOSURE WORKFLOW] Previous ticket state saved for rollback safety:', previousTicketState);
 
         // 1. Insert closure request
+        console.log('[CLOSURE WORKFLOW] Step 1: Inserting ticket_closure_requests record...');
         const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
           ticket_id: ticketId,
           requested_by: consultantId,
@@ -3764,15 +3771,20 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           manager_approval_status: 'Pending'
         }).select('id');
 
-        if (reqErr) throw reqErr;
+        if (reqErr) {
+          console.error('[CLOSURE WORKFLOW] Step 1 Failed (ticket_closure_requests insert):', reqErr);
+          throw reqErr;
+        }
         const insertedReqRow = Array.isArray(insertedReq) ? insertedReq[0] : insertedReq;
         dbClosureReqId = insertedReqRow.id;
         if (dbClosureReqId) {
           closureRequestId = dbClosureReqId;
         }
+        console.log('[CLOSURE WORKFLOW] Step 1 Succeeded. Closure Request ID:', dbClosureReqId);
 
         // 2. Upload and insert files linked to this closure request
         if (dbClosureReqId && data.files && data.files.length > 0) {
+          console.log(`[CLOSURE WORKFLOW] Step 2: Uploading ${data.files.length} attachments...`);
           for (const f of data.files) {
             const fileUrl = await uploadAttachmentToSupabase(ticketId, f.fileName, f.fileSize, f.fileType, f.fileObj);
             const { error: attErr } = await supabase.from('ticket_attachments').insert({
@@ -3786,11 +3798,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             });
             if (attErr) {
               console.error('[DATABASE INSERT ERROR] ticket_attachments registration for closure:', attErr);
+              throw attErr;
             }
           }
+          console.log('[CLOSURE WORKFLOW] Step 2 Succeeded. Attachments registered.');
         }
 
         // 3. Insert actual hours logs for each consultant
+        console.log('[CLOSURE WORKFLOW] Step 3: Inserting actual hours and syncing legacy consultant efforts...');
         for (const rh of resolvedHoursList) {
           const { error: actErr } = await supabase.from('ticket_actual_hours').insert({
             closure_request_id: dbClosureReqId,
@@ -3801,7 +3816,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             billable: true,
             approval_status: 'pending'
           });
-          if (actErr) throw actErr;
+          if (actErr) {
+            console.error(`[CLOSURE WORKFLOW] Step 3 Failed to insert actual hours for ${rh.consultantId}:`, actErr);
+            throw actErr;
+          }
 
           // Also update ticket_consultant_efforts for backwards compatibility
           const { data: existingEff, error: effFetchErr } = await supabase.from('ticket_consultant_efforts')
@@ -3836,8 +3854,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             if (effInsErr) throw effInsErr;
           }
         }
+        console.log('[CLOSURE WORKFLOW] Step 3 Succeeded.');
 
         // 4. Update ticket status
+        console.log('[CLOSURE WORKFLOW] Step 4: Updating ticket status to Request for Closure...');
         const { error: ticketUpdErr } = await supabase.from('tickets').update({
           status: 'Request for Closure',
           closure_status: 'Awaiting Manager Approval',
@@ -3845,9 +3865,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           resolution_summary: data.resolutionSummary,
           updated_at: new Date().toISOString()
         }).eq('id', ticketId);
-        if (ticketUpdErr) throw ticketUpdErr;
+        if (ticketUpdErr) {
+          console.error('[CLOSURE WORKFLOW] Step 4 Failed (tickets update):', ticketUpdErr);
+          throw ticketUpdErr;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 4 Succeeded.');
 
         // 5. Log history
+        console.log('[CLOSURE WORKFLOW] Step 5: Recording history transitions...');
         const { error: histErr1 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: consultantId,
@@ -3855,7 +3880,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           old_value: previousTicketState.status || 'In Progress',
           new_value: 'Request for Closure'
         });
-        if (histErr1) throw histErr1;
+        if (histErr1) {
+          console.error('[CLOSURE WORKFLOW] Step 5 Failed to log history transition:', histErr1);
+          throw histErr1;
+        }
 
         const { error: histErr2 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
@@ -3864,10 +3892,33 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           old_value: '0',
           new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
         });
-        if (histErr2) throw histErr2;
+        if (histErr2) {
+          console.error('[CLOSURE WORKFLOW] Step 5 Failed to log actual hours history entry:', histErr2);
+          throw histErr2;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 5 Succeeded.');
+
+        // 6. Refetch verification check to confirm details exist in Supabase
+        console.log('[CLOSURE WORKFLOW] Step 6: Querying database to confirm records exist...');
+        const { data: verifyReq, error: verifyErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('id')
+          .eq('id', dbClosureReqId)
+          .single();
+
+        if (verifyErr || !verifyReq) {
+          console.error('[CLOSURE WORKFLOW] Step 6 Verification Failed (record not found or error):', verifyErr);
+          throw new Error(verifyErr?.message || 'Verification failed: inserted closure request could not be retrieved from Supabase.');
+        }
+        console.log('[CLOSURE WORKFLOW] Step 6 Succeeded. DB sync confirmed. Performing full refetch...');
+
+        // Perform full refresh of client context datasets
+        await fetchData();
+
+        return { success: true };
 
       } catch (err: any) {
-        console.error('Error raising closure request in Supabase (initiating rollback):', err);
+        console.error('[CLOSURE WORKFLOW] Error raising closure request in Supabase (initiating rollback):', err);
         // ROLLBACK
         if (dbClosureReqId) {
           await supabase.from('ticket_attachments').delete().eq('closure_request_id', dbClosureReqId);
@@ -4092,8 +4143,11 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       let previousTicketState: any = null;
       let previousRequestState: any = null;
 
+      console.log(`[CLOSURE WORKFLOW] Initiating resubmit closure request for ticket: ${ticketId} by consultant: ${consultantName}`);
+
       try {
         // Save previous ticket and closure request state
+        console.log('[CLOSURE WORKFLOW] Step 0: Saving previous ticket and request state for rollback...');
         const { data: oldTicket, error: fetchOldErr } = await supabase
           .from('tickets')
           .select('status, closure_status, root_cause, resolution_summary')
@@ -4111,12 +4165,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         previousRequestState = oldRequest;
 
         // 1. Update previous request status to Resubmitted
+        console.log(`[CLOSURE WORKFLOW] Step 1: Updating previous request ${requestId} status to Resubmitted...`);
         const { error: oldReqUpdErr } = await supabase.from('ticket_closure_requests').update({
           status: 'Resubmitted'
         }).eq('id', requestId);
         if (oldReqUpdErr) throw oldReqUpdErr;
 
         // 2. Insert resubmitted request
+        console.log('[CLOSURE WORKFLOW] Step 2: Inserting resubmitted ticket_closure_requests record...');
         const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
           ticket_id: ticketId,
           requested_by: consultantId,
@@ -4132,14 +4188,19 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           resubmitted_from_id: requestId
         }).select('id').single();
 
-        if (reqErr) throw reqErr;
+        if (reqErr) {
+          console.error('[CLOSURE WORKFLOW] Step 2 Failed (ticket_closure_requests insert):', reqErr);
+          throw reqErr;
+        }
         dbClosureReqId = insertedReq.id;
         if (dbClosureReqId) {
           closureRequestId = dbClosureReqId;
         }
+        console.log('[CLOSURE WORKFLOW] Step 2 Succeeded. Closure Request ID:', dbClosureReqId);
 
         // 2.5. Upload and insert files linked to this closure request
         if (dbClosureReqId && data.files && data.files.length > 0) {
+          console.log(`[CLOSURE WORKFLOW] Step 2.5: Uploading ${data.files.length} attachments...`);
           for (const f of data.files) {
             const fileUrl = await uploadAttachmentToSupabase(ticketId, f.fileName, f.fileSize, f.fileType, f.fileObj);
             const { error: attErr } = await supabase.from('ticket_attachments').insert({
@@ -4153,11 +4214,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             });
             if (attErr) {
               console.error('[DATABASE INSERT ERROR] ticket_attachments registration for resubmitted closure:', attErr);
+              throw attErr;
             }
           }
+          console.log('[CLOSURE WORKFLOW] Step 2.5 Succeeded. Attachments registered.');
         }
 
         // 3. Insert actual hours logs for each consultant
+        console.log('[CLOSURE WORKFLOW] Step 3: Inserting actual hours and syncing legacy consultant efforts...');
         for (const rh of resolvedHoursList) {
           const { error: actErr } = await supabase.from('ticket_actual_hours').insert({
             closure_request_id: dbClosureReqId,
@@ -4168,7 +4232,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             billable: true,
             approval_status: 'pending'
           });
-          if (actErr) throw actErr;
+          if (actErr) {
+            console.error(`[CLOSURE WORKFLOW] Step 3 Failed to insert actual hours for ${rh.consultantId}:`, actErr);
+            throw actErr;
+          }
 
           const { data: existingEff, error: effFetchErr } = await supabase.from('ticket_consultant_efforts')
             .select('id')
@@ -4202,8 +4269,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             if (effInsErr) throw effInsErr;
           }
         }
+        console.log('[CLOSURE WORKFLOW] Step 3 Succeeded.');
 
         // 4. Update ticket status
+        console.log('[CLOSURE WORKFLOW] Step 4: Updating ticket status to Request for Closure...');
         const { error: ticketUpdErr } = await supabase.from('tickets').update({
           status: 'Request for Closure',
           closure_status: 'Awaiting Manager Approval',
@@ -4211,9 +4280,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           resolution_summary: data.resolutionSummary,
           updated_at: new Date().toISOString()
         }).eq('id', ticketId);
-        if (ticketUpdErr) throw ticketUpdErr;
+        if (ticketUpdErr) {
+          console.error('[CLOSURE WORKFLOW] Step 4 Failed (tickets update):', ticketUpdErr);
+          throw ticketUpdErr;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 4 Succeeded.');
 
         // 5. Log history
+        console.log('[CLOSURE WORKFLOW] Step 5: Recording history transitions...');
         const { error: histErr1 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: consultantId,
@@ -4221,7 +4295,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           old_value: previousTicketState.status || 'In Progress',
           new_value: 'Request for Closure'
         });
-        if (histErr1) throw histErr1;
+        if (histErr1) {
+          console.error('[CLOSURE WORKFLOW] Step 5 Failed to log history transition:', histErr1);
+          throw histErr1;
+        }
 
         const { error: histErr2 } = await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
@@ -4230,10 +4307,33 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           old_value: '0',
           new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
         });
-        if (histErr2) throw histErr2;
+        if (histErr2) {
+          console.error('[CLOSURE WORKFLOW] Step 5 Failed to log actual hours history entry:', histErr2);
+          throw histErr2;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 5 Succeeded.');
+
+        // 6. Refetch verification check to confirm details exist in Supabase
+        console.log('[CLOSURE WORKFLOW] Step 6: Querying database to confirm records exist...');
+        const { data: verifyReq, error: verifyErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('id')
+          .eq('id', dbClosureReqId)
+          .single();
+
+        if (verifyErr || !verifyReq) {
+          console.error('[CLOSURE WORKFLOW] Step 6 Verification Failed (record not found or error):', verifyErr);
+          throw new Error(verifyErr?.message || 'Verification failed: inserted closure request could not be retrieved from Supabase.');
+        }
+        console.log('[CLOSURE WORKFLOW] Step 6 Succeeded. DB sync confirmed. Performing full refetch...');
+
+        // Perform full refresh of client context datasets
+        await fetchData();
+
+        return { success: true };
 
       } catch (err: any) {
-        console.error('Error resubmitting closure request in Supabase (initiating rollback):', err);
+        console.error('[CLOSURE WORKFLOW] Error resubmitting closure request in Supabase (initiating rollback):', err);
         // ROLLBACK
         if (dbClosureReqId) {
           await supabase.from('ticket_attachments').delete().eq('closure_request_id', dbClosureReqId);

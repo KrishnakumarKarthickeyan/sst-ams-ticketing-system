@@ -43,7 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (typeof window !== 'undefined') {
         if (session && session.access_token) {
           // Set access token cookie for Next.js middleware routing
-          document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${session.expires_in || 3600}; SameSite=Lax; Secure`;
+          const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+          document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${session.expires_in || 3600}; SameSite=Lax${secureFlag}`;
         } else {
           document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
         }
@@ -234,7 +235,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (typeof window !== 'undefined' && data.session) {
               // Sync the cookie to server-side middleware
               const exp = data.session.expires_in || 3600;
-              document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${exp}; SameSite=Lax; Secure`;
+              const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+              document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${exp}; SameSite=Lax${secureFlag}`;
             }
             
             setUser(sessionUser);

@@ -495,11 +495,46 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     }, 120);
   };
 
-  const handleDownloadFile = (fileName: string, path: string) => {
-    if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
-      window.open(path, '_blank');
+  const handleDownloadFile = async (fileName: string, path: string) => {
+    const { isSupabaseConfigured, supabase } = await import('../../lib/supabase/client');
+    if (isSupabaseConfigured && supabase && path) {
+      try {
+        let relativePath = path;
+        if (path.includes('/sap-tickets/')) {
+          const parts = path.split('/sap-tickets/');
+          relativePath = parts[parts.length - 1];
+        }
+        
+        console.log(`[STORAGE] Generating signed URL for path: ${relativePath}`);
+        const { data, error } = await supabase.storage
+          .from('sap-tickets')
+          .createSignedUrl(relativePath, 60);
+
+        if (error) {
+          console.error('[STORAGE] Error generating signed URL:', error);
+          if (path.startsWith('http://') || path.startsWith('https://')) {
+            window.open(path, '_blank');
+          } else {
+            showBannerMessage(`Failed to generate signed URL: ${error.message}`);
+          }
+          return;
+        }
+
+        if (data?.signedUrl) {
+          window.open(data.signedUrl, '_blank');
+        } else {
+          window.open(path, '_blank');
+        }
+      } catch (err: any) {
+        console.error('[STORAGE] Error generating signed URL:', err);
+        window.open(path, '_blank');
+      }
     } else {
-      showBannerMessage(`Simulated download: Fetching file "${fileName}" from secure path: ${path}`);
+      if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+        window.open(path, '_blank');
+      } else {
+        showBannerMessage(`Simulated download: Fetching file "${fileName}" from secure path: ${path}`);
+      }
     }
   };
 

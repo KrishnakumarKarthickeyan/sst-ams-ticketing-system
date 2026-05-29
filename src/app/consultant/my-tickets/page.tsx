@@ -159,6 +159,7 @@ export default function ConsultantMyTicketsPage() {
   const [pendingItems, setPendingItems] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ── Derived data ──
   const myAssignedTickets = useMemo(() =>
@@ -248,6 +249,7 @@ export default function ConsultantMyTicketsPage() {
     setActFuncHours(''); setActTechHours('');
     setWorkSummary(''); setRootCause(''); setResolutionSummary(''); setPendingItems('');
     setValidationError(null);
+    setIsSubmitting(false);
   };
 
   const handleStatusSubmit = (e: React.FormEvent) => {
@@ -310,8 +312,9 @@ export default function ConsultantMyTicketsPage() {
     closeActionModal();
   };
 
-  const handleClosureSubmit = (e: React.FormEvent) => {
+  const handleClosureSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const fHours = Number(actFuncHours) || 0;
     const tHours = Number(actTechHours) || 0;
     if (!activeTicketId || !workSummary.trim() || !rootCause.trim() || !resolutionSummary.trim()) {
@@ -321,17 +324,24 @@ export default function ConsultantMyTicketsPage() {
       setValidationError('Record actual hours for at least one effort type.'); return;
     }
     setValidationError(null);
-    raiseClosureRequest(activeTicketId, {
+    setIsSubmitting(true);
+    const res = await raiseClosureRequest(activeTicketId, {
       functionalActualHours: fHours, technicalActualHours: tHours,
       workCompletedSummary: workSummary, rootCause, resolutionSummary,
       pendingItems: pendingItems || undefined, requestedBy: consultantName
     });
+    setIsSubmitting(false);
+    if (!res.success) {
+      setValidationError(res.error || 'Failed to raise closure request.');
+      return;
+    }
     triggerToast(`Closure request submitted for ${activeTicketId}.`);
     closeActionModal();
   };
 
-  const handleResubmitClosureSubmit = (e: React.FormEvent) => {
+  const handleResubmitClosureSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const fHours = Number(actFuncHours) || 0;
     const tHours = Number(actTechHours) || 0;
     if (!activeTicketId || !workSummary.trim() || !rootCause.trim() || !resolutionSummary.trim()) {
@@ -340,11 +350,17 @@ export default function ConsultantMyTicketsPage() {
     const latestCls = activeTicket?.closureRequests?.[activeTicket.closureRequests.length - 1];
     if (!latestCls) return;
     setValidationError(null);
-    resubmitClosureRequest(activeTicketId, latestCls.id, {
+    setIsSubmitting(true);
+    const res = await resubmitClosureRequest(activeTicketId, latestCls.id, {
       functionalActualHours: fHours, technicalActualHours: tHours,
       workCompletedSummary: workSummary, rootCause, resolutionSummary,
       pendingItems: pendingItems || undefined, requestedBy: consultantName
     });
+    setIsSubmitting(false);
+    if (!res.success) {
+      setValidationError(res.error || 'Failed to resubmit closure request.');
+      return;
+    }
     triggerToast(`Closure resubmitted for ${activeTicketId}.`);
     closeActionModal();
   };
@@ -922,8 +938,10 @@ export default function ConsultantMyTicketsPage() {
                 </div>
                 <p className="text-[10px] text-zinc-450">Submitting closure locks the ticket pending Manager approval.</p>
                 <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Submit Closure Request</Button>
+                  <Button type="button" variant="outline" onClick={closeActionModal} disabled={isSubmitting} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting} className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">
+                    {isSubmitting ? 'Submitting...' : 'Submit Closure Request'}
+                  </Button>
                 </div>
               </form>
             )}
@@ -965,8 +983,10 @@ export default function ConsultantMyTicketsPage() {
                     className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900" />
                 </div>
                 <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Resubmit Request</Button>
+                  <Button type="button" variant="outline" onClick={closeActionModal} disabled={isSubmitting} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting} className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">
+                    {isSubmitting ? 'Resubmitting...' : 'Resubmit Request'}
+                  </Button>
                 </div>
               </form>
             )}

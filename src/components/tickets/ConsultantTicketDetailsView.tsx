@@ -29,7 +29,8 @@ import {
   Briefcase,
   Lock,
   Unlock,
-  Trash2
+  Trash2,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -120,6 +121,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   const [isUploading, setIsUploading] = useState(false);
   const [closureFiles, setClosureFiles] = useState<Array<{ id: string; fileName: string; fileSize: number; fileType: string; fileUrl: string; progress: number; isUploading: boolean; fileObj?: File }>>([]);
   const [isUploadingClosure, setIsUploadingClosure] = useState(false);
+  const [isSubmittingClosure, setIsSubmittingClosure] = useState(false);
 
   // Estimate Quotation / Revision States
   const [estFuncHours, setEstFuncHours] = useState('');
@@ -342,6 +344,48 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     return parts.length > 0 ? parts : content;
   };
 
+  const handleDownloadFile = async (fileName: string, path: string) => {
+    if (isSupabaseConfigured && supabase && path) {
+      try {
+        let relativePath = path;
+        if (path.includes('/sap-tickets/')) {
+          const parts = path.split('/sap-tickets/');
+          relativePath = parts[parts.length - 1];
+        }
+        
+        console.log(`[STORAGE] Generating signed URL for path: ${relativePath}`);
+        const { data, error } = await supabase.storage
+          .from('sap-tickets')
+          .createSignedUrl(relativePath, 60);
+
+        if (error) {
+          console.error('[STORAGE] Error generating signed URL:', error);
+          if (path.startsWith('http://') || path.startsWith('https://')) {
+            window.open(path, '_blank');
+          } else {
+            showBannerMessage(`Failed to generate signed URL: ${error.message}`);
+          }
+          return;
+        }
+
+        if (data?.signedUrl) {
+          window.open(data.signedUrl, '_blank');
+        } else {
+          window.open(path, '_blank');
+        }
+      } catch (err: any) {
+        console.error('[STORAGE] Error generating signed URL:', err);
+        window.open(path, '_blank');
+      }
+    } else {
+      if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+        window.open(path, '_blank');
+      } else {
+        showBannerMessage(`Simulated download: Fetching file "${fileName}" from secure path: ${path}`);
+      }
+    }
+  };
+
   // Closure File Upload Helper
   const handleClosureFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -535,8 +579,9 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     setActiveModal(null);
   };
 
-  const handleRaiseClosure = (e: React.FormEvent) => {
+  const handleRaiseClosure = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingClosure) return;
 
     if (!workCompletedSummary.trim() || !rootCause.trim() || !resolutionSummary.trim()) {
       setValidationError('Work Summary, Root Cause, and Resolution are required fields.');
@@ -575,7 +620,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       }));
 
     setValidationError(null);
-    raiseClosureRequest(ticket.id, {
+    setIsSubmittingClosure(true);
+    const res = await raiseClosureRequest(ticket.id, {
       functionalActualHours: 0,
       technicalActualHours: 0,
       workCompletedSummary,
@@ -586,13 +632,21 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       actualHours: actualHoursPayload,
       files: filesPayload.length > 0 ? filesPayload : undefined
     });
+    setIsSubmittingClosure(false);
+
+    if (!res.success) {
+      setValidationError(res.error || 'Failed to raise closure request.');
+      return;
+    }
+
     setClosureFiles([]);
     showBannerMessage('Closure request logged successfully. Ticket is now locked.');
     setActiveModal(null);
   };
 
-  const handleResubmitClosure = (e: React.FormEvent) => {
+  const handleResubmitClosure = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingClosure) return;
 
     if (!workCompletedSummary.trim() || !rootCause.trim() || !resolutionSummary.trim()) {
       setValidationError('Work Summary, Root Cause, and Resolution are required fields.');
@@ -634,7 +688,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       }));
 
     setValidationError(null);
-    resubmitClosureRequest(ticket.id, latestCls.id, {
+    setIsSubmittingClosure(true);
+    const res = await resubmitClosureRequest(ticket.id, latestCls.id, {
       functionalActualHours: 0,
       technicalActualHours: 0,
       workCompletedSummary,
@@ -645,6 +700,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       actualHours: actualHoursPayload,
       files: filesPayload.length > 0 ? filesPayload : undefined
     });
+    setIsSubmittingClosure(false);
+
+    if (!res.success) {
+      setValidationError(res.error || 'Failed to resubmit closure request.');
+      return;
+    }
+
     setClosureFiles([]);
     showBannerMessage('Closure request resubmitted to Manager.');
     setActiveModal(null);
@@ -1550,10 +1612,9 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                       {c.attachments.map((file, i) => (
                         <a
                           key={i}
-                          href={file.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 border border-slate-200 hover:border-slate-350 rounded text-[9px] text-slate-500 font-mono transition"
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); handleDownloadFile(file.fileName, file.fileUrl); }}
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 border border-slate-200 hover:border-slate-350 rounded text-[9px] text-slate-500 font-mono transition cursor-pointer"
                         >
                           <Paperclip size={10} className="text-slate-400" />
                           <span>{file.fileName}</span>
@@ -1710,9 +1771,19 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             <span className="font-bold text-[10px] text-slate-500 uppercase tracking-widest block border-b border-slate-150 pb-2 font-mono">Attachments registry</span>
             <div className="space-y-2 text-[10px] font-mono">
               {(ticket.attachments || []).map((a, i) => (
-                <div key={i} className="flex justify-between items-center p-2 bg-slate-50 border border-slate-200 rounded">
-                  <span className="font-bold text-slate-700 truncate max-w-[150px]">{a.fileName}</span>
-                  <span className="text-slate-450">{a.fileSize ? `${(a.fileSize/1024).toFixed(0)} KB` : '150 KB'}</span>
+                <div key={i} className="flex justify-between items-center p-2 bg-slate-50 border border-slate-200 rounded hover:border-slate-350 transition">
+                  <div className="flex flex-col min-w-0 pr-2">
+                    <span className="font-bold text-slate-700 truncate max-w-[150px] block">{a.fileName}</span>
+                    <span className="text-[8px] text-slate-405 font-mono block">{a.fileSize ? `${(a.fileSize/1024).toFixed(0)} KB` : '150 KB'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); handleDownloadFile(a.fileName, a.fileUrl || a.filePath); }}
+                    className="p-1 border border-slate-200 rounded text-slate-600 hover:border-slate-950 transition shrink-0 cursor-pointer"
+                    title="Download attachment"
+                  >
+                    <Download size={11} />
+                  </button>
                 </div>
               ))}
               {(ticket.attachments || []).length === 0 && (
@@ -1996,8 +2067,10 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
-                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
-                    <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">Submit Closure Request</Button>
+                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} disabled={isSubmittingClosure} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
+                    <Button type="submit" disabled={isSubmittingClosure} className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">
+                      {isSubmittingClosure ? 'Submitting...' : 'Submit Closure Request'}
+                    </Button>
                   </div>
                 </form>
               )}
@@ -2132,8 +2205,10 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
-                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
-                    <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">Resubmit Request</Button>
+                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} disabled={isSubmittingClosure} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
+                    <Button type="submit" disabled={isSubmittingClosure} className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">
+                      {isSubmittingClosure ? 'Resubmitting...' : 'Resubmit Request'}
+                    </Button>
                   </div>
                 </form>
               )}
