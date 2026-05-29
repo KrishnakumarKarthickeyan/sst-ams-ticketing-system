@@ -261,45 +261,59 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     if (isSupabaseConfigured && supabase) {
       try {
-        const organizationMap = await getOrganizationMap();
+        const [
+          organizationMap,
+          profilesRes,
+          ticketsRes,
+          contractsRes,
+          contactsRes,
+          articlesRes,
+          categoriesRes,
+          notificationsRes
+        ] = await Promise.all([
+          getOrganizationMap(),
+          supabase.from('profiles').select('*'),
+          supabase.from('tickets').select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)'),
+          supabase.from('customer_contracts').select('*, organizations(name)'),
+          supabase.from('customer_contacts').select('*'),
+          supabase.from('knowledgebase_articles').select('*'),
+          supabase.from('knowledgebase_categories').select('*'),
+          supabase.from('notifications').select('*').order('created_at', { ascending: false })
+        ]);
+
         setOrgMap(organizationMap);
 
-        const { data: dbProfiles, error: profErr } = await supabase.from('profiles').select('*');
+        const { data: dbProfiles, error: profErr } = profilesRes;
         if (profErr) {
           console.error('[DATABASE SELECT ERROR] profiles query:', { message: profErr.message, code: profErr.code, userId: user?.id });
         }
 
-        const { data: dbTickets, error: tickErr } = await supabase
-          .from('tickets')
-          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)');
+        const { data: dbTickets, error: tickErr } = ticketsRes;
         if (tickErr) {
           console.error('[DATABASE SELECT ERROR] tickets query:', { message: tickErr.message, code: tickErr.code, userId: user?.id });
         }
 
-        const { data: dbContracts, error: contErr } = await supabase.from('customer_contracts').select('*, organizations(name)');
+        const { data: dbContracts, error: contErr } = contractsRes;
         if (contErr) {
           console.error('[DATABASE SELECT ERROR] contracts query:', { message: contErr.message, code: contErr.code, userId: user?.id });
         }
 
-        const { data: dbContacts, error: contactErr } = await supabase.from('customer_contacts').select('*');
+        const { data: dbContacts, error: contactErr } = contactsRes;
         if (contactErr) {
           console.error('[DATABASE SELECT ERROR] contacts query:', { message: contactErr.message, code: contactErr.code, userId: user?.id });
         }
 
-        const { data: dbArticles, error: artErr } = await supabase.from('knowledgebase_articles').select('*');
+        const { data: dbArticles, error: artErr } = articlesRes;
         if (artErr) {
           console.error('[DATABASE SELECT ERROR] knowledgebase_articles query:', { message: artErr.message, code: artErr.code, userId: user?.id });
         }
 
-        const { data: dbCategories, error: catErr } = await supabase.from('knowledgebase_categories').select('*');
+        const { data: dbCategories, error: catErr } = categoriesRes;
         if (catErr) {
           console.error('[DATABASE SELECT ERROR] knowledgebase_categories query:', { message: catErr.message, code: catErr.code, userId: user?.id });
         }
 
-        const { data: dbNotifications, error: notifErr } = await supabase
-          .from('notifications')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const { data: dbNotifications, error: notifErr } = notificationsRes;
         if (notifErr) {
           console.error('[DATABASE SELECT ERROR] notifications query:', { message: notifErr.message, code: notifErr.code, userId: user?.id });
         }
