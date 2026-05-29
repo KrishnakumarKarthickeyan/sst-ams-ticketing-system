@@ -39,27 +39,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let active = true;
     let fetchingUserId: string | null = null;
 
+    const setSessionCookie = (session: any) => {
+      if (typeof window !== 'undefined') {
+        if (session && session.access_token) {
+          // Set access token cookie for Next.js middleware routing
+          document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${session.expires_in || 3600}; SameSite=Lax; Secure`;
+        } else {
+          document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        }
+      }
+    };
+
     const fetchAndSetProfile = async (session: any) => {
-      if (!session || !active) return null;
+      if (!session || !active) {
+        setSessionCookie(null);
+        return null;
+      }
       if (isLoggingInRef.current) return null;
       if (fetchingUserId === session.user.id) return null;
       fetchingUserId = session.user.id;
 
-      // 1. Try to load cached profile first for instant UI response
-      let cachedUser: UserSession | null = null;
-      try {
-        const cached = localStorage.getItem(`sst_profile_${session.user.id}`);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed && parsed.role) {
-            cachedUser = parsed;
-            setUser(parsed);
-            setLoading(false);
-          }
-        }
-      } catch (e) {
-        console.error('Error loading cached profile:', e);
-      }
+      // Sync the cookie to server-side middleware
+      setSessionCookie(session);
 
       try {
         const profilePromise = supabase!
@@ -78,13 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isNetworkError = error && (error.status === 0 || error.message?.includes('Failed to fetch') || error.message?.includes('network'));
 
         if (isTimeout || isNetworkError) {
-          console.warn("Temporary network issue or database waking up. Using cached profile if available:", error);
-          if (cachedUser) {
-            setUser(cachedUser);
-            setLoading(false);
-            fetchingUserId = null;
-            return cachedUser;
-          }
+          console.warn("Temporary network issue or database waking up. Retrying...");
           fetchingUserId = null;
           setLoading(false);
           return null;
@@ -94,11 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error("Failed or inactive user profile. Clearing auth session:", error);
           
           await supabase!.auth.signOut();
+          setSessionCookie(null);
           setUser(null);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('sap_user_session');
-            localStorage.removeItem(`sst_profile_${session.user.id}`);
-          }
           fetchingUserId = null;
           setLoading(false);
           return null;
@@ -116,11 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phoneNumber: profile.phone_number
         };
         
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
-          localStorage.setItem(`sst_profile_${session.user.id}`, JSON.stringify(sessionUser));
-        }
-        
         setUser(sessionUser);
         fetchingUserId = null;
         setLoading(false);
@@ -128,54 +115,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       } catch (e: any) {
         console.error('Fatal profile query exception:', e);
-        const isNetworkException = e && (e.status === 0 || e.message?.includes('Failed to fetch') || e.message?.includes('network') || e.message?.includes('timeout'));
-        if (!isNetworkException) {
-          await supabase!.auth.signOut();
-          setUser(null);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('sap_user_session');
-            localStorage.removeItem(`sst_profile_${session.user.id}`);
-          }
-        } else if (cachedUser) {
-          setUser(cachedUser);
-        }
+        await supabase!.auth.signOut();
+        setSessionCookie(null);
+        setUser(null);
         setLoading(false);
       }
       fetchingUserId = null;
       return null;
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (!active) return;
-
-        if (session) {
-          await fetchAndSetProfile(session);
-        } else {
-          setUser(null);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('sap_user_session');
-          }
-          setLoading(false);
-        }
-      });
-
-      return () => {
-        active = false;
-        subscription.unsubscribe();
-      };
-    } else {
-      // Fallback local storage (only in demo mode if Supabase isn't configured)
-      const stored = localStorage.getItem('sap_user_session');
-      if (stored && active) {
+    const initAuth = async () => {
+      if (isSupabaseConfigured && supabase) {
         try {
-          setUser(JSON.parse(stored));
-        } catch (e) {
-          console.error('Failed to parse local user session:', e);
+          const { data: { session } } = await supabase.auth.getSession();
+          if (active) {
+            if (session) {
+              await fetchAndSetProfile(session);
+            } else {
+              setUser(null);
+              setSessionCookie(null);
+              setLoading(false);
+            }
+          }
+        } catch (err) {
+          console.error('Error loading initial session:', err);
+          if (active) {
+            setUser(null);
+            setLoading(false);
+          }
         }
+
+        if (active) {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!active) return;
+            if (session) {
+              await fetchAndSetProfile(session);
+            } else {
+              setUser(null);
+              setSessionCookie(null);
+              setLoading(false);
+            }
+          });
+          unsubscribeFn = () => subscription.unsubscribe();
+        }
+      } else {
+        const stored = localStorage.getItem('sap_user_session');
+        if (stored && active) {
+          try {
+            setUser(JSON.parse(stored));
+          } catch (e) {
+            console.error('Failed to parse local user session:', e);
+          }
+        }
+        setLoading(false);
       }
-      setLoading(false);
-    }
+    };
+
+    let unsubscribeFn: (() => void) | null = null;
+    initAuth();
+
+    return () => {
+      active = false;
+      if (unsubscribeFn) {
+        unsubscribeFn();
+      }
+    };
   }, []);
 
   const login = async (email: string, password?: string): Promise<{ success: boolean; user?: UserSession; error?: string }> => {
@@ -227,13 +231,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               phoneNumber: profile.phone_number
             };
             
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('sap_user_session', JSON.stringify(sessionUser));
-              localStorage.setItem(`sst_profile_${data.user.id}`, JSON.stringify(sessionUser));
+            if (typeof window !== 'undefined' && data.session) {
+              // Sync the cookie to server-side middleware
+              const exp = data.session.expires_in || 3600;
+              document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${exp}; SameSite=Lax; Secure`;
             }
             
             setUser(sessionUser);
             setLoading(false);
+            isLoggingInRef.current = false;
             return { success: true, user: sessionUser };
           }
         }
@@ -261,8 +267,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setUser(null);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('sap_user_session');
+      // Clear middleware cookie
+      document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       
+      localStorage.removeItem('sap_user_session');
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);

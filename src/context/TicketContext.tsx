@@ -229,6 +229,7 @@ interface TicketContextType {
     suggestedArticle?: KnowledgebaseArticle;
   }>;
   resetMockData: () => void;
+  fetchTicketById: (ticketId: string) => Promise<Ticket | null>;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -273,7 +274,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ] = await Promise.all([
           getOrganizationMap(),
           supabase.from('profiles').select('*'),
-          supabase.from('tickets').select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)'),
+          supabase.from('tickets').select('*, organizations(name), ticket_comments(id, created_at, author_id, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, file_name, file_size, created_at), ticket_attachments(id, ticket_id, file_name, file_size, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)'),
           supabase.from('customer_contracts').select('*'),
           supabase.from('customer_contacts').select('*'),
           supabase.from('knowledgebase_articles').select('*'),
@@ -414,9 +415,22 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           {
             event: '*',
             schema: 'public',
+            table: 'tickets'
           },
           (payload) => {
-            console.log('Realtime change detected, queuing debounced re-fetch...', payload);
+            console.log('Realtime ticket change detected, queuing debounced re-fetch...', payload);
+            debouncedRefetch();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications'
+          },
+          (payload) => {
+            console.log('Realtime notification change detected, queuing debounced re-fetch...', payload);
             debouncedRefetch();
           }
         )
@@ -861,6 +875,52 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createdAt: a.created_at
       })) : []
     };
+  };
+
+  const fetchTicketById = async (ticketId: string): Promise<Ticket | null> => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const organizationMap = await getOrganizationMap();
+        const { data: dbProfiles } = await supabase.from('profiles').select('*');
+        const profilesList = dbProfiles || [];
+        const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
+
+        const { data: ticketRow, error } = await supabase
+          .from('tickets')
+          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
+          .eq('id', ticketId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[DATABASE SELECT ERROR] fetchTicketById:', error);
+          return null;
+        }
+
+        if (!ticketRow) return null;
+
+        const mapped = mapDbTicket(ticketRow, profilesList, dbContacts || [], organizationMap);
+        
+        // Cache/update it in local state
+        setTickets(prev => {
+          const index = prev.findIndex(t => t.id === mapped.id);
+          if (index >= 0) {
+            const next = [...prev];
+            next[index] = mapped;
+            return next;
+          } else {
+            return [...prev, mapped];
+          }
+        });
+
+        return mapped;
+      } catch (err) {
+        console.error('Fatal fetchTicketById error:', err);
+        return null;
+      }
+    } else {
+      const t = tickets.find(x => x.id === ticketId);
+      return t || null;
+    }
   };
 
   const syncTickets = (updated: Ticket[]) => {
@@ -5308,7 +5368,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         markNotificationRead,
         createSystemNotification,
         getChatResponse,
-        resetMockData
+        resetMockData,
+        fetchTicketById
       }}
     >
       {children}

@@ -56,8 +56,19 @@ import {
 import { ChartContainer, ChartTooltipContent } from '../../../components/ui/chart';
 
 export default function CustomerDashboardPage() {
-  const { tickets, contracts } = useTickets();
+  const { tickets, contracts, loading } = useTickets();
   const { user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
+        <div className="text-center space-y-3">
+          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
+          <p className="tracking-wider">Loading Customer Portal...</p>
+        </div>
+      </div>
+    );
+  }
   const customerCompany = user?.company || 'Apex Global Industries';
 
   const companyTickets = useMemo(() => {

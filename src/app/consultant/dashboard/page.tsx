@@ -88,8 +88,19 @@ const MONTH_OPTIONS = [
 ];
 
 export default function ConsultantDashboardPage() {
-  const { tickets } = useTickets();
+  const { tickets, loading } = useTickets();
   const { user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
+        <div className="text-center space-y-3">
+          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
+          <p className="tracking-wider">Loading Consultant Workspace...</p>
+        </div>
+      </div>
+    );
+  }
 
   const consultantName = user?.name || 'Consultant';
   const consultantEmail = user?.email || '';

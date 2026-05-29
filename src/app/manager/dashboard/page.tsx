@@ -83,6 +83,7 @@ const SYSTEM_NOW = new Date('2026-05-26T11:09:49+05:30').getTime();
 export default function ManagerDashboardPage() {
   const {
     tickets,
+    loading,
     approveEffortLog,
     approveClosureRequest,
     rejectClosureRequest,
@@ -92,6 +93,17 @@ export default function ManagerDashboardPage() {
   } = useTickets();
 
   const { user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
+        <div className="text-center space-y-3">
+          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
+          <p className="tracking-wider">Loading Manager Workspace...</p>
+        </div>
+      </div>
+    );
+  }
   const managerName = user?.name || 'Marcus Vance';
 
   const [customersCount, setCustomersCount] = useState(0);
