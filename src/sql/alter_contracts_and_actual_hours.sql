@@ -97,3 +97,15 @@ UPDATE public.ticket_actual_hours ah
 SET approval_status = 'rejected'
 FROM public.ticket_closure_requests cr
 WHERE ah.closure_request_id = cr.id AND cr.status = 'Rejected';
+
+-- ==========================================
+-- 3. Database Indexes for High Scale Performance
+-- ==========================================
+CREATE INDEX IF NOT EXISTS idx_tickets_assigned_manager ON public.tickets(assigned_manager_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_assigned_consultant ON public.tickets(assigned_consultant_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_organization ON public.tickets(organization_id);
+CREATE INDEX IF NOT EXISTS idx_actual_hours_closure_request ON public.ticket_actual_hours(closure_request_id);
+CREATE INDEX IF NOT EXISTS idx_customer_contracts_customer ON public.customer_contracts(customer_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_history_ticket ON public.ticket_history(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket ON public.ticket_comments(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_efforts_ticket ON public.ticket_efforts(ticket_id);
