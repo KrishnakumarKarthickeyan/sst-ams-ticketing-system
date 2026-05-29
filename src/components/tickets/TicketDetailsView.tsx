@@ -79,10 +79,42 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     approveUnlockRequest,
     rejectUnlockRequest,
     updateTicketStatus,
-    updateConsultantEfforts
+    updateConsultantEfforts,
+    fetchTicketById
   } = useTickets();
 
-  const ticket = tickets.find((t) => t.id === ticketId || t.id === decodeURIComponent(ticketId));
+  const [localTicket, setLocalTicket] = useState<Ticket | null>(null);
+  const [loadingLocalTicket, setLoadingLocalTicket] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      // Check in local registry first for fast path
+      const found = tickets.find((t) => t.id === ticketId || t.id === decodeURIComponent(ticketId));
+      if (found && active) {
+        setLocalTicket(found);
+        setLoadingLocalTicket(false);
+      }
+      
+      // Load fresh details directly from Supabase (to support refreshes/deep-links/role switches)
+      if (fetchTicketById) {
+        const fresh = await fetchTicketById(ticketId);
+        if (fresh && active) {
+          setLocalTicket(fresh);
+        }
+      }
+      if (active) {
+        setLoadingLocalTicket(false);
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [ticketId, tickets, fetchTicketById]);
+
+  const ticket = localTicket;
 
   const [dbConsultants, setDbConsultants] = useState<ConsultantLookup[]>([]);
   const CONSULTANTS_DB = dbConsultants;
@@ -264,7 +296,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     };
   }, [approvedEstimates, actualsSummary]);
 
-  if (loading) {
+  if (loadingLocalTicket) {
     return (
       <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
         <div className="text-center space-y-3">
@@ -464,7 +496,11 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
   };
 
   const handleDownloadFile = (fileName: string, path: string) => {
-    showBannerMessage(`Simulated download: Fetching file "${fileName}" from secure path: ${path}`);
+    if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+      window.open(path, '_blank');
+    } else {
+      showBannerMessage(`Simulated download: Fetching file "${fileName}" from secure path: ${path}`);
+    }
   };
 
   // ── REJECTIONS & CLOSURE WORKFLOW ──

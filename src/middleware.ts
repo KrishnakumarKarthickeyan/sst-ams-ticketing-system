@@ -16,12 +16,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Next.js middleware role boundary mocks
-  // In a full production build, you verify the token cookies issued by Supabase Auth:
   const sessionCookie = request.cookies.get('sb-access-token');
 
-  // For Vercel demo build compatibility, we let layouts perform strict client-side role assertion.
-  // We can write a routing interceptor checks if needed:
+  if (!sessionCookie) {
+    const loginUrl = new URL('/login', request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
   return NextResponse.next();
 }
 
