@@ -22,7 +22,7 @@ export default function LoginPage() {
     if (authenticating) {
       timer = setTimeout(() => {
         setShowColdStartWarning(true);
-      }, 2500);
+      }, 6000);
     } else {
       setShowColdStartWarning(false);
     }
