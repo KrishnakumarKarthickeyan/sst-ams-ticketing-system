@@ -7,6 +7,7 @@ import { Bell, LogOut, User, Search, CheckCheck, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
 import { Sidebar } from './Sidebar';
+import { BrandedLogo } from '../ui/BrandedLogo';
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -125,8 +126,10 @@ export const Header: React.FC = () => {
         </div>
 
         {/* User Card Tag */}
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-700">
-          <User size={12} className="text-zinc-400" />
+        <div className="flex items-center gap-2.5 px-3 py-1 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-700">
+          <div className="w-5 h-5 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center overflow-hidden shrink-0">
+            <BrandedLogo width={12} height={12} iconOnly={true} />
+          </div>
           <div className="text-left leading-tight">
             <span className="font-bold text-zinc-800 block">{user.name}</span>
             <span className="text-[9px] text-zinc-500 block truncate max-w-[120px]">{user.company || 'Global Support'}</span>

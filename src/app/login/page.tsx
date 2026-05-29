@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { KeyRound, ShieldCheck, Mail, Cpu, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { BrandedLogo } from '../../components/ui/BrandedLogo';
+import { BRAND_CONFIG } from '../../config/branding';
 
 export default function LoginPage() {
   const { user, login, loading } = useAuth();
@@ -89,25 +91,24 @@ export default function LoginPage() {
         </Link>
 
         {/* Portal title */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-zinc-950 text-white text-[9px] font-mono uppercase tracking-wider mx-auto font-bold">
-            <Cpu size={11} />
-            SST SAP Support Desk
+        <div className="text-center space-y-3">
+          <BrandedLogo width={64} height={64} className="mx-auto" />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-950 font-mono uppercase">
+              {BRAND_CONFIG.name}
+            </h1>
+            <p className="text-[10px] text-zinc-500 max-w-xs mx-auto font-mono uppercase tracking-wider mt-1">
+              {BRAND_CONFIG.tagline}
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 font-mono uppercase">
-            Secure Portal Sign In
-          </h1>
-          <p className="text-xs text-zinc-500 max-w-xs mx-auto font-mono">
-            Enter enterprise credentials or access instantly with demo accounts.
-          </p>
         </div>
 
         {/* Login Form Card */}
         <div className="bg-white border border-zinc-200 rounded-lg p-8 shadow-sm space-y-6 min-h-[280px] flex flex-col justify-center relative overflow-hidden transition-all duration-300">
           
           {loading ? (
-            <div className="flex flex-col items-center justify-center space-y-4 py-8 animate-pulse">
-              <div className="w-8 h-8 rounded-full border-2 border-zinc-200 border-t-zinc-950 animate-spin" />
+            <div className="flex flex-col items-center justify-center space-y-4 py-8">
+              <BrandedLogo animated={true} width={48} height={48} />
               <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold font-mono">
                 Verifying Credentials...
               </div>

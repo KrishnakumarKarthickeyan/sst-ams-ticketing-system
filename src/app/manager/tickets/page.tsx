@@ -6,6 +6,7 @@ import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import {
   Search,
   LayoutGrid,
@@ -674,16 +675,20 @@ export default function ManagerTicketsPage() {
       {loading ? (
         <div className="py-20 text-center text-zinc-500 font-bold">Querying tickets registry...</div>
       ) : tickets.length === 0 ? (
-        <Card className="border border-zinc-200 rounded-lg p-20 text-center text-zinc-450 italic space-y-2 bg-white">
-          <AlertCircle className="mx-auto text-zinc-300 animate-pulse" size={24} />
-          <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Create an SAP incident to start tracking support and resolutions.</p>
+        <Card className="border border-zinc-200 rounded-lg p-20 text-center text-zinc-450 italic space-y-4 bg-white flex flex-col items-center justify-center">
+          <BrandedLogo width={28} height={28} iconOnly={true} className="opacity-45" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
+            <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Create an SAP incident to start tracking support and resolutions.</p>
+          </div>
         </Card>
       ) : filteredTickets.length === 0 ? (
-        <Card className="border border-zinc-200 rounded-lg p-20 text-center text-zinc-450 italic space-y-2 bg-white">
-          <AlertCircle className="mx-auto text-zinc-300 animate-pulse" size={24} />
-          <p className="font-bold uppercase text-[10px]">No Incidents Found</p>
-          <p className="text-[9px] text-zinc-400 font-sans">No tickets match the selected filters or active workspace tab.</p>
+        <Card className="border border-zinc-200 rounded-lg p-20 text-center text-zinc-450 italic space-y-4 bg-white flex flex-col items-center justify-center">
+          <BrandedLogo width={28} height={28} iconOnly={true} className="opacity-45" />
+          <div className="space-y-1">
+            <p className="font-bold uppercase text-[10px] text-zinc-950 font-mono tracking-wider">No Incidents Found</p>
+            <p className="text-[9px] text-zinc-400 font-mono">No tickets match the selected filters or active workspace tab.</p>
+          </div>
         </Card>
       ) : viewMode === 'card' ? (
         

@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
+import { BrandedLogo } from '../ui/BrandedLogo';
+import { BRAND_CONFIG } from '../../config/branding';
 import {
   LayoutDashboard,
   Building2,
@@ -128,19 +130,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
       {/* Brand Header */}
       {effectiveCollapsed ? (
         <div className="h-16 border-b border-zinc-200 flex items-center justify-center">
-          <Link href="/dashboard" className="w-8 h-8 rounded bg-zinc-950 flex items-center justify-center text-white font-mono font-bold text-base">
-            SST
+          <Link href="/dashboard" className="flex items-center justify-center">
+            <BrandedLogo width={24} height={24} iconOnly={true} />
           </Link>
         </div>
       ) : (
         <div className="h-16 px-6 border-b border-zinc-200 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded bg-zinc-950 flex items-center justify-center text-white font-mono font-bold text-base">
-              SST
-            </div>
+          <Link href="/dashboard" className="flex items-center gap-2.5">
+            <BrandedLogo width={28} height={28} />
             <div>
-              <span className="font-bold tracking-tight text-xs text-zinc-900 block font-mono">SAP Support Desk</span>
-              <span className="text-[9px] font-bold text-zinc-400 block tracking-wider uppercase">{roleLabel}</span>
+              <span className="font-bold tracking-tight text-xs text-zinc-900 block font-mono leading-tight">{BRAND_CONFIG.shortName}</span>
+              <span className="text-[9px] font-bold text-zinc-400 block tracking-wider uppercase leading-none mt-0.5">{roleLabel}</span>
             </div>
           </Link>
         </div>

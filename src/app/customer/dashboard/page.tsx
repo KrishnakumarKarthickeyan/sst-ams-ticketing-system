@@ -4,6 +4,8 @@ import React, { useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
+import { BRAND_CONFIG } from '../../../config/branding';
 import {
   Clock,
   AlertTriangle,
@@ -419,8 +421,8 @@ export default function CustomerDashboardPage() {
 
       {companyTickets.length === 0 ? (
         <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden p-8 flex flex-col items-center justify-center text-center space-y-6 min-h-[400px]">
-          <div className="h-16 w-16 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-400">
-            <FolderDot size={32} />
+          <div className="h-16 w-16 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center">
+            <BrandedLogo width={32} height={32} iconOnly={true} className="opacity-45" />
           </div>
           <div className="space-y-2 max-w-md">
             <h3 className="text-sm font-bold font-mono uppercase tracking-wider text-zinc-950">

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import {
   Search,
   SlidersHorizontal,
@@ -765,9 +766,12 @@ ${ticket.description}
                   ) : companyTickets.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={columnsList.length + 1} className="py-24 text-center">
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
-                          <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Submit a support ticket to get started.</p>
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                          <BrandedLogo width={36} height={36} iconOnly={true} className="opacity-40" />
+                          <div className="space-y-1">
+                            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
+                            <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Submit a support ticket to get started.</p>
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>

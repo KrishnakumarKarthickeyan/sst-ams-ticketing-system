@@ -3,6 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { Cpu, Terminal, ArrowRight, Shield, Activity, HelpCircle, Layers } from 'lucide-react';
+import { BrandedLogo } from '../components/ui/BrandedLogo';
+import { BRAND_CONFIG } from '../config/branding';
 
 export default function LandingPage() {
   return (
@@ -10,10 +12,8 @@ export default function LandingPage() {
       {/* Navigation header */}
       <header className="h-16 px-6 md:px-12 border-b border-zinc-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded bg-zinc-950 flex items-center justify-center text-white font-bold text-sm">
-            S
-          </div>
-          <span className="font-bold text-xs tracking-wider uppercase">SST SAP Desk</span>
+          <BrandedLogo width={24} height={24} />
+          <span className="font-bold text-xs tracking-wider uppercase">{BRAND_CONFIG.shortName}</span>
         </div>
         <div className="flex items-center gap-4">
           <Link
@@ -30,14 +30,14 @@ export default function LandingPage() {
         
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-zinc-100 border border-zinc-200 text-[10px] uppercase tracking-wider font-bold">
-          <Cpu size={12} className="animate-pulse" />
-          Enterprise-level AI Ticketing Hub
+          <BrandedLogo width={12} height={12} className="animate-pulse" />
+          Enterprise-level Support Hub
         </div>
 
         {/* Hero Title */}
         <div className="space-y-4">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-950 uppercase leading-none">
-            SST SAP Support Desk
+            {BRAND_CONFIG.name}
           </h1>
           <p className="text-xs md:text-sm text-zinc-500 max-w-xl mx-auto leading-relaxed">
             High-contrast enterprise SaaS platform for SAP Module SLA Management, Incident Routing, Transport Request audits, and AI-suggested resolutions.
@@ -125,7 +125,7 @@ export default function LandingPage() {
           <Shield size={12} className="text-zinc-500" />
           <span>Complies with SAP NetWeaver Enterprise Security Protocols</span>
         </div>
-        <span>&copy; {new Date().getFullYear()} SST SAP Ticketing Hub. All rights reserved.</span>
+        <span>&copy; {new Date().getFullYear()} {BRAND_CONFIG.name}. All rights reserved.</span>
       </footer>
 
     </div>

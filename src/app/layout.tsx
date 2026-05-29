@@ -4,9 +4,22 @@ import { TicketProvider } from "../context/TicketContext";
 import { AuthProvider } from "../context/AuthContext";
 import { Toaster } from "sonner";
 
+import { BRAND_CONFIG } from "../config/branding";
+
 export const metadata: Metadata = {
-  title: "SAP Service Desk & Support Portal",
-  description: "Enterprise SAP SaaS ticketing, incident management, and Transport Request tracking system.",
+  title: BRAND_CONFIG.meta.title,
+  description: BRAND_CONFIG.meta.description,
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  manifest: '/site.webmanifest',
 };
 
 export default function RootLayout({

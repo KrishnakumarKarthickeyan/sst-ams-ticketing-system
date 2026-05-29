@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import {
   Search,
   LayoutGrid,
@@ -1103,8 +1104,8 @@ export default function ConsultantMyTicketsPage() {
             <div className="py-16 text-center text-zinc-500 font-bold uppercase font-mono text-xs">Synchronizing active workspace registry...</div>
           ) : myAssignedTickets.length === 0 ? (
             <div className="py-20 flex flex-col items-center justify-center text-zinc-400 bg-white border border-zinc-200 rounded-2xl space-y-2 shadow-sm">
-              <Flag size={36} className="mb-3 opacity-30 text-zinc-400" />
-              <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
+              <BrandedLogo width={36} height={36} iconOnly={true} className="mb-3 opacity-40" />
+              <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets assigned yet.</h3>
               <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono text-center">There are no tickets assigned to you yet.</p>
             </div>
           ) : viewMode === 'card' ? (

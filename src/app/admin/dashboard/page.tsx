@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import Link from 'next/link';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area 
@@ -580,7 +581,10 @@ export default function AdminDashboardPage() {
           </h3>
           <div className="h-64 w-full pt-2">
             {totalTickets === 0 ? (
-              <div className="h-full flex items-center justify-center text-zinc-450 italic">No tickets in pipeline.</div>
+              <div className="h-full flex flex-col items-center justify-center text-zinc-450 italic space-y-2 py-8">
+                <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-45" />
+                <span className="font-mono text-xs">No tickets in pipeline.</span>
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={priorityChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -628,7 +632,10 @@ export default function AdminDashboardPage() {
           </h3>
           <div className="h-64 w-full pt-2 flex flex-col sm:flex-row items-center justify-around">
             {statusChartData.length === 0 ? (
-              <div className="text-zinc-450 italic">No tickets found.</div>
+              <div className="flex flex-col items-center justify-center text-zinc-450 italic space-y-2 py-8">
+                <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-45" />
+                <span className="font-mono text-xs">No tickets found.</span>
+              </div>
             ) : (
               <>
                 <div className="w-1/2 h-full">
@@ -675,7 +682,10 @@ export default function AdminDashboardPage() {
           </h3>
           <div className="h-64 w-full pt-2">
             {managerChartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-zinc-450 italic">No tickets currently assigned to Managers.</div>
+              <div className="h-full flex flex-col items-center justify-center text-zinc-450 italic space-y-2 py-8">
+                <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-45" />
+                <span className="font-mono text-xs">No tickets currently assigned to Managers.</span>
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={managerChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>

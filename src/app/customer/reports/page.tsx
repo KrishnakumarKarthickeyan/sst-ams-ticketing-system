@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -525,7 +526,10 @@ export default function CustomerReportsPage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-zinc-400 italic text-[10px]">No records found.</div>
+              <div className="text-zinc-400 italic text-[10px] flex flex-col items-center justify-center space-y-2 py-8">
+                <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-40" />
+                <span>No records found.</span>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -557,7 +561,10 @@ export default function CustomerReportsPage() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-zinc-400 italic text-[10px]">No Incidents recorded in time frame.</div>
+              <div className="text-zinc-400 italic text-[10px] flex flex-col items-center justify-center space-y-2 py-8">
+                <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-40" />
+                <span>No Incidents recorded in time frame.</span>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -676,8 +683,11 @@ export default function CustomerReportsPage() {
                 })}
                 {spreadsheetPreview.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-10 text-center text-zinc-400 font-mono italic">
-                      No records matched. Check filter ranges.
+                    <TableCell colSpan={13} className="py-12 text-center text-zinc-400 font-mono italic">
+                      <div className="flex flex-col items-center justify-center space-y-2 py-4">
+                        <BrandedLogo width={24} height={24} iconOnly={true} className="opacity-40" />
+                        <span>No records matched. Check filter ranges.</span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}

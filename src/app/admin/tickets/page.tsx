@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import Link from 'next/link';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import { 
   Search, Filter, Layers, Plus, AlertTriangle, Clock, 
   ArrowRight, ShieldAlert, CheckCircle2, User, RefreshCw 
@@ -273,8 +274,11 @@ export default function AdminTicketsPage() {
               </tr>
             ) : filteredTickets.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-zinc-400 font-mono">
-                  No tickets found matching the selected filters.
+                <td colSpan={8} className="p-12 text-center text-zinc-400 font-mono">
+                  <div className="flex flex-col items-center justify-center space-y-2 py-4">
+                    <BrandedLogo width={24} height={24} iconOnly={true} className="opacity-40" />
+                    <span>No tickets found matching the selected filters.</span>
+                  </div>
                 </td>
               </tr>
             ) : (
