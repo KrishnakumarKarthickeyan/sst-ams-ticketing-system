@@ -64,19 +64,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async (demoEmail: string) => {
-    setError('');
-    setAuthenticating(true);
-    setEmail(demoEmail);
-    setPassword('Manager@12345');
-    const res = await login(demoEmail, 'Manager@12345');
-    if (res.success) {
-      redirectToDashboard('Manager');
-    } else {
-      setError(res.error || 'Failed to authenticate manager account.');
-      setAuthenticating(false);
-    }
-  };
 
   return (
     <main className="min-h-screen flex flex-col justify-center items-center px-4 bg-zinc-50 relative overflow-hidden py-16 text-[#09090b]">

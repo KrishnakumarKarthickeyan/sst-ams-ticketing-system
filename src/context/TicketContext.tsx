@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   Ticket,
@@ -383,29 +383,37 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           createdAt: n.created_at
         })) : []);
 
+        setLoading(false);
       } catch (err: any) {
-        console.error('[DATABASE FETCH FATAL RUNTIME ERROR]:', err);
+        console.error('Fatal fetchData error:', err);
+        setLoading(false);
       }
     } else {
-      loadLocalFallback();
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const fetchDataRef = React.useRef(fetchData);
-
+  const fetchDataRef = useRef(fetchData);
   useEffect(() => {
     fetchDataRef.current = fetchData;
   }, [fetchData]);
 
-  const debouncedRefetch = React.useMemo(() => {
-    let timeoutId: NodeJS.Timeout;
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedRefetch = () => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      fetchDataRef.current();
+    }, 200);
+  };
+
+  useEffect(() => {
     return () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        console.log('[REALTIME DEBOUNCED REFETCH]: Triggering database fetch.');
-        fetchDataRef.current();
-      }, 250);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -414,102 +422,25 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [user, authLoading]);
 
   useEffect(() => {
-    if (isSupabaseConfigured && supabase) {
-      const channel = supabase
-        .channel('schema-db-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'tickets'
-          },
-          (payload) => {
-            console.log('Realtime ticket change detected, queuing debounced re-fetch...', payload);
-            debouncedRefetch();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notifications'
-          },
-          (payload) => {
-            console.log('Realtime notification change detected, queuing debounced re-fetch...', payload);
-            debouncedRefetch();
-          }
-        )
-        .subscribe();
+    if (!isSupabaseConfigured || !supabase || !user) return;
 
-      return () => {
-        supabase?.removeChannel(channel);
-      };
-    }
-  }, [debouncedRefetch]);
-
-  const loadMockTickets = () => {
-    setTickets(MOCK_TICKETS);
-    localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
-  };
-
-  const loadLocalFallback = () => {
-    const t = localStorage.getItem('sst_tickets');
-    const c = localStorage.getItem('sst_contracts');
-    const co = localStorage.getItem('sst_contacts');
-    const a = localStorage.getItem('sst_articles');
-    const cat = localStorage.getItem('sst_categories');
-    const n = localStorage.getItem('sst_notifications');
-
-    let parsedTickets = MOCK_TICKETS;
-    if (t) {
-      try {
-        const parsed = JSON.parse(t);
-        if (Array.isArray(parsed)) {
-          parsedTickets = parsed;
+    // Subscribing to public schema changes resolves sync delays across all tables
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public' },
+        (payload) => {
+          console.log('Realtime DB change detected:', payload);
+          debouncedRefetch();
         }
-      } catch (e) {
-        console.error('Error parsing local tickets fallback:', e);
-      }
-    } else {
-      localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
-    }
+      )
+      .subscribe();
 
-    setTickets(parsedTickets);
-    
-    const parseSafe = (val: string | null, fallback: any) => {
-      if (!val) return fallback;
-      try {
-        return JSON.parse(val);
-      } catch (e) {
-        console.error('Error parsing local storage fallback key:', e);
-        return fallback;
-      }
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    setContracts(parseSafe(c, MOCK_CONTRACTS));
-    setContacts(parseSafe(co, MOCK_CONTACTS));
-    setKbArticles(parseSafe(a, MOCK_ARTICLES));
-    setKbCategories(parseSafe(cat, MOCK_CATEGORIES));
-    setNotifications(parseSafe(n, MOCK_NOTIFICATIONS));
-  };
-
-  const resetMockData = () => {
-    setTickets(MOCK_TICKETS);
-    setContracts(MOCK_CONTRACTS);
-    setContacts(MOCK_CONTACTS);
-    setKbArticles(MOCK_ARTICLES);
-    setKbCategories(MOCK_CATEGORIES);
-    setNotifications(MOCK_NOTIFICATIONS);
-    
-    localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
-    localStorage.setItem('sst_contracts', JSON.stringify(MOCK_CONTRACTS));
-    localStorage.setItem('sst_contacts', JSON.stringify(MOCK_CONTACTS));
-    localStorage.setItem('sst_articles', JSON.stringify(MOCK_ARTICLES));
-    localStorage.setItem('sst_categories', JSON.stringify(MOCK_CATEGORIES));
-    localStorage.setItem('sst_notifications', JSON.stringify(MOCK_NOTIFICATIONS));
-  };
+  }, [user]);
 
   // Helper mapper for Supabase format
   const mapDbTicket = (t: any, dbProfiles: any[], dbContacts: any[] = [], currentOrgMap?: Record<string, string>): Ticket => {
@@ -925,6 +856,10 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const t = tickets.find(x => x.id === ticketId);
       return t || null;
     }
+  };
+
+  const resetMockData = () => {
+    console.log('resetMockData is a no-op when Supabase is configured.');
   };
 
   const syncTickets = (updated: Ticket[]) => {
@@ -3650,22 +3585,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
   ): Promise<{ success: boolean; error?: string }> => {
-    let consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
-    let consultantName = data.requestedBy;
+    const consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
+    const consultantName = user?.name || data.requestedBy;
 
     const currentTicket = tickets.find(t => t.id === ticketId);
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: prof } = await supabase.from('profiles').select('id, full_name').eq('full_name', data.requestedBy).maybeSingle();
-        if (prof) {
-          consultantId = prof.id;
-          consultantName = prof.full_name;
-        }
-      } catch (err) {
-        console.error('Error resolving profile:', err);
-      }
-    }
 
     // Classify actual hours by functional or technical type
     let totalFuncActual = 0;

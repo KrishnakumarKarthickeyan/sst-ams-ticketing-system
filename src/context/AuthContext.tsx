@@ -57,6 +57,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
       if (isLoggingInRef.current) return null;
+      
+      // Prevent duplicate fetches if profile is already loaded and matches current session user
+      if (user && user.id === session.user.id) {
+        setLoading(false);
+        return user;
+      }
+
       if (fetchingUserId === session.user.id) return null;
       fetchingUserId = session.user.id;
 
@@ -71,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .single();
 
         const timeoutPromise = new Promise<any>((resolve) =>
-          setTimeout(() => resolve({ data: null, error: { message: 'Profile fetch timeout' } }), 20000)
+          setTimeout(() => resolve({ data: null, error: { message: 'Profile fetch timeout' } }), 5000)
         );
 
         const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
@@ -160,17 +167,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           unsubscribeFn = () => subscription.unsubscribe();
         }
       } else {
-        const stored = localStorage.getItem('sap_user_session');
-        if (stored && active) {
-          try {
-            setUser(JSON.parse(stored));
-          } catch (e) {
-            console.error('Failed to parse local user session:', e);
-          }
-        }
+        setUser(null);
         setLoading(false);
       }
     };
+
 
     let unsubscribeFn: (() => void) | null = null;
     initAuth();

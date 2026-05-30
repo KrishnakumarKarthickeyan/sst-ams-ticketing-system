@@ -270,6 +270,22 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     if (!ticket) {
       return { func: 0, tech: 0, total: 0 };
     }
+    if (role === 'Customer') {
+      const approvedLogs = (ticket.actualHoursLogs || []).filter(
+        log => log.approvalStatus?.toLowerCase() === 'approved'
+      );
+      const funcAct = approvedLogs
+        .filter(log => log.consultantType === 'Functional')
+        .reduce((sum, log) => sum + log.actualHours, 0);
+      const techAct = approvedLogs
+        .filter(log => log.consultantType === 'Technical')
+        .reduce((sum, log) => sum + log.actualHours, 0);
+      return {
+        func: funcAct,
+        tech: techAct,
+        total: funcAct + techAct
+      };
+    }
     const funcEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
     const techEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
 
@@ -281,7 +297,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
       tech: techAct,
       total: funcAct + techAct
     };
-  }, [ticket]);
+  }, [ticket, role]);
 
   const hasApprovedClosure = useMemo(() => {
     if (!ticket) return false;
