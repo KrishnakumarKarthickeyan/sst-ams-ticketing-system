@@ -35,11 +35,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const router = useRouter();
   const activeRef = React.useRef(true);
   const activeProfileFetchRef = React.useRef<Promise<UserSession | null> | null>(null);
+  const isLoggingInRef = React.useRef(false);
 
   const fetchAndSetProfile = async (session: any) => {
     if (!session || !activeRef.current) {
       return null;
     }
+    if (isLoggingInRef.current) return null;
     
     // Prevent duplicate fetches if profile is already loaded and matches current session user
     if (user && user.id === session.user.id) {
@@ -158,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password?: string): Promise<{ success: boolean; user?: UserSession; error?: string }> => {
     const normalizedEmail = email.trim().toLowerCase();
+    isLoggingInRef.current = true;
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -186,8 +189,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'User profile mapping failed.' };
       } catch (e: any) {
         return { success: false, error: e.message || 'An error occurred during authentication.' };
+      } finally {
+        setTimeout(() => { isLoggingInRef.current = false; }, 1500);
       }
     } else {
+      isLoggingInRef.current = false;
       return { success: false, error: 'Database auth server is not online.' };
     }
   };
