@@ -1,25 +1,17 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
-import { getManagerDashboardData, filterTicketsByScope } from '../../../utils/dashboardService';
+import { getManagerDashboardData } from '../../../utils/dashboardService';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
   AlertCircle,
-  Clock,
-  UserCheck,
-  Building2,
-  Layers,
-  ShieldCheck,
   Download,
   Calendar,
-  Activity,
-  FileText,
   ShieldAlert,
   AlertTriangle,
-  User,
   Users,
   CheckCircle,
   Lock,
@@ -224,15 +216,8 @@ export default function ManagerDashboardPage() {
     return activeTicketForClosure.closureRequests?.find(r => r.id === closureDialog.requestId);
   }, [activeTicketForClosure, closureDialog.requestId]);
 
-  // Base Scoped Tickets for the Manager (Company and Manager scope restriction)
-  const scopedTickets = useMemo(() => {
-    return tickets.filter(t => {
-      if (user?.company && user.company !== 'SST SAP Operations') {
-        if (t.organization !== user.company) return false;
-      }
-      return t.assignedManager === managerName;
-    });
-  }, [tickets, user, managerName]);
+  // Manager is the single point of contact for the whole operation — see all tickets, like admin
+  const scopedTickets = useMemo(() => tickets, [tickets]);
 
   // Unique dropdown options extracted from data
   const customersList = useMemo(() => {

@@ -1,4 +1,4 @@
-import { Ticket, CustomerContract, TicketStatus, TicketPriority } from '../types/ticket';
+import { Ticket, CustomerContract, TicketPriority } from '../types/ticket';
 
 export interface DashboardScope {
   type: 'global' | 'customer' | 'consultant' | 'manager';
@@ -130,7 +130,6 @@ export const getCustomerDashboardData = (
   const companyTickets = filterTicketsByScope(tickets, scope);
   const statusCounts = getTicketCountsByStatus(tickets, scope);
   
-  const now = Date.now();
 
   const openTicketsList = companyTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
   const avgTicketAgeDays = openTicketsList.length > 0

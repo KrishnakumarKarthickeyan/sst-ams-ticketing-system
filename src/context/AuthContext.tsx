@@ -36,20 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const activeRef = React.useRef(true);
   const activeProfileFetchRef = React.useRef<Promise<UserSession | null> | null>(null);
 
-  const setSessionCookie = (session: any) => {
-    if (typeof window !== 'undefined') {
-      if (session && session.access_token) {
-        const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-        document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${session.expires_in || 3600}; SameSite=Lax${secureFlag}`;
-      } else {
-        document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      }
-    }
-  };
-
   const fetchAndSetProfile = async (session: any) => {
     if (!session || !activeRef.current) {
-      setSessionCookie(null);
       return null;
     }
     
@@ -64,9 +52,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const fetchPromise = (async () => {
-      // Sync the cookie to server-side middleware
-      setSessionCookie(session);
-
       try {
         const profilePromise = supabase!
           .from('profiles')
@@ -83,7 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error || !profile || !profile.is_active) {
           console.error("Failed or inactive user profile. Clearing auth session:", error);
           await supabase!.auth.signOut();
-          setSessionCookie(null);
           setUser(null);
           setLoading(false);
           return null;
@@ -108,7 +92,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (e: any) {
         console.error('Fatal profile query exception:', e);
         await supabase!.auth.signOut();
-        setSessionCookie(null);
         setUser(null);
         setLoading(false);
         return null;
@@ -134,7 +117,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await fetchAndSetProfile(session);
             } else {
               setUser(null);
-              setSessionCookie(null);
               setLoading(false);
             }
           }
@@ -153,7 +135,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await fetchAndSetProfile(session);
             } else {
               setUser(null);
-              setSessionCookie(null);
               setLoading(false);
             }
           });

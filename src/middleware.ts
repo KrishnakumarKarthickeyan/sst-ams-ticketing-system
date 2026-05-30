@@ -1,14 +1,12 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+const PUBLIC_PATHS = ['/', '/login', '/forgot-password'];
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // Let public routes build & load freely
   if (
-    pathname === '/' ||
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/forgot-password') ||
+    PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith('/_next') ||
     pathname.endsWith('.ico') ||
     pathname.endsWith('.png')
@@ -16,14 +14,24 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const sessionCookie = request.cookies.get('sb-access-token');
+  const response = NextResponse.next({ request });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) =>
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          ),
+      },
+    }
+  );
 
-  if (!sessionCookie) {
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return NextResponse.next();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.redirect(new URL('/login', request.url));
+  return response;
 }
 
 export const config = {
