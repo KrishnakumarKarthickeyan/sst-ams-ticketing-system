@@ -45,6 +45,44 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import { useAuth } from './AuthContext';
 import { getOrganizationMap } from '../app/actions/auth';
 
+// Query retry and timeout helpers
+const fetchWithRetryAndTimeout = async <T,>(
+  queryFn: () => Promise<T>,
+  retries = 1,
+  timeoutMs = 8000
+): Promise<T> => {
+  let attempt = 0;
+  while (true) {
+    try {
+      const promise = queryFn();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Database query timed out')), timeoutMs)
+      );
+      return await Promise.race([promise, timeoutPromise]);
+    } catch (error: any) {
+      attempt++;
+      if (attempt > retries) {
+        throw error;
+      }
+      console.warn(`Database query failed (attempt ${attempt}/${retries + 1}). Retrying in 1s...`, error);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+};
+
+const wrapQuery = async <T,>(
+  queryFn: () => PromiseLike<{ data: T | null; error: any }>
+): Promise<T | null> => {
+  return fetchWithRetryAndTimeout(async () => {
+    const res = await queryFn();
+    if (res.error) {
+      throw new Error(res.error.message || JSON.stringify(res.error));
+    }
+    return res.data;
+  }, 1, 8000);
+};
+
+
 interface TicketContextType {
   tickets: Ticket[];
   contracts: CustomerContract[];
@@ -267,60 +305,25 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try {
         const [
           organizationMap,
-          profilesRes,
-          ticketsRes,
-          contractsRes,
-          contactsRes,
-          articlesRes,
-          categoriesRes,
-          notificationsRes
+          dbProfiles,
+          dbTickets,
+          dbContracts,
+          dbContacts,
+          dbArticles,
+          dbCategories,
+          dbNotifications
         ] = await Promise.all([
           getOrganizationMap(),
-          supabase.from('profiles').select('*'),
-          supabase.from('tickets').select('*, organizations(name), ticket_comments(id, created_at, author_id, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, file_name, file_size, created_at), ticket_attachments(id, ticket_id, file_name, file_size, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)'),
-          supabase.from('customer_contracts').select('*'),
-          supabase.from('customer_contacts').select('*'),
-          supabase.from('knowledgebase_articles').select('*'),
-          supabase.from('knowledgebase_categories').select('*'),
-          supabase.from('notifications').select('*').order('created_at', { ascending: false })
+          wrapQuery(() => supabase.from('profiles').select('*')),
+          wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, created_at, author_id, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, file_name, file_size, created_at), ticket_attachments(id, ticket_id, file_name, file_size, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')),
+          wrapQuery(() => supabase.from('customer_contracts').select('*')),
+          wrapQuery(() => supabase.from('customer_contacts').select('*')),
+          wrapQuery(() => supabase.from('knowledgebase_articles').select('*')),
+          wrapQuery(() => supabase.from('knowledgebase_categories').select('*')),
+          wrapQuery(() => supabase.from('notifications').select('*').order('created_at', { ascending: false }))
         ]);
 
         setOrgMap(organizationMap);
-
-        const { data: dbProfiles, error: profErr } = profilesRes;
-        if (profErr) {
-          console.error('[DATABASE SELECT ERROR] profiles query:', { message: profErr.message, code: profErr.code, userId: user?.id });
-        }
-
-        const { data: dbTickets, error: tickErr } = ticketsRes;
-        if (tickErr) {
-          console.error('[DATABASE SELECT ERROR] tickets query:', { message: tickErr.message, code: tickErr.code, userId: user?.id });
-        }
-
-        const { data: dbContracts, error: contErr } = contractsRes;
-        if (contErr) {
-          console.error('[DATABASE SELECT ERROR] contracts query:', { message: contErr.message, code: contErr.code, userId: user?.id });
-        }
-
-        const { data: dbContacts, error: contactErr } = contactsRes;
-        if (contactErr) {
-          console.error('[DATABASE SELECT ERROR] contacts query:', { message: contactErr.message, code: contactErr.code, userId: user?.id });
-        }
-
-        const { data: dbArticles, error: artErr } = articlesRes;
-        if (artErr) {
-          console.error('[DATABASE SELECT ERROR] knowledgebase_articles query:', { message: artErr.message, code: artErr.code, userId: user?.id });
-        }
-
-        const { data: dbCategories, error: catErr } = categoriesRes;
-        if (catErr) {
-          console.error('[DATABASE SELECT ERROR] knowledgebase_categories query:', { message: catErr.message, code: catErr.code, userId: user?.id });
-        }
-
-        const { data: dbNotifications, error: notifErr } = notificationsRes;
-        if (notifErr) {
-          console.error('[DATABASE SELECT ERROR] notifications query:', { message: notifErr.message, code: notifErr.code, userId: user?.id });
-        }
 
         const profilesList = dbProfiles || [];
         setProfiles(profilesList);
@@ -885,20 +888,17 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const organizationMap = await getOrganizationMap();
-        const { data: dbProfiles } = await supabase.from('profiles').select('*');
+        const dbProfiles = await wrapQuery(() => supabase.from('profiles').select('*'));
         const profilesList = dbProfiles || [];
-        const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
+        const dbContacts = await wrapQuery(() => supabase.from('customer_contacts').select('*'));
 
-        const { data: ticketRow, error } = await supabase
-          .from('tickets')
-          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
-          .eq('id', ticketId)
-          .maybeSingle();
-
-        if (error) {
-          console.error('[DATABASE SELECT ERROR] fetchTicketById:', error);
-          return null;
-        }
+        const ticketRow = await wrapQuery(() =>
+          supabase
+            .from('tickets')
+            .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
+            .eq('id', ticketId)
+            .maybeSingle()
+        );
 
         if (!ticketRow) return null;
 
@@ -917,9 +917,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
 
         return mapped;
-      } catch (err) {
+      } catch (err: any) {
         console.error('Fatal fetchTicketById error:', err);
-        return null;
+        throw err;
       }
     } else {
       const t = tickets.find(x => x.id === ticketId);

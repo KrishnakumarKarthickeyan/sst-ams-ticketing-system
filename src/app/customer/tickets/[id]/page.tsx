@@ -89,25 +89,37 @@ export default function CustomerTicketDetailPage() {
   const ticketId = Array.isArray(id) ? id[0] : id;
   const [ticket, setTicket] = useState<any | null>(null);
   const [localLoading, setLocalLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
+
+  if (fetchError) {
+    throw fetchError;
+  }
 
   useEffect(() => {
     let active = true;
     const loadTicket = async () => {
       if (!ticketId) return;
-      const found = tickets.find((t) => t.id === ticketId);
-      if (found) {
+      try {
+        const found = tickets.find((t) => t.id === ticketId);
+        if (found) {
+          if (active) {
+            setTicket(found);
+            setLocalLoading(false);
+          }
+        } else if (fetchTicketById) {
+          const fresh = await fetchTicketById(ticketId);
+          if (active) {
+            setTicket(fresh);
+            setLocalLoading(false);
+          }
+        } else {
+          if (active) setLocalLoading(false);
+        }
+      } catch (err: any) {
         if (active) {
-          setTicket(found);
+          setFetchError(err instanceof Error ? err : new Error(err.message || 'Failed to load ticket details'));
           setLocalLoading(false);
         }
-      } else if (fetchTicketById) {
-        const fresh = await fetchTicketById(ticketId);
-        if (active) {
-          setTicket(fresh);
-          setLocalLoading(false);
-        }
-      } else {
-        if (active) setLocalLoading(false);
       }
     };
     loadTicket();

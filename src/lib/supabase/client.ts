@@ -4,12 +4,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Check if keys are active
-export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'CRITICAL: Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY) are missing! Application cannot start without a valid database connection.'
+  );
+}
 
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
-  : null;
+// Check if keys are active
+export const isSupabaseConfigured = true;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Log initialization mode
 if (typeof window !== 'undefined') {

@@ -6,6 +6,9 @@ import { Toaster } from "sonner";
 
 import { BRAND_CONFIG } from "../config/branding";
 
+export const dynamic = 'force-dynamic';
+export const preferredRegion = 'sin1';
+
 export const metadata: Metadata = {
   title: BRAND_CONFIG.meta.title,
   description: BRAND_CONFIG.meta.description,
