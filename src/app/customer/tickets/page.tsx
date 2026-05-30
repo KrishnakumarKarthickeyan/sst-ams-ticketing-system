@@ -28,6 +28,7 @@ import {
 import { Card, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
+import { Skeleton } from '../../../components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -749,17 +750,17 @@ ${ticket.description}
                   {loading ? (
                     // Skeleton load placeholders
                     Array.from({ length: 5 }).map((_, rIdx) => (
-                      <TableRow key={rIdx} className="animate-pulse bg-zinc-50/50">
+                      <TableRow key={rIdx} className="bg-zinc-50/50">
                         {columnsList.map((col) => {
                           if (!visibleColumns[col.key]) return null;
                           return (
                             <TableCell key={col.key} className="py-4 px-4">
-                              <div className="h-3 bg-zinc-200 rounded w-16"></div>
+                              <Skeleton className="h-3 w-16" />
                             </TableCell>
                           );
                         })}
                         <TableCell className="py-4 px-4 sticky right-0 bg-zinc-50/50 border-l border-zinc-200">
-                          <div className="h-6 bg-zinc-200 rounded w-8 ml-auto"></div>
+                          <Skeleton className="h-6 w-8 ml-auto" />
                         </TableCell>
                       </TableRow>
                     ))

@@ -261,11 +261,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch (e) {
-        console.error('Error signing out from Supabase:', e);
-      }
+      supabase.auth.signOut().catch(e => {
+        console.error('Error signing out from Supabase (bg):', e);
+      });
     }
     setUser(null);
     if (typeof window !== 'undefined') {

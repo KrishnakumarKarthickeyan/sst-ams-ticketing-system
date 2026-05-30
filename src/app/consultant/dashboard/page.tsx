@@ -60,6 +60,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
+import { Skeleton } from '../../../components/ui/skeleton';
 
 // Helper: Calculate Sunday through Thursday working days count in a month (excluding Friday/Saturday)
 function getWorkingDaysCount(year: number, monthIndex: number) {
@@ -93,10 +94,74 @@ export default function ConsultantDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
-        <div className="text-center space-y-3">
-          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
-          <p className="tracking-wider">Loading Consultant Workspace...</p>
+      <div className="space-y-6 pb-12 animate-pulse">
+        {/* Page Header Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-zinc-200 pb-5 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64 bg-zinc-200" />
+            <Skeleton className="h-4 w-80 bg-zinc-100" />
+          </div>
+          <Skeleton className="h-10 w-36 bg-zinc-200 rounded-lg" />
+        </div>
+
+        {/* Info Banner / Profile Summary Skeleton */}
+        <div className="border border-zinc-200 rounded-xl p-5 bg-white shadow-sm flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+          <div className="flex gap-4 items-center">
+            <Skeleton className="h-12 w-12 rounded-full bg-zinc-200" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-48 bg-zinc-200" />
+              <div className="flex gap-2">
+                <Skeleton className="h-4 w-20 bg-zinc-100" />
+                <Skeleton className="h-4 w-24 bg-zinc-100" />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <div className="space-y-1">
+              <Skeleton className="h-3 w-16 bg-zinc-100" />
+              <Skeleton className="h-5 w-24 bg-zinc-200" />
+            </div>
+            <div className="space-y-1">
+              <Skeleton className="h-3 w-16 bg-zinc-100" />
+              <Skeleton className="h-5 w-24 bg-zinc-200" />
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="border border-zinc-200 rounded-xl p-5 bg-white space-y-3 shadow-sm">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-4 w-24 bg-zinc-150" />
+                <Skeleton className="h-4 w-4 rounded-full bg-zinc-150" />
+              </div>
+              <Skeleton className="h-8 w-16 bg-zinc-200" />
+              <Skeleton className="h-3 w-32 bg-zinc-100" />
+            </div>
+          ))}
+        </div>
+
+        {/* Two Column Layout Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 border border-zinc-200 rounded-xl p-6 bg-white space-y-4 shadow-sm">
+            <Skeleton className="h-6 w-48 bg-zinc-200" />
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} className="flex justify-between items-center border-b border-zinc-100 pb-3 last:border-b-0">
+                  <div className="space-y-1.5 flex-1">
+                    <Skeleton className="h-4.5 w-1/3 bg-zinc-200" />
+                    <Skeleton className="h-3 w-1/2 bg-zinc-100" />
+                  </div>
+                  <Skeleton className="h-6 w-16 bg-zinc-150 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="border border-zinc-200 rounded-xl p-6 bg-white space-y-4 shadow-sm">
+            <Skeleton className="h-6 w-36 bg-zinc-200" />
+            <Skeleton className="h-48 w-full bg-zinc-100 rounded-lg" />
+          </div>
         </div>
       </div>
     );
@@ -327,7 +392,7 @@ export default function ConsultantDashboardPage() {
 
   // --- Dynamic Trends Data ---
   const monthlyTicketTrend = useMemo(() => {
-    const data = [];
+    const data: any[] = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(selectedYear, selectedMonth - i, 1);
@@ -362,7 +427,7 @@ export default function ConsultantDashboardPage() {
   }, [selectedYear, selectedMonth, roleTickets]);
 
   const monthlyHoursTrend = useMemo(() => {
-    const data = [];
+    const data: any[] = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(selectedYear, selectedMonth - i, 1);
@@ -400,7 +465,7 @@ export default function ConsultantDashboardPage() {
   }, [selectedYear, selectedMonth, roleTickets, user?.id, consultantEmail]);
 
   const monthlyProductivityTrend = useMemo(() => {
-    const data = [];
+    const data: any[] = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(selectedYear, selectedMonth - i, 1);

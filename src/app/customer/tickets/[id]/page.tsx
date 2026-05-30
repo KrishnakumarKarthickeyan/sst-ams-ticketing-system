@@ -82,11 +82,39 @@ export default function CustomerTicketDetailPage() {
     reopenTicket,
     requestEscalation,
     updateTicket,
-    requestDelete
+    requestDelete,
+    fetchTicketById
   } = useTickets();
 
   const ticketId = Array.isArray(id) ? id[0] : id;
-  const ticket = tickets.find((t) => t.id === ticketId);
+  const [ticket, setTicket] = useState<any | null>(null);
+  const [localLoading, setLocalLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const loadTicket = async () => {
+      if (!ticketId) return;
+      const found = tickets.find((t) => t.id === ticketId);
+      if (found) {
+        if (active) {
+          setTicket(found);
+          setLocalLoading(false);
+        }
+      } else if (fetchTicketById) {
+        const fresh = await fetchTicketById(ticketId);
+        if (active) {
+          setTicket(fresh);
+          setLocalLoading(false);
+        }
+      } else {
+        if (active) setLocalLoading(false);
+      }
+    };
+    loadTicket();
+    return () => {
+      active = false;
+    };
+  }, [ticketId, tickets, fetchTicketById]);
 
   // Interaction States
   const [commentText, setCommentText] = useState('');
@@ -125,15 +153,15 @@ export default function CustomerTicketDetailPage() {
     }
   }, [searchParams, ticket]);
 
-  if (loading) {
+  if (localLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="text-center space-y-4">
           <div className="relative w-10 h-10 mx-auto">
-            <span className="absolute inset-0 rounded-full border-[3px] border-indigo-100"></span>
-            <span className="absolute inset-0 rounded-full border-[3px] border-t-indigo-500 animate-spin"></span>
+            <span className="absolute inset-0 rounded-full border-[3px] border-zinc-100"></span>
+            <span className="absolute inset-0 rounded-full border-[3px] border-t-zinc-950 animate-spin"></span>
           </div>
-          <p className="text-sm text-zinc-400 font-medium">Loading ticket details...</p>
+          <p className="text-sm text-zinc-400 font-mono">Loading ticket details...</p>
         </div>
       </div>
     );

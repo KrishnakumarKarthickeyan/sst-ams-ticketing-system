@@ -16,11 +16,10 @@ import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
+import { Skeleton } from '../../../components/ui/skeleton';
 
 export default function AdminDashboardPage() {
-  const { tickets, contracts } = useTickets();
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { tickets, contracts, profiles, loading } = useTickets();
 
   // Active Tab panel out of the 7 sections
   const [activeTab, setActiveTab] = useState<'platform' | 'contracts' | 'tickets' | 'workload' | 'managers' | 'health' | 'financials'>('platform');
@@ -30,25 +29,6 @@ export default function AdminDashboardPage() {
   const [selectedCustomer, setSelectedCustomer] = useState('All');
   const [selectedModule, setSelectedModule] = useState('All');
   const [selectedPriority, setSelectedPriority] = useState('All');
-
-  // Fetch profiles for role mapping
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      setLoading(true);
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { data, error } = await supabase.from('profiles').select('*');
-          if (!error && data) {
-            setProfiles(data);
-          }
-        } catch (e) {
-          console.error('Error querying profiles:', e);
-        }
-      }
-      setLoading(false);
-    };
-    fetchProfiles();
-  }, []);
 
   // Unique filters lists based on real data
   const managersList = useMemo(() => {
@@ -411,10 +391,53 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
-        <div className="text-center space-y-3">
-          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
-          <p className="tracking-wider">Loading Platform Analytics...</p>
+      <div className="space-y-6 pb-12 animate-pulse">
+        {/* Page Header Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-zinc-200 pb-5 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64 bg-zinc-200" />
+            <Skeleton className="h-4 w-96 bg-zinc-100" />
+          </div>
+          <Skeleton className="h-10 w-36 bg-zinc-200 rounded-lg" />
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="border border-zinc-200 rounded-xl p-5 bg-white space-y-3 shadow-sm">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-4 w-24 bg-zinc-150" />
+                <Skeleton className="h-4 w-4 rounded-full bg-zinc-150" />
+              </div>
+              <Skeleton className="h-8 w-16 bg-zinc-200" />
+              <Skeleton className="h-3 w-32 bg-zinc-100" />
+            </div>
+          ))}
+        </div>
+
+        {/* Layout Grid (Charts & Main List) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 border border-zinc-200 rounded-xl p-6 bg-white space-y-4 shadow-sm">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-6 w-48 bg-zinc-200" />
+              <Skeleton className="h-8 w-32 bg-zinc-100" />
+            </div>
+            <Skeleton className="h-72 w-full bg-zinc-100 rounded-lg" />
+          </div>
+          <div className="border border-zinc-200 rounded-xl p-6 bg-white space-y-4 shadow-sm">
+            <Skeleton className="h-6 w-48 bg-zinc-200" />
+            <div className="space-y-3.5">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full bg-zinc-150" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3 w-2/3 bg-zinc-200" />
+                    <Skeleton className="h-3.5 w-1/2 bg-zinc-100" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );

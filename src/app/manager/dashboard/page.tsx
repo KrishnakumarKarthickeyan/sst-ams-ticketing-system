@@ -59,6 +59,7 @@ import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog';
+import { Skeleton } from '../../../components/ui/skeleton';
 import { Textarea } from '../../../components/ui/textarea';
 import { Label } from '../../../components/ui/label';
 import { SAPModule, TicketPriority, TicketStatus, EffortLog, TicketClosureRequest, TicketUnlockRequest, Ticket } from '../../../types/ticket';
@@ -84,6 +85,7 @@ export default function ManagerDashboardPage() {
   const {
     tickets,
     loading,
+    profiles,
     approveEffortLog,
     approveClosureRequest,
     rejectClosureRequest,
@@ -96,74 +98,80 @@ export default function ManagerDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
-        <div className="text-center space-y-3">
-          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
-          <p className="tracking-wider">Loading Manager Workspace...</p>
+      <div className="space-y-6 pb-12 animate-pulse">
+        {/* Page Header Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-zinc-200 pb-5 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64 bg-zinc-200" />
+            <Skeleton className="h-4 w-80 bg-zinc-100" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-24 bg-zinc-200 rounded-lg" />
+            <Skeleton className="h-10 w-32 bg-zinc-200 rounded-lg" />
+          </div>
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="border border-zinc-200 rounded-xl p-5 bg-white space-y-3 shadow-sm">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-4 w-24 bg-zinc-150" />
+                <Skeleton className="h-4 w-4 rounded-full bg-zinc-150" />
+              </div>
+              <Skeleton className="h-8 w-16 bg-zinc-200" />
+              <Skeleton className="h-3 w-32 bg-zinc-100" />
+            </div>
+          ))}
+        </div>
+
+        {/* Dynamic tabs/sections skeleton */}
+        <div className="border border-zinc-200 rounded-xl p-6 bg-white space-y-6 shadow-sm">
+          <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-24 bg-zinc-200 rounded" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-6 w-48 bg-zinc-200" />
+              <Skeleton className="h-8 w-32 bg-zinc-100" />
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="flex justify-between items-center border-b border-zinc-50 pb-3 last:border-b-0">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-1/3 bg-zinc-200" />
+                    <Skeleton className="h-3 w-1/2 bg-zinc-100" />
+                  </div>
+                  <Skeleton className="h-6 w-16 bg-zinc-150 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
   const managerName = user?.name || 'Marcus Vance';
 
-  const [customersCount, setCustomersCount] = useState(0);
-  const [consultantsCount, setConsultantsCount] = useState(0);
-  const [consultantsDbList, setConsultantsDbList] = useState<{ id: string; name: string; type: string; expertise: string[] }[]>([]);
+  // Compute values synchronously from profiles using useMemo
+  const consultantsDbList = useMemo(() => {
+    return (profiles || [])
+      .filter((p) => p.role === 'Consultant')
+      .map((c) => ({
+        id: c.id,
+        name: c.full_name,
+        type: c.consultant_type || 'Technical',
+        expertise: c.sap_modules || []
+      }));
+  }, [profiles]);
 
-  useEffect(() => {
-    const fetchStakeholders = async () => {
-      // Check if Supabase configured
-      const { isSupabaseConfigured, supabase: client } = await import('../../../lib/supabase/client');
-      if (isSupabaseConfigured && client) {
-        const { data: consProfs } = await client
-          .from('profiles')
-          .select('id, full_name, role, consultant_type, sap_modules')
-          .eq('role', 'Consultant');
+  const consultantsCount = consultantsDbList.length;
 
-        const { data: custProfs } = await client
-          .from('profiles')
-          .select('id')
-          .eq('role', 'Customer');
-
-        if (consProfs) {
-          setConsultantsCount(consProfs.length);
-          setConsultantsDbList(consProfs.map((c: any) => ({
-            id: c.id,
-            name: c.full_name,
-            type: c.consultant_type || 'Technical',
-            expertise: c.sap_modules || []
-          })));
-        }
-
-        if (custProfs) {
-          setCustomersCount(custProfs.length);
-        }
-        return;
-      }
-
-      const storedCustomers = localStorage.getItem('sst_stakeholder_customers');
-      if (storedCustomers) {
-        setCustomersCount(JSON.parse(storedCustomers).length);
-      }
-
-      const storedConsultants = localStorage.getItem('sst_stakeholder_consultants');
-      if (storedConsultants) {
-        const parsed = JSON.parse(storedConsultants);
-        setConsultantsCount(parsed.length);
-        setConsultantsDbList(parsed.map((c: any) => ({
-          id: c.id || c.email || c.name,
-          name: c.name,
-          type: c.consultantType,
-          expertise: c.modules
-        })));
-      } else {
-        setConsultantsCount(0);
-        setConsultantsDbList([]);
-      }
-    };
-
-    fetchStakeholders();
-  }, [tickets, user]);
+  const customersCount = useMemo(() => {
+    return (profiles || []).filter((p) => p.role === 'Customer').length;
+  }, [profiles]);
 
   // --- FILTERS & INTERACTION STATES ---
   const [selectedMonthStr, setSelectedMonthStr] = useState('2026-05'); // June 2026

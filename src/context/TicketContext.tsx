@@ -52,6 +52,7 @@ interface TicketContextType {
   kbArticles: KnowledgebaseArticle[];
   kbCategories: KnowledgebaseCategory[];
   notifications: Notification[];
+  profiles: any[];
   loading: boolean;
   
   // Ticket Operations
@@ -242,6 +243,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [kbArticles, setKbArticles] = useState<KnowledgebaseArticle[]>([]);
   const [kbCategories, setKbCategories] = useState<KnowledgebaseCategory[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
 
@@ -257,6 +259,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setKbArticles([]);
       setKbCategories([]);
       setNotifications([]);
+      setProfiles([]);
       setLoading(false);
       return;
     }
@@ -320,6 +323,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         const profilesList = dbProfiles || [];
+        setProfiles(profilesList);
 
         setTickets(dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList, dbContacts || [], organizationMap)) : []);
 
@@ -5434,6 +5438,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         kbArticles,
         kbCategories,
         notifications,
+        profiles,
         loading,
         createTicket,
         updateTicket,

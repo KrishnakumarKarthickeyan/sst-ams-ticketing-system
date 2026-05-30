@@ -60,10 +60,39 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     requestEstimateRevision,
     raiseClosureRequest,
     resubmitClosureRequest,
-    requestUnlock
+    requestUnlock,
+    fetchTicketById
   } = useTickets();
 
-  const ticket = tickets.find((t) => t.id === ticketId || t.id === decodeURIComponent(ticketId));
+  const [ticket, setTicket] = useState<any | null>(null);
+  const [localLoading, setLocalLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const loadTicket = async () => {
+      if (!ticketId) return;
+      const cleanId = decodeURIComponent(ticketId);
+      const found = tickets.find((t) => t.id === ticketId || t.id === cleanId);
+      if (found) {
+        if (active) {
+          setTicket(found);
+          setLocalLoading(false);
+        }
+      } else if (fetchTicketById) {
+        const fresh = await fetchTicketById(cleanId);
+        if (active) {
+          setTicket(fresh);
+          setLocalLoading(false);
+        }
+      } else {
+        if (active) setLocalLoading(false);
+      }
+    };
+    loadTicket();
+    return () => {
+      active = false;
+    };
+  }, [ticketId, tickets, fetchTicketById]);
   const consultantName = user?.name || 'Unassigned';
   const consultantType = user?.consultantType || 'Functional';
   const isPrimaryConsultant = ticket?.primaryConsultantId === user?.id || ticket?.assignedConsultant === consultantName || (ticket?.assignments?.find(a => a.consultantId === user?.id || a.consultantName === consultantName)?.isPrimary);
@@ -158,7 +187,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     }
   }, [ticket]);
 
-  if (loading) {
+  if (localLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
         <div className="text-center space-y-3">

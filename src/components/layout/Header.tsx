@@ -19,10 +19,7 @@ export const Header: React.FC = () => {
   // Filter notifications for current user role
   const userNotifications = notifications.filter(n => {
     if (user.role === 'SuperAdmin') return true; // See all alerts
-    if (user.role === 'Manager' && n.userId === 'manager@sap.com') return true;
-    if (user.role === 'Consultant' && n.userId === 'consultant@sap.com') return true;
-    if (user.role === 'Customer' && n.userId === 'customer@sap.com') return true;
-    return false;
+    return n.userId === user.id;
   });
 
   const unreadCount = userNotifications.filter(n => !n.isRead).length;
