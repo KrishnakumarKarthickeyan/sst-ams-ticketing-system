@@ -48,3 +48,6 @@ graphify-out/
 inspect_*.js
 test_*.js
 scratch/
+/scratch/
+query_*.js
+
