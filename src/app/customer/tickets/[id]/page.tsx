@@ -403,6 +403,7 @@ export default function CustomerTicketDetailPage() {
   };
 
   const renderCommentContent = (content: string) => {
+    if (!content) return null;
     const lines = content.split('\n');
     return lines.map((line, idx) => {
       if (line.trim().startsWith('>')) {
@@ -1208,7 +1209,7 @@ export default function CustomerTicketDetailPage() {
                 <h3 className="text-sm font-semibold text-amber-800">Deletion Pending</h3>
               </div>
               <div className="p-5 space-y-3 text-sm">
-                {ticket.deleteRequests.map((req, idx) => (
+                {(ticket.deleteRequests || []).map((req, idx) => (
                   <div key={req.id || idx} className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Requested by</span>
