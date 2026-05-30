@@ -180,9 +180,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { success: false, error: error.message };
         }
 
-        if (data.session) {
-          const sessionUser = await fetchAndSetProfile(data.session);
-          if (sessionUser) {
+        if (data.user) {
+          const fetchProfile = () => supabase
+            .from('profiles')
+            .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
+            .eq('id', data.user.id)
+            .single();
+
+          let { data: profile } = await fetchProfile();
+          if (!profile) {
+            // JWT race on first login: wait briefly and try again
+            await new Promise(r => setTimeout(r, 600));
+            const retry = await fetchProfile();
+            profile = retry.data;
+          }
+
+          if (profile) {
+            if (!profile.is_active) {
+              await supabase.auth.signOut();
+              setUser(null);
+              return { success: false, error: 'Your account has been disabled. Please contact your administrator.' };
+            }
+            const userOrg = profile.organizations as any;
+            const sessionUser: UserSession = {
+              id: data.user.id,
+              email: data.user.email || '',
+              name: profile.full_name,
+              role: profile.role as UserRole,
+              company: userOrg ? userOrg.name : undefined,
+              consultantType: profile.consultant_type as any,
+              modules: profile.sap_modules || [],
+              phoneNumber: profile.phone_number
+            };
+            
+            setUser(sessionUser);
+            setLoading(false);
             return { success: true, user: sessionUser };
           }
         }
