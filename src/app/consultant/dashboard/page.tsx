@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
+import { getConsultantDashboardData, filterTicketsByScope } from '../../../utils/dashboardService';
 import Link from 'next/link';
 import {
   Clock,
@@ -185,11 +186,8 @@ export default function ConsultantDashboardPage() {
 
   // Base tickets assigned to this consultant or where allocated
   const myTickets = useMemo(() => {
-    return tickets.filter(t => 
-      t.assignedConsultant === consultantName || 
-      t.assignments?.some(a => a.consultantName === consultantName || a.consultantId === user?.id)
-    );
-  }, [tickets, consultantName, user?.id]);
+    return filterTicketsByScope(tickets, { type: 'consultant', value: user?.id || '' });
+  }, [tickets, user?.id]);
 
   // Role-specific ticket filter: only show functionally/technically relevant tickets
   const roleTickets = useMemo(() => {
@@ -248,7 +246,7 @@ export default function ConsultantDashboardPage() {
 
       const myApprovedActualLogs = (t.actualHoursLogs || []).filter(ah => 
         (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
-        ah.approvalStatus === 'approved'
+        ah.approvalStatus?.toLowerCase() === 'approved'
       );
 
       myApprovedActualLogs.forEach(ah => {
@@ -296,7 +294,7 @@ export default function ConsultantDashboardPage() {
       clientTickets.forEach(t => {
         const approvedLogs = (t.actualHoursLogs || []).filter(ah => 
           (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
-          ah.approvalStatus === 'approved'
+          ah.approvalStatus?.toLowerCase() === 'approved'
         );
         clientHours += approvedLogs.reduce((sum, ah) => sum + ah.actualHours, 0);
       });
@@ -314,7 +312,7 @@ export default function ConsultantDashboardPage() {
       modTickets.forEach(t => {
         const approvedLogs = (t.actualHoursLogs || []).filter(ah => 
           (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
-          ah.approvalStatus === 'approved'
+          ah.approvalStatus?.toLowerCase() === 'approved'
         );
         modHours += approvedLogs.reduce((sum, ah) => sum + ah.actualHours, 0);
       });
@@ -440,7 +438,7 @@ export default function ConsultantDashboardPage() {
 
       roleTickets.forEach(t => {
         (t.actualHoursLogs || []).forEach(ah => {
-          if ((ah.consultantId === user?.id || ah.consultantId === consultantEmail) && ah.approvalStatus === 'approved' && ah.approvedAt) {
+          if ((ah.consultantId === user?.id || ah.consultantId === consultantEmail) && ah.approvalStatus?.toLowerCase() === 'approved' && ah.approvedAt) {
             const approvedDate = new Date(ah.approvedAt);
             if (approvedDate.getFullYear() === d.getFullYear() && approvedDate.getMonth() === d.getMonth()) {
               actual += ah.actualHours;

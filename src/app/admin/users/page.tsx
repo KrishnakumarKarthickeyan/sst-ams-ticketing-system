@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useTickets } from '../../../context/TicketContext';
 import { User, Plus, ShieldCheck, Mail, ShieldAlert, XCircle } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
@@ -19,13 +20,30 @@ interface UserProfile {
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
-  const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const { profiles } = useTickets();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('Customer');
   const [newOrg, setNewOrg] = useState('Apex Global Industries');
+
+  const [localUsersList, setLocalUsersList] = useState<UserProfile[]>([]);
+
+  const usersList = useMemo(() => {
+    if (isSupabaseConfigured) {
+      return (profiles || []).map((u: any) => ({
+        id: u.id,
+        name: u.full_name,
+        email: u.email,
+        role: u.role,
+        organization: u.organization || (u.organizations as any)?.name || 'Support Studio',
+        active: u.is_active
+      }));
+    } else {
+      return localUsersList;
+    }
+  }, [profiles, localUsersList]);
 
   const getClientSideAuthClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -40,43 +58,25 @@ export default function AdminUsersPage() {
     });
   };
 
-  const fetchUsers = async () => {
-    if (!isSupabaseConfigured || !supabase) return;
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*, organizations(name)');
-      
-      if (error) throw error;
-      if (data) {
-        const mapped = data.map((u: any) => ({
-          id: u.id,
-          name: u.full_name,
-          email: u.email,
-          role: u.role,
-          organization: u.organizations ? u.organizations.name : 'Support Studio',
-          active: u.is_active
-        }));
-        setUsersList(mapped);
-      }
-    } catch (err) {
-      console.error('Failed to fetch users from database', err);
-    }
+  const fetchUsers = () => {
+    // TicketContext handles reactive refetching automatically via Realtime DB changes
   };
 
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      fetchUsers();
-    } else {
+    if (!isSupabaseConfigured) {
       const stored = localStorage.getItem('sst_admin_users');
       if (stored) {
-        setUsersList(JSON.parse(stored));
+        try {
+          setLocalUsersList(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
       } else {
         const defaultUsers: UserProfile[] = [
           { id: 'usr-manager-default', name: 'SAP Manager', email: 'manager@supportstudio.com', role: 'Manager', organization: 'Support Studio', active: true }
         ];
-        setUsersList(defaultUsers);
         localStorage.setItem('sst_admin_users', JSON.stringify(defaultUsers));
+        setLocalUsersList(defaultUsers);
       }
     }
   }, []);
@@ -199,7 +199,7 @@ export default function AdminUsersPage() {
         active: true
       };
       const updated = [...usersList, newUser];
-      setUsersList(updated);
+      setLocalUsersList(updated);
       localStorage.setItem('sst_admin_users', JSON.stringify(updated));
       setNewName('');
       setNewEmail('');
@@ -233,7 +233,7 @@ export default function AdminUsersPage() {
         }
         return u;
       });
-      setUsersList(updated);
+      setLocalUsersList(updated);
       localStorage.setItem('sst_admin_users', JSON.stringify(updated));
     }
   };
@@ -287,7 +287,7 @@ export default function AdminUsersPage() {
         }
       } else {
         const updated = usersList.filter(u => u.id !== id);
-        setUsersList(updated);
+        setLocalUsersList(updated);
         localStorage.setItem('sst_admin_users', JSON.stringify(updated));
       }
     }

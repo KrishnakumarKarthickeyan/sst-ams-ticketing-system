@@ -60,7 +60,7 @@ interface CustomerProfile {
 }
 
 export default function ManagerConsultantsPage() {
-  const { tickets } = useTickets();
+  const { tickets, profiles, contracts } = useTickets();
   const { user } = useAuth();
 
   // Tab State
@@ -70,9 +70,44 @@ export default function ManagerConsultantsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
 
+  // Memoized CRUD lists from TicketContext
+  const consultants = useMemo(() => {
+    return (profiles || [])
+      .filter((p) => p.role === 'Consultant')
+      .map((c) => ({
+        id: c.id,
+        name: c.full_name,
+        role: c.role_title || 'SAP Consultant',
+        email: c.email,
+        modules: c.sap_modules || [],
+        skills: c.skills || 'SAP Specialist',
+        phone: c.phone_number || 'N/A',
+        active: c.is_active,
+        joiningDate: c.created_at ? new Date(c.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        consultantType: (c.consultant_type as 'Functional' | 'Technical') || 'Functional'
+      }));
+  }, [profiles]);
+
+  const customers = useMemo(() => {
+    return (profiles || [])
+      .filter((p) => p.role === 'Customer')
+      .map((c) => {
+        const orgContract = (contracts || []).find((con) => con.customerId === c.organization_id);
+        return {
+          id: c.id,
+          company: c.organization || (c.organizations as any)?.name || 'Apex Global Industries',
+          contact: c.full_name,
+          email: c.email,
+          phone: c.phone_number || 'N/A',
+          contractType: orgContract ? orgContract.contractType : 'Standard Support',
+          expectedHours: orgContract ? orgContract.totalHours : 160,
+          active: c.is_active,
+          csat: 5.0
+        };
+      });
+  }, [profiles, contracts]);
+
   // CRUD state
-  const [consultants, setConsultants] = useState<ConsultantProfile[]>([]);
-  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [activeAction, setActiveAction] = useState<{
     type: 'add_consultant' | 'edit_consultant' | 'add_customer' | 'edit_customer' | 'reset_password' | null;
     targetId: string | null;
@@ -106,95 +141,16 @@ export default function ManagerConsultantsPage() {
     });
   };
 
-  const fetchStakeholders = async () => {
-    if (!isSupabaseConfigured || !supabase) return;
-    try {
-      // Fetch Consultants
-      const { data: dbCons, error: consErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'Consultant');
-      
-      if (!consErr && dbCons) {
-        const mappedCons: ConsultantProfile[] = dbCons.map(c => ({
-          id: c.id,
-          name: c.full_name,
-          role: c.role_title || 'SAP Consultant',
-          email: c.email,
-          modules: c.sap_modules || [],
-          skills: c.skills || 'SAP Specialist',
-          phone: c.phone_number || 'N/A',
-          active: c.is_active,
-          joiningDate: c.created_at ? new Date(c.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          consultantType: (c.consultant_type as 'Functional' | 'Technical') || 'Functional'
-        }));
-        setConsultants(mappedCons);
-      }
-
-      // Fetch Customers
-      const { data: dbCust, error: custErr } = await supabase
-        .from('profiles')
-        .select('*, organizations(*, customer_contracts(*))');
-
-      if (!custErr && dbCust) {
-        // filter by profiles with role 'Customer'
-        const filtered = dbCust.filter(c => c.role === 'Customer');
-        const mappedCust: CustomerProfile[] = filtered.map(c => {
-          const org = c.organizations as any;
-          const contract = org?.customer_contracts?.[0] as any;
-          return {
-            id: c.id,
-            company: org ? org.name : 'Apex Global Industries',
-            contact: c.full_name,
-            email: c.email,
-            phone: c.phone_number || 'N/A',
-            contractType: contract ? contract.contract_type : 'Standard Support',
-            expectedHours: contract ? Number(contract.total_hours) : 160,
-            active: c.is_active,
-            csat: 5.0
-          };
-        });
-        setCustomers(mappedCust);
-      }
-    } catch (err) {
-      console.error('Failed to fetch profiles from database', err);
-    }
-  };
-
-  // --- Initializing from LocalStorage / Supabase to support working CRUD persistence ---
-  useEffect(() => {
-    if (isSupabaseConfigured) {
-      fetchStakeholders();
-    } else {
-      const storedConsultants = localStorage.getItem('sst_stakeholder_consultants');
-      const storedCustomers = localStorage.getItem('sst_stakeholder_customers');
-
-      if (storedConsultants) {
-        setConsultants(JSON.parse(storedConsultants));
-      } else {
-        const defaultConsultants: ConsultantProfile[] = [];
-        setConsultants(defaultConsultants);
-        localStorage.setItem('sst_stakeholder_consultants', JSON.stringify(defaultConsultants));
-      }
-
-      if (storedCustomers) {
-        setCustomers(JSON.parse(storedCustomers));
-      } else {
-        const defaultCustomers: CustomerProfile[] = [];
-        setCustomers(defaultCustomers);
-        localStorage.setItem('sst_stakeholder_customers', JSON.stringify(defaultCustomers));
-      }
-    }
-  }, [user]);
-
   const saveConsultants = (list: ConsultantProfile[]) => {
-    setConsultants(list);
     localStorage.setItem('sst_stakeholder_consultants', JSON.stringify(list));
   };
 
   const saveCustomers = (list: CustomerProfile[]) => {
-    setCustomers(list);
     localStorage.setItem('sst_stakeholder_customers', JSON.stringify(list));
+  };
+
+  const fetchStakeholders = () => {
+    // TicketContext handles reactive refetching automatically via Realtime DB changes
   };
 
   // --- Search / Filter operations ---

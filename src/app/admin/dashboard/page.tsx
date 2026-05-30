@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
+import { getSuperAdminDashboardData } from '../../../utils/dashboardService';
 import Link from 'next/link';
 import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import { 
@@ -71,20 +72,15 @@ export default function AdminDashboardPage() {
   };
 
   // --- 1. GLOBAL PLATFORM OVERVIEW ---
+  const platformStats = useMemo(() => {
+    return getSuperAdminDashboardData(filteredTickets, contracts, profiles);
+  }, [filteredTickets, contracts, profiles]);
+
   const customers = useMemo(() => profiles.filter(p => p.role === 'Customer'), [profiles]);
   const managers = useMemo(() => profiles.filter(p => p.role === 'Manager'), [profiles]);
   const consultants = useMemo(() => profiles.filter(p => p.role === 'Consultant'), [profiles]);
 
-  const pendingApprovalsCount = useMemo(() => {
-    let count = 0;
-    filteredTickets.forEach(t => {
-      count += (t.estimates || []).filter(e => e.estimatedHours > 0 && !t.actualHoursLogs?.some(ah => ah.closureRequestId)).length;
-      count += (t.actualHoursLogs || []).filter(ah => ah.approvalStatus === 'pending').length;
-      count += (t.closureRequests || []).filter(cr => cr.status === 'Pending Manager Approval' || cr.managerApprovalStatus === 'Pending').length;
-      count += (t.unlockRequests || []).filter(ur => ur.status === 'Pending').length;
-    });
-    return count;
-  }, [filteredTickets]);
+  const pendingApprovalsCount = platformStats.totalPendingApprovals;
 
   const globalStatusData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -108,7 +104,7 @@ export default function AdminDashboardPage() {
       const companyTickets = tickets.filter(t => t.organization === c.organizationName);
       
       const approvedHours = companyTickets.reduce((sum, t) => {
-        const approvedLogs = (t.actualHoursLogs || []).filter(ah => ah.approvalStatus === 'approved');
+        const approvedLogs = (t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved');
         return sum + approvedLogs.reduce((s, ah) => s + ah.actualHours, 0);
       }, 0);
 
@@ -223,7 +219,7 @@ export default function AdminDashboardPage() {
       const technicalCount = consTickets.filter(t => t.functionalOrTechnical === 'Technical').length;
 
       const approvedHours = tickets.reduce((sum, t) => {
-        const logs = (t.actualHoursLogs || []).filter(ah => ah.consultantId === cons.id && ah.approvalStatus === 'approved');
+        const logs = (t.actualHoursLogs || []).filter(ah => ah.consultantId === cons.id && ah.approvalStatus?.toLowerCase() === 'approved');
         return sum + logs.reduce((s, ah) => s + ah.actualHours, 0);
       }, 0);
 
@@ -261,7 +257,7 @@ export default function AdminDashboardPage() {
 
       let pendingAudits = 0;
       mgrTickets.forEach(t => {
-        pendingAudits += (t.actualHoursLogs || []).filter(ah => ah.approvalStatus === 'pending').length;
+        pendingAudits += (t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'pending').length;
         pendingAudits += (t.closureRequests || []).filter(cr => cr.status === 'Pending Manager Approval' || cr.managerApprovalStatus === 'Pending').length;
       });
 
@@ -304,7 +300,7 @@ export default function AdminDashboardPage() {
       const openTicketsCount = orgTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
 
       const approvedHours = orgTickets.reduce((sum, t) => {
-        const logs = (t.actualHoursLogs || []).filter(ah => ah.approvalStatus === 'approved');
+        const logs = (t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved');
         return sum + logs.reduce((s, ah) => s + ah.actualHours, 0);
       }, 0);
 
@@ -347,7 +343,7 @@ export default function AdminDashboardPage() {
 
     tickets.forEach(t => {
       (t.actualHoursLogs || []).forEach(ah => {
-        if (ah.approvalStatus === 'approved') {
+        if (ah.approvalStatus?.toLowerCase() === 'approved') {
           const hours = ah.actualHours;
           if (ah.billable) {
             totalBillable += hours;
@@ -567,28 +563,28 @@ export default function AdminDashboardPage() {
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm">
                 <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">1. Registered Customers</span>
                 <div className="mt-2 flex justify-between items-baseline">
-                  <span className="text-2xl font-bold font-mono text-zinc-950">{customers.length}</span>
+                  <span className="text-2xl font-bold font-mono text-zinc-950">{platformStats.totalCustomers}</span>
                   <Building2 size={16} className="text-zinc-400" />
                 </div>
               </Card>
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm">
                 <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">2. Delivery Managers</span>
                 <div className="mt-2 flex justify-between items-baseline">
-                  <span className="text-2xl font-bold font-mono text-zinc-950">{managers.length}</span>
+                  <span className="text-2xl font-bold font-mono text-zinc-950">{platformStats.totalManagers}</span>
                   <UserCheck size={16} className="text-zinc-400" />
                 </div>
               </Card>
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm">
                 <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">3. Support Consultants</span>
                 <div className="mt-2 flex justify-between items-baseline">
-                  <span className="text-2xl font-bold font-mono text-zinc-950">{consultants.length}</span>
+                  <span className="text-2xl font-bold font-mono text-zinc-950">{platformStats.totalConsultants}</span>
                   <Users size={16} className="text-zinc-400" />
                 </div>
               </Card>
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm">
                 <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">4. Total Scope Tickets</span>
                 <div className="mt-2 flex justify-between items-baseline">
-                  <span className="text-2xl font-bold font-mono text-zinc-950">{filteredTickets.length}</span>
+                  <span className="text-2xl font-bold font-mono text-zinc-950">{platformStats.totalTickets}</span>
                   <Ticket size={16} className="text-zinc-400" />
                 </div>
               </Card>

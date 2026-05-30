@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
+import { getCustomerDashboardData, filterTicketsByScope, getSlaStatus, getTicketAgeDays } from '../../../utils/dashboardService';
 import Link from 'next/link';
 import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import { BRAND_CONFIG } from '../../../config/branding';
@@ -128,57 +129,34 @@ export default function CustomerDashboardPage() {
   const customerCompany = user?.company || 'Apex Global Industries';
 
   const companyTickets = useMemo(() => {
-    return tickets.filter(
-      t => t.organization === customerCompany && t.softDeleteStatus !== 'Archived'
-    );
+    return filterTicketsByScope(tickets, { type: 'customer', value: customerCompany });
   }, [tickets, customerCompany]);
 
-  const now = Date.now();
+  const dashboardData = useMemo(() => {
+    return getCustomerDashboardData(customerCompany, tickets, contracts);
+  }, [customerCompany, tickets, contracts]);
 
-  // Helper: Calculate Ticket Age in Days
-  const getTicketAgeDays = (t: any) => {
-    const start = new Date(t.createdAt).getTime();
-    const end = t.status === 'Closed' || t.status === 'Resolved'
-      ? new Date(t.resolvedAt || t.closedAt || now).getTime()
-      : now;
-    return Math.max(0, (end - start) / (1000 * 60 * 60 * 24));
-  };
-
-  // Helper: Sum Approved actual hours logged on ticket
-  const getConsumedHours = (t: any) => {
-    return (t.actualHoursLogs || [])
-      .filter((ah: any) => ah.approvalStatus === 'approved')
-      .reduce((sum: number, ah: any) => sum + ah.actualHours, 0);
-  };
-
-  // Helper: Determine SLA status for incident tickets
-  const getSlaStatus = (t: any) => {
-    const isInc = t.ticketType === 'Incident' || !t.ticketType;
-    if (!isInc || t.slaDueAt === 'SLA Not Applicable') return 'Not Applicable';
-
-    const start = new Date(t.createdAt).getTime();
-    const due = new Date(t.slaDueAt).getTime();
-    const end = t.status === 'Resolved' || t.status === 'Closed'
-      ? new Date(t.resolvedAt || t.closedAt || now).getTime()
-      : now;
-
-    if (end > due) return 'Breached';
-    
-    // SLA warning: remaining time is less than 30% of total SLA time
-    const totalSlaTime = due - start;
-    const remainingTime = due - now;
-    if (t.status !== 'Resolved' && t.status !== 'Closed' && remainingTime > 0 && (remainingTime / totalSlaTime) <= 0.3) {
-      return 'Warning';
-    }
-    
-    return 'Healthy';
-  };
-
-  // --- STATS COMPUTATION (20 KPIs) ---
+  const {
+    openTickets,
+    closedTickets,
+    reopenedTickets: reopenedTicketsCount,
+    escalatedTickets,
+    avgTicketAgeDays,
+    avgResolutionTimeHours,
+    slaHealthy,
+    slaWarning,
+    slaBreached,
+    unassignedTickets,
+    onHoldTickets,
+    raisedToSapTickets,
+    customerActionPendingTickets,
+    resolvedTickets,
+    criticalTickets,
+    remainingHours,
+    usagePercentage
+  } = dashboardData;
 
   const totalTickets = companyTickets.length;
-  const openTickets = companyTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
-  const unassignedTickets = companyTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').length;
   const inProgressTickets = companyTickets.filter(t => 
     t.status === 'In Progress' ||
     t.status === 'In Progress - Functional' ||
@@ -188,41 +166,8 @@ export default function CustomerDashboardPage() {
   ).length;
   const technicalTickets = companyTickets.filter(t => t.functionalOrTechnical === 'Technical').length;
   const functionalTickets = companyTickets.filter(t => t.functionalOrTechnical === 'Functional' || !t.functionalOrTechnical).length;
-  const onHoldTickets = companyTickets.filter(t => t.status === 'Waiting for Customer' || t.status === 'Waiting for Internal Team').length;
-  const raisedToSapTickets = companyTickets.filter(t => t.raisedToSap).length;
-  const customerActionPendingTickets = companyTickets.filter(t => t.status === 'Waiting for Customer' || t.customerActionRequired).length;
-  const reopenedTicketsCount = companyTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length;
-  const resolvedTickets = companyTickets.filter(t => t.status === 'Resolved').length;
-  const closedTickets = companyTickets.filter(t => t.status === 'Closed').length;
-  const criticalTickets = companyTickets.filter(t => t.priority === 'Critical').length;
-
-  // SLA Stats (Incident tickets only)
-  const incidentTickets = companyTickets.filter(t => t.ticketType === 'Incident' || !t.ticketType);
-  const slaHealthy = incidentTickets.filter(t => getSlaStatus(t) === 'Healthy').length;
-  const slaWarning = incidentTickets.filter(t => getSlaStatus(t) === 'Warning').length;
-  const slaBreached = incidentTickets.filter(t => getSlaStatus(t) === 'Breached').length;
-
-  // Average Ticket Age (Open tickets only)
-  const openTicketsList = companyTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
-  const avgTicketAgeDays = openTicketsList.length > 0
-    ? openTicketsList.reduce((sum, t) => sum + getTicketAgeDays(t), 0) / openTicketsList.length
-    : 0;
-
-  // Average Resolution Time (Resolved/Closed tickets only)
-  const resolvedClosedList = companyTickets.filter(t => (t.status === 'Resolved' || t.status === 'Closed') && t.resolvedAt);
-  const avgResolutionTimeHours = resolvedClosedList.length > 0
-    ? resolvedClosedList.reduce((sum, t) => {
-        const diffMs = new Date(t.resolvedAt!).getTime() - new Date(t.createdAt).getTime();
-        return sum + (diffMs / (1000 * 60 * 60));
-      }, 0) / resolvedClosedList.length
-    : 0;
-
-  // Quoted vs Consumed Hours totals
   const totalQuotedHours = companyTickets.reduce((sum, t) => sum + (t.quotedHours || 0), 0);
-  const totalConsumedHours = companyTickets.reduce((sum, t) => sum + getConsumedHours(t), 0);
-
-  // Remaining and Consumption %
-  const remainingHours = Math.max(0, totalQuotedHours - totalConsumedHours);
+  const totalConsumedHours = dashboardData.totalApprovedHoursUsed;
   const consumptionPercentage = totalQuotedHours > 0 ? (totalConsumedHours / totalQuotedHours) * 100 : 0;
 
   // Active Contract details for verification
@@ -252,54 +197,20 @@ export default function CustomerDashboardPage() {
       }
     }
 
-    // Total Contracted Hours
-    const totalHours = activeContract.totalHours;
-
-    // Monthly Allocated Hours
-    const monthlyBudgetHours = activeContract.monthlyBudgetHours;
-
-    // Total Utilized Hours (Sum of all approved actual hours for the company's tickets)
-    const totalUtilizedHours = companyTickets.reduce((sum, t) => {
-      const approvedLogs = (t.actualHoursLogs || []).filter((ah: any) => ah.approvalStatus === 'approved');
-      return sum + approvedLogs.reduce((s: number, ah: any) => s + ah.actualHours, 0);
-    }, 0);
-
-    // Total Remaining Hours
-    const totalRemainingHours = Math.max(0, totalHours - totalUtilizedHours);
-
-    // Current Month Utilized Hours
-    const currentMonthUtilizedHours = companyTickets.reduce((sum, t) => {
-      const approvedLogs = (t.actualHoursLogs || []).filter((ah: any) => {
-        if (ah.approvalStatus !== 'approved') return false;
-        if (!ah.approvedAt) return false;
-        const approvedDate = new Date(ah.approvedAt);
-        const currentDate = new Date();
-        return approvedDate.getMonth() === currentDate.getMonth() &&
-               approvedDate.getFullYear() === currentDate.getFullYear();
-      });
-      return sum + approvedLogs.reduce((s: number, ah: any) => s + ah.actualHours, 0);
-    }, 0);
-
-    // Current Month Remaining Hours
-    const currentMonthRemainingHours = Math.max(0, monthlyBudgetHours - currentMonthUtilizedHours);
-
-    // Usage Percentage
-    const usagePercentage = totalHours > 0 ? (totalUtilizedHours / totalHours) * 100 : 0;
-
     return {
       startDate: activeContract.startDate,
       endDate: activeContract.endDate,
       durationDays,
       expiryStatus,
-      totalHours,
-      monthlyBudgetHours,
-      totalUtilizedHours,
-      totalRemainingHours,
-      currentMonthUtilizedHours,
-      currentMonthRemainingHours,
-      usagePercentage
+      totalHours: dashboardData.totalContractedHours,
+      monthlyBudgetHours: dashboardData.monthlyAllocatedHours,
+      totalUtilizedHours: dashboardData.totalApprovedHoursUsed,
+      totalRemainingHours: dashboardData.remainingHours,
+      currentMonthUtilizedHours: dashboardData.monthlyApprovedActualHoursUsed,
+      currentMonthRemainingHours: dashboardData.monthlyRemainingHours,
+      usagePercentage: dashboardData.usagePercentage
     };
-  }, [activeContract, companyTickets]);
+  }, [activeContract, dashboardData]);
 
   // --- SECTIONS DATA SOURCES ---
 
@@ -378,6 +289,7 @@ export default function CustomerDashboardPage() {
 
   // Relative Time Helper
   const formatTimeAgo = (dateStr: string) => {
+    const now = Date.now();
     const diffMs = now - new Date(dateStr).getTime();
     if (diffMs < 0) return 'Just now';
     const mins = Math.floor(diffMs / 65000);

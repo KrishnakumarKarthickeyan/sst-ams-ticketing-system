@@ -33,40 +33,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const isLoggingInRef = React.useRef(false);
+  const activeRef = React.useRef(true);
+  const activeProfileFetchRef = React.useRef<Promise<UserSession | null> | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    let fetchingUserId: string | null = null;
-
-    const setSessionCookie = (session: any) => {
-      if (typeof window !== 'undefined') {
-        if (session && session.access_token) {
-          // Set access token cookie for Next.js middleware routing
-          const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-          document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${session.expires_in || 3600}; SameSite=Lax${secureFlag}`;
-        } else {
-          document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        }
+  const setSessionCookie = (session: any) => {
+    if (typeof window !== 'undefined') {
+      if (session && session.access_token) {
+        const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${session.expires_in || 3600}; SameSite=Lax${secureFlag}`;
+      } else {
+        document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       }
-    };
+    }
+  };
 
-    const fetchAndSetProfile = async (session: any) => {
-      if (!session || !active) {
-        setSessionCookie(null);
-        return null;
-      }
-      if (isLoggingInRef.current) return null;
-      
-      // Prevent duplicate fetches if profile is already loaded and matches current session user
-      if (user && user.id === session.user.id) {
-        setLoading(false);
-        return user;
-      }
+  const fetchAndSetProfile = async (session: any) => {
+    if (!session || !activeRef.current) {
+      setSessionCookie(null);
+      return null;
+    }
+    
+    // Prevent duplicate fetches if profile is already loaded and matches current session user
+    if (user && user.id === session.user.id) {
+      setLoading(false);
+      return user;
+    }
 
-      if (fetchingUserId === session.user.id) return null;
-      fetchingUserId = session.user.id;
+    if (activeProfileFetchRef.current) {
+      return activeProfileFetchRef.current;
+    }
 
+    const fetchPromise = (async () => {
       // Sync the cookie to server-side middleware
       setSessionCookie(session);
 
@@ -83,23 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
 
-        const isTimeout = error && error.message === 'Profile fetch timeout';
-        const isNetworkError = error && (error.status === 0 || error.message?.includes('Failed to fetch') || error.message?.includes('network'));
-
-        if (isTimeout || isNetworkError) {
-          console.warn("Temporary network issue or database waking up. Retrying...");
-          fetchingUserId = null;
-          setLoading(false);
-          return null;
-        }
-
         if (error || !profile || !profile.is_active) {
           console.error("Failed or inactive user profile. Clearing auth session:", error);
-          
           await supabase!.auth.signOut();
           setSessionCookie(null);
           setUser(null);
-          fetchingUserId = null;
           setLoading(false);
           return null;
         }
@@ -117,7 +102,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         
         setUser(sessionUser);
-        fetchingUserId = null;
         setLoading(false);
         return sessionUser;
 
@@ -127,16 +111,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSessionCookie(null);
         setUser(null);
         setLoading(false);
+        return null;
+      } finally {
+        activeProfileFetchRef.current = null;
       }
-      fetchingUserId = null;
-      return null;
-    };
+    })();
+
+    activeProfileFetchRef.current = fetchPromise;
+    return fetchPromise;
+  };
+
+  useEffect(() => {
+    activeRef.current = true;
+    let unsubscribeFn: (() => void) | null = null;
 
     const initAuth = async () => {
       if (isSupabaseConfigured && supabase) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          if (active) {
+          if (activeRef.current) {
             if (session) {
               await fetchAndSetProfile(session);
             } else {
@@ -147,15 +140,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (err) {
           console.error('Error loading initial session:', err);
-          if (active) {
+          if (activeRef.current) {
             setUser(null);
             setLoading(false);
           }
         }
 
-        if (active) {
+        if (activeRef.current) {
           const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (!active) return;
+            if (!activeRef.current) return;
             if (session) {
               await fetchAndSetProfile(session);
             } else {
@@ -172,12 +165,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-
-    let unsubscribeFn: (() => void) | null = null;
     initAuth();
 
     return () => {
-      active = false;
+      activeRef.current = false;
       if (unsubscribeFn) {
         unsubscribeFn();
       }
@@ -186,7 +177,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password?: string): Promise<{ success: boolean; user?: UserSession; error?: string }> => {
     const normalizedEmail = email.trim().toLowerCase();
-    isLoggingInRef.current = true;
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -203,59 +193,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data, error } = await Promise.race([loginPromise, timeoutPromise]) as any;
 
         if (error) {
-          isLoggingInRef.current = false;
           return { success: false, error: error.message };
         }
 
-        if (data.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
-            .eq('id', data.user.id)
-            .single();
-
-          if (profile) {
-            if (!profile.is_active) {
-              await supabase.auth.signOut();
-              setUser(null);
-              isLoggingInRef.current = false;
-              return { success: false, error: 'Your account has been disabled. Please contact your administrator.' };
-            }
-            const userOrg = profile.organizations as any;
-            const sessionUser: UserSession = {
-              id: data.user.id,
-              email: data.user.email || '',
-              name: profile.full_name || data.user.email?.split('@')[0] || 'User',
-              role: (profile.role as UserRole) || 'Customer',
-              company: userOrg ? userOrg.name : undefined,
-              consultantType: profile.consultant_type as any,
-              modules: profile.sap_modules || [],
-              phoneNumber: profile.phone_number
-            };
-            
-            if (typeof window !== 'undefined' && data.session) {
-              // Sync the cookie to server-side middleware
-              const exp = data.session.expires_in || 3600;
-              const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-              document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${exp}; SameSite=Lax${secureFlag}`;
-            }
-            
-            setUser(sessionUser);
-            setLoading(false);
-            isLoggingInRef.current = false;
+        if (data.session) {
+          const sessionUser = await fetchAndSetProfile(data.session);
+          if (sessionUser) {
             return { success: true, user: sessionUser };
           }
         }
-        isLoggingInRef.current = false;
         return { success: false, error: 'User profile mapping failed.' };
       } catch (e: any) {
-        isLoggingInRef.current = false;
         return { success: false, error: e.message || 'An error occurred during authentication.' };
-      } finally {
-        isLoggingInRef.current = false;
       }
     } else {
-      isLoggingInRef.current = false;
       return { success: false, error: 'Database auth server is not online.' };
     }
   };

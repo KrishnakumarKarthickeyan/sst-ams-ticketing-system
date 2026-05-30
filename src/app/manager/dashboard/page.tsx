@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
+import { getManagerDashboardData, filterTicketsByScope } from '../../../utils/dashboardService';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
@@ -86,6 +87,7 @@ export default function ManagerDashboardPage() {
     tickets,
     loading,
     profiles,
+    contracts,
     approveEffortLog,
     approveClosureRequest,
     rejectClosureRequest,
@@ -312,7 +314,7 @@ export default function ManagerDashboardPage() {
       ).length;
 
       const loggedHours = filteredDashboardTickets.flatMap(t => t.actualHoursLogs || [])
-        .filter(ah => (ah.consultantId === consultant.id || ah.approvedBy === consultant.name) && ah.approvalStatus === 'approved')
+        .filter(ah => (ah.consultantId === consultant.id || ah.approvedBy === consultant.name) && ah.approvalStatus?.toLowerCase() === 'approved')
         .reduce((sum, ah) => sum + ah.actualHours, 0);
 
       const actualLogged = loggedHours;
@@ -343,34 +345,36 @@ export default function ManagerDashboardPage() {
     const ticketsList = filteredDashboardTickets;
 
     // --- 1. EXECUTIVE HEALTH OVERVIEW ---
-    const totalCustomersCount = managedCustomersCount;
-    const activeCustomersCount = managedCustomersCount;
+    const managerCore = getManagerDashboardData(ticketsList, contracts, profiles);
+
+    const totalCustomersCount = managerCore.totalClients;
+    const activeCustomersCount = managerCore.totalClients;
     const customersWithOpenTickets = new Set(ticketsList.filter(t => t.status !== 'Closed').map(t => t.organization)).size;
     const customersWithCriticalTickets = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.priority === 'Critical').map(t => t.organization)).size;
     const customersWithSlaBreaches = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime).map(t => t.organization)).size;
     const customersAwaitingClosure = new Set(ticketsList.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').map(t => t.organization)).size;
 
-    const openCount = ticketsList.filter(t => t.status !== 'Closed').length;
-    const unassignedCount = ticketsList.filter(t => !t.assignedConsultant && (!t.assignments || t.assignments.length === 0) && t.status !== 'Closed').length;
+    const openCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
+    const unassignedCount = managerCore.unassignedTickets;
     const reqGatheringCount = ticketsList.filter(t => t.status === 'Requirement Gathering').length;
-    const ipFuncCount = ticketsList.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length;
-    const ipTechCount = ticketsList.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length;
-    const custActionCount = ticketsList.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer').length;
+    const ipFuncCount = managerCore.inProgressFunctional;
+    const ipTechCount = managerCore.inProgressTechnical;
+    const custActionCount = managerCore.customerAction;
     const onHoldCount = ticketsList.filter(t => t.status === 'Waiting for Internal Team' || (t.status as string) === 'On Hold').length;
-    const raisedToSapCount = ticketsList.filter(t => t.status === 'Raised to SAP' || t.raisedToSap).length;
-    const requestClosureCount = ticketsList.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length;
-    const closedCount = ticketsList.filter(t => t.status === 'Closed').length;
-    const reopenedCount = ticketsList.filter(t => t.status === 'Reopened').length;
+    const raisedToSapCount = managerCore.raisedToSap;
+    const requestClosureCount = managerCore.requestClosure;
+    const closedCount = managerCore.closed;
+    const reopenedCount = managerCore.reopened;
 
     const functionalConsultantsCount = consultantsDbList.filter(c => managedConsultantsList.includes(c.name) && c.type === 'Functional').length;
     const technicalConsultantsCount = consultantsDbList.filter(c => managedConsultantsList.includes(c.name) && c.type === 'Technical').length;
-    const totalConsultantsCount = managedConsultantsCount;
+    const totalConsultantsCount = managerCore.totalConsultants;
 
     const estPendingApproval = ticketsList.flatMap(t => t.hourEstimates || []).filter(e => e.status === 'Submitted').length;
-    const actPendingApproval = ticketsList.flatMap(t => t.efforts || []).filter(e => e.status === 'Pending' || e.status === 'Pending Approval').length;
-    const closurePendingApproval = ticketsList.flatMap(t => t.closureRequests || []).filter(c => c.status === 'Pending Manager Approval').length;
+    const actPendingApproval = managerCore.pendingEfforts;
+    const closurePendingApproval = managerCore.pendingClosure;
     const reopenPendingApproval = ticketsList.filter(t => t.status === 'Reopen Requested').length;
-    const resourceChangePending = ticketsList.flatMap(t => t.unlockRequests || []).filter(u => u.status === 'Pending').length;
+    const resourceChangePending = managerCore.pendingUnlocks;
 
     const slaHealthy = ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() >= nowTime).length;
     const slaWarning = ticketsList.filter(t => {
@@ -440,7 +444,7 @@ export default function ManagerDashboardPage() {
         }
       });
       (t.actualHoursLogs || []).forEach(ah => {
-        if (ah.approvalStatus === 'approved') {
+        if (ah.approvalStatus?.toLowerCase() === 'approved') {
           totalActHrs += ah.actualHours;
           if (ah.consultantType === 'Functional') {
             funcActHrs += ah.actualHours;
@@ -1560,7 +1564,7 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={consultantsLoad.map(c => {
                       const logged = filteredDashboardTickets.flatMap(t => t.actualHoursLogs || [])
-                        .filter(ah => (ah.consultantId === c.id || ah.approvedBy === c.name) && ah.approvalStatus === 'approved')
+                        .filter(ah => (ah.consultantId === c.id || ah.approvedBy === c.name) && ah.approvalStatus?.toLowerCase() === 'approved')
                         .reduce((sum, ah) => sum + ah.actualHours, 0);
                       return { name: c.name, Expected: workingDaysInMonth * 8, Logged: logged || 0 };
                     })} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -1882,7 +1886,7 @@ export default function ManagerDashboardPage() {
                     <tbody className="divide-y divide-zinc-150">
                       {SAP_MODULES_LIST.map(m => {
                         const mTickets = filteredDashboardTickets.filter(t => t.sapModule === m);
-                        const mHours = mTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0);
+                        const mHours = mTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0);
                         const mCritical = mTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed').length;
 
                         return (
