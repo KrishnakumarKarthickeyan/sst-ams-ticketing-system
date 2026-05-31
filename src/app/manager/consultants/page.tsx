@@ -128,6 +128,15 @@ export default function ManagerConsultantsPage() {
   const [formPassword, setFormPassword] = useState('');
   const [passwordResetValue, setPasswordResetValue] = useState('password123');
 
+  // Extended Customer Form States
+  const [formAddress, setFormAddress] = useState('');
+  const [formIndustry, setFormIndustry] = useState('');
+  const [formContractStartDate, setFormContractStartDate] = useState('');
+  const [formContractEndDate, setFormContractEndDate] = useState('');
+  const [formTotalContractHours, setFormTotalContractHours] = useState('160');
+  const [formContractStatus, setFormContractStatus] = useState('Active');
+  const [formLoginEnabled, setFormLoginEnabled] = useState(true);
+
   const getClientSideAuthClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -392,7 +401,8 @@ export default function ManagerConsultantsPage() {
       const toastId = toast.loading(`Registering customer user ${formEmail}...`);
       try {
         let authId = '';
-        const hoursNum = parseFloat(formHours) || 160.00;
+        const hoursNum = parseFloat(formTotalContractHours) || 160.00;
+        const monthlyHoursNum = parseFloat(formHours) || 15.00;
 
         // 1. Try server-side provisioning (Service Role client)
         const authRes = await provisionUser({
@@ -403,7 +413,14 @@ export default function ManagerConsultantsPage() {
           companyName: formCompany,
           contractType: formContract || 'AMS',
           contractHours: hoursNum,
-          phoneNumber: formPhone || 'N/A'
+          phoneNumber: formPhone || 'N/A',
+          address: formAddress || undefined,
+          industry: formIndustry || undefined,
+          contractStartDate: formContractStartDate || undefined,
+          contractEndDate: formContractEndDate || undefined,
+          monthlyAllocatedHours: monthlyHoursNum,
+          contractStatus: formContractStatus,
+          loginEnabled: formLoginEnabled
         });
 
         if (authRes.error === 'NO_SERVICE_KEY') {
@@ -427,7 +444,7 @@ export default function ManagerConsultantsPage() {
             throw new Error('This email address may already be registered. Please try a different email or sign in.');
           }
 
-          // 3. Resolve or insert organization
+          // 3. Resolve or insert organization with address/industry
           let orgId = '';
           const { data: existingOrg } = await supabase
             .from('organizations')
@@ -437,10 +454,18 @@ export default function ManagerConsultantsPage() {
 
           if (existingOrg) {
             orgId = existingOrg.id;
+            await supabase.from('organizations').update({
+              address: formAddress || null,
+              industry: formIndustry || null
+            }).eq('id', orgId);
           } else {
             const { data: newOrg, error: orgErr } = await supabase
               .from('organizations')
-              .insert({ name: formCompany.trim() })
+              .insert({
+                name: formCompany.trim(),
+                address: formAddress || null,
+                industry: formIndustry || null
+              })
               .select('id')
               .single();
             if (orgErr) throw new Error(orgErr.message);
@@ -453,7 +478,7 @@ export default function ManagerConsultantsPage() {
             email: formEmail.trim().toLowerCase(),
             full_name: formContact,
             role: 'Customer',
-            is_active: true,
+            is_active: formLoginEnabled,
             organization_id: orgId,
             phone_number: formPhone || 'N/A'
           });
@@ -464,12 +489,13 @@ export default function ManagerConsultantsPage() {
           const { error: contractErr } = await supabase.from('customer_contracts').insert({
             organization_id: orgId,
             contract_type: (formContract || 'AMS') as any,
-            start_date: new Date().toISOString().split('T')[0],
-            end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            start_date: formContractStartDate || new Date().toISOString().split('T')[0],
+            end_date: formContractEndDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             total_hours: hoursNum,
             used_hours: 0.00,
-            monthly_budget_hours: Math.round(hoursNum / 12) || 15.00,
-            is_active: true
+            monthly_budget_hours: monthlyHoursNum,
+            is_active: formContractStatus === 'Active',
+            status: formContractStatus
           });
 
           if (contractErr) console.warn('Non-blocking contract error:', contractErr.message);
@@ -496,8 +522,8 @@ export default function ManagerConsultantsPage() {
         email: formEmail,
         phone: formPhone || 'N/A',
         contractType: formContract || 'Standard Support',
-        expectedHours: parseInt(formHours, 10) || 160,
-        active: true,
+        expectedHours: parseInt(formTotalContractHours, 10) || 160,
+        active: formLoginEnabled,
         csat: 5.0
       };
       saveCustomers([...customers, newCustomer]);
@@ -683,6 +709,13 @@ export default function ManagerConsultantsPage() {
     setFormHours('160');
     setFormPassword('');
     setPasswordResetValue('password123');
+    setFormAddress('');
+    setFormIndustry('');
+    setFormContractStartDate('');
+    setFormContractEndDate('');
+    setFormTotalContractHours('160');
+    setFormContractStatus('Active');
+    setFormLoginEnabled(true);
   };
 
   // --- Audit Trails CSV Downloader ---
@@ -1259,29 +1292,81 @@ export default function ManagerConsultantsPage() {
               {/* CUSTOMER FORM */}
               {(activeAction.type === 'add_customer' || activeAction.type === 'edit_customer') && (
                 <form onSubmit={activeAction.type === 'add_customer' ? handleAddCustomer : handleEditCustomerSubmit} className="space-y-3.5 text-xs">
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Company Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formCompany}
-                      onChange={(e) => setFormCompany(e.target.value)}
-                      placeholder="e.g. Apex Global Industries"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Main Contact Agent Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formContact}
-                      onChange={(e) => setFormContact(e.target.value)}
-                      placeholder="e.g. Sarah Jenkins"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                    />
-                  </div>
+                  {/* Row 1: Company Details */}
                   <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Company Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={formCompany}
+                        onChange={(e) => setFormCompany(e.target.value)}
+                        placeholder="e.g. Apex Global Industries"
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Industry</label>
+                      <input
+                        type="text"
+                        value={formIndustry}
+                        onChange={(e) => setFormIndustry(e.target.value)}
+                        placeholder="e.g. Manufacturing, Energy"
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 2: Main Contact details */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1 col-span-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Main Contact Agent</label>
+                      <input
+                        type="text"
+                        required
+                        value={formContact}
+                        onChange={(e) => setFormContact(e.target.value)}
+                        placeholder="e.g. Sarah Jenkins"
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      />
+                    </div>
+                    <div className="space-y-1 col-span-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        value={formEmail}
+                        onChange={(e) => setFormEmail(e.target.value)}
+                        placeholder="e.g. customer@sap.com"
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      />
+                    </div>
+                    <div className="space-y-1 col-span-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Phone</label>
+                      <input
+                        type="text"
+                        value={formPhone}
+                        onChange={(e) => setFormPhone(e.target.value)}
+                        placeholder="e.g. +1 555-0199"
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 3: Address */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Address</label>
+                    <input
+                      type="text"
+                      value={formAddress}
+                      onChange={(e) => setFormAddress(e.target.value)}
+                      placeholder="e.g. 100 Main St, Suite 400, New York, NY"
+                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                    />
+                  </div>
+
+                  {/* Row 4: Contract Details Part 1 */}
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract SLA Type</label>
                       <select
@@ -1289,13 +1374,23 @@ export default function ManagerConsultantsPage() {
                         onChange={(e) => setFormContract(e.target.value)}
                         className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-sans"
                       >
-                        <option value="AMS">AMS</option>
-                        <option value="Implementation Support">Implementation Support</option>
-                        <option value="Rollout Support">Rollout Support</option>
-                        <option value="Migration Support">Migration Support</option>
+                        <option value="AMS">AMS Support</option>
+                        <option value="Implementation Support">Implementation</option>
+                        <option value="Rollout Support">Rollout</option>
+                        <option value="Migration Support">Migration</option>
                         <option value="Upgrade Support">Upgrade Support</option>
                         <option value="Hypercare Support">Hypercare Support</option>
                       </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Total Contract Hours</label>
+                      <input
+                        type="number"
+                        value={formTotalContractHours}
+                        onChange={(e) => setFormTotalContractHours(e.target.value)}
+                        placeholder="e.g. 1920"
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none"
+                      />
                     </div>
                     <div className="space-y-1">
                       <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Monthly Hour Cap</label>
@@ -1308,40 +1403,70 @@ export default function ManagerConsultantsPage() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      placeholder="e.g. customer@sap.com"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                    />
-                  </div>
-                  {activeAction.type === 'add_customer' && (
+
+                  {/* Row 5: Contract Details Part 2 */}
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Login Password</label>
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract Start Date</label>
                       <input
-                        type="password"
-                        required
-                        value={formPassword}
-                        onChange={(e) => setFormPassword(e.target.value)}
-                        placeholder="Assign a secure password"
+                        type="date"
+                        value={formContractStartDate}
+                        onChange={(e) => setFormContractStartDate(e.target.value)}
                         className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
                       />
                     </div>
-                  )}
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Phone</label>
-                    <input
-                      type="text"
-                      value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
-                      placeholder="e.g. +1 555-0199"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none"
-                    />
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract End Date</label>
+                      <input
+                        type="date"
+                        value={formContractEndDate}
+                        onChange={(e) => setFormContractEndDate(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract Status</label>
+                      <select
+                        value={formContractStatus}
+                        onChange={(e) => setFormContractStatus(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-sans"
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Suspended">Suspended</option>
+                        <option value="Expired">Expired</option>
+                        <option value="Pending">Pending</option>
+                      </select>
+                    </div>
                   </div>
+
+                  {/* Row 6: Passwords & Access Control */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {activeAction.type === 'add_customer' && (
+                      <div className="space-y-1">
+                        <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Temporary Password</label>
+                        <input
+                          type="password"
+                          required
+                          value={formPassword}
+                          onChange={(e) => setFormPassword(e.target.value)}
+                          placeholder="Assign a secure password"
+                          className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Login Enabled</label>
+                      <select
+                        value={formLoginEnabled ? 'true' : 'false'}
+                        onChange={(e) => setFormLoginEnabled(e.target.value === 'true')}
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-sans"
+                      >
+                        <option value="true">Enabled</option>
+                        <option value="false">Disabled / Locked</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 mt-4">
                     <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
                     <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">

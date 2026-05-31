@@ -409,17 +409,74 @@ export default function ManagerDashboardPage() {
     const ticketsAging30Days = ticketsList.filter(t => t.status !== 'Closed' && (nowTime - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24) >= 30);
 
     // --- 3. CUSTOMER RISK AND HEALTH INDEX ---
-    // Risk calculated dynamically per organization
-    const customerRiskMap = new Map<string, { critical: number; breached: number; reopened: number; lowCSAT: number; score: number }>();
+    // Health and risk calculated dynamically per organization
+    const customerRiskMap = new Map<string, {
+      critical: number;
+      breached: number;
+      reopened: number;
+      lowCSAT: number;
+      score: number;
+      openTickets: number;
+      closedTickets: number;
+      escalated: number;
+      csat: number;
+      startDate: string;
+      endDate: string;
+      contractType: string;
+      contractStatus: string;
+      totalHours: number;
+      monthlyHours: number;
+      approvedHours: number;
+      remainingHours: number;
+      utilizationPercent: number;
+    }>();
     customersList.forEach(org => {
       const orgTickets = ticketsList.filter(t => t.organization === org);
-      const crit = orgTickets.filter(t => t.priority === 'Critical').length;
+      const crit = orgTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed').length;
       const breached = orgTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime).length;
       const reop = orgTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length;
       const lowC = orgTickets.filter(t => t.rating && t.rating.score <= 2).length;
-      
-      const riskScore = (crit * 3) + (breached * 4) + (reop * 2) + (lowC * 3);
-      customerRiskMap.set(org, { critical: crit, breached, reopened: reop, lowCSAT: lowC, score: riskScore });
+      const openTick = orgTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
+      const closedTick = orgTickets.filter(t => t.status === 'Closed').length;
+      const esc = orgTickets.filter(t => t.escalationFlag).length;
+
+      const ratings = orgTickets.filter(t => t.rating).map(t => t.rating!.score);
+      const csat = ratings.length > 0 ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length) : 5.0;
+
+      const contract = (contracts || []).find(con => con.organizationName === org);
+      const startDate = contract?.startDate || 'N/A';
+      const endDate = contract?.endDate || 'N/A';
+      const contractType = contract?.contractType || 'N/A';
+      const contractStatus = contract?.isActive ? 'Active' : (contract?.status || 'N/A');
+      const totalHours = contract?.totalHours || 0;
+      const monthlyHours = contract?.monthlyBudgetHours || 0;
+
+      const approvedLogs = orgTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved');
+      const approvedHours = approvedLogs.reduce((sum, ah) => sum + ah.actualHours, 0);
+      const remainingHours = Math.max(0, totalHours - approvedHours);
+      const utilizationPercent = totalHours > 0 ? (approvedHours / totalHours) * 100 : 0;
+
+      const riskScore = (crit * 3) + (breached * 5) + (reop * 2) + (lowC * 4) + (esc * 4);
+      customerRiskMap.set(org, {
+        critical: crit,
+        breached,
+        reopened: reop,
+        lowCSAT: lowC,
+        score: riskScore,
+        openTickets: openTick,
+        closedTickets: closedTick,
+        escalated: esc,
+        csat,
+        startDate,
+        endDate,
+        contractType,
+        contractStatus,
+        totalHours,
+        monthlyHours,
+        approvedHours,
+        remainingHours,
+        utilizationPercent
+      });
     });
 
     const topCustomersVolume = customersList.map(org => ({
@@ -517,10 +574,9 @@ export default function ManagerDashboardPage() {
         ticketsAging30Days
       },
       customerRiskLedger: Array.from(customerRiskMap.entries()).map(([name, r]) => {
-        let level: 'Healthy' | 'Watchlist' | 'At Risk' | 'Critical' = 'Healthy';
-        if (r.score >= 13) level = 'Critical';
-        else if (r.score >= 7) level = 'At Risk';
-        else if (r.score >= 3) level = 'Watchlist';
+        let level: 'Healthy' | 'Warning' | 'Critical' = 'Healthy';
+        if (r.score >= 12 || r.csat <= 3.0 || r.breached > 0) level = 'Critical';
+        else if (r.score >= 5 || r.utilizationPercent >= 90) level = 'Warning';
         return { name, ...r, level };
       }).sort((a, b) => b.score - a.score),
       topCustomersVolume,
@@ -1587,46 +1643,76 @@ export default function ManagerDashboardPage() {
 
         </TabsContent>
 
-        {/* ── TAB CONTENT: CUSTOMER RISK MAP ── */}
+        {/* ── TAB CONTENT: CUSTOMER HEALTH COMMAND CENTER ── */}
         <TabsContent value="customers" className="space-y-6 outline-none">
           
           {/* SECTION 6: CUSTOMER HEALTH & RISK CENTER */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">1. Customer Health & Risk Control</span>
+            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">1. Customer Health Command Center</span>
             
             {/* Risk Ledger table */}
             <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden">
               <div className="p-3.5 bg-zinc-50 border-b border-zinc-200">
-                <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Customer Risk Score & Ledger</span>
+                <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Operational Customer health & SLA Ledger</span>
               </div>
               <div className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-[10px]">
-                    <thead className="bg-zinc-100 text-zinc-500 font-bold uppercase text-[8px] border-b border-zinc-200">
+                    <thead className="bg-zinc-100 text-zinc-500 font-bold uppercase text-[7px] border-b border-zinc-200">
                       <tr>
-                        <th className="py-2.5 px-4 font-bold">Customer Account</th>
-                        <th className="py-2.5 px-4 font-bold text-center">Critical Tickets</th>
+                        <th className="py-2.5 px-4 font-bold">Customer Name</th>
+                        <th className="py-2.5 px-4 font-bold text-center">Contract Period</th>
+                        <th className="py-2.5 px-4 font-bold text-center">Type / Status</th>
+                        <th className="py-2.5 px-4 font-bold text-center">Hours (Tot/Mth)</th>
+                        <th className="py-2.5 px-4 font-bold text-center">Consumed Hours</th>
+                        <th className="py-2.5 px-4 font-bold text-center">Remaining Hours</th>
+                        <th className="py-2.5 px-4 font-bold text-center">Utilization</th>
+                        <th className="py-2.5 px-4 font-bold text-center">Tickets (O/C/R/E)</th>
                         <th className="py-2.5 px-4 font-bold text-center">SLA Breaches</th>
-                        <th className="py-2.5 px-4 font-bold text-center">Reopened Tickets</th>
-                        <th className="py-2.5 px-4 font-bold text-center">Low Rating Alerts</th>
-                        <th className="py-2.5 px-4 font-bold text-center">Calculated Risk Index</th>
-                        <th className="py-2.5 px-4 font-bold text-center">Mitigation Tier</th>
+                        <th className="py-2.5 px-4 font-bold text-center">CSAT Rating</th>
+                        <th className="py-2.5 px-4 font-bold text-center">Health Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-150">
                       {dashboardData.customerRiskLedger.map((c) => (
                         <tr key={c.name} className="hover:bg-zinc-50/50">
                           <td className="py-2.5 px-4 font-bold text-zinc-950">{c.name}</td>
-                          <td className="py-2.5 px-4 text-center font-bold">{c.critical}</td>
-                          <td className="py-2.5 px-4 text-center font-bold text-red-600">{c.breached}</td>
-                          <td className="py-2.5 px-4 text-center font-bold">{c.reopened}</td>
-                          <td className="py-2.5 px-4 text-center font-bold">{c.lowCSAT}</td>
-                          <td className="py-2.5 px-4 text-center font-black text-zinc-950">{c.score} points</td>
+                          <td className="py-2.5 px-4 text-center font-mono whitespace-nowrap text-zinc-500">
+                            {c.startDate} to {c.endDate}
+                          </td>
+                          <td className="py-2.5 px-4 text-center whitespace-nowrap">
+                            <div className="font-semibold text-zinc-700 text-[9px]">{c.contractType}</div>
+                            <div className="text-[7px] font-bold text-zinc-400 mt-0.5">{c.contractStatus}</div>
+                          </td>
+                          <td className="py-2.5 px-4 text-center font-mono text-zinc-650">
+                            {c.totalHours}h / {c.monthlyHours}h
+                          </td>
+                          <td className="py-2.5 px-4 text-center font-mono font-bold text-zinc-900">
+                            {c.approvedHours.toFixed(1)}h
+                          </td>
+                          <td className="py-2.5 px-4 text-center font-mono text-zinc-600">
+                            {c.remainingHours.toFixed(1)}h
+                          </td>
+                          <td className="py-2.5 px-4 text-center font-mono">
+                            <span className={`font-bold ${c.utilizationPercent >= 90 ? 'text-red-650 font-black' : c.utilizationPercent >= 75 ? 'text-amber-600' : 'text-green-700'}`}>
+                              {c.utilizationPercent.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-center font-mono text-zinc-700">
+                            {c.openTickets} / {c.closedTickets} / {c.reopened} / {c.escalated}
+                          </td>
+                          <td className={`py-2.5 px-4 text-center font-mono font-bold ${c.breached > 0 ? 'text-red-650 font-black animate-pulse' : 'text-zinc-500'}`}>
+                            {c.breached}
+                          </td>
+                          <td className="py-2.5 px-4 text-center font-mono font-bold">
+                            <span className={c.csat <= 3.0 ? 'text-red-650' : c.csat >= 4.5 ? 'text-green-700' : 'text-zinc-600'}>
+                              {c.csat.toFixed(1)} ★
+                            </span>
+                          </td>
                           <td className="py-2.5 px-4 text-center">
-                            <Badge className={`border-none font-bold text-[8px] uppercase ${
-                              c.level === 'Critical' ? 'bg-red-600 text-white animate-pulse' :
-                              c.level === 'At Risk' ? 'bg-red-100 text-red-800' :
-                              c.level === 'Watchlist' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                            <Badge className={`border-none font-bold text-[7px] uppercase tracking-wider ${
+                              c.level === 'Critical' ? 'bg-red-605 text-white animate-pulse bg-red-600' :
+                              c.level === 'Warning' ? 'bg-amber-100 text-amber-800 bg-amber-200' : 'bg-green-150 text-green-800 bg-green-200'
                             }`}>
                               {c.level}
                             </Badge>

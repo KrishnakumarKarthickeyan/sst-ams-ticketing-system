@@ -89,6 +89,13 @@ export async function provisionUser(params: {
   companyName?: string;
   contractType?: string;
   contractHours?: number;
+  address?: string;
+  industry?: string;
+  contractStartDate?: string;
+  contractEndDate?: string;
+  monthlyAllocatedHours?: number;
+  contractStatus?: string;
+  loginEnabled?: boolean;
 }) {
   const client = getAdminClient();
   if (!client) {
@@ -138,7 +145,7 @@ export async function provisionUser(params: {
       const companyName = (params.companyName || 'Apex Global Industries').trim();
       let orgId = '';
 
-      // Resolve or insert organization
+      // Resolve or insert organization with address/industry
       const { data: existingOrg, error: findOrgErr } = await client
         .from('organizations')
         .select('id')
@@ -149,10 +156,22 @@ export async function provisionUser(params: {
 
       if (existingOrg) {
         orgId = existingOrg.id;
+        const { error: orgUpdErr } = await client
+          .from('organizations')
+          .update({
+            address: params.address || null,
+            industry: params.industry || null
+          })
+          .eq('id', orgId);
+        if (orgUpdErr) throw orgUpdErr;
       } else {
         const { data: newOrg, error: orgErr } = await client
           .from('organizations')
-          .insert({ name: companyName })
+          .insert({
+            name: companyName,
+            address: params.address || null,
+            industry: params.industry || null
+          })
           .select('id')
           .single();
 
@@ -166,7 +185,7 @@ export async function provisionUser(params: {
         email,
         full_name: fullName,
         role: 'Customer',
-        is_active: true,
+        is_active: params.loginEnabled !== undefined ? params.loginEnabled : true,
         organization_id: orgId,
         phone_number: params.phoneNumber || 'N/A'
       });
@@ -178,12 +197,13 @@ export async function provisionUser(params: {
       const { error: contractErr } = await client.from('customer_contracts').insert({
         organization_id: orgId,
         contract_type: (params.contractType || 'AMS') as any,
-        start_date: new Date().toISOString().split('T')[0],
-        end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        start_date: params.contractStartDate || new Date().toISOString().split('T')[0],
+        end_date: params.contractEndDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         total_hours: contractHours,
         used_hours: 0.00,
-        monthly_budget_hours: Math.round(contractHours / 12) || 15.00,
-        is_active: true
+        monthly_budget_hours: params.monthlyAllocatedHours || Math.round(contractHours / 12) || 15.00,
+        is_active: params.contractStatus ? (params.contractStatus === 'Active') : true,
+        status: params.contractStatus || 'Active'
       });
 
       // We won't block if contract already exists, but log it
