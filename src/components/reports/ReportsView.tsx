@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTickets } from '../../context/TicketContext';
 import { 
   Download, 
@@ -42,7 +42,7 @@ type ReportType =
   | 'Monthly Support';
 
 export default function ReportsView({ role, userScope }: ReportsViewProps) {
-  const { tickets, contracts } = useTickets();
+  const { tickets, contracts, profiles } = useTickets();
 
   // 1. Report Type Selection
   const [reportType, setReportType] = useState<ReportType>('Ticket Summary');
@@ -91,8 +91,28 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
   const consultantConstraint = isConsultant ? (userScope?.name || 'Karthik Subramanian') : '';
 
   // Extract unique organization & consultant lists from data for dropdown filters
-  const availableOrgs = Array.from(new Set(tickets.map(t => t.organization)));
-  const availableConsultants = Array.from(new Set(tickets.map(t => t.assignedConsultant).filter(Boolean))) as string[];
+  const availableOrgs = useMemo(() => {
+    const list = new Set<string>();
+    (contracts || []).forEach(c => {
+      if (c.organizationName) list.add(c.organizationName);
+    });
+    tickets.forEach(t => {
+      if (t.organization) list.add(t.organization);
+    });
+    return Array.from(list).filter(Boolean).sort();
+  }, [contracts, tickets]);
+
+  const availableConsultants = useMemo(() => {
+    const list = new Set<string>();
+    (profiles || [])
+      .filter(p => p.role === 'Consultant' && p.full_name)
+      .forEach(p => list.add(p.full_name));
+    tickets.forEach(t => {
+      if (t.assignedConsultant) list.add(t.assignedConsultant);
+    });
+    return Array.from(list).filter(Boolean).sort();
+  }, [profiles, tickets]);
+
   const availableModules = Array.from(new Set(tickets.map(t => t.sapModule)));
   const availableCategories = Array.from(new Set(tickets.map(t => t.category)));
 

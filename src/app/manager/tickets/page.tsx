@@ -71,7 +71,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function ManagerTicketsPage() {
-  const { tickets, loading, updateTicketStatus, assignTicket, updateTicket } = useTickets();
+  const { tickets, loading, updateTicketStatus, assignTicket, updateTicket, profiles, contracts } = useTickets();
   const { user } = useAuth();
   const managerName = user?.name || 'Marcus Vance';
 
@@ -120,39 +120,55 @@ export default function ManagerTicketsPage() {
 
   // Unique Lists for Dropdown Options
   const customersList = useMemo(() => {
-    return Array.from(new Set(scopedTickets.map(t => t.organization))).sort();
-  }, [scopedTickets]);
+    const list = new Set<string>();
+    (contracts || []).forEach(c => {
+      if (c.organizationName) list.add(c.organizationName);
+    });
+    scopedTickets.forEach(t => {
+      if (t.organization) list.add(t.organization);
+    });
+    return Array.from(list).filter(Boolean).sort();
+  }, [contracts, scopedTickets]);
 
   const consultantsList = useMemo(() => {
     const list = new Set<string>();
+    (profiles || [])
+      .filter(p => p.role === 'Consultant' && p.full_name)
+      .forEach(p => list.add(p.full_name));
     scopedTickets.forEach(t => {
       if (t.assignedConsultant) list.add(t.assignedConsultant);
       (t.consultantEfforts || []).forEach(e => {
         if (e.consultantName) list.add(e.consultantName);
       });
     });
-    return Array.from(list).sort();
-  }, [scopedTickets]);
+    return Array.from(list).filter(Boolean).sort();
+  }, [profiles, scopedTickets]);
 
   const functionalConsultantsList = useMemo(() => {
     const list = new Set<string>();
+    (profiles || [])
+      .filter(p => p.role === 'Consultant' && p.consultant_type === 'Functional' && p.full_name)
+      .forEach(p => list.add(p.full_name));
     scopedTickets.forEach(t => {
       (t.consultantEfforts || []).forEach(e => {
         if (e.consultantType === 'Functional' && e.consultantName) list.add(e.consultantName);
       });
     });
-    return Array.from(list).sort();
-  }, [scopedTickets]);
+    return Array.from(list).filter(Boolean).sort();
+  }, [profiles, scopedTickets]);
 
   const technicalConsultantsList = useMemo(() => {
     const list = new Set<string>();
+    (profiles || [])
+      .filter(p => p.role === 'Consultant' && p.consultant_type === 'Technical' && p.full_name)
+      .forEach(p => list.add(p.full_name));
     scopedTickets.forEach(t => {
       (t.consultantEfforts || []).forEach(e => {
         if (e.consultantType === 'Technical' && e.consultantName) list.add(e.consultantName);
       });
     });
-    return Array.from(list).sort();
-  }, [scopedTickets]);
+    return Array.from(list).filter(Boolean).sort();
+  }, [profiles, scopedTickets]);
 
   // Tab Filtering logic (10 tabs)
   const tabFilteredTickets = useMemo(() => {

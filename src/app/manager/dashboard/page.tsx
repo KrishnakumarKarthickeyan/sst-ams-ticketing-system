@@ -220,12 +220,23 @@ export default function ManagerDashboardPage() {
   const scopedTickets = useMemo(() => tickets, [tickets]);
 
   // Unique dropdown options extracted from data
+  // Unique dropdown options extracted from contracts and tickets
   const customersList = useMemo(() => {
-    return Array.from(new Set(scopedTickets.map(t => t.organization))).sort();
-  }, [scopedTickets]);
+    const list = new Set<string>();
+    contracts.forEach(c => {
+      if (c.organizationName) list.add(c.organizationName);
+    });
+    scopedTickets.forEach(t => {
+      if (t.organization) list.add(t.organization);
+    });
+    return Array.from(list).filter(Boolean).sort();
+  }, [contracts, scopedTickets]);
 
   const consultantsList = useMemo(() => {
     const list = new Set<string>();
+    consultantsDbList.forEach(c => {
+      if (c.name) list.add(c.name);
+    });
     scopedTickets.forEach(t => {
       if (t.assignedConsultant) list.add(t.assignedConsultant);
       (t.assignments || []).forEach(a => {
@@ -238,8 +249,8 @@ export default function ManagerDashboardPage() {
         }
       });
     });
-    return Array.from(list).sort();
-  }, [scopedTickets]);
+    return Array.from(list).filter(Boolean).sort();
+  }, [consultantsDbList, scopedTickets]);
 
   const managedCustomersList = customersList;
   const managedConsultantsList = consultantsList;
