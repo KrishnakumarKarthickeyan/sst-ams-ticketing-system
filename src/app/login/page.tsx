@@ -26,19 +26,19 @@ export default function LoginPage() {
   const redirectToDashboard = (role: string) => {
     switch (role) {
       case 'SuperAdmin':
-        router.push('/admin/dashboard');
+        window.location.href = '/admin/dashboard';
         break;
       case 'Manager':
-        router.push('/manager/dashboard');
+        window.location.href = '/manager/dashboard';
         break;
       case 'Consultant':
-        router.push('/consultant/dashboard');
+        window.location.href = '/consultant/dashboard';
         break;
       case 'Customer':
-        router.push('/customer/dashboard');
+        window.location.href = '/customer/dashboard';
         break;
       default:
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
     }
   };
 
