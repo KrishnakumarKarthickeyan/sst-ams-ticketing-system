@@ -60,7 +60,7 @@ interface CustomerProfile {
 }
 
 export default function ManagerConsultantsPage() {
-  const { tickets, profiles, contracts } = useTickets();
+  const { tickets, profiles, contracts, orgMap } = useTickets();
   const { user } = useAuth();
 
   // Tab State
@@ -95,7 +95,7 @@ export default function ManagerConsultantsPage() {
         const orgContract = (contracts || []).find((con) => con.customerId === c.organization_id);
         return {
           id: c.id,
-          company: orgContract?.organizationName || c.organization || (c.organizations as any)?.name || 'Apex Global Industries',
+          company: orgContract?.organizationName || orgMap[c.organization_id] || c.organization || (c.organizations as any)?.name || 'Apex Global Industries',
           contact: c.full_name,
           email: c.email,
           phone: c.phone_number || 'N/A',
@@ -105,7 +105,7 @@ export default function ManagerConsultantsPage() {
           csat: 5.0
         };
       });
-  }, [profiles, contracts]);
+  }, [profiles, contracts, orgMap]);
 
   // CRUD state
   const [activeAction, setActiveAction] = useState<{

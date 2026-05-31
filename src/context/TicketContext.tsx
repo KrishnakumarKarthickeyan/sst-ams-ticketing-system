@@ -91,6 +91,7 @@ interface TicketContextType {
   kbCategories: KnowledgebaseCategory[];
   notifications: Notification[];
   profiles: any[];
+  orgMap: Record<string, string>;
   loading: boolean;
   
   // Ticket Operations
@@ -5362,6 +5363,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         kbCategories,
         notifications,
         profiles,
+        orgMap,
         loading,
         createTicket,
         updateTicket,

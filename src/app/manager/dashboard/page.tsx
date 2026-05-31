@@ -80,6 +80,7 @@ export default function ManagerDashboardPage() {
     loading,
     profiles,
     contracts,
+    orgMap,
     approveEffortLog,
     approveClosureRequest,
     rejectClosureRequest,
@@ -226,11 +227,17 @@ export default function ManagerDashboardPage() {
     contracts.forEach(c => {
       if (c.organizationName) list.add(c.organizationName);
     });
+    (profiles || [])
+      .filter(p => p.role === 'Customer')
+      .forEach(p => {
+        const orgName = orgMap[p.organization_id] || p.organization || (p.organizations as any)?.name;
+        if (orgName) list.add(orgName);
+      });
     scopedTickets.forEach(t => {
       if (t.organization) list.add(t.organization);
     });
     return Array.from(list).filter(Boolean).sort();
-  }, [contracts, scopedTickets]);
+  }, [contracts, profiles, orgMap, scopedTickets]);
 
   const consultantsList = useMemo(() => {
     const list = new Set<string>();

@@ -42,7 +42,7 @@ type ReportType =
   | 'Monthly Support';
 
 export default function ReportsView({ role, userScope }: ReportsViewProps) {
-  const { tickets, contracts, profiles } = useTickets();
+  const { tickets, contracts, profiles, orgMap } = useTickets();
 
   // 1. Report Type Selection
   const [reportType, setReportType] = useState<ReportType>('Ticket Summary');
@@ -96,11 +96,17 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
     (contracts || []).forEach(c => {
       if (c.organizationName) list.add(c.organizationName);
     });
+    (profiles || [])
+      .filter(p => p.role === 'Customer')
+      .forEach(p => {
+        const orgName = orgMap[p.organization_id] || p.organization || (p.organizations as any)?.name;
+        if (orgName) list.add(orgName);
+      });
     tickets.forEach(t => {
       if (t.organization) list.add(t.organization);
     });
     return Array.from(list).filter(Boolean).sort();
-  }, [contracts, tickets]);
+  }, [contracts, profiles, orgMap, tickets]);
 
   const availableConsultants = useMemo(() => {
     const list = new Set<string>();

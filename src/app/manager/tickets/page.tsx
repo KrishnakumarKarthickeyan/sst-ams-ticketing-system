@@ -71,7 +71,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function ManagerTicketsPage() {
-  const { tickets, loading, updateTicketStatus, assignTicket, updateTicket, profiles, contracts } = useTickets();
+  const { tickets, loading, updateTicketStatus, assignTicket, updateTicket, profiles, contracts, orgMap } = useTickets();
   const { user } = useAuth();
   const managerName = user?.name || 'Marcus Vance';
 
@@ -124,11 +124,17 @@ export default function ManagerTicketsPage() {
     (contracts || []).forEach(c => {
       if (c.organizationName) list.add(c.organizationName);
     });
+    (profiles || [])
+      .filter(p => p.role === 'Customer')
+      .forEach(p => {
+        const orgName = orgMap[p.organization_id] || p.organization || (p.organizations as any)?.name;
+        if (orgName) list.add(orgName);
+      });
     scopedTickets.forEach(t => {
       if (t.organization) list.add(t.organization);
     });
     return Array.from(list).filter(Boolean).sort();
-  }, [contracts, scopedTickets]);
+  }, [contracts, profiles, orgMap, scopedTickets]);
 
   const consultantsList = useMemo(() => {
     const list = new Set<string>();
