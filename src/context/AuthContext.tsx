@@ -15,6 +15,7 @@ export interface UserSession {
   consultantType?: 'Functional' | 'Technical';
   modules?: string[];
   phoneNumber?: string;
+  firstLoginCompleted?: boolean;
 }
 
 interface AuthContextType {
@@ -57,12 +58,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const profilePromise = supabase!
           .from('profiles')
-          .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
+          .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, first_login_completed, organizations(name)')
           .eq('id', session.user.id)
           .single();
 
         const timeoutPromise = new Promise<any>((resolve) =>
-          setTimeout(() => resolve({ data: null, error: { message: 'Profile fetch timeout' } }), 5000)
+          setTimeout(() => resolve({ data: null, error: { message: 'Profile fetch timeout' } }), 15000)
         );
 
         const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
@@ -84,7 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           company: userOrg ? userOrg.name : undefined,
           consultantType: profile.consultant_type as any,
           modules: profile.sap_modules || [],
-          phoneNumber: profile.phone_number
+          phoneNumber: profile.phone_number,
+          firstLoginCompleted: profile.first_login_completed
         };
         
         setUser(sessionUser);
@@ -170,7 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Authentication service timeout. Please verify your connection status.')), 10000)
+          setTimeout(() => reject(new Error('Authentication service timeout. Please verify your connection status.')), 15000)
         );
 
         // Enforce a strict 10s network timeout safety check
@@ -183,7 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (data.user) {
           const fetchProfile = () => supabase
             .from('profiles')
-            .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, organizations(name)')
+            .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, first_login_completed, organizations(name)')
             .eq('id', data.user.id)
             .single();
 
@@ -210,7 +212,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               company: userOrg ? userOrg.name : undefined,
               consultantType: profile.consultant_type as any,
               modules: profile.sap_modules || [],
-              phoneNumber: profile.phone_number
+              phoneNumber: profile.phone_number,
+              firstLoginCompleted: profile.first_login_completed
             };
             
             setUser(sessionUser);
@@ -262,6 +265,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('sap_user_session', JSON.stringify(updated));
     }
   };
+
+  useEffect(() => {
+    if (user && user.firstLoginCompleted === false) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/first-login-reset') {
+        window.location.href = '/first-login-reset';
+      }
+    }
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, updateProfile }}>

@@ -31,6 +31,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL('/login', request.url));
+
+  const isFirstLogin = user.user_metadata?.first_login_completed === false;
+  if (isFirstLogin && pathname !== '/first-login-reset') {
+    return NextResponse.redirect(new URL('/first-login-reset', request.url));
+  }
+
   return response;
 }
 

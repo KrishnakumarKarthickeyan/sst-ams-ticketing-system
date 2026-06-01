@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
-import { provisionUser, updateAuthUserPassword, deleteAuthUser } from '../../actions/auth';
+import { provisionUser, updateAuthUserPassword, deleteAuthUser, resetUserPasswordAdmin } from '../../actions/auth';
 import { 
   User, Plus, Mail, ShieldCheck, XCircle, Trash2, Key, ListFilter, 
   AlertTriangle, CheckCircle, Clock, ShieldAlert, ArrowRight, Eye 
@@ -192,7 +192,7 @@ export default function AdminManagersPage() {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const res = await updateAuthUserPassword(mgr.id, newPass);
+        const res = await resetUserPasswordAdmin(mgr.id, newPass);
         if (res.success) {
           toast.success('Credentials updated successfully.', { id: loadId });
         } else {

@@ -253,11 +253,11 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     if (!ticket) {
       return { func: 0, tech: 0, total: 0 };
     }
-    const funcEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
-    const techEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
+    const funcEsts = (ticket.estimates || []).filter(e => e.consultantType === 'Functional');
+    const techEsts = (ticket.estimates || []).filter(e => e.consultantType === 'Technical');
 
-    const funcEst = funcEff.reduce((sum, e) => sum + e.estimatedHours, 0);
-    const techEst = techEff.reduce((sum, e) => sum + e.estimatedHours, 0);
+    const funcEst = funcEsts.reduce((sum, e) => sum + e.estimatedHours, 0);
+    const techEst = techEsts.reduce((sum, e) => sum + e.estimatedHours, 0);
 
     return {
       func: funcEst,
@@ -270,34 +270,21 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     if (!ticket) {
       return { func: 0, tech: 0, total: 0 };
     }
-    if (role === 'Customer') {
-      const approvedLogs = (ticket.actualHoursLogs || []).filter(
-        log => log.approvalStatus?.toLowerCase() === 'approved'
-      );
-      const funcAct = approvedLogs
-        .filter(log => log.consultantType === 'Functional')
-        .reduce((sum, log) => sum + log.actualHours, 0);
-      const techAct = approvedLogs
-        .filter(log => log.consultantType === 'Technical')
-        .reduce((sum, log) => sum + log.actualHours, 0);
-      return {
-        func: funcAct,
-        tech: techAct,
-        total: funcAct + techAct
-      };
-    }
-    const funcEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional' && !e.isDeleted);
-    const techEff = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical' && !e.isDeleted);
-
-    const funcAct = funcEff.reduce((sum, e) => sum + e.actualHours, 0);
-    const techAct = techEff.reduce((sum, e) => sum + e.actualHours, 0);
-
+    const approvedLogs = (ticket.actualHoursLogs || []).filter(
+      log => log.approvalStatus === 'Approved' || log.approvalStatus?.toLowerCase() === 'approved'
+    );
+    const funcAct = approvedLogs
+      .filter(log => log.consultantType === 'Functional')
+      .reduce((sum, log) => sum + log.actualHours, 0);
+    const techAct = approvedLogs
+      .filter(log => log.consultantType === 'Technical')
+      .reduce((sum, log) => sum + log.actualHours, 0);
     return {
       func: funcAct,
       tech: techAct,
       total: funcAct + techAct
     };
-  }, [ticket, role]);
+  }, [ticket]);
 
   const hasApprovedClosure = useMemo(() => {
     if (!ticket) return false;

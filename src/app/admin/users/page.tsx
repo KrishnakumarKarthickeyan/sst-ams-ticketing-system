@@ -7,7 +7,7 @@ import { User, Plus, ShieldCheck, Mail, ShieldAlert, XCircle } from 'lucide-reac
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser } from '../../actions/auth';
+import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser, resetUserPasswordAdmin } from '../../actions/auth';
 
 interface UserProfile {
   id: string;
@@ -249,7 +249,7 @@ export default function AdminUsersPage() {
     if (isSupabaseConfigured && supabase) {
       const toastId = toast.loading('Authorizing password overwrite...');
       try {
-        const res = await updateAuthUserPassword(id, newPass);
+        const res = await resetUserPasswordAdmin(id, newPass);
         if (res.success) {
           toast.success('Password overwrite successful!', { id: toastId });
         } else if (res.error === 'NO_SERVICE_KEY') {

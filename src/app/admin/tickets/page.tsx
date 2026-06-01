@@ -21,6 +21,9 @@ export default function AdminTicketsPage() {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [moduleFilter, setModuleFilter] = useState('All');
   const [customerFilter, setCustomerFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   // Customers and modules list for filters
   const customersList = useMemo(() => {
@@ -73,6 +76,39 @@ export default function AdminTicketsPage() {
       if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
       if (customerFilter !== 'All' && t.organization !== customerFilter) return false;
 
+      // 2b. Date range filtering
+      if (dateFilter !== 'All') {
+        const created = new Date(t.createdAt);
+        const createdMs = created.getTime();
+        
+        if (dateFilter === 'current-month') {
+          const now = new Date();
+          if (created.getMonth() !== now.getMonth() || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-quarter') {
+          const now = new Date();
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          const createdQuarter = Math.floor(created.getMonth() / 3);
+          if (createdQuarter !== currentQuarter || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-year') {
+          const now = new Date();
+          if (created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'custom') {
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (createdMs < start.getTime()) return false;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            if (createdMs > end.getTime()) return false;
+          }
+        }
+      }
+
       // 3. Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -87,7 +123,7 @@ export default function AdminTicketsPage() {
 
       return true;
     });
-  }, [tickets, activeTab, priorityFilter, moduleFilter, customerFilter, searchQuery]);
+  }, [tickets, activeTab, priorityFilter, moduleFilter, customerFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
 
   // SLA countdown logic formatting
   const formatSlaCountdown = (dueDateStr: string, status: string) => {
@@ -206,6 +242,45 @@ export default function AdminTicketsPage() {
               {customersList.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+
+          {/* Date Range */}
+          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
+            <Filter size={11} className="text-zinc-400" />
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="bg-transparent text-[11px] font-semibold text-zinc-800 focus:outline-none cursor-pointer"
+            >
+              <option value="All">All History</option>
+              <option value="current-month">This Month</option>
+              <option value="current-quarter">This Quarter</option>
+              <option value="current-year">This Year</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
+
+          {dateFilter === 'custom' && (
+            <>
+              <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
+                <span className="text-[11px] font-mono">Start:</span>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-transparent text-[11px] text-zinc-800 focus:outline-none cursor-pointer font-mono"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
+                <span className="text-[11px] font-mono">End:</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-transparent text-[11px] text-zinc-800 focus:outline-none cursor-pointer font-mono"
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 

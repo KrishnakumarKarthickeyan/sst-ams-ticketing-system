@@ -329,7 +329,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const profilesList = dbProfiles || [];
         setProfiles(profilesList);
 
-        setTickets(dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList, dbContacts || [], organizationMap)) : []);
+        const mappedTickets = dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList, dbContacts || [], organizationMap)) : [];
+        mappedTickets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setTickets(mappedTickets);
 
         setContracts(dbContracts ? dbContracts.map(c => ({
           id: c.id,

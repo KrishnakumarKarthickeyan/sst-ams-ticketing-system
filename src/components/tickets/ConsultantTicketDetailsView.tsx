@@ -778,23 +778,28 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
   const grandTotalEst = functionalTotalEst + technicalTotalEst;
 
-  const myActualHours = myEffort ? myEffort.actualHours : 0;
+  const approvedActualLogs = (ticket.actualHoursLogs || []).filter(
+    log => log.approvalStatus === 'Approved' || log.approvalStatus?.toLowerCase() === 'approved'
+  );
 
-  const teamActualHours = (ticket.consultantEfforts || [])
-    .filter(e => e.consultantId !== user?.id && e.consultantName !== consultantName && !e.isDeleted)
-    .reduce((sum, e) => sum + (e.actualHours || 0), 0);
+  const myActualHours = approvedActualLogs
+    .filter(log => log.consultantId === user?.id)
+    .reduce((sum, log) => sum + log.actualHours, 0);
 
-  const functionalTotalAct = (ticket.consultantEfforts || [])
-    .filter(e => e.consultantType === 'Functional' && !e.isDeleted)
-    .reduce((sum, e) => sum + (e.actualHours || 0), 0);
+  const teamActualHours = approvedActualLogs
+    .filter(log => log.consultantId !== user?.id)
+    .reduce((sum, log) => sum + log.actualHours, 0);
 
-  const technicalTotalAct = (ticket.consultantEfforts || [])
-    .filter(e => e.consultantType === 'Technical' && !e.isDeleted)
-    .reduce((sum, e) => sum + (e.actualHours || 0), 0);
+  const functionalTotalAct = approvedActualLogs
+    .filter(log => log.consultantType === 'Functional')
+    .reduce((sum, log) => sum + log.actualHours, 0);
 
-  const grandTotalAct = (ticket.consultantEfforts || [])
-    .filter(e => !e.isDeleted)
-    .reduce((sum, e) => sum + (e.actualHours || 0), 0);
+  const technicalTotalAct = approvedActualLogs
+    .filter(log => log.consultantType === 'Technical')
+    .reduce((sum, log) => sum + log.actualHours, 0);
+
+  const grandTotalAct = approvedActualLogs
+    .reduce((sum, log) => sum + log.actualHours, 0);
 
   const currentEstimate = myEstimate;
 

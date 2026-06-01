@@ -113,7 +113,7 @@ export async function provisionUser(params: {
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: fullName, role }
+      user_metadata: { full_name: fullName, role, first_login_completed: false }
     });
 
     let userId = '';
@@ -187,7 +187,8 @@ export async function provisionUser(params: {
         role: 'Customer',
         is_active: params.loginEnabled !== undefined ? params.loginEnabled : true,
         organization_id: orgId,
-        phone_number: params.phoneNumber || 'N/A'
+        phone_number: params.phoneNumber || 'N/A',
+        first_login_completed: false
       });
 
       if (profErr) throw profErr;
@@ -228,7 +229,8 @@ export async function provisionUser(params: {
         sap_modules: sapModules,
         phone_number: phoneNumber,
         role_title: roleTitle,
-        skills: skills
+        skills: skills,
+        first_login_completed: false
       });
 
       if (profErr) throw profErr;
@@ -239,7 +241,8 @@ export async function provisionUser(params: {
         email,
         full_name: fullName,
         role,
-        is_active: true
+        is_active: true,
+        first_login_completed: false
       });
       if (profErr) throw profErr;
     }
@@ -264,5 +267,30 @@ export async function getOrganizationMap() {
   } catch (e) {
     console.error('Failed to fetch organization map:', e);
     return {};
+  }
+}
+
+export async function resetUserPasswordAdmin(userId: string, newPassword?: string) {
+  const client = getAdminClient();
+  if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
+  try {
+    const password = newPassword || 'Password@12345';
+    // Update both password and reset first_login_completed metadata to false
+    const { error } = await client.auth.admin.updateUserById(userId, {
+      password,
+      user_metadata: { first_login_completed: false }
+    });
+    if (error) return { success: false, error: error.message };
+    
+    // Also update public.profiles
+    const { error: dbErr } = await client
+      .from('profiles')
+      .update({ first_login_completed: false })
+      .eq('id', userId);
+    if (dbErr) return { success: false, error: dbErr.message };
+
+    return { success: true, password };
+  } catch (e: any) {
+    return { success: false, error: e.message || 'Reset failed' };
   }
 }

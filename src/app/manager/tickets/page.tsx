@@ -104,6 +104,8 @@ export default function ManagerTicketsPage() {
   const [typeFilter, setTypeFilter] = useState('All');
   const [slaFilter, setSlaFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('All');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [assignStateFilter, setAssignStateFilter] = useState('All');
   const [closureStateFilter, setClosureStateFilter] = useState('All');
   const [approvalStateFilter, setApprovalStateFilter] = useState('All');
@@ -258,11 +260,40 @@ export default function ManagerTicketsPage() {
 
       // Date Range
       if (dateFilter !== 'All') {
-        const createdMs = new Date(t.createdAt).getTime();
+        const created = new Date(t.createdAt);
+        const createdMs = created.getTime();
         const diffMs = nowTime - createdMs;
+        
         if (dateFilter === '24h' && diffMs > 24 * 60 * 60 * 1000) return false;
         if (dateFilter === '7d' && diffMs > 7 * 24 * 60 * 60 * 1000) return false;
         if (dateFilter === '30d' && diffMs > 30 * 24 * 60 * 60 * 1000) return false;
+        
+        if (dateFilter === 'current-month') {
+          const now = new Date();
+          if (created.getMonth() !== now.getMonth() || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-quarter') {
+          const now = new Date();
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          const createdQuarter = Math.floor(created.getMonth() / 3);
+          if (createdQuarter !== currentQuarter || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-year') {
+          const now = new Date();
+          if (created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'custom') {
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (createdMs < start.getTime()) return false;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            if (createdMs > end.getTime()) return false;
+          }
+        }
       }
 
       // Assigned / Unassigned
@@ -302,7 +333,7 @@ export default function ManagerTicketsPage() {
 
       return true;
     });
-  }, [tabFilteredTickets, custFilter, consFilter, funcConsFilter, techConsFilter, moduleFilter, priorityFilter, statusFilter, typeFilter, slaFilter, dateFilter, assignStateFilter, closureStateFilter, approvalStateFilter, searchQuery]);
+  }, [tabFilteredTickets, custFilter, consFilter, funcConsFilter, techConsFilter, moduleFilter, priorityFilter, statusFilter, typeFilter, slaFilter, dateFilter, customStartDate, customEndDate, assignStateFilter, closureStateFilter, approvalStateFilter, searchQuery]);
 
   // Tab counters
   const tabCounts = useMemo(() => {
@@ -575,11 +606,38 @@ export default function ManagerTicketsPage() {
             <label className="text-[8px] font-bold uppercase text-zinc-450 block">Date Range</label>
             <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
               <option value="All">All History</option>
+              <option value="current-month">This Month</option>
+              <option value="current-quarter">This Quarter</option>
+              <option value="current-year">This Year</option>
+              <option value="custom">Custom Range</option>
               <option value="24h">Last 24 Hours</option>
               <option value="7d">Last 7 Days</option>
               <option value="30d">Last 30 Days</option>
             </select>
           </div>
+
+          {dateFilter === 'custom' && (
+            <>
+              <div className="space-y-1">
+                <label className="text-[8px] font-bold uppercase text-zinc-450 block">Start Date</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={e => setCustomStartDate(e.target.value)}
+                  className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-bold uppercase text-zinc-450 block">End Date</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={e => setCustomEndDate(e.target.value)}
+                  className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none font-mono"
+                />
+              </div>
+            </>
+          )}
 
           {/* Assigned / Unassigned */}
           <div className="space-y-1">

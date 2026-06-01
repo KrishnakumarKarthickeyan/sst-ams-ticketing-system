@@ -32,7 +32,7 @@ import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { useAuth } from '../../../context/AuthContext';
-import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser } from '../../actions/auth';
+import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser, resetUserPasswordAdmin } from '../../actions/auth';
 
 interface ConsultantProfile {
   id: string;
@@ -251,7 +251,8 @@ export default function ManagerConsultantsPage() {
             sap_modules: modulesArray,
             phone_number: formPhone || 'N/A',
             role_title: formRole || `${formType} Specialist`,
-            skills: formSkills
+            skills: formSkills,
+            first_login_completed: false
           });
 
           if (profErr) throw new Error(profErr.message);
@@ -480,7 +481,8 @@ export default function ManagerConsultantsPage() {
             role: 'Customer',
             is_active: formLoginEnabled,
             organization_id: orgId,
-            phone_number: formPhone || 'N/A'
+            phone_number: formPhone || 'N/A',
+            first_login_completed: false
           });
 
           if (profErr) throw new Error(profErr.message);
@@ -677,9 +679,9 @@ export default function ManagerConsultantsPage() {
     if (isSupabaseConfigured && supabase) {
       const toastId = toast.loading('Authorizing password overwrite...');
       try {
-        const res = await updateAuthUserPassword(activeAction.targetId, passwordResetValue);
+        const res = await resetUserPasswordAdmin(activeAction.targetId, passwordResetValue);
         if (res.success) {
-          toast.success(`Password overwrite successful! New credentials active immediately.`, { id: toastId, duration: 6000 });
+          toast.success(`Password reset successful! User must change their password on next login.`, { id: toastId, duration: 6000 });
           closeActionModal();
         } else if (res.error === 'NO_SERVICE_KEY') {
           toast.error('Overwriting passwords from the dashboard requires configuring the SUPABASE_SERVICE_ROLE_KEY environment variable on the server.', { id: toastId, duration: 6000 });
@@ -991,6 +993,14 @@ export default function ManagerConsultantsPage() {
               const activeTickets = clientTickets.filter(t => t.status !== 'Closed');
               const criticalTickets = clientTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed').length;
 
+              const approvedHours = clientTickets.reduce((sum, t) => {
+                const approvedLogs = (t.actualHoursLogs || []).filter(ah => ah.approvalStatus === 'Approved' || ah.approvalStatus?.toLowerCase() === 'approved');
+                return sum + approvedLogs.reduce((s, ah) => s + ah.actualHours, 0);
+              }, 0);
+
+              const rated = clientTickets.filter(t => t.rating);
+              const avgCsat = rated.length > 0 ? rated.reduce((sum, t) => sum + (t.rating?.score || 0), 0) / rated.length : 0;
+
               const seed = c.company.charCodeAt(0) % 10;
               const slaCompliance = 93.8 + (seed % 3) * 1.2;
 
@@ -1027,12 +1037,14 @@ export default function ManagerConsultantsPage() {
                       <strong className={`text-sm font-bold block mt-1 font-mono ${criticalTickets > 0 ? 'text-red-600 animate-pulse' : 'text-zinc-900'}`}>{criticalTickets}</strong>
                     </div>
                     <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">Logged Month</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{Math.round(c.expectedHours * 0.72).toFixed(0)}h</strong>
+                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">Logged (Approved)</span>
+                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{approvedHours.toFixed(1)}h</strong>
                     </div>
                     <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
                       <span className="text-[8px] text-zinc-450 uppercase font-mono block">CSAT Avg</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{c.csat.toFixed(1)} / 5.0</strong>
+                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">
+                        {avgCsat > 0 ? `${avgCsat.toFixed(1)} / 5.0` : 'N/A'}
+                      </strong>
                     </div>
                   </div>
 

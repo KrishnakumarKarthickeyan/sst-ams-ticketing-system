@@ -67,6 +67,9 @@ export default function CustomerTicketsPage() {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [scopeFilter, setScopeFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   // Sorting state
   const [sortField, setSortField] = useState<string>('createdAt');
@@ -222,9 +225,42 @@ export default function CustomerTicketsPage() {
         if (ft !== scopeFilter) return false;
       }
 
+      // Date range filtering
+      if (dateFilter !== 'All') {
+        const created = new Date(t.createdAt);
+        const createdMs = created.getTime();
+        
+        if (dateFilter === 'current-month') {
+          const now = new Date();
+          if (created.getMonth() !== now.getMonth() || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-quarter') {
+          const now = new Date();
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          const createdQuarter = Math.floor(created.getMonth() / 3);
+          if (createdQuarter !== currentQuarter || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-year') {
+          const now = new Date();
+          if (created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'custom') {
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (createdMs < start.getTime()) return false;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            if (createdMs > end.getTime()) return false;
+          }
+        }
+      }
+
       return true;
     });
-  }, [companyTickets, searchQuery, statusFilter, moduleFilter, priorityFilter, typeFilter, scopeFilter]);
+  }, [companyTickets, searchQuery, statusFilter, moduleFilter, priorityFilter, typeFilter, scopeFilter, dateFilter, customStartDate, customEndDate]);
 
   // Sort Data
   const sortedTickets = useMemo(() => {
@@ -630,7 +666,7 @@ ${ticket.description}
             </div>
 
             {/* Filters Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 border-t border-zinc-100 pt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 border-t border-zinc-100 pt-4">
               <div className="space-y-1">
                 <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Status</label>
                 <select
@@ -712,7 +748,45 @@ ${ticket.description}
                   <option value="Technical">Technical</option>
                 </select>
               </div>
+
+              <div className="space-y-1">
+                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Date Range</label>
+                <select
+                  value={dateFilter}
+                  onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
+                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
+                >
+                  <option value="All">All History</option>
+                  <option value="current-month">This Month</option>
+                  <option value="current-quarter">This Quarter</option>
+                  <option value="current-year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
             </div>
+
+            {dateFilter === 'custom' && (
+              <div className="flex gap-3 border-t border-zinc-100 pt-3 max-w-md animate-in fade-in duration-100">
+                <div className="space-y-1 flex-1">
+                  <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Start Date</label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => { setCustomStartDate(e.target.value); setCurrentPage(1); }}
+                    className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-xs focus:outline-none font-mono"
+                  />
+                </div>
+                <div className="space-y-1 flex-1">
+                  <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">End Date</label>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => { setCustomEndDate(e.target.value); setCurrentPage(1); }}
+                    className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-xs focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -131,6 +131,9 @@ export default function ConsultantMyTicketsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [activeTab, setActiveTab] = useState('all');
 
   // ── Pagination ──
@@ -198,9 +201,49 @@ export default function ConsultantMyTicketsPage() {
   }, [myAssignedTickets, activeTab]);
 
   const filteredTickets = useMemo(() => {
+    const nowTime = Date.now();
     return tabFilteredTickets.filter(t => {
       if (statusFilter !== 'All' && t.status !== statusFilter) return false;
       if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
+
+      // Date range filtering
+      if (dateFilter !== 'All') {
+        const created = new Date(t.createdAt);
+        const createdMs = created.getTime();
+        const diffMs = nowTime - createdMs;
+        
+        if (dateFilter === '24h' && diffMs > 24 * 60 * 60 * 1000) return false;
+        if (dateFilter === '7d' && diffMs > 7 * 24 * 60 * 60 * 1000) return false;
+        if (dateFilter === '30d' && diffMs > 30 * 24 * 60 * 60 * 1000) return false;
+        
+        if (dateFilter === 'current-month') {
+          const now = new Date();
+          if (created.getMonth() !== now.getMonth() || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-quarter') {
+          const now = new Date();
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          const createdQuarter = Math.floor(created.getMonth() / 3);
+          if (createdQuarter !== currentQuarter || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-year') {
+          const now = new Date();
+          if (created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'custom') {
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (createdMs < start.getTime()) return false;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            if (createdMs > end.getTime()) return false;
+          }
+        }
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -212,7 +255,7 @@ export default function ConsultantMyTicketsPage() {
       }
       return true;
     });
-  }, [tabFilteredTickets, statusFilter, priorityFilter, searchQuery]);
+  }, [tabFilteredTickets, statusFilter, priorityFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
 
   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
   const paginatedTickets = useMemo(() =>
@@ -1108,6 +1151,41 @@ export default function ConsultantMyTicketsPage() {
               <option value="Closed">Closed</option>
               <option value="Reopened">Reopened</option>
             </select>
+
+            <select value={dateFilter} onChange={e => { setDateFilter(e.target.value); setCurrentPage(1); }}
+              className="bg-white border border-zinc-200 rounded-md p-1.5 text-xs text-zinc-700 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition">
+              <option value="All">All History</option>
+              <option value="current-month">This Month</option>
+              <option value="current-quarter">This Quarter</option>
+              <option value="current-year">This Year</option>
+              <option value="custom">Custom Range</option>
+              <option value="24h">Last 24 Hours</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+            </select>
+
+            {dateFilter === 'custom' && (
+              <>
+                <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-md p-1 px-2 text-zinc-700">
+                  <span className="text-[10px] font-mono">Start:</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => { setCustomStartDate(e.target.value); setCurrentPage(1); }}
+                    className="bg-transparent text-xs focus:outline-none cursor-pointer font-mono"
+                  />
+                </div>
+                <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-md p-1 px-2 text-zinc-700">
+                  <span className="text-[10px] font-mono">End:</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => { setCustomEndDate(e.target.value); setCurrentPage(1); }}
+                    className="bg-transparent text-xs focus:outline-none cursor-pointer font-mono"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
