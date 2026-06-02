@@ -3,16 +3,25 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { KeyRound, ShieldCheck, Mail, Cpu, ArrowLeft } from 'lucide-react';
+import { KeyRound, ShieldCheck, Mail, Cpu, ArrowLeft, Activity, Star, ClipboardList, Shield, Globe, Server } from 'lucide-react';
 import Link from 'next/link';
 import { BrandedLogo } from '../../components/ui/BrandedLogo';
-import { BRAND_CONFIG } from '../../config/branding';
+import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { toast } from 'sonner';
+import {
+  AreaChart,
+  Area,
+  ResponsiveContainer
+} from 'recharts';
 
 export default function LoginPage() {
   const { user, login, loading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
 
@@ -64,105 +73,271 @@ export default function LoginPage() {
     }
   };
 
+  // Mock chart data for Left column preview
+  const liveHealthData = [
+    { name: '01', compliance: 98.4 },
+    { name: '02', compliance: 98.6 },
+    { name: '03', compliance: 98.9 },
+    { name: '04', compliance: 98.7 },
+    { name: '05', compliance: 99.1 }
+  ];
 
   return (
-    <main className="min-h-screen flex flex-col justify-center items-center px-4 bg-zinc-50 relative overflow-hidden py-16 text-[#09090b]">
+    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-white text-[#111827]">
       
-      {/* Brand Header */}
-      <div className="w-full max-w-md space-y-6 z-10">
+      {/* ── LEFT COLUMN: LARGE COVER AREA & MOCKUP ── */}
+      <div className="hidden lg:flex lg:col-span-6 bg-[#F8F9FB] border-r border-[#E5E7EB] p-12 flex-col justify-between relative overflow-hidden">
         
-        {/* Back Link */}
-        <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-950 font-mono transition">
-          <ArrowLeft size={12} />
-          Back to home
-        </Link>
+        {/* Decorative Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-35"></div>
+        
+        {/* Brand Header */}
+        <div className="relative z-10 flex items-center gap-3">
+          <BrandedLogo width={24} height={24} />
+          <span className="font-extrabold text-sm tracking-wider text-[#111827] font-mono">ASSIST360</span>
+        </div>
 
-        {/* Portal title */}
-        <div className="text-center space-y-3">
-          <BrandedLogo width={64} height={64} className="mx-auto" />
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-950 font-mono uppercase">
-              {BRAND_CONFIG.name}
-            </h1>
-            <p className="text-[10px] text-zinc-500 max-w-xs mx-auto font-mono uppercase tracking-wider mt-1">
-              {BRAND_CONFIG.tagline}
-            </p>
+        {/* High-Fidelity Product Mockup Center */}
+        <div className="relative z-10 max-w-md mx-auto space-y-6 w-full">
+          
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold uppercase tracking-wider text-[#111827] font-mono">Enterprise Service Management Platform</h2>
+            <p className="text-xs text-[#6B7280]">Real-time operational dashboard, SLA trends, and customer satisfaction metrics.</p>
+          </div>
+
+          {/* Floating Showcase Mock Cards */}
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-md space-y-4">
+            
+            <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-2">
+              <span className="text-[9px] font-mono font-bold text-[#6B7280] uppercase tracking-wider">Service Operations Cockpit</span>
+              <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[8px] font-mono uppercase">System Normal</Badge>
+            </div>
+
+            {/* SLA Trend Micro Chart */}
+            <div className="space-y-1">
+              <span className="text-[9px] font-mono text-[#6B7280] uppercase block">SLA Compliance Trend</span>
+              <div className="h-16 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={liveHealthData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="loginChartGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.12} />
+                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Area type="monotone" dataKey="compliance" stroke="#2563EB" strokeWidth={2} fill="url(#loginChartGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Floating KPI Cards Grid inside mockup */}
+            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div className="p-2.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                <span className="text-[8px] text-[#6B7280] uppercase block">Platform SLA</span>
+                <span className="text-white bg-[#111827] px-1 rounded text-[9px] font-bold">98.7% Met</span>
+              </div>
+              <div className="p-2.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                <span className="text-[8px] text-[#6B7280] uppercase block">Response rate</span>
+                <span className="text-[#10B981] font-bold block mt-0.5">8ms latency</span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Floating KPI Cards Overlay Stack */}
+          <div className="grid grid-cols-2 gap-4">
+            
+            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-[#6B7280]">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Availability</span>
+                <Activity size={12} className="text-[#10B981]" />
+              </div>
+              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">99.95%</span>
+            </div>
+
+            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-[#6B7280]">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Requests</span>
+                <ClipboardList size={12} className="text-[#2563EB]" />
+              </div>
+              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">500K+</span>
+            </div>
+
+            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-[#6B7280]">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Compliance</span>
+                <ShieldCheck size={12} className="text-[#10B981]" />
+              </div>
+              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">98.7%</span>
+            </div>
+
+            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-[#6B7280]">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Satisfaction</span>
+                <Star size={12} className="text-[#F59E0B] fill-[#F59E0B] stroke-none" />
+              </div>
+              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">95% CSAT</span>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Footer secure info */}
+        <div className="relative z-10 flex items-center gap-1.5 text-[10px] text-[#6B7280] font-mono">
+          <ShieldCheck size={12} className="text-[#10B981]" />
+          <span>FIPS 140-2 Encrypted Security Standard</span>
+        </div>
+
+      </div>
+
+      {/* ── RIGHT COLUMN: AUTHENTICATION CARD ── */}
+      <div className="col-span-1 lg:col-span-6 flex flex-col justify-between p-8 md:p-12 min-h-screen bg-white">
+        
+        {/* Header Back To Home link */}
+        <div className="flex justify-between items-center w-full">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#111827] font-mono transition">
+            <ArrowLeft size={12} />
+            Back to home
+          </Link>
+          <div className="lg:hidden flex items-center gap-2">
+            <BrandedLogo width={20} height={20} />
+            <span className="font-extrabold text-xs tracking-wider text-[#111827] font-mono">ASSIST360</span>
           </div>
         </div>
 
-        {/* Login Form Card */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-8 shadow-sm space-y-6 min-h-[280px] flex flex-col justify-center relative overflow-hidden transition-all duration-300">
+        {/* Main Authentication card form container */}
+        <div className="max-w-sm w-full mx-auto space-y-6 py-12">
           
-          {loading ? (
-            <div className="flex flex-col items-center justify-center space-y-4 py-8">
-              <BrandedLogo animated={true} width={48} height={48} />
-              <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold font-mono">
-                Verifying Credentials...
-              </div>
-            </div>
-          ) : (
-            <>
-              {error && (
-                <div className="bg-zinc-50 border border-zinc-900 rounded p-3 text-xs text-zinc-900 font-mono font-bold">
-                  [ERROR]: {error}
-                </div>
-              )}
+          <div className="text-center lg:text-left space-y-1.5">
+            <BrandedLogo width={40} height={40} className="mx-auto lg:mx-0 hidden lg:block" />
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#111827] uppercase font-mono mt-3">Sign In</h1>
+            <p className="text-xs text-[#6B7280]">Welcome back. Sign in to continue.</p>
+          </div>
 
+          <Card className="p-6 border-[#E5E7EB] bg-white rounded shadow-sm relative min-h-[300px] flex flex-col justify-center">
+            
+            {loading ? (
+              <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                <BrandedLogo animated={true} width={40} height={40} />
+                <span className="text-[10px] uppercase font-mono font-bold text-[#6B7280] tracking-widest">
+                  Establishing secure tunnel...
+                </span>
+              </div>
+            ) : (
               <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
-                {/* Email Field */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-zinc-700 uppercase tracking-wider text-[10px]">Email Address</label>
+                
+                {error && (
+                  <div className="bg-[#FAFAFA] border border-[#EF4444] rounded p-3 text-xs text-[#EF4444] font-mono">
+                    <span className="font-bold">Login Error:</span> {error}
+                  </div>
+                )}
+
+                {/* Email input field */}
+                <div className="space-y-1">
+                  <label className="font-bold text-[#111827] uppercase tracking-wider text-[9px]">Email Address</label>
                   <div className="relative">
-                    <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
                     <input 
+                      required
                       type="email"
+                      placeholder="username@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g., consultant@sap.com"
-                      className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
+                      className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded pl-9 pr-3 py-2.5 text-xs text-[#111827] placeholder:text-[#6B7280] focus:outline-none focus:border-[#111827] focus:ring-1 focus:ring-[#111827] transition"
                       disabled={authenticating}
                     />
                   </div>
                 </div>
 
-                {/* Password Field */}
-                <div className="space-y-1.5">
+                {/* Password input field */}
+                <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <label className="font-bold text-zinc-700 uppercase tracking-wider text-[10px]">Password</label>
-                    <Link href="/forgot-password" className="text-[10px] text-zinc-400 hover:text-zinc-950 hover:underline">
-                      Forgot?
+                    <label className="font-bold text-[#111827] uppercase tracking-wider text-[9px]">Password</label>
+                    <Link href="/forgot-password" className="text-[9px] text-[#6B7280] hover:text-[#111827] hover:underline">
+                      Forgot Password?
                     </Link>
                   </div>
                   <div className="relative">
-                    <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
                     <input 
+                      required
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
+                      className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded pl-9 pr-3 py-2.5 text-xs text-[#111827] focus:outline-none focus:border-[#111827] focus:ring-1 focus:ring-[#111827] transition"
                       disabled={authenticating}
                     />
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <button
+                {/* Remember Me switch */}
+                <div className="flex items-center gap-2 pt-1 font-sans text-xs text-[#6B7280]">
+                  <input 
+                    type="checkbox" 
+                    id="remember"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="rounded border-[#E5E7EB] text-[#111827] focus:ring-[#111827] w-3.5 h-3.5 cursor-pointer"
+                  />
+                  <label htmlFor="remember" className="cursor-pointer select-none">Remember Me</label>
+                </div>
+
+                {/* Action submit button */}
+                <Button 
                   type="submit"
-                  className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-800 text-[11px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono disabled:opacity-50"
                   disabled={authenticating}
+                  className="w-full py-2.5 bg-[#111827] hover:bg-[#6B7280] text-[10px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono"
                 >
-                  {authenticating ? 'Connecting...' : 'Validate & Authenticate'}
-                </button>
+                  {authenticating ? 'Verifying...' : 'Sign In'}
+                </Button>
+
               </form>
-            </>
-          )}
+            )}
+
+          </Card>
+
+          {/* Social authentication buttons */}
+          <div className="space-y-2.5 font-mono text-[9px] uppercase tracking-wider">
+            
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-[#E5E7EB]"></div>
+              <span className="flex-shrink mx-4 text-[#6B7280]">Or Sign In With</span>
+              <div className="flex-grow border-t border-[#E5E7EB]"></div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => toast.info('Microsoft OAuth directory is disabled on demo accounts.')}
+                className="w-full h-9 border-[#E5E7EB] hover:bg-[#FAFAFA] hover:text-[#111827] flex items-center justify-center gap-2 text-[#6B7280]"
+              >
+                <Server size={12} className="text-[#2563EB]" /> Continue with Microsoft
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => toast.info('Google SSO integration is disabled on demo accounts.')}
+                className="w-full h-9 border-[#E5E7EB] hover:bg-[#FAFAFA] hover:text-[#111827] flex items-center justify-center gap-2 text-[#6B7280]"
+              >
+                <Globe size={12} className="text-[#10B981]" /> Continue with Google
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => toast.info('Azure Active Directory SSO is disabled on demo accounts.')}
+                className="w-full h-9 border-[#E5E7EB] hover:bg-[#FAFAFA] hover:text-[#111827] flex items-center justify-center gap-2 text-[#6B7280]"
+              >
+                <Shield size={12} className="text-[#2563EB]" /> Continue with Azure AD
+              </Button>
+            </div>
+
+          </div>
 
         </div>
 
         {/* Footer Secure Badge */}
-        <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-400 font-mono">
-          <ShieldCheck size={11} className="text-zinc-950" />
-          <span>SSL 256-bit Decoupled Auth Encryption</span>
+        <div className="text-center text-[10px] text-[#6B7280] font-mono flex items-center justify-center gap-1.5">
+          <span>Copyright © Support Studio Technologies. All Rights Reserved.</span>
         </div>
 
       </div>

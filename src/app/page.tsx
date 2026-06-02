@@ -43,7 +43,11 @@ import {
   Globe,
   Settings,
   HelpCircle,
-  Star
+  Star,
+  ShieldCheck,
+  ClipboardList,
+  BookOpen,
+  Workflow
 } from 'lucide-react';
 import {
   AreaChart,
@@ -144,7 +148,7 @@ export default function LandingPage() {
   const handleDemoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setDemoSubmitted(true);
-    toast.success(`Briefing request for "${demoType}" submitted successfully. Our enterprise team will contact you.`);
+    toast.success(`Demo request for "${demoType}" submitted successfully.`);
     setTimeout(() => {
       setDemoSubmitted(false);
       setDemoModalOpen(false);
@@ -176,7 +180,7 @@ export default function LandingPage() {
     }
   };
 
-  // --- MOCK DATA FOR THE ULTRADARK CHARTS ---
+  // --- MOCK DATA FOR THE LIGHT CHARTS ---
   const ticketVolumeData = [
     { name: 'Jan', incidents: 1200, requests: 3400, resolved: 4400 },
     { name: 'Feb', incidents: 1100, requests: 3600, resolved: 4600 },
@@ -294,102 +298,76 @@ export default function LandingPage() {
     }
   };
 
-  const ITSM_SUITE_METADATA: Record<string, { description: string; dbSchema: string; tableCount: number; keyMetrics: string }> = {
+  const ITSM_SUITE_METADATA: Record<string, { description: string; dbSchema: string; tableCount: number; keyMetrics: string; icon: React.ComponentType<any> }> = {
     'Incident Management': {
       description: 'Streamline logging, tracking, diagnosing, and resolving critical service outages and incidents.',
       dbSchema: 'Public.incidents_ledger',
       tableCount: 8,
-      keyMetrics: 'Mean Time to Resolution (MTTR), First Contact Resolution (FCR)'
+      keyMetrics: 'Mean Time to Resolution (MTTR), First Contact Resolution (FCR)',
+      icon: ShieldCheck
     },
-    'Service Request Management': {
+    'Service Requests': {
       description: 'Address employee and customer queries, equipment provisioning, access requests, and software upgrades.',
       dbSchema: 'Public.service_requests_queue',
       tableCount: 5,
-      keyMetrics: 'Request Turnaround SLA, User Approvals Pending'
+      keyMetrics: 'Request Turnaround SLA, User Approvals Pending',
+      icon: ClipboardList
     },
-    'Problem Management': {
-      description: 'Investigate underlying root causes of recurring alerts and incidents to prevent service disruptions.',
-      dbSchema: 'Public.problem_records',
-      tableCount: 4,
-      keyMetrics: 'Root Cause Identification Rate, Preventive Actions Implemented'
-    },
-    'Change Management': {
-      description: 'Control changes to code, configurations, infrastructure, and databases securely through automated pipelines.',
-      dbSchema: 'Public.change_approvals_registry',
+    'Workflow Automation': {
+      description: 'Build flexible state transitions, automatic approvals, escalations routing, and custom notifications.',
+      dbSchema: 'Public.workflow_configurations',
       tableCount: 6,
-      keyMetrics: 'Change Success Rate, Unplanned Change Incidents'
+      keyMetrics: 'Automation rate, Path cycle times',
+      icon: Workflow
     },
-    'Release Management': {
-      description: 'Manage version release planning, deployment schedules, staging evaluations, and rollback strategies.',
-      dbSchema: 'Public.release_manifests',
-      tableCount: 4,
-      keyMetrics: 'Deploy Frequencies, Staging vs Production Success Rates'
+    'Analytics': {
+      description: 'Generate live reports, performance burn-downs, and cost analytics widgets without caching delays.',
+      dbSchema: 'Public.analytics_metrics',
+      tableCount: 7,
+      keyMetrics: 'Report load speed, Dashboard count',
+      icon: BarChart3
+    },
+    'AI Intelligence': {
+      description: 'Predict SLA risk anomalies, automate ticket categorization, and suggest diagnostic actions instantly.',
+      dbSchema: 'Public.ai_diagnostics',
+      tableCount: 10,
+      keyMetrics: 'Prediction accuracy, Processing speed',
+      icon: Sparkles
     },
     'Knowledge Management': {
       description: 'Compile solutions, configurations, policies, and diagnostic wikis in a central secure hub.',
       dbSchema: 'Public.knowledge_base_articles',
       tableCount: 3,
-      keyMetrics: 'Article Helpful Votes, Search Deflection Ratio'
+      keyMetrics: 'Article Helpful Votes, Search Deflection Ratio',
+      icon: BookOpen
     },
     'Asset Management': {
       description: 'Track hardware, licenses, virtual machines, cloud instances, and resource lifecycles.',
       dbSchema: 'Public.assets_inventory',
       tableCount: 12,
-      keyMetrics: 'Total Active Asset Value, License Compliance Ratio'
+      keyMetrics: 'Total Active Asset Value, License Compliance Ratio',
+      icon: Server
     },
-    'CMDB': {
-      description: 'Map complete configuration item topologies, dependency structures, and service mappings in real-time.',
-      dbSchema: 'Public.cmdb_configuration_items',
-      tableCount: 9,
-      keyMetrics: 'Impact Propagation Mapping Speed, Configuration Completeness'
+    'Security': {
+      description: 'Protect corporate assets with fine-grained Row Level Security (RLS) policies, Okta SSO, and TLS encryption.',
+      dbSchema: 'Public.compliance_audits_trail',
+      tableCount: 11,
+      keyMetrics: 'Audit Coverage Score, Active Vulnerability Remediation Days',
+      icon: Lock
     },
-    'Service Catalog': {
-      description: 'Central list of business-facing services, SLAs, self-service request portals, and cost allocations.',
-      dbSchema: 'Public.service_catalog_items',
-      tableCount: 5,
-      keyMetrics: 'Popular Service Submissions, SLA Compliance Rate'
-    },
-    'Approval Management': {
-      description: 'Unified queue for timesheet approvals, change orders, deletion requests, and administrative overrides.',
-      dbSchema: 'Public.approval_logs',
-      tableCount: 3,
-      keyMetrics: 'Average Approval Cycle Time, Delegate Coverage'
-    },
-    'Vendor Management': {
-      description: 'Supervise vendor SLA performance, service costs, licensing agreements, and escalation pathways.',
-      dbSchema: 'Public.vendor_contracts_register',
-      tableCount: 5,
-      keyMetrics: 'Vendor SLA Success Rate, Annual Spend Efficiencies'
-    },
-    'Employee Service Management': {
-      description: 'Deliver HR requests, payroll questions, legal inquiries, and office facilities help.',
-      dbSchema: 'Public.employee_requests',
-      tableCount: 7,
-      keyMetrics: 'Internal CSAT Rating, First Contact Resolution Rate'
-    },
-    'Customer Service Management': {
+    'Customer Success': {
       description: 'Address external customer support incidents, case queues, SLAs, and technical communications.',
       dbSchema: 'Public.customer_cases',
       tableCount: 8,
-      keyMetrics: 'External Case Backlog, Customer Retention Rate'
+      keyMetrics: 'External Case Backlog, Customer Retention Rate',
+      icon: Users
     },
-    'Field Service Management': {
-      description: 'Schedule technician dispatches, track field activities, inventory parts, and manage onsite tickets.',
-      dbSchema: 'Public.field_dispatches',
-      tableCount: 6,
-      keyMetrics: 'First-time Fix Rate, Route Dispatch Efficiencies'
-    },
-    'Project Service Delivery': {
-      description: 'Track implementation milestones, consulting efforts, burn sheets, and deliverables.',
-      dbSchema: 'Public.project_milestones',
-      tableCount: 7,
-      keyMetrics: 'Project Milestones Met, Estimated vs Actual Effort Burn'
-    },
-    'Governance & Compliance': {
-      description: 'Enforce security standards, row-level controls, audit logs, and SOC2/ISO registry verification.',
-      dbSchema: 'Public.compliance_audits_trail',
-      tableCount: 11,
-      keyMetrics: 'Audit Coverage Score, Active Vulnerability Remediation Days'
+    'Executive Reporting': {
+      description: 'Generate cross-customer reports, trend charts, response times, and billing burn graphs with zero caching latency.',
+      dbSchema: 'Public.executive_widgets',
+      tableCount: 5,
+      keyMetrics: 'Mean CSAT Rating, Core SLA adherence',
+      icon: TrendingUp
     }
   };
 
@@ -415,13 +393,13 @@ export default function LandingPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#FFFFFF] selection:bg-[#FFFFFF] selection:text-[#050505] flex flex-col font-sans antialiased scroll-smooth">
+    <div className="min-h-screen bg-white text-[#111827] selection:bg-[#111827] selection:text-white flex flex-col font-sans antialiased scroll-smooth">
       
       {/* ── HEADER NAVIGATION ── */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
-            ? 'bg-[#050505]/80 backdrop-blur-md border-b border-[#262626] py-3'
+            ? 'bg-white/80 backdrop-blur-md border-b border-[#E5E7EB] py-3 shadow-sm'
             : 'bg-transparent py-5'
         }`}
       >
@@ -429,68 +407,68 @@ export default function LandingPage() {
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center gap-3">
               <BrandedLogo width={26} height={26} />
-              <span className="font-extrabold text-sm tracking-wider text-[#FFFFFF] font-mono">ASSIST360</span>
+              <span className="font-extrabold text-sm tracking-wider text-[#111827] font-mono">ASSIST360</span>
             </Link>
-            <nav className="hidden lg:flex items-center gap-8 text-[11px] uppercase tracking-widest font-mono font-bold text-[#A3A3A3]">
-              <a href="#why-assist" className="hover:text-[#FFFFFF] transition">Why Platform</a>
-              <a href="#ai-showcase" className="hover:text-[#FFFFFF] transition">AI Systems</a>
-              <a href="#itsm-suite" className="hover:text-[#FFFFFF] transition">ITSM Suite</a>
-              <a href="#dashboard-exp" className="hover:text-[#FFFFFF] transition">Dashboard</a>
-              <a href="#workflow-automation" className="hover:text-[#FFFFFF] transition">Workflow</a>
-              <a href="#analytics-section" className="hover:text-[#FFFFFF] transition">Analytics</a>
-              <a href="#compare" className="hover:text-[#FFFFFF] transition">Comparison</a>
+            <nav className="hidden lg:flex items-center gap-8 text-[11px] uppercase tracking-widest font-mono font-bold text-[#6B7280]">
+              <a href="#why-assist" className="hover:text-[#111827] transition">Why Platform</a>
+              <a href="#ai-showcase" className="hover:text-[#111827] transition">AI Systems</a>
+              <a href="#itsm-suite" className="hover:text-[#111827] transition">ITSM Suite</a>
+              <a href="#dashboard-exp" className="hover:text-[#111827] transition">Dashboard</a>
+              <a href="#workflow-automation" className="hover:text-[#111827] transition">Workflow</a>
+              <a href="#analytics-section" className="hover:text-[#111827] transition">Analytics</a>
+              <a href="#compare" className="hover:text-[#111827] transition">Comparison</a>
             </nav>
           </div>
           
           <div className="flex items-center gap-4">
-            <Button asChild variant="ghost" className="h-9 text-[11px] font-bold uppercase tracking-widest font-mono text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#111111]">
-              <Link href="/login">Portal Login</Link>
+            <Button asChild variant="ghost" className="h-9 text-[11px] font-bold uppercase tracking-widest font-mono text-[#6B7280] hover:text-[#111827] hover:bg-[#FAFAFA]">
+              <Link href="/login">Sign In</Link>
             </Button>
             
             <Dialog open={demoModalOpen} onOpenChange={setDemoModalOpen}>
               <DialogTrigger asChild>
                 <Button 
                   onClick={() => setDemoType('Standard Platform Demo')}
-                  className="h-9 text-[11px] font-bold uppercase tracking-widest font-mono bg-[#FFFFFF] hover:bg-[#A3A3A3] text-[#050505] rounded px-4 shadow-md transition active:scale-[0.98]"
+                  className="h-9 text-[11px] font-bold uppercase tracking-widest font-mono bg-[#111827] hover:bg-[#6B7280] text-white rounded px-4 shadow-sm transition active:scale-[0.98]"
                 >
-                  Start Demo
+                  Book a Demo
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-[#111111] border border-[#262626] rounded max-w-md p-6 text-white animate-in fade-in-50 duration-200">
+              <DialogContent className="bg-white border border-[#E5E7EB] rounded max-w-md p-6 text-[#111827] shadow-lg">
                 <DialogHeader>
-                  <DialogTitle className="text-md font-bold uppercase tracking-wider text-white">Request Executive Consultation</DialogTitle>
-                  <DialogDescription className="text-xs text-[#A3A3A3] font-mono mt-1">
+                  <DialogTitle className="text-md font-bold uppercase tracking-wider text-[#111827]">Request platform demo</DialogTitle>
+                  <DialogDescription className="text-xs text-[#6B7280] font-mono mt-1">
                     Book an architecture review and live demo for the ASSIST360 platform.
                   </DialogDescription>
                 </DialogHeader>
                 {demoSubmitted ? (
                   <div className="text-center py-8 space-y-3">
-                    <div className="w-12 h-12 rounded bg-[#0A0A0A] border border-[#262626] text-[#10B981] flex items-center justify-center mx-auto">
+                    <div className="w-12 h-12 rounded bg-[#FAFAFA] border border-[#E5E7EB] text-[#10B981] flex items-center justify-center mx-auto">
                       <CheckCircle2 size={24} />
                     </div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Request Confirmed</h3>
-                    <p className="text-xs text-[#A3A3A3] font-mono">Our Enterprise Solutions Desk will reach out within 2 hours.</p>
+                    <h3 className="text-sm font-bold text-[#111827] uppercase tracking-wider">Request Confirmed</h3>
+                    <p className="text-xs text-[#6B7280] font-mono">Our Solutions Desk will reach out shortly.</p>
                   </div>
                 ) : (
                   <form onSubmit={handleDemoSubmit} className="space-y-4 pt-3">
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-[#A3A3A3] font-mono">Name</label>
-                      <input required type="text" placeholder="Sarah Jenkins" className="w-full bg-[#161616] border border-[#262626] rounded p-2.5 text-xs text-white placeholder-[#A3A3A3] focus:outline-none focus:border-[#FFFFFF]" />
+                      <label className="text-[9px] uppercase font-bold text-[#6B7280] font-mono">Name</label>
+                      <input required type="text" placeholder="Sarah Jenkins" className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded p-2.5 text-xs text-[#111827] placeholder-[#6B7280] focus:outline-none focus:border-[#111827]" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-[#A3A3A3] font-mono">Enterprise Email</label>
-                      <input required type="email" placeholder="s.jenkins@company.com" className="w-full bg-[#161616] border border-[#262626] rounded p-2.5 text-xs text-white placeholder-[#A3A3A3] focus:outline-none focus:border-[#FFFFFF]" />
+                      <label className="text-[9px] uppercase font-bold text-[#6B7280] font-mono">Enterprise Email</label>
+                      <input required type="email" placeholder="s.jenkins@company.com" className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded p-2.5 text-xs text-[#111827] placeholder-[#6B7280] focus:outline-none focus:border-[#111827]" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-[#A3A3A3] font-mono">Company / Organization</label>
-                      <input required type="text" placeholder="Global Group Inc." className="w-full bg-[#161616] border border-[#262626] rounded p-2.5 text-xs text-white placeholder-[#A3A3A3] focus:outline-none focus:border-[#FFFFFF]" />
+                      <label className="text-[9px] uppercase font-bold text-[#6B7280] font-mono">Company / Organization</label>
+                      <input required type="text" placeholder="Global Group Inc." className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded p-2.5 text-xs text-[#111827] placeholder-[#6B7280] focus:outline-none focus:border-[#111827]" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-[#A3A3A3] font-mono">Briefing Type</label>
+                      <label className="text-[9px] uppercase font-bold text-[#6B7280] font-mono">Briefing Type</label>
                       <select 
                         value={demoType} 
                         onChange={(e) => setDemoType(e.target.value)} 
-                        className="w-full bg-[#161616] border border-[#262626] rounded p-2.5 text-xs text-white focus:outline-none focus:border-[#FFFFFF]"
+                        className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded p-2.5 text-xs text-[#111827] focus:outline-none focus:border-[#111827]"
                       >
                         <option value="Platform Demo">Start Enterprise Demo</option>
                         <option value="Executive Briefing">Book Executive Briefing</option>
@@ -498,7 +476,7 @@ export default function LandingPage() {
                       </select>
                     </div>
                     <DialogFooter className="pt-2">
-                      <Button type="submit" className="w-full bg-[#FFFFFF] hover:bg-[#A3A3A3] text-[#050505] font-bold uppercase tracking-wider text-[10px] py-2.5 rounded font-mono">
+                      <Button type="submit" className="w-full bg-[#111827] hover:bg-[#6B7280] text-white font-bold uppercase tracking-wider text-[10px] py-2.5 rounded font-mono">
                         Submit & Request Review
                       </Button>
                     </DialogFooter>
@@ -510,26 +488,27 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* ── SECTION 1: IMMERSIVE HERO EXPERIENCE ── */}
-      <section className="min-h-screen pt-32 pb-20 md:pt-40 md:pb-28 relative flex items-center bg-[#050505] border-b border-[#262626] overflow-hidden">
-        {/* Background Network Graphic Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#262626_1px,transparent_1px),linear-gradient(to_bottom,#262626_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-15"></div>
+      {/* ── SECTION 1: HOME PAGE HERO ── */}
+      <section className="min-h-screen pt-32 pb-20 md:pt-40 md:pb-28 relative flex items-center bg-[#FFFFFF] border-b border-[#E5E7EB] overflow-hidden">
+        {/* Background Network Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-25"></div>
         
         <div className="max-w-7xl mx-auto px-6 md:px-8 w-full relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
             {/* HERO LEFT */}
             <div className="lg:col-span-6 space-y-6 text-left">
-              <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#FFFFFF] bg-[#111111] py-1 px-3 uppercase rounded">
-                AI Service Management
-              </Badge>
+              <div className="inline-flex items-center gap-2">
+                <BrandedLogo width={22} height={22} />
+                <span className="text-[11px] font-bold tracking-widest text-[#111827] font-mono uppercase">Assist360</span>
+              </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
-                The AI-Native Enterprise Service Management Platform
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#111827] leading-[1.1]">
+                The Modern Enterprise Service Management Platform
               </h1>
               
-              <p className="text-sm md:text-base text-[#A3A3A3] font-medium leading-relaxed max-w-xl">
-                Transform service delivery with intelligent workflows, AI-driven operations, enterprise governance, automation, and real-time operational visibility.
+              <p className="text-sm md:text-base text-[#6B7280] font-medium leading-relaxed max-w-xl">
+                Unify service operations, incident management, requests, approvals, analytics, AI automation, and enterprise workflows through a single intelligent platform.
               </p>
               
               <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -538,9 +517,9 @@ export default function LandingPage() {
                     setDemoType('Start Enterprise Demo');
                     setDemoModalOpen(true);
                   }}
-                  className="h-11 px-6 bg-[#FFFFFF] hover:bg-[#A3A3A3] text-[#050505] font-mono text-xs font-bold uppercase tracking-wider rounded"
+                  className="h-11 px-6 bg-[#111827] hover:bg-[#6B7280] text-white font-mono text-xs font-bold uppercase tracking-wider rounded shadow-sm"
                 >
-                  Start Enterprise Demo
+                  Book a Demo
                 </Button>
 
                 <Button 
@@ -549,47 +528,45 @@ export default function LandingPage() {
                     setDemoModalOpen(true);
                   }}
                   variant="outline"
-                  className="h-11 px-6 border-[#262626] bg-[#111111] text-white hover:bg-[#161616] hover:border-[#FFFFFF] font-mono text-xs font-bold uppercase tracking-wider rounded"
+                  className="h-11 px-6 border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#FAFAFA] hover:border-[#6B7280] font-mono text-xs font-bold uppercase tracking-wider rounded"
                 >
-                  Book Executive Briefing
-                </Button>
-
-                <Button 
-                  onClick={() => {
-                    setDemoType('Watch Product Tour');
-                    setDemoModalOpen(true);
-                  }}
-                  variant="ghost" 
-                  className="h-11 px-5 text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#111111] font-mono text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2"
-                >
-                  <Play size={12} /> Watch Product Tour
+                  Explore Platform
                 </Button>
               </div>
 
-              {/* Trust badge icons row */}
-              <div className="pt-6 border-t border-[#262626] flex flex-wrap gap-x-6 gap-y-2 text-[10px] uppercase font-bold text-[#A3A3A3] font-mono">
-                <span className="flex items-center gap-1.5"><Shield size={12} className="text-[#10B981]" /> Enterprise Grade</span>
-                <span className="flex items-center gap-1.5"><Sliders size={12} className="text-[#3B82F6]" /> Configurable Workflows</span>
-                <span className="flex items-center gap-1.5"><Database size={12} className="text-[#F59E0B]" /> Multi-Tenant Architecture</span>
+              {/* Below CTA Checklist */}
+              <div className="pt-6 border-t border-[#E5E7EB] grid grid-cols-2 gap-y-3 gap-x-6 text-[11px] font-bold font-mono text-[#6B7280] uppercase">
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-[#10B981]" /> Enterprise Ready
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-[#2563EB]" /> AI Powered
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-[#2563EB]" /> Scalable Architecture
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-[#10B981]" /> Real-Time Analytics
+                </span>
               </div>
             </div>
 
-            {/* HERO RIGHT: FLOATING LIVE COMMAND CENTER */}
+            {/* HERO RIGHT: PRODUCT SHOWCASE */}
             <div className="lg:col-span-6 relative flex items-center justify-center min-h-[440px]">
               
               {/* Outer boundary frame */}
-              <div className="relative w-full max-w-lg p-6 bg-[#111111] border border-[#262626] rounded shadow-2xl space-y-4">
+              <div className="relative w-full max-w-lg p-6 bg-white border border-[#E5E7EB] rounded-lg shadow-xl space-y-4">
                 
                 {/* Visual title top */}
-                <div className="flex justify-between items-center border-b border-[#262626] pb-3">
+                <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#A3A3A3]">Operational Command Console</span>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#6B7280]">Service Operations Console</span>
                   </div>
                   <Button 
                     onClick={handleHeroRefresh} 
                     disabled={heroLoading} 
-                    className="h-6 px-2 bg-[#161616] hover:bg-[#262626] border border-[#262626] text-[9px] font-mono uppercase font-bold flex items-center gap-1 text-white"
+                    className="h-6 px-2 bg-[#FAFAFA] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[9px] font-mono uppercase font-bold flex items-center gap-1 text-[#111827]"
                   >
                     <RefreshCw size={10} className={heroLoading ? 'animate-spin' : ''} /> 
                     {heroLoading ? 'Reading...' : 'Refresh'}
@@ -598,98 +575,80 @@ export default function LandingPage() {
 
                 {heroLoading ? (
                   <div className="space-y-4 py-8">
-                    <div className="h-6 bg-[#161616] animate-pulse rounded w-1/3"></div>
-                    <div className="h-20 bg-[#161616] animate-pulse rounded"></div>
-                    <div className="h-10 bg-[#161616] animate-pulse rounded w-3/4"></div>
+                    <div className="h-6 bg-[#FAFAFA] animate-pulse rounded w-1/3"></div>
+                    <div className="h-20 bg-[#FAFAFA] animate-pulse rounded"></div>
+                    <div className="h-10 bg-[#FAFAFA] animate-pulse rounded w-3/4"></div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     
                     {/* Floating Widget 1: Open Incidents */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300 group">
-                      <div className="flex justify-between items-center text-[#A3A3A3]">
+                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] hover:shadow-md transition duration-300 group">
+                      <div className="flex justify-between items-center text-[#6B7280]">
                         <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Open Incidents</span>
                         <AlertTriangle size={12} className="text-[#EF4444]" />
                       </div>
-                      <div className="mt-1 text-xl font-bold font-mono text-white">{heroIncidents}</div>
-                      <span className="text-[8px] font-mono text-[#A3A3A3] block mt-1">Live active ticket load</span>
+                      <div className="mt-1 text-xl font-bold font-mono text-[#111827]">{heroIncidents}</div>
+                      <span className="text-[8px] font-mono text-[#6B7280] block mt-1">Live active ticket load</span>
                     </div>
 
-                    {/* Floating Widget 2: Critical Alerts */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300">
-                      <div className="flex justify-between items-center text-[#A3A3A3]">
-                        <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Critical Alerts</span>
-                        <ShieldAlert size={12} className="text-[#EF4444] animate-pulse" />
-                      </div>
-                      <div className="mt-1 text-xl font-bold font-mono text-white">2</div>
-                      <span className="text-[8px] font-mono text-[#EF4444] block mt-1">Immediate remediation</span>
-                    </div>
-
-                    {/* Floating Widget 3: SLA Health */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300">
-                      <div className="flex justify-between items-center text-[#A3A3A3]">
-                        <span className="text-[9px] font-mono uppercase font-bold tracking-wider">SLA Compliance</span>
+                    {/* Floating Widget 2: SLA Health */}
+                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] hover:shadow-md transition duration-300">
+                      <div className="flex justify-between items-center text-[#6B7280]">
+                        <span className="text-[9px] font-mono uppercase font-bold tracking-wider">SLA compliance</span>
                         <Activity size={12} className="text-[#10B981]" />
                       </div>
                       <div className="mt-1 text-xl font-bold font-mono text-[#10B981]">{heroSla}%</div>
-                      <span className="text-[8px] font-mono text-[#A3A3A3] block mt-1">Against contract target</span>
+                      <span className="text-[8px] font-mono text-[#6B7280] block mt-1">Target contract level</span>
                     </div>
 
-                    {/* Floating Widget 4: Service Availability */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300">
-                      <span className="text-[9px] font-mono uppercase font-bold text-[#A3A3A3] tracking-wider block">Service Availability</span>
-                      <div className="mt-1 text-md font-bold font-mono text-white">99.99%</div>
-                      <span className="text-[8px] font-mono text-[#10B981] block mt-1">Platform operations: Normal</span>
+                    {/* Floating Widget 3: CSAT */}
+                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] hover:shadow-md transition duration-300">
+                      <div className="flex justify-between items-center text-[#6B7280]">
+                        <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Satisfaction</span>
+                        <Star size={12} className="text-[#F59E0B] fill-[#F59E0B]" />
+                      </div>
+                      <div className="mt-1 text-xl font-bold font-mono text-[#111827]">{heroSatisfy} / 5.0</div>
+                      <span className="text-[8px] font-mono text-[#10B981] block mt-1">98% positive reviews</span>
                     </div>
 
-                    {/* Floating Widget 5: AI Predictions */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300">
-                      <span className="text-[9px] font-mono uppercase font-bold text-[#A3A3A3] tracking-wider block">AI Routing Actions</span>
-                      <div className="mt-1 text-md font-bold font-mono text-[#3B82F6]">Auto-Classified</div>
-                      <span className="text-[8px] font-mono text-[#A3A3A3] block mt-1">Confidence rating: 99.4%</span>
+                    {/* Floating Widget 4: AI Predictions */}
+                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] hover:shadow-md transition duration-300">
+                      <span className="text-[9px] font-mono uppercase font-bold text-[#6B7280] tracking-wider block">AI Insights</span>
+                      <div className="mt-1 text-md font-bold font-mono text-[#2563EB]">Auto-Routed</div>
+                      <span className="text-[8px] font-mono text-[#6B7280] block mt-1">Confidence score: 99%</span>
                     </div>
 
-                    {/* Floating Widget 6: CSAT */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300">
-                      <span className="text-[9px] font-mono uppercase font-bold text-[#A3A3A3] tracking-wider block">User Satisfaction</span>
-                      <div className="mt-1 text-md font-bold font-mono text-white">{heroSatisfy} / 5.0</div>
-                      <span className="text-[8px] font-mono text-[#10B981] block mt-1">98% positive responses</span>
-                    </div>
-
-                    {/* Floating Widget 7: Asset Health */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300">
-                      <span className="text-[9px] font-mono uppercase font-bold text-[#A3A3A3] tracking-wider block">Asset Health Index</span>
-                      <div className="mt-1 text-md font-bold font-mono text-white">98.9%</div>
-                      <span className="text-[8px] font-mono text-[#A3A3A3] block mt-1">1,420 configurations active</span>
-                    </div>
-
-                    {/* Floating Widget 8: Service Performance */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300">
-                      <span className="text-[9px] font-mono uppercase font-bold text-[#A3A3A3] tracking-wider block">Operational Speed</span>
-                      <div className="mt-1 text-md font-bold font-mono text-[#10B981]">Optimal</div>
-                      <span className="text-[8px] font-mono text-[#A3A3A3] block mt-1">Queue processed in 8ms</span>
-                    </div>
-
-                    {/* Floating Widget 9: Team Productivity */}
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded hover:border-[#FFFFFF] transition duration-300">
-                      <span className="text-[9px] font-mono uppercase font-bold text-[#A3A3A3] tracking-wider block">Backlog Efficiency</span>
-                      <div className="mt-1 text-md font-bold font-mono text-white">87.4%</div>
-                      <span className="text-[8px] font-mono text-[#10B981] block mt-1">No queues blocked</span>
+                    {/* Floating Widget 5: Ticket Trends */}
+                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] hover:shadow-md transition duration-300 col-span-2">
+                      <span className="text-[9px] font-mono uppercase font-bold text-[#6B7280] tracking-wider block">Ticket Intake trend</span>
+                      <div className="h-10 w-full mt-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={ticketVolumeData.slice(-4)} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="widgetChartGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15} />
+                                <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <Area type="monotone" dataKey="resolved" stroke="#2563EB" strokeWidth={2} fill="url(#widgetChartGrad)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
 
                   </div>
                 )}
 
                 {/* Status Console Printout */}
-                <div className="p-3 bg-[#0A0A0A] border border-[#262626] rounded space-y-1">
-                  <div className="flex justify-between items-center border-b border-[#262626] pb-1 mb-1">
-                    <span className="text-[8px] font-mono uppercase text-[#A3A3A3] tracking-widest">Telemetry Log Stream</span>
-                    <span className="text-[8px] font-mono text-[#A3A3A3]">{heroRefreshTime}</span>
+                <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded space-y-1">
+                  <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-1 mb-1 font-mono text-[8px] text-[#6B7280] uppercase tracking-widest">
+                    <span>Active telemetry logs</span>
+                    <span>{heroRefreshTime}</span>
                   </div>
-                  <div className="font-mono text-[9px] text-[#A3A3A3] space-y-0.5 select-none">
-                    <p><span className="text-[#3B82F6]">&gt;</span> AI Router: SLA breach checks running hourly.</p>
-                    <p><span className="text-[#3B82F6]">&gt;</span> DB Broker: Verified encryption keys on cloud records.</p>
-                    <p><span className="text-[#10B981]">&gt;</span> OKTA Bridge: Session synchronization verified.</p>
+                  <div className="font-mono text-[9px] text-[#6B7280] space-y-0.5 select-none">
+                    <p><span className="text-[#2563EB] font-bold">&gt;</span> Automated Classification pipeline online.</p>
+                    <p><span className="text-[#2563EB] font-bold">&gt;</span> Row Level Security active across tables.</p>
                   </div>
                 </div>
 
@@ -700,27 +659,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SECTION 2: GLOBAL TRUST BAR ── */}
-      <section className="py-14 bg-[#0A0A0A] border-b border-[#262626]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <div className="text-center mb-8">
-            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#A3A3A3]">Proven Scale. IPO-Grade Governance.</span>
+      {/* ── SECTION 2: TRUST & SOCIAL PROOF ── */}
+      <section className="py-14 bg-[#FAFAFA] border-b border-[#E5E7EB]">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-8">
+          <div className="text-center">
+            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#6B7280]">Powering service excellence for modern operations</span>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             {[
-              { num: '99.99%', title: 'Availability' },
-              { num: '500K+', title: 'Tickets Managed' },
-              { num: '100K+', title: 'Requests Met' },
-              { num: '50K+', title: 'Assets Tracked' },
+              { num: '99.95%', title: 'Platform Availability' },
+              { num: '500K+', title: 'Requests Processed' },
+              { num: '50K+', title: 'Tickets Managed' },
               { num: '98.7%', title: 'SLA Compliance' },
               { num: '95%', title: 'Customer CSAT' },
-              { num: '40%', title: 'Fewer Incidents' },
-              { num: '35%', title: 'Cost Deflection' }
+              { num: '100+', title: 'Enterprise Teams' }
             ].map((stat, idx) => (
-              <div key={idx} className="p-4 bg-[#111111] border border-[#262626] rounded text-center hover:border-white transition duration-300">
-                <span className="text-xl font-bold font-mono text-white block">{stat.num}</span>
-                <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#A3A3A3] block mt-1">{stat.title}</span>
+              <div key={idx} className="p-4 bg-white border border-[#E5E7EB] rounded text-center hover:shadow-sm transition duration-300">
+                <span className="text-xl font-bold font-mono text-[#111827] block">{stat.num}</span>
+                <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#6B7280] block mt-1">{stat.title}</span>
               </div>
             ))}
           </div>
@@ -728,15 +685,15 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 3: WHY ASSIST360 ── */}
-      <section id="why-assist" className="py-24 bg-[#050505] border-b border-[#262626]">
+      <section id="why-assist" className="py-24 bg-[#FFFFFF] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
               Platform Merits
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Built For Modern Service Organizations</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
-              Replacing legacy, disjointed support ticketers with a single, AI-native platform designed to govern operations, manage assets, and streamline employee workflows.
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Built For Modern Service Organizations</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
+              Consolidate tickets, workloads, asset databases, approvals, and compliance records inside a single platform.
             </p>
           </div>
 
@@ -751,9 +708,9 @@ export default function LandingPage() {
               { title: 'Scalable Architecture', desc: 'Process hundreds of database operations concurrently without performance degradation or indexing leaks.' },
               { title: 'Multi-Tenant SaaS', desc: 'Share infrastructure resources safely and securely across global departments with robust data partition systems.' }
             ].map((card, idx) => (
-              <Card key={idx} className="bg-[#111111] border-[#262626] hover:border-white transition duration-300 rounded p-6 space-y-3">
-                <span className="text-xs font-bold text-white font-mono uppercase block">{card.title}</span>
-                <p className="text-xs text-[#A3A3A3] leading-relaxed font-sans">{card.desc}</p>
+              <Card key={idx} className="bg-white border-[#E5E7EB] hover:border-[#6B7280] hover:shadow-md transition duration-300 rounded p-6 space-y-3">
+                <span className="text-xs font-bold text-[#111827] font-mono uppercase block">{card.title}</span>
+                <p className="text-xs text-[#6B7280] leading-relaxed font-sans">{card.desc}</p>
               </Card>
             ))}
           </div>
@@ -761,14 +718,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 4: AI PLATFORM SHOWCASE ── */}
-      <section id="ai-showcase" className="py-24 bg-[#0A0A0A] border-b border-[#262626]">
+      <section id="ai-showcase" className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FFFFFF] rounded">
               Machine Intelligence
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">AI That Works Across Every Service Operation</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">AI That Works Across Every Service Operation</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Dynamic operational assistants that diagnose system alerts, route workloads, prevent breaches, and recommend fixes automatically.
             </p>
           </div>
@@ -794,8 +751,8 @@ export default function LandingPage() {
                     onClick={() => setActiveAiCapability(cap.id)}
                     className={`w-full text-left p-3.5 font-mono text-xs uppercase tracking-wider font-bold rounded border transition ${
                       activeAiCapability === cap.id
-                        ? 'bg-white text-[#050505] border-[#FFFFFF]'
-                        : 'bg-[#111111] text-[#A3A3A3] border-[#262626] hover:border-[#A3A3A3]'
+                        ? 'bg-[#111111] text-white border-[#111111]'
+                        : 'bg-white text-[#6B7280] border-[#E5E7EB] hover:border-[#6B7280] hover:text-[#111111]'
                     }`}
                   >
                     {cap.title}
@@ -806,52 +763,52 @@ export default function LandingPage() {
 
             {/* Diagnostic simulator view */}
             <div className="lg:col-span-8">
-              <Card className="bg-[#111111] border-[#262626] h-full flex flex-col justify-between p-6 space-y-6">
+              <Card className="bg-white border-[#E5E7EB] h-full flex flex-col justify-between p-6 space-y-6 shadow-sm">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center border-b border-[#262626] pb-3">
-                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-white">
+                  <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-3">
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#111827]">
                       {AI_CAPABILITIES_METADATA[activeAiCapability].title}
                     </span>
-                    <Badge className="bg-[#161616] text-[#10B981] border border-[#262626] text-[9px] uppercase font-bold font-mono">
+                    <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[9px] uppercase font-bold font-mono">
                       {AI_CAPABILITIES_METADATA[activeAiCapability].status}
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded">
-                      <span className="text-[9px] text-[#A3A3A3] block uppercase tracking-wider">Analysis Latency</span>
-                      <span className="text-white font-bold block mt-1">{AI_CAPABILITIES_METADATA[activeAiCapability].latency}</span>
+                    <div className="p-3.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                      <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider">Analysis Latency</span>
+                      <span className="text-[#111827] font-bold block mt-1">{AI_CAPABILITIES_METADATA[activeAiCapability].latency}</span>
                     </div>
-                    <div className="p-3.5 bg-[#161616] border border-[#262626] rounded">
-                      <span className="text-[9px] text-[#A3A3A3] block uppercase tracking-wider">Prediction Confidence</span>
+                    <div className="p-3.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                      <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider">Prediction Confidence</span>
                       <span className="text-[#10B981] font-bold block mt-1">{AI_CAPABILITIES_METADATA[activeAiCapability].confidence}</span>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-[#0A0A0A] border border-[#262626] rounded font-mono text-xs">
-                    <span className="text-[9px] text-[#A3A3A3] block uppercase tracking-wider mb-2">Live AI Diagnostic Log</span>
-                    <p className="text-white break-words leading-relaxed select-none">
-                      <span className="text-[#3B82F6] font-bold">&gt;</span> {AI_CAPABILITIES_METADATA[activeAiCapability].log}
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded font-mono text-xs">
+                    <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider mb-2">Live AI Diagnostic Log</span>
+                    <p className="text-[#111827] break-words leading-relaxed select-none">
+                      <span className="text-[#2563EB] font-bold">&gt;</span> {AI_CAPABILITIES_METADATA[activeAiCapability].log}
                     </p>
                   </div>
                 </div>
 
                 {/* Mockup chart visualization */}
-                <div className="h-44 border border-[#262626] bg-[#0A0A0A] rounded p-4 flex flex-col justify-between">
-                  <span className="text-[8px] font-mono text-[#A3A3A3] uppercase tracking-wider block">AI confidence intervals & workload limits</span>
+                <div className="h-44 border border-[#E5E7EB] bg-[#FAFAFA] rounded p-4 flex flex-col justify-between">
+                  <span className="text-[8px] font-mono text-[#6B7280] uppercase tracking-wider block">AI confidence intervals & workload limits</span>
                   <div className="h-32 w-full mt-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={slaComplianceData} margin={{ top: 5, right: 5, left: -40, bottom: 5 }}>
                         <defs>
-                          <linearGradient id="aiChartGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                          <linearGradient id="aiChartLightGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15} />
+                            <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                        <XAxis dataKey="name" stroke="#A3A3A3" fontSize={8} className="font-mono" />
-                        <YAxis stroke="#A3A3A3" fontSize={8} domain={[97, 100]} className="font-mono" />
-                        <Area type="monotone" dataKey="compliance" stroke="#3B82F6" strokeWidth={2} fill="url(#aiChartGrad)" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
+                        <YAxis stroke="#6B7280" fontSize={8} domain={[97, 100]} className="font-mono" />
+                        <Area type="monotone" dataKey="compliance" stroke="#2563EB" strokeWidth={2} fill="url(#aiChartLightGrad)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -865,59 +822,68 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 5: ENTERPRISE ITSM SUITE ── */}
-      <section id="itsm-suite" className="py-24 bg-[#050505] border-b border-[#262626]">
+      <section id="itsm-suite" className="py-24 bg-[#FFFFFF] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
               Core Suite
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Enterprise ITSM Suite</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Enterprise ITSM Suite</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Select an IT Service Management capability below to audit database routing models, schemas, and metrics.
             </p>
           </div>
 
           {/* Grid layout */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.keys(ITSM_SUITE_METADATA).map((item) => (
-              <button
-                key={item}
-                onClick={() => setSelectedSuiteItem(item)}
-                className="p-4 bg-[#111111] border border-[#262626] rounded text-left hover:border-white transition duration-300 font-mono text-xs uppercase tracking-wider font-bold text-white flex justify-between items-center"
-              >
-                <span>{item}</span>
-                <ChevronRight size={14} className="text-[#A3A3A3]" />
-              </button>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {Object.entries(ITSM_SUITE_METADATA).map(([item, meta]) => {
+              const IconComponent = meta.icon;
+              return (
+                <button
+                  key={item}
+                  onClick={() => setSelectedSuiteItem(item)}
+                  className="p-5 bg-white border border-[#E5E7EB] rounded text-left hover:border-[#6B7280] hover:shadow-sm transition duration-300 flex flex-col justify-between h-40 space-y-4"
+                >
+                  <div className="w-8 h-8 rounded bg-[#FAFAFA] border border-[#E5E7EB] flex items-center justify-center text-[#2563EB]">
+                    <IconComponent size={16} />
+                  </div>
+                  <div className="font-mono text-xs uppercase tracking-wider font-bold text-[#111827]">
+                    {item}
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {/* Dialog detail expansion */}
           <Dialog open={!!selectedSuiteItem} onOpenChange={() => setSelectedSuiteItem(null)}>
-            <DialogContent className="bg-[#111111] border border-[#262626] rounded max-w-lg p-6 text-white font-mono">
+            <DialogContent className="bg-white border border-[#E5E7EB] rounded max-w-lg p-6 text-[#111827] font-mono shadow-xl">
               <DialogHeader>
-                <DialogTitle className="text-sm font-bold uppercase tracking-wider text-white border-b border-[#262626] pb-2">
+                <DialogTitle className="text-sm font-bold uppercase tracking-wider text-[#111827] border-b border-[#E5E7EB] pb-2">
                   ITSM Module: {selectedSuiteItem}
                 </DialogTitle>
-                <div className="text-xs text-[#A3A3A3] leading-relaxed pt-3 space-y-4">
-                  <p>{selectedSuiteItem && ITSM_SUITE_METADATA[selectedSuiteItem].description}</p>
+                <div className="text-xs text-[#6B7280] leading-relaxed pt-3 space-y-4 font-sans">
+                  <p className="text-sm text-[#111827]">
+                    {selectedSuiteItem && ITSM_SUITE_METADATA[selectedSuiteItem].description}
+                  </p>
                   
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div className="p-3 bg-[#161616] border border-[#262626] rounded">
-                      <span className="text-[9px] text-[#A3A3A3] block uppercase tracking-wider">DB Catalog Model</span>
-                      <span className="text-white font-bold block mt-1 text-[11px]">
+                  <div className="grid grid-cols-2 gap-4 pt-2 font-mono">
+                    <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                      <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider">DB Catalog Model</span>
+                      <span className="text-[#111827] font-bold block mt-1 text-[11px]">
                         {selectedSuiteItem && ITSM_SUITE_METADATA[selectedSuiteItem].dbSchema}
                       </span>
                     </div>
-                    <div className="p-3 bg-[#161616] border border-[#262626] rounded">
-                      <span className="text-[9px] text-[#A3A3A3] block uppercase tracking-wider">Relational Tables</span>
-                      <span className="text-white font-bold block mt-1 text-[11px]">
+                    <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                      <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider">Relational Tables</span>
+                      <span className="text-[#111827] font-bold block mt-1 text-[11px]">
                         {selectedSuiteItem && ITSM_SUITE_METADATA[selectedSuiteItem].tableCount} tables active
                       </span>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#0A0A0A] border border-[#262626] rounded">
-                    <span className="text-[9px] text-[#A3A3A3] block uppercase tracking-wider mb-1">Audit KPI Metrics Evaluated</span>
+                  <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded font-mono">
+                    <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider mb-1">Audit KPI Metrics Evaluated</span>
                     <span className="text-[#10B981] font-bold block text-[11px]">
                       {selectedSuiteItem && ITSM_SUITE_METADATA[selectedSuiteItem].keyMetrics}
                     </span>
@@ -925,7 +891,7 @@ export default function LandingPage() {
                 </div>
               </DialogHeader>
               <DialogFooter className="pt-2">
-                <Button onClick={() => setSelectedSuiteItem(null)} className="w-full bg-white text-[#050505] hover:bg-[#A3A3A3] font-bold uppercase tracking-wider text-[10px]">
+                <Button onClick={() => setSelectedSuiteItem(null)} className="w-full bg-[#111827] text-white hover:bg-[#6B7280] font-bold uppercase tracking-wider text-[10px]">
                   Close Diagnostics
                 </Button>
               </DialogFooter>
@@ -935,88 +901,88 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 6: ENTERPRISE DASHBOARD EXPERIENCE ── */}
-      <section id="dashboard-exp" className="py-24 bg-[#0A0A0A] border-b border-[#262626]">
+      <section id="dashboard-exp" className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-white rounded">
               Command Deck
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Enterprise Dashboard Experience</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Enterprise Dashboard Experience</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Interact with our role-based control dashboards to monitor incident backlogs, queue performance, SLA risks, and executive CSAT analytics.
             </p>
           </div>
 
           <Tabs value={selectedDashboardTab} onValueChange={setSelectedDashboardTab} className="space-y-6">
             <div className="flex justify-center">
-              <TabsList className="bg-[#111111] p-1 border border-[#262626] flex-wrap gap-1 rounded justify-start md:justify-center h-auto">
-                <TabsTrigger value="exec" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:text-[#050505] text-[#A3A3A3]">Executive Cockpit</TabsTrigger>
-                <TabsTrigger value="ops" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:text-[#050505] text-[#A3A3A3]">Operations Center</TabsTrigger>
-                <TabsTrigger value="desk" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:text-[#050505] text-[#A3A3A3]">Service Desk</TabsTrigger>
-                <TabsTrigger value="manager" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:text-[#050505] text-[#A3A3A3]">Manager View</TabsTrigger>
-                <TabsTrigger value="customer" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:text-[#050505] text-[#A3A3A3]">Customer Portal</TabsTrigger>
-                <TabsTrigger value="analytics" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:text-[#050505] text-[#A3A3A3]">BI Analytics</TabsTrigger>
+              <TabsList className="bg-[#FFFFFF] p-1 border border-[#E5E7EB] flex-wrap gap-1 rounded justify-start md:justify-center h-auto shadow-sm">
+                <TabsTrigger value="exec" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-[#111117] data-[state=active]:text-white text-[#6B7280]">Executive Cockpit</TabsTrigger>
+                <TabsTrigger value="ops" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-[#111117] data-[state=active]:text-white text-[#6B7280]">Operations Center</TabsTrigger>
+                <TabsTrigger value="desk" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-[#111117] data-[state=active]:text-white text-[#6B7280]">Service Desk</TabsTrigger>
+                <TabsTrigger value="manager" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-[#111117] data-[state=active]:text-white text-[#6B7280]">Manager View</TabsTrigger>
+                <TabsTrigger value="customer" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-[#111117] data-[state=active]:text-white text-[#6B7280]">Customer Portal</TabsTrigger>
+                <TabsTrigger value="analytics" className="text-[10px] font-bold uppercase tracking-widest font-mono rounded px-3 py-1.5 data-[state=active]:bg-[#111117] data-[state=active]:text-white text-[#6B7280]">BI Analytics</TabsTrigger>
               </TabsList>
             </div>
 
             {/* Dashboard Mock Panel */}
-            <Card className="bg-[#111111] border-[#262626] rounded p-6 shadow-2xl space-y-6">
+            <Card className="bg-white border-[#E5E7EB] rounded-lg p-6 shadow-md space-y-6">
               
               <TabsContent value="exec" className="space-y-6 mt-0 font-mono">
-                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#262626] pb-4 text-xs">
+                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#E5E7EB] pb-4 text-xs">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#A3A3A3]">Workspace: Corporate Executive Cockpit</span>
-                    <h3 className="text-sm font-bold text-white uppercase mt-1">Gartner Standard Operations Summary</h3>
+                    <span className="text-[10px] uppercase font-bold text-[#6B7280]">Workspace: Corporate Executive Cockpit</span>
+                    <h3 className="text-sm font-bold text-[#111827] uppercase mt-1">Gartner Standard Operations Summary</h3>
                   </div>
                   <div className="flex gap-4">
                     <div>
-                      <span className="text-[9px] uppercase text-[#A3A3A3]">SLA Compliance</span>
+                      <span className="text-[9px] uppercase text-[#6B7280]">SLA Compliance</span>
                       <span className="font-bold text-[#10B981] block mt-0.5">99.1% Met</span>
                     </div>
                     <div>
-                      <span className="text-[9px] uppercase text-[#A3A3A3]">CSAT Portfolio</span>
-                      <span className="font-bold text-[#FFFFFF] block mt-0.5">4.91 / 5.00</span>
+                      <span className="text-[9px] uppercase text-[#6B7280]">CSAT Portfolio</span>
+                      <span className="font-bold text-[#111827] block mt-0.5">4.91 / 5.00</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Metric 1 */}
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs">
-                    <span className="text-[9px] text-[#A3A3A3] uppercase block">Operational Cost Savings</span>
-                    <span className="text-xl font-bold text-white block mt-1">35% Deflected</span>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs">
+                    <span className="text-[9px] text-[#6B7280] uppercase block">Operational Cost Savings</span>
+                    <span className="text-xl font-bold text-[#111827] block mt-1">35% Deflected</span>
                     <span className="text-[8px] text-[#10B981] block mt-1">Saving estimated $120k / mo</span>
                   </div>
                   {/* Metric 2 */}
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs">
-                    <span className="text-[9px] text-[#A3A3A3] uppercase block">Mean Time to Resolution</span>
-                    <span className="text-xl font-bold text-white block mt-1">12 minutes</span>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs">
+                    <span className="text-[9px] text-[#6B7280] uppercase block">Mean Time to Resolution</span>
+                    <span className="text-xl font-bold text-[#111827] block mt-1">12 minutes</span>
                     <span className="text-[8px] text-[#10B981] block mt-1">40% improvement vs last month</span>
                   </div>
                   {/* Metric 3 */}
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs">
-                    <span className="text-[9px] text-[#A3A3A3] uppercase block">Average Ticket Lifetime</span>
-                    <span className="text-xl font-bold text-white block mt-1">1.2 Hours</span>
-                    <span className="text-[8px] text-[#A3A3A3] block mt-1">Fully audited and closed</span>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs">
+                    <span className="text-[9px] text-[#6B7280] uppercase block">Average Ticket Lifetime</span>
+                    <span className="text-xl font-bold text-[#111827] block mt-1">1.2 Hours</span>
+                    <span className="text-[8px] text-[#6B7280] block mt-1">Fully audited and closed</span>
                   </div>
                 </div>
 
                 {/* Recharts Chart for Exec Tab */}
-                <div className="h-56 border border-[#262626] bg-[#0A0A0A] rounded p-4">
-                  <span className="text-[9px] text-[#A3A3A3] uppercase tracking-wider block mb-2">CSAT Rating Portfolio Trend</span>
+                <div className="h-56 border border-[#E5E7EB] bg-[#FAFAFA] rounded p-4">
+                  <span className="text-[9px] text-[#6B7280] uppercase tracking-wider block mb-2">CSAT Rating Portfolio Trend</span>
                   <div className="h-44 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={csatTrendData} margin={{ top: 5, right: 5, left: -40, bottom: 5 }}>
                         <defs>
-                          <linearGradient id="csatGrad" x1="0" y1="0" x2="0" y2="1">
+                          <linearGradient id="csatLightGrad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#10B981" stopOpacity={0.15} />
                             <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                        <XAxis dataKey="name" stroke="#A3A3A3" fontSize={8} className="font-mono" />
-                        <YAxis stroke="#A3A3A3" fontSize={8} domain={[4.7, 5.0]} className="font-mono" />
-                        <Area type="monotone" dataKey="satisfaction" stroke="#10B981" fill="url(#csatGrad)" strokeWidth={2} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
+                        <YAxis stroke="#6B7280" fontSize={8} domain={[4.7, 5.0]} className="font-mono" />
+                        <Area type="monotone" dataKey="satisfaction" stroke="#10B981" fill="url(#csatLightGrad)" strokeWidth={2} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -1024,17 +990,17 @@ export default function LandingPage() {
               </TabsContent>
 
               <TabsContent value="ops" className="space-y-6 mt-0 font-mono">
-                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#262626] pb-4 text-xs">
+                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#E5E7EB] pb-4 text-xs">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#A3A3A3]">Workspace: Operations Control Deck</span>
-                    <h3 className="text-sm font-bold text-white uppercase mt-1">Service Availability & Infrastructure Health</h3>
+                    <span className="text-[10px] uppercase font-bold text-[#6B7280]">Workspace: Operations Control Deck</span>
+                    <h3 className="text-sm font-bold text-[#111827] uppercase mt-1">Service Availability & Infrastructure Health</h3>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* CMDB status */}
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs space-y-3">
-                    <span className="text-[9px] text-[#A3A3A3] uppercase block border-b border-[#262626] pb-1.5">CMDB CI Topology Health</span>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs space-y-3">
+                    <span className="text-[9px] text-[#6B7280] uppercase block border-b border-[#E5E7EB] pb-1.5">CMDB CI Topology Health</span>
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span>Database Servers:</span>
@@ -1052,8 +1018,8 @@ export default function LandingPage() {
                   </div>
 
                   {/* Incident alerts */}
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs space-y-3">
-                    <span className="text-[9px] text-[#A3A3A3] uppercase block border-b border-[#262626] pb-1.5">Active Critical Incidents Ledger</span>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs space-y-3">
+                    <span className="text-[9px] text-[#6B7280] uppercase block border-b border-[#E5E7EB] pb-1.5">Active Critical Incidents Ledger</span>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-[#EF4444]">
                         <span>P1-984: DB latency spike</span>
@@ -1069,38 +1035,38 @@ export default function LandingPage() {
               </TabsContent>
 
               <TabsContent value="desk" className="space-y-6 mt-0 font-mono">
-                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#262626] pb-4 text-xs">
+                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#E5E7EB] pb-4 text-xs">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#A3A3A3]">Workspace: Service Desk Agent Console</span>
-                    <h3 className="text-sm font-bold text-white uppercase mt-1">Personal queue load & resolution speed</h3>
+                    <span className="text-[10px] uppercase font-bold text-[#6B7280]">Workspace: Service Desk Agent Console</span>
+                    <h3 className="text-sm font-bold text-[#111827] uppercase mt-1">Personal queue load & resolution speed</h3>
                   </div>
                 </div>
 
-                <div className="border border-[#262626] rounded overflow-hidden">
+                <div className="border border-[#E5E7EB] rounded overflow-hidden">
                   <Table>
-                    <TableHeader className="bg-[#161616] font-mono text-[9px]">
-                      <TableRow className="border-b border-[#262626] hover:bg-transparent">
-                        <TableHead className="text-[#A3A3A3]">Ticket Reference</TableHead>
-                        <TableHead className="text-[#A3A3A3]">Requester</TableHead>
-                        <TableHead className="text-[#A3A3A3]">Priority</TableHead>
-                        <TableHead className="text-[#A3A3A3]">AI Classification</TableHead>
-                        <TableHead className="text-[#A3A3A3] text-right">Time to Breach</TableHead>
+                    <TableHeader className="bg-[#FAFAFA] font-mono text-[9px]">
+                      <TableRow className="border-b border-[#E5E7EB] hover:bg-transparent">
+                        <TableHead className="text-[#6B7280]">Ticket Reference</TableHead>
+                        <TableHead className="text-[#6B7280]">Requester</TableHead>
+                        <TableHead className="text-[#6B7280]">Priority</TableHead>
+                        <TableHead className="text-[#6B7280]">AI Classification</TableHead>
+                        <TableHead className="text-[#6B7280] text-right">Time to Breach</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody className="text-xs">
-                      <TableRow className="border-b border-[#262626] hover:bg-[#161616]/30">
-                        <TableCell className="font-bold text-white">SST-IT-1092</TableCell>
+                      <TableRow className="border-b border-[#E5E7EB] hover:bg-[#FAFAFA]">
+                        <TableCell className="font-bold text-[#111827]">SST-IT-1092</TableCell>
                         <TableCell>Emma Carter</TableCell>
                         <TableCell><Badge className="bg-[#EF4444]/10 text-[#EF4444] border-[#EF4444]/20 text-[8px] uppercase">P1 Critical</Badge></TableCell>
                         <TableCell>Database Outage</TableCell>
                         <TableCell className="text-right text-[#EF4444] font-bold">12 minutes</TableCell>
                       </TableRow>
-                      <TableRow className="border-b border-[#262626] hover:bg-[#161616]/30">
-                        <TableCell className="font-bold text-white">SST-HR-2041</TableCell>
+                      <TableRow className="border-b border-[#E5E7EB] hover:bg-[#FAFAFA]">
+                        <TableCell className="font-bold text-[#111827]">SST-HR-2041</TableCell>
                         <TableCell>David Foster</TableCell>
                         <TableCell><Badge className="bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20 text-[8px] uppercase">P2 High</Badge></TableCell>
                         <TableCell>Access Provisioning</TableCell>
-                        <TableCell className="text-right text-white">1.4 hours</TableCell>
+                        <TableCell className="text-right text-[#111827]">1.4 hours</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -1108,44 +1074,44 @@ export default function LandingPage() {
               </TabsContent>
 
               <TabsContent value="manager" className="space-y-6 mt-0 font-mono">
-                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#262626] pb-4 text-xs">
+                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#E5E7EB] pb-4 text-xs">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#A3A3A3]">Workspace: Operations Delivery Manager</span>
-                    <h3 className="text-sm font-bold text-white uppercase mt-1">Resource utilization & timesheet approvals</h3>
+                    <span className="text-[10px] uppercase font-bold text-[#6B7280]">Workspace: Operations Delivery Manager</span>
+                    <h3 className="text-sm font-bold text-[#111827] uppercase mt-1">Resource utilization & timesheet approvals</h3>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Recharts chart on Workload */}
-                  <div className="h-56 border border-[#262626] bg-[#0A0A0A] rounded p-4">
-                    <span className="text-[8px] font-mono text-[#A3A3A3] uppercase tracking-wider block mb-2">Department workload distributions</span>
+                  <div className="h-56 border border-[#E5E7EB] bg-[#FAFAFA] rounded p-4">
+                    <span className="text-[8px] font-mono text-[#6B7280] uppercase tracking-wider block mb-2">Department workload distributions</span>
                     <div className="h-44 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={departmentPerformanceData} margin={{ top: 5, right: 5, left: -40, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                          <XAxis dataKey="name" stroke="#A3A3A3" fontSize={7} className="font-mono" />
-                          <YAxis stroke="#A3A3A3" fontSize={8} className="font-mono" />
-                          <Bar dataKey="volume" name="Tickets Filed" fill="#3B82F6" radius={[2, 2, 0, 0]} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                          <XAxis dataKey="name" stroke="#6B7280" fontSize={7} className="font-mono" />
+                          <YAxis stroke="#6B7280" fontSize={8} className="font-mono" />
+                          <Bar dataKey="volume" name="Tickets Filed" fill="#2563EB" radius={[2, 2, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
 
                   {/* List of approvals */}
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs space-y-3">
-                    <span className="text-[9px] text-[#A3A3A3] uppercase block border-b border-[#262626] pb-1.5">Approvals Queue</span>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs space-y-3">
+                    <span className="text-[9px] text-[#6B7280] uppercase block border-b border-[#E5E7EB] pb-1.5">Approvals Queue</span>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center p-2 bg-[#0A0A0A] rounded border border-[#262626]">
+                      <div className="flex justify-between items-center p-2 bg-white rounded border border-[#E5E7EB]">
                         <div>
-                          <span className="font-bold text-white block">Log: Timesheet (Sarah Jenkins)</span>
-                          <span className="text-[9px] text-[#A3A3A3]">FICO module (Total actual: 12.5h)</span>
+                          <span className="font-bold text-[#111827] block">Log: Timesheet (Sarah Jenkins)</span>
+                          <span className="text-[9px] text-[#6B7280]">FICO module (Total actual: 12.5h)</span>
                         </div>
                         <Badge className="bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20 text-[8px] uppercase">Awaiting</Badge>
                       </div>
-                      <div className="flex justify-between items-center p-2 bg-[#0A0A0A] rounded border border-[#262626]">
+                      <div className="flex justify-between items-center p-2 bg-white rounded border border-[#E5E7EB]">
                         <div>
-                          <span className="font-bold text-white block">Override: Soft delete Order #204</span>
-                          <span className="text-[9px] text-[#A3A3A3]">Requested by Database operations</span>
+                          <span className="font-bold text-[#111827] block">Override: Soft delete Order #204</span>
+                          <span className="text-[9px] text-[#6B7280]">Requested by Database operations</span>
                         </div>
                         <Badge className="bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20 text-[8px] uppercase">Awaiting</Badge>
                       </div>
@@ -1155,48 +1121,48 @@ export default function LandingPage() {
               </TabsContent>
 
               <TabsContent value="customer" className="space-y-6 mt-0 font-mono">
-                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#262626] pb-4 text-xs">
+                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#E5E7EB] pb-4 text-xs">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#A3A3A3]">Workspace: Customer Self-Service Catalog</span>
-                    <h3 className="text-sm font-bold text-white uppercase mt-1">Submit Incident requests or audit licenses</h3>
+                    <span className="text-[10px] uppercase font-bold text-[#6B7280]">Workspace: Customer Self-Service Catalog</span>
+                    <h3 className="text-sm font-bold text-[#111827] uppercase mt-1">Submit Incident requests or audit licenses</h3>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs space-y-2 hover:border-[#FFFFFF] transition duration-300">
-                    <span className="font-bold text-white block">IT Request Catalog</span>
-                    <p className="text-[10px] text-[#A3A3A3]">Request hardware provisioning, new VM creation, or local environment licenses.</p>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs space-y-2 hover:border-[#6B7280] hover:shadow-sm transition duration-300">
+                    <span className="font-bold text-[#111827] block">IT Request Catalog</span>
+                    <p className="text-[10px] text-[#6B7280]">Request hardware provisioning, new VM creation, or local environment licenses.</p>
                   </div>
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs space-y-2 hover:border-[#FFFFFF] transition duration-300">
-                    <span className="font-bold text-white block">HR Operations Desk</span>
-                    <p className="text-[10px] text-[#A3A3A3]">File payroll queries, update profile credentials, or submit benefit documentation requests.</p>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs space-y-2 hover:border-[#6B7280] hover:shadow-sm transition duration-300">
+                    <span className="font-bold text-[#111827] block">HR Operations Desk</span>
+                    <p className="text-[10px] text-[#6B7280]">File payroll queries, update profile credentials, or submit benefit documentation requests.</p>
                   </div>
-                  <div className="p-4 bg-[#161616] border border-[#262626] rounded text-xs space-y-2 hover:border-[#FFFFFF] transition duration-300">
-                    <span className="font-bold text-white block">Customer support hub</span>
-                    <p className="text-[10px] text-[#A3A3A3]">Raise technical incidents, monitor SLA timelines, and track resolution steps.</p>
+                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded text-xs space-y-2 hover:border-[#6B7280] hover:shadow-sm transition duration-300">
+                    <span className="font-bold text-[#111827] block">Customer support hub</span>
+                    <p className="text-[10px] text-[#6B7280]">Raise technical incidents, monitor SLA timelines, and track resolution steps.</p>
                   </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="analytics" className="space-y-6 mt-0 font-mono">
-                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#262626] pb-4 text-xs">
+                <div className="flex flex-col lg:flex-row justify-between gap-4 border-b border-[#E5E7EB] pb-4 text-xs">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#A3A3A3]">Workspace: Business Intelligence Engine</span>
-                    <h3 className="text-sm font-bold text-white uppercase mt-1">Ticket Influx and Resolution Capacity Trends</h3>
+                    <span className="text-[10px] uppercase font-bold text-[#6B7280]">Workspace: Business Intelligence Engine</span>
+                    <h3 className="text-sm font-bold text-[#111827] uppercase mt-1">Ticket Influx and Resolution Capacity Trends</h3>
                   </div>
                 </div>
 
-                <div className="h-56 border border-[#262626] bg-[#0A0A0A] rounded p-4">
-                  <span className="text-[8px] font-mono text-[#A3A3A3] uppercase tracking-wider block mb-2">Monthly Influx vs Closure Trends</span>
+                <div className="h-56 border border-[#E5E7EB] bg-[#FAFAFA] rounded p-4">
+                  <span className="text-[8px] font-mono text-[#6B7280] uppercase tracking-wider block mb-2">Monthly Influx vs Closure Trends</span>
                   <div className="h-44 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={ticketVolumeData} margin={{ top: 5, right: 5, left: -40, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                        <XAxis dataKey="name" stroke="#A3A3A3" fontSize={8} className="font-mono" />
-                        <YAxis stroke="#A3A3A3" fontSize={8} className="font-mono" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
+                        <YAxis stroke="#6B7280" fontSize={8} className="font-mono" />
                         <Legend wrapperStyle={{ fontSize: 8, fontFamily: 'monospace' }} />
                         <Bar dataKey="incidents" name="Incidents Raised" fill="#EF4444" radius={[2, 2, 0, 0]} />
-                        <Bar dataKey="requests" name="Service Requests" fill="#3B82F6" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="requests" name="Service Requests" fill="#2563EB" radius={[2, 2, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1209,14 +1175,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 7: WORKFLOW AUTOMATION ── */}
-      <section id="workflow-automation" className="py-24 bg-[#050505] border-b border-[#262626]">
+      <section id="workflow-automation" className="py-24 bg-white border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
               Process Orchestrator
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Automate Every Process</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Automate Every Process</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Evaluate incident lifecycle transitions with our interactive workflow simulation. Click steps or toggle autoplay.
             </p>
           </div>
@@ -1229,13 +1195,13 @@ export default function LandingPage() {
                 <Button 
                   onClick={() => setWorkflowStep((prev) => Math.max(0, prev - 1))}
                   disabled={workflowStep === 0}
-                  className="bg-[#111111] hover:bg-[#161616] border border-[#262626] text-white text-[10px] font-mono uppercase font-bold px-3 py-1.5 rounded"
+                  className="bg-white hover:bg-[#FAFAFA] border border-[#E5E7EB] text-[#111827] text-[10px] font-mono uppercase font-bold px-3 py-1.5 rounded"
                 >
                   Back
                 </Button>
                 <Button 
                   onClick={() => setWorkflowStep((prev) => (prev + 1) % 8)}
-                  className="bg-white hover:bg-[#A3A3A3] text-[#050505] text-[10px] font-mono uppercase font-bold px-3 py-1.5 rounded"
+                  className="bg-[#111117] hover:bg-[#6B7280] text-white text-[10px] font-mono uppercase font-bold px-3 py-1.5 rounded"
                 >
                   Forward
                 </Button>
@@ -1243,7 +1209,7 @@ export default function LandingPage() {
                   onClick={() => setWorkflowAutoplay(!workflowAutoplay)}
                   variant="outline"
                   className={`text-[10px] font-mono uppercase font-bold px-3 py-1.5 rounded border ${
-                    workflowAutoplay ? 'border-[#10B981] text-[#10B981]' : 'border-[#262626] text-[#A3A3A3]'
+                    workflowAutoplay ? 'border-[#10B981] text-[#10B981]' : 'border-[#E5E7EB] text-[#6B7280]'
                   }`}
                 >
                   {workflowAutoplay ? 'Autoplay ON' : 'Autoplay'}
@@ -1251,9 +1217,9 @@ export default function LandingPage() {
               </div>
 
               {/* Status context description */}
-              <div className="p-4 bg-[#111111] border border-[#262626] rounded font-mono text-xs space-y-2">
-                <span className="text-[9px] text-[#A3A3A3] block uppercase tracking-wider">Step Details</span>
-                <h4 className="text-white font-bold uppercase">
+              <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded font-mono text-xs space-y-2">
+                <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider">Step Details</span>
+                <h4 className="text-[#111827] font-bold uppercase">
                   {(() => {
                     if (workflowStep === 0) return '01. Issue Created';
                     if (workflowStep === 1) return '02. AI Classification';
@@ -1265,7 +1231,7 @@ export default function LandingPage() {
                     return '08. Executive Reporting';
                   })()}
                 </h4>
-                <p className="text-[#A3A3A3] leading-relaxed">
+                <p className="text-[#6B7280] leading-relaxed">
                   {(() => {
                     if (workflowStep === 0) return 'Incident is reported through the client portal, triggering initial parsing routines.';
                     if (workflowStep === 1) return 'Our automated classification models evaluate risk categorization and assign priority thresholds.';
@@ -1281,7 +1247,7 @@ export default function LandingPage() {
             </div>
 
             {/* Visual Timeline Nodes */}
-            <div className="lg:col-span-8 p-6 bg-[#111111] border border-[#262626] rounded relative">
+            <div className="lg:col-span-8 p-6 bg-[#FAFAFA] border border-[#E5E7EB] rounded relative">
               <div className="flex flex-col md:flex-row justify-between items-center gap-4 relative z-10">
                 {[
                   'Issue Created',
@@ -1296,15 +1262,15 @@ export default function LandingPage() {
                   <div key={index} className="flex flex-row md:flex-col items-center gap-3 md:gap-2 w-full md:w-auto">
                     <div className={`w-8 h-8 rounded-full border-2 font-mono font-bold text-xs flex items-center justify-center transition duration-300 ${
                       workflowStep === index
-                        ? 'bg-white border-white text-[#050505] scale-110 shadow-lg'
+                        ? 'bg-[#111117] border-[#111117] text-white scale-110 shadow-md'
                         : workflowStep > index
                         ? 'bg-[#10B981]/10 border-[#10B981] text-[#10B981]'
-                        : 'bg-[#161616] border-[#262626] text-[#A3A3A3]'
+                        : 'bg-white border-[#E5E7EB] text-[#6B7280]'
                     }`}>
                       {index + 1}
                     </div>
                     <span className={`text-[10px] font-mono uppercase tracking-wider font-bold ${
-                      workflowStep === index ? 'text-white' : 'text-[#A3A3A3]'
+                      workflowStep === index ? 'text-[#111827]' : 'text-[#6B7280]'
                     }`}>
                       {node}
                     </span>
@@ -1318,14 +1284,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 8: ENTERPRISE ANALYTICS ── */}
-      <section id="analytics-section" className="py-24 bg-[#0A0A0A] border-b border-[#262626]">
+      <section id="analytics-section" className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-white rounded">
               BI Intelligence
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Data Driven Service Excellence</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Data Driven Service Excellence</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Evaluate real-time operational analytics including SLA targets, change metrics, and device inventories.
             </p>
           </div>
@@ -1345,8 +1311,8 @@ export default function LandingPage() {
                   onClick={() => setSelectedAnalyticsTab(tab.id)}
                   className={`w-full text-left p-3.5 font-mono text-xs uppercase tracking-wider font-bold rounded border transition ${
                     selectedAnalyticsTab === tab.id
-                      ? 'bg-white text-[#050505] border-[#FFFFFF]'
-                      : 'bg-[#111111] text-[#A3A3A3] border-[#262626] hover:border-[#A3A3A3]'
+                      ? 'bg-[#111117] text-white border-[#111117]'
+                      : 'bg-white text-[#6B7280] border-[#E5E7EB] hover:border-[#6B7280] hover:text-[#111827]'
                   }`}
                 >
                   {tab.title}
@@ -1356,7 +1322,7 @@ export default function LandingPage() {
 
             {/* Right chart view */}
             <div className="lg:col-span-9">
-              <Card className="bg-[#111111] border-[#262626] rounded p-6 shadow-2xl space-y-4">
+              <Card className="bg-white border-[#E5E7EB] rounded p-6 shadow-sm space-y-4">
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     {(() => {
@@ -1364,37 +1330,37 @@ export default function LandingPage() {
                         return (
                           <AreaChart data={slaComplianceData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
                             <defs>
-                              <linearGradient id="anHealthGrad" x1="0" y1="0" x2="0" y2="1">
+                              <linearGradient id="anHealthLightGrad" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
                                 <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                            <XAxis dataKey="name" stroke="#A3A3A3" fontSize={9} className="font-mono" />
-                            <YAxis stroke="#A3A3A3" fontSize={9} domain={[97, 100]} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#111111', borderColor: '#262626', color: '#FFFFFF', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Area type="monotone" dataKey="compliance" name="Overall Service Health %" stroke="#10B981" fill="url(#anHealthGrad)" strokeWidth={2} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                            <XAxis dataKey="name" stroke="#6B7280" fontSize={9} className="font-mono" />
+                            <YAxis stroke="#6B7280" fontSize={9} domain={[97, 100]} className="font-mono" />
+                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                            <Area type="monotone" dataKey="compliance" name="Overall Service Health %" stroke="#10B981" fill="url(#anHealthLightGrad)" strokeWidth={2} />
                           </AreaChart>
                         );
                       }
                       if (selectedAnalyticsTab === 'compliance') {
                         return (
                           <BarChart data={departmentPerformanceData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                            <XAxis dataKey="name" stroke="#A3A3A3" fontSize={9} className="font-mono" />
-                            <YAxis stroke="#A3A3A3" fontSize={9} domain={[95, 100]} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#111111', borderColor: '#262626', color: '#FFFFFF', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Bar dataKey="compliance" name="Department SLA Compliance %" fill="#3B82F6" radius={[3, 3, 0, 0]} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                            <XAxis dataKey="name" stroke="#6B7280" fontSize={9} className="font-mono" />
+                            <YAxis stroke="#6B7280" fontSize={9} domain={[95, 100]} className="font-mono" />
+                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                            <Bar dataKey="compliance" name="Department SLA Compliance %" fill="#2563EB" radius={[3, 3, 0, 0]} />
                           </BarChart>
                         );
                       }
                       if (selectedAnalyticsTab === 'assets') {
                         return (
                           <BarChart data={assetHealthData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                            <XAxis dataKey="name" stroke="#A3A3A3" fontSize={9} className="font-mono" />
-                            <YAxis stroke="#A3A3A3" fontSize={9} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#111111', borderColor: '#262626', color: '#FFFFFF', fontSize: 10, fontFamily: 'monospace' }} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                            <XAxis dataKey="name" stroke="#6B7280" fontSize={9} className="font-mono" />
+                            <YAxis stroke="#6B7280" fontSize={9} className="font-mono" />
+                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
                             <Legend wrapperStyle={{ fontSize: 9 }} />
                             <Bar dataKey="healthy" name="Healthy Items" fill="#10B981" stackId="assets" />
                             <Bar dataKey="risk" name="At Risk Items" fill="#F59E0B" stackId="assets" />
@@ -1405,10 +1371,10 @@ export default function LandingPage() {
                       if (selectedAnalyticsTab === 'change') {
                         return (
                           <LineChart data={changeSuccessData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                            <XAxis dataKey="name" stroke="#A3A3A3" fontSize={9} className="font-mono" />
-                            <YAxis stroke="#A3A3A3" fontSize={9} domain={[90, 100]} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#111111', borderColor: '#262626', color: '#FFFFFF', fontSize: 10, fontFamily: 'monospace' }} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                            <XAxis dataKey="name" stroke="#6B7280" fontSize={9} className="font-mono" />
+                            <YAxis stroke="#6B7280" fontSize={9} domain={[90, 100]} className="font-mono" />
+                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
                             <Line type="monotone" dataKey="success" name="Deploy Success rate %" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4 }} />
                           </LineChart>
                         );
@@ -1425,14 +1391,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 9: ENTERPRISE SECURITY ── */}
-      <section className="py-24 bg-[#050505] border-b border-[#262626]">
+      <section className="py-24 bg-[#FFFFFF] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
               Information Security
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Built For Enterprise Security</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Built For Enterprise Security</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Maintain regulatory posture standards with robust security protocols, access structures, and encryption schemes.
             </p>
           </div>
@@ -1446,12 +1412,12 @@ export default function LandingPage() {
             ].map((sec, idx) => {
               const IconComp = sec.icon;
               return (
-                <Card key={idx} className="bg-[#111111] border-[#262626] p-6 space-y-4 hover:border-white transition duration-300">
-                  <div className="w-8 h-8 rounded bg-[#161616] border border-[#262626] flex items-center justify-center text-white">
+                <Card key={idx} className="bg-white border-[#E5E7EB] p-6 space-y-4 hover:border-[#6B7280] hover:shadow-md transition duration-300">
+                  <div className="w-8 h-8 rounded bg-[#FAFAFA] border border-[#E5E7EB] flex items-center justify-center text-[#2563EB]">
                     <IconComp size={16} />
                   </div>
-                  <span className="text-xs font-bold text-white font-mono uppercase block">{sec.title}</span>
-                  <p className="text-xs text-[#A3A3A3] leading-relaxed">{sec.desc}</p>
+                  <span className="text-xs font-bold text-[#111827] font-mono uppercase block">{sec.title}</span>
+                  <p className="text-xs text-[#6B7280] leading-relaxed">{sec.desc}</p>
                 </Card>
               );
             })}
@@ -1460,14 +1426,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 10: SCALABILITY & ARCHITECTURE ── */}
-      <section className="py-24 bg-[#0A0A0A] border-b border-[#262626]">
+      <section className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-white rounded">
               Infrastructure
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Built To Scale</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Built To Scale</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Ultra-high availability and low latency pipelines processing thousands of queries daily.
             </p>
           </div>
@@ -1479,26 +1445,26 @@ export default function LandingPage() {
               { title: 'Global Availability', desc: 'CDN edge endpoints minimize load latencies across all international nodes.' },
               { title: 'Event-Driven Routing', desc: 'Message queues distribute operations asynchronously to avoid bottleneck risks.' }
             ].map((arch, idx) => (
-              <Card key={idx} className="bg-[#111111] border-[#262626] p-6 space-y-3 hover:border-white transition duration-300">
-                <span className="text-xs font-bold text-white font-mono uppercase block">{arch.title}</span>
-                <p className="text-xs text-[#A3A3A3] leading-relaxed">{arch.desc}</p>
+              <Card key={idx} className="bg-white border-[#E5E7EB] p-6 space-y-3 hover:border-[#6B7280] hover:shadow-md transition duration-300">
+                <span className="text-xs font-bold text-[#111827] font-mono uppercase block">{arch.title}</span>
+                <p className="text-xs text-[#6B7280] leading-relaxed">{arch.desc}</p>
               </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 11: CUSTOMER SUCCESS STORIES ── */}
-      <section className="py-24 bg-[#050505] border-b border-[#262626]">
+      {/* ── SECTION 11: TESTIMONIAL SECTION ── */}
+      <section className="py-24 bg-[#FFFFFF] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
               Testimonials
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Customer Success Stories</h2>
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Customer Success</h2>
             <div className="flex justify-center items-center gap-1 text-[#F59E0B] pt-1">
-              {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#F59E0B" />)}
-              <span className="text-xs font-mono text-white ml-2 font-bold">4.9 / 5.0 Rating Portfolio</span>
+              {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#F59E0B" className="stroke-none" />)}
+              <span className="text-xs font-mono text-[#111827] ml-2 font-bold">4.9/5 Customer Rating</span>
             </div>
           </div>
 
@@ -1506,14 +1472,14 @@ export default function LandingPage() {
             {[
               { quote: '"Assist360 completely transformed how our teams manage service delivery."', author: 'Sophia Richardson', role: 'VP Operations' },
               { quote: '"The analytics and visibility are beyond anything we\'ve used before."', author: 'Daniel Foster', role: 'Chief Information Officer' },
-              { quote: '"Assist360 became the operational backbone of our service organization."', author: 'Emma Carter', role: 'Head of Enterprise Operations' },
-              { quote: '"One platform replaced six disconnected systems."', author: 'Michael Thompson', role: 'Director of Service Delivery' }
+              { quote: '"Assist360 became the operational backbone of our service organization."', author: 'Emma Carter', role: 'Director of Service Delivery' },
+              { quote: '"One platform replaced six disconnected systems."', author: 'Michael Thompson', role: 'Head of Enterprise Support' }
             ].map((test, idx) => (
-              <Card key={idx} className="bg-[#111111] border-[#262626] p-6 flex flex-col justify-between hover:border-white transition duration-300">
-                <p className="text-xs text-[#A3A3A3] italic leading-relaxed">{test.quote}</p>
-                <div className="pt-6 font-mono text-xs border-t border-[#262626] mt-4">
-                  <span className="font-bold text-white block">{test.author}</span>
-                  <span className="text-[9px] text-[#A3A3A3] block mt-0.5">{test.role}</span>
+              <Card key={idx} className="bg-white border-[#E5E7EB] p-6 flex flex-col justify-between hover:border-[#6B7280] hover:shadow-md transition duration-300">
+                <p className="text-xs text-[#6B7280] italic leading-relaxed">{test.quote}</p>
+                <div className="pt-6 font-mono text-xs border-t border-[#E5E7EB] mt-4">
+                  <span className="font-bold text-[#111827] block">{test.author}</span>
+                  <span className="text-[9px] text-[#6B7280] block mt-0.5">{test.role}</span>
                 </div>
               </Card>
             ))}
@@ -1521,92 +1487,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SECTION 12: G2 & INDUSTRY RECOGNITION ── */}
-      <section className="py-14 bg-[#0A0A0A] border-b border-[#262626]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 flex flex-col lg:flex-row justify-between items-center gap-8">
-          <div className="space-y-2 text-center lg:text-left">
-            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#A3A3A3]">Gartner and G2 Ecosystem recognition</span>
-            <h3 className="text-xl font-bold text-white uppercase font-mono">Market Leadership Badges</h3>
-          </div>
-          
-          <div className="flex flex-wrap justify-center gap-4">
-            {[
-              'G2 High Performer',
-              'G2 Momentum Leader',
-              'Top Rated ITSM Platform',
-              'Customer Choice Award',
-              'Leader in Service Management'
-            ].map((badge, idx) => (
-              <Badge key={idx} variant="outline" className="text-[9px] font-mono font-bold border-[#262626] bg-[#111111] text-white px-3.5 py-1.5 uppercase rounded">
-                {badge}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 13: CUSTOMER RESULTS ── */}
-      <section className="py-24 bg-[#050505] border-b border-[#262626]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Customer Results</h2>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            {[
-              { num: '40%', desc: 'Faster Resolution' },
-              { num: '35%', desc: 'Cost Reduction' },
-              { num: '60%', desc: 'Less Manual Work' },
-              { num: '50%', desc: 'Better SLA Compliance' },
-              { num: '70%', desc: 'Faster Approvals' },
-              { num: '45%', desc: 'Improved Productivity' }
-            ].map((res, idx) => (
-              <div key={idx} className="p-5 bg-[#111111] border border-[#262626] rounded text-center">
-                <span className="text-2xl font-bold font-mono text-white block">{res.num}</span>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#A3A3A3] block mt-1">{res.desc}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 14: INDUSTRIES ── */}
-      <section className="py-14 bg-[#0A0A0A] border-b border-[#262626]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <div className="text-center mb-6">
-            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#A3A3A3]">Tailored support across all enterprise industries</span>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-3">
-            {[
-              'Technology',
-              'Healthcare',
-              'Manufacturing',
-              'Finance',
-              'Retail',
-              'Education',
-              'Government',
-              'Telecommunications',
-              'Energy',
-              'Logistics'
-            ].map((ind, idx) => (
-              <Badge key={idx} variant="outline" className="text-[10px] font-mono font-bold border-[#262626] bg-[#111111] hover:border-white text-[#A3A3A3] hover:text-white px-4 py-2 uppercase rounded transition">
-                {ind}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── SECTION 15: COMPARISON SECTION ── */}
-      <section id="compare" className="py-24 bg-[#050505] border-b border-[#262626]">
+      <section id="compare" className="py-24 bg-[#FFFFFF] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
               Feature Auditing
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Platform Comparison</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Platform Comparison</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Audit the feature capabilities of ASSIST360 compared to traditional, siloed ticketing tools.
             </p>
           </div>
@@ -1618,32 +1507,32 @@ export default function LandingPage() {
               placeholder="Filter comparison table..." 
               value={compareFilter}
               onChange={(e) => setCompareFilter(e.target.value)}
-              className="w-full bg-[#111111] border border-[#262626] rounded p-2.5 pl-9 text-white focus:outline-none focus:border-white"
+              className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded p-2.5 pl-9 text-[#111827] focus:outline-none focus:border-[#111827]"
             />
-            <Search size={14} className="absolute left-3 top-3.5 text-[#A3A3A3]" />
+            <Search size={14} className="absolute left-3 top-3.5 text-[#6B7280]" />
           </div>
 
-          <div className="border border-[#262626] rounded overflow-hidden max-w-4xl mx-auto shadow-2xl">
+          <div className="border border-[#E5E7EB] rounded overflow-hidden max-w-4xl mx-auto shadow-sm bg-white">
             <Table>
-              <TableHeader className="bg-[#111111] font-mono text-[9px]">
-                <TableRow className="border-b border-[#262626] hover:bg-transparent">
-                  <TableHead className="py-3 px-6 text-[#A3A3A3]">Feature Matrix</TableHead>
-                  <TableHead className="py-3 px-6 text-center text-[#A3A3A3]">Traditional Helpdesk</TableHead>
-                  <TableHead className="py-3 px-6 text-center text-white bg-[#161616]">ASSIST360 Platform</TableHead>
+              <TableHeader className="bg-[#FAFAFA] font-mono text-[9px]">
+                <TableRow className="border-b border-[#E5E7EB] hover:bg-transparent">
+                  <TableHead className="py-3 px-6 text-[#6B7280]">Feature Matrix</TableHead>
+                  <TableHead className="py-3 px-6 text-center text-[#6B7280]">Traditional Helpdesk</TableHead>
+                  <TableHead className="py-3 px-6 text-center text-[#111827] bg-[#FAFAFA]">ASSIST360 Platform</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="text-xs font-mono">
                 {filteredComparisonRows.length > 0 ? (
                   filteredComparisonRows.map((row, index) => (
-                    <TableRow key={index} className="border-b border-[#262626] hover:bg-[#161616]/30 transition duration-150">
-                      <TableCell className="py-3.5 px-6 font-bold text-white">{row.feature}</TableCell>
-                      <TableCell className="py-3.5 px-6 text-center text-[#A3A3A3]">{row.traditional}</TableCell>
-                      <TableCell className="py-3.5 px-6 text-center font-bold text-[#10B981] bg-[#161616]/40">{row.assist}</TableCell>
+                    <TableRow key={index} className="border-b border-[#E5E7EB] hover:bg-[#FAFAFA] transition duration-150">
+                      <TableCell className="py-3.5 px-6 font-bold text-[#111827]">{row.feature}</TableCell>
+                      <TableCell className="py-3.5 px-6 text-center text-[#6B7280]">{row.traditional}</TableCell>
+                      <TableCell className="py-3.5 px-6 text-center font-bold text-[#10B981] bg-[#FAFAFA]/40">{row.assist}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-6 text-[#A3A3A3]">No features match filter criteria.</TableCell>
+                    <TableCell colSpan={3} className="text-center py-6 text-[#6B7280]">No features match filter criteria.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -1653,33 +1542,33 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 16: ENTERPRISE CONTROL TOWER ── */}
-      <section className="py-24 bg-[#0A0A0A] border-b border-[#262626]">
+      <section className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] rounded">
+            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-white rounded">
               Command Deck
             </Badge>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase font-mono">Enterprise Control Tower</h2>
-            <p className="text-xs text-[#A3A3A3] font-medium leading-relaxed font-sans">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">Enterprise Control Tower</h2>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
               Interact with the active operational war room console to audit severity levels, resource queues, and trigger automated AI recommendations.
             </p>
           </div>
 
-          <div className="border border-[#262626] rounded bg-[#111111] p-6 shadow-2xl relative max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center justify-between border-b border-[#262626] pb-4 font-mono text-xs">
+          <div className="border border-[#E5E7EB] rounded bg-white p-6 shadow-sm relative max-w-5xl mx-auto space-y-6">
+            <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-4 font-mono text-xs">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] block"></span>
-                <span className="font-bold text-white uppercase tracking-wider">Active Command Center Cockpit</span>
+                <span className="font-bold text-[#111827] uppercase tracking-wider">Active Command Center Cockpit</span>
               </div>
-              <Badge className="bg-[#161616] text-[#10B981] border border-[#262626] text-[9px] font-bold font-mono rounded uppercase">
+              <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[9px] font-bold font-mono rounded uppercase">
                 Real-time Data Binding
               </Badge>
             </div>
 
             {/* Dashboard Mockup Grid Layout */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
-              <Card className="p-4 bg-[#161616] border-[#262626] space-y-3">
-                <span className="text-[9px] font-bold text-[#A3A3A3] uppercase">Active Alerts Level</span>
+              <Card className="p-4 bg-[#FAFAFA] border-[#E5E7EB] space-y-3">
+                <span className="text-[9px] font-bold text-[#6B7280] uppercase">Active Alerts Level</span>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Critical alerts pending:</span>
@@ -1692,8 +1581,8 @@ export default function LandingPage() {
                 </div>
               </Card>
 
-              <Card className="p-4 bg-[#161616] border-[#262626] space-y-3">
-                <span className="text-[9px] font-bold text-[#A3A3A3] uppercase">SLA Breaches Risk Index</span>
+              <Card className="p-4 bg-[#FAFAFA] border-[#E5E7EB] space-y-3">
+                <span className="text-[9px] font-bold text-[#6B7280] uppercase">SLA Breaches Risk Index</span>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>SST-MM-1024:</span>
@@ -1706,13 +1595,13 @@ export default function LandingPage() {
                 </div>
               </Card>
 
-              <Card className="p-4 bg-[#161616] border-[#262626] space-y-3">
-                <span className="text-[9px] font-bold text-[#A3A3A3] uppercase">AI Action Center</span>
+              <Card className="p-4 bg-[#FAFAFA] border-[#E5E7EB] space-y-3">
+                <span className="text-[9px] font-bold text-[#6B7280] uppercase">AI Action Center</span>
                 <div className="space-y-2">
-                  <p className="text-[9px] text-[#A3A3A3]">Process pending critical alerts using autonomous classification agent:</p>
+                  <p className="text-[9px] text-[#6B7280]">Process pending critical alerts using autonomous classification agent:</p>
                   <Button 
                     onClick={triggerControlTowerAiAction}
-                    className="w-full h-8 text-[9px] font-mono uppercase font-bold bg-[#FFFFFF] hover:bg-[#A3A3A3] text-[#050505] rounded"
+                    className="w-full h-8 text-[9px] font-mono uppercase font-bold bg-[#111827] hover:bg-[#6B7280] text-white rounded"
                   >
                     Execute AI Auto-Fix
                   </Button>
@@ -1721,30 +1610,30 @@ export default function LandingPage() {
             </div>
 
             {/* Live audit trails console */}
-            <div className="p-4 bg-[#0A0A0A] border border-[#262626] rounded font-mono text-xs">
-              <span className="text-[9px] text-[#A3A3A3] block uppercase tracking-wider mb-2">Operations Log Trails stream</span>
-              <div className="space-y-1 text-[#A3A3A3] select-none text-[10px]">
+            <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded font-mono text-xs">
+              <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider mb-2">Operations Log Trails stream</span>
+              <div className="space-y-1 text-[#6B7280] select-none text-[10px]">
                 {controlTowerLog.map((log, index) => (
-                  <p key={index}><span className="text-[#3B82F6] font-bold">&gt;</span> {log}</p>
+                  <p key={index}><span className="text-[#2563EB] font-bold">&gt;</span> {log}</p>
                 ))}
               </div>
             </div>
 
-            <div className="border-t border-[#262626] pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 font-mono text-center text-xs">
-              <div className="p-3 bg-[#161616] border border-[#262626] rounded">
-                <span className="text-[9px] text-[#A3A3A3] uppercase block">Global SLA Metric</span>
+            <div className="border-t border-[#E5E7EB] pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 font-mono text-center text-xs">
+              <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                <span className="text-[9px] text-[#6B7280] uppercase block">Global SLA Metric</span>
                 <span className="text-md font-bold text-[#10B981] mt-1 block">98.7% Met</span>
               </div>
-              <div className="p-3 bg-[#161616] border border-[#262626] rounded">
-                <span className="text-[9px] text-[#A3A3A3] uppercase block">Asset Health Index</span>
-                <span className="text-md font-bold text-white mt-1 block">99.98%</span>
+              <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                <span className="text-[9px] text-[#6B7280] uppercase block">Asset Health Index</span>
+                <span className="text-md font-bold text-[#111827] mt-1 block">99.98%</span>
               </div>
-              <div className="p-3 bg-[#161616] border border-[#262626] rounded">
-                <span className="text-[9px] text-[#A3A3A3] uppercase block">Pending Approvals</span>
-                <span className="text-md font-bold text-white mt-1 block">8</span>
+              <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                <span className="text-[9px] text-[#6B7280] uppercase block">Pending Approvals</span>
+                <span className="text-md font-bold text-[#111827] mt-1 block">8</span>
               </div>
-              <div className="p-3 bg-[#161616] border border-[#262626] rounded">
-                <span className="text-[9px] text-[#A3A3A3] uppercase block">Autopilot Status</span>
+              <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                <span className="text-[9px] text-[#6B7280] uppercase block">Autopilot Status</span>
                 <span className="text-md font-bold text-[#10B981] mt-1 block">Online</span>
               </div>
             </div>
@@ -1754,15 +1643,15 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 17: FINAL CALL TO ACTION ── */}
-      <section className="py-24 md:py-28 relative bg-[#050505] border-b border-[#262626]">
+      <section className="py-24 md:py-28 relative bg-[#FFFFFF] border-b border-[#E5E7EB]">
         <div className="max-w-4xl mx-auto px-6 text-center space-y-6">
-          <Badge variant="outline" className="text-[9px] font-bold border-[#262626] font-mono tracking-widest text-[#A3A3A3] bg-[#111111] py-1 px-3 uppercase rounded">
+          <Badge variant="outline" className="text-[9px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] py-1 px-3 uppercase rounded">
             Enterprise Consolidation
           </Badge>
-          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white uppercase font-mono">
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-[#111827] uppercase font-mono">
             Run Every Service Operation From One Intelligent Platform
           </h2>
-          <p className="text-sm text-[#A3A3A3] font-medium leading-relaxed max-w-xl mx-auto font-sans">
+          <p className="text-sm text-[#6B7280] font-medium leading-relaxed max-w-xl mx-auto font-sans">
             Enterprise-grade service management powered by automation, intelligence, analytics, and operational excellence.
           </p>
           
@@ -1772,7 +1661,7 @@ export default function LandingPage() {
                 setDemoType('Start Enterprise Demo');
                 setDemoModalOpen(true);
               }}
-              className="h-11 px-6 bg-white hover:bg-[#A3A3A3] text-[#050505] font-mono text-xs font-bold uppercase tracking-wider rounded"
+              className="h-11 px-6 bg-[#111827] hover:bg-[#6B7280] text-white font-mono text-xs font-bold uppercase tracking-wider rounded"
             >
               Start Enterprise Demo
             </Button>
@@ -1783,7 +1672,7 @@ export default function LandingPage() {
                 setDemoModalOpen(true);
               }}
               variant="outline"
-              className="h-11 px-6 border-[#262626] bg-[#111111] text-white hover:bg-[#161616] hover:border-[#FFFFFF] font-mono text-xs font-bold uppercase tracking-wider rounded"
+              className="h-11 px-6 border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#FAFAFA] hover:border-[#6B7280] font-mono text-xs font-bold uppercase tracking-wider rounded"
             >
               Talk To Sales
             </Button>
@@ -1794,7 +1683,7 @@ export default function LandingPage() {
                 setDemoModalOpen(true);
               }}
               variant="ghost"
-              className="h-11 px-6 text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#111111] font-mono text-xs font-bold uppercase tracking-wider rounded"
+              className="h-11 px-6 text-[#6B7280] hover:text-[#111827] hover:bg-[#FAFAFA] font-mono text-xs font-bold uppercase tracking-wider rounded"
             >
               Schedule Executive Consultation
             </Button>
@@ -1803,57 +1692,57 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 18: FOOTER ── */}
-      <footer className="bg-[#050505] text-[#A3A3A3] py-16 text-xs border-t border-[#262626] font-mono">
+      <footer className="bg-white text-[#6B7280] py-16 text-xs border-t border-[#E5E7EB] font-mono">
         <div className="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           
           <div className="space-y-4">
-            <span className="font-extrabold text-white tracking-wider uppercase text-[10px] block">Platform</span>
+            <span className="font-extrabold text-[#111827] tracking-wider uppercase text-[10px] block">Platform</span>
             <ul className="space-y-2">
-              <li><a href="#itsm-suite" className="hover:text-white transition">Incident Management</a></li>
-              <li><a href="#itsm-suite" className="hover:text-white transition">Request Management</a></li>
-              <li><a href="#itsm-suite" className="hover:text-white transition">Problem Management</a></li>
-              <li><a href="#itsm-suite" className="hover:text-white transition">Change Management</a></li>
-              <li><a href="#itsm-suite" className="hover:text-white transition">Asset Management</a></li>
-              <li><a href="#itsm-suite" className="hover:text-white transition">Knowledge Management</a></li>
-              <li><a href="#workflow-automation" className="hover:text-white transition">Workflow Automation</a></li>
-              <li><a href="#analytics-section" className="hover:text-white transition">Analytics</a></li>
-              <li><a href="#ai-showcase" className="hover:text-white transition">AI Operations</a></li>
+              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Incident Management</a></li>
+              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Request Management</a></li>
+              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Problem Management</a></li>
+              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Change Management</a></li>
+              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Asset Management</a></li>
+              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Knowledge Management</a></li>
+              <li><a href="#workflow-automation" className="hover:text-[#111827] transition">Workflow Automation</a></li>
+              <li><a href="#analytics-section" className="hover:text-[#111827] transition">Analytics</a></li>
+              <li><a href="#ai-showcase" className="hover:text-[#111827] transition">AI Operations</a></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <span className="font-extrabold text-white tracking-wider uppercase text-[10px] block">Company</span>
+            <span className="font-extrabold text-[#111827] tracking-wider uppercase text-[10px] block">Company</span>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-white transition">About</a></li>
-              <li><a href="#" className="hover:text-white transition">Careers</a></li>
-              <li><a href="#" className="hover:text-white transition">Partners</a></li>
-              <li><a href="#" className="hover:text-white transition">Contact</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">About</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Careers</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Partners</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Contact</a></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <span className="font-extrabold text-white tracking-wider uppercase text-[10px] block">Resources</span>
+            <span className="font-extrabold text-[#111827] tracking-wider uppercase text-[10px] block">Resources</span>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-white transition">Documentation</a></li>
-              <li><a href="#" className="hover:text-white transition">API</a></li>
-              <li><a href="#" className="hover:text-white transition">Support</a></li>
-              <li><a href="#" className="hover:text-white transition">Security</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Documentation</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">API</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Support</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Security</a></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <span className="font-extrabold text-white tracking-wider uppercase text-[10px] block">Legal</span>
+            <span className="font-extrabold text-[#111827] tracking-wider uppercase text-[10px] block">Legal</span>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition">Compliance</a></li>
-              <li><a href="#" className="hover:text-white transition">Trust Center</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Privacy Policy</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Terms of Service</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Compliance</a></li>
+              <li><a href="#" className="hover:text-[#111827] transition">Trust Center</a></li>
             </ul>
           </div>
 
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 md:px-8 border-t border-[#262626] pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px]">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 border-t border-[#E5E7EB] pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px]">
           <span>Copyright © Support Studio Technologies. All Rights Reserved.</span>
           <span>Powered by Assist360.</span>
         </div>
