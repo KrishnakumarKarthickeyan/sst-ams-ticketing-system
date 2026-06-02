@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { KeyRound, ShieldCheck, Mail, Cpu, ArrowLeft, Activity, Star, ClipboardList, Shield, Globe, Server } from 'lucide-react';
+import { KeyRound, ShieldCheck, Mail, ArrowLeft, Activity, Star, ClipboardList, Shield, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { BrandedLogo } from '../../components/ui/BrandedLogo';
 import { Button } from '../../components/ui/button';
@@ -94,11 +94,11 @@ export default function LoginPage() {
         {/* Brand Header */}
         <div className="relative z-10 flex items-center gap-3">
           <BrandedLogo width={24} height={24} />
-          <span className="font-extrabold text-sm tracking-wider text-[#111827] font-mono">ASSIST360</span>
+          <span className="font-bold text-sm tracking-wider text-[#111827] font-mono">ASSIST360</span>
         </div>
 
         {/* High-Fidelity Product Mockup Center */}
-        <div className="relative z-10 max-w-md mx-auto space-y-6 w-full">
+        <div className="relative z-10 max-w-md mx-auto space-y-6 w-full font-sans">
           
           <div className="space-y-2">
             <h2 className="text-xl font-bold uppercase tracking-wider text-[#111827] font-mono">Enterprise Service Management Platform</h2>
@@ -106,11 +106,11 @@ export default function LoginPage() {
           </div>
 
           {/* Floating Showcase Mock Cards */}
-          <div className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-md space-y-4">
+          <div className="bg-white border border-[#E5E7EB] rounded p-5 shadow-sm space-y-4">
             
-            <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-2">
-              <span className="text-[9px] font-mono font-bold text-[#6B7280] uppercase tracking-wider">Service Operations Cockpit</span>
-              <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[8px] font-mono uppercase">System Normal</Badge>
+            <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-2 font-mono">
+              <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider">Service Operations Cockpit</span>
+              <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[8px] uppercase">System Normal</Badge>
             </div>
 
             {/* SLA Trend Micro Chart */}
@@ -120,12 +120,12 @@ export default function LoginPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={liveHealthData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="loginChartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="loginChartGradLight" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#2563EB" stopOpacity={0.12} />
                         <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <Area type="monotone" dataKey="compliance" stroke="#2563EB" strokeWidth={2} fill="url(#loginChartGrad)" />
+                    <Area type="monotone" dataKey="compliance" stroke="#2563EB" strokeWidth={2} fill="url(#loginChartGradLight)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -135,10 +135,10 @@ export default function LoginPage() {
             <div className="grid grid-cols-2 gap-3 text-xs font-mono">
               <div className="p-2.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
                 <span className="text-[8px] text-[#6B7280] uppercase block">Platform SLA</span>
-                <span className="text-white bg-[#111827] px-1 rounded text-[9px] font-bold">98.7% Met</span>
+                <span className="text-[#2563EB] font-bold block mt-0.5">98.7% Met</span>
               </div>
               <div className="p-2.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                <span className="text-[8px] text-[#6B7280] uppercase block">Response rate</span>
+                <span className="text-[8px] text-[#6B7280] uppercase block">Response latency</span>
                 <span className="text-[#10B981] font-bold block mt-0.5">8ms latency</span>
               </div>
             </div>
@@ -203,12 +203,12 @@ export default function LoginPage() {
           </Link>
           <div className="lg:hidden flex items-center gap-2">
             <BrandedLogo width={20} height={20} />
-            <span className="font-extrabold text-xs tracking-wider text-[#111827] font-mono">ASSIST360</span>
+            <span className="font-bold text-xs tracking-wider text-[#111827] font-mono">ASSIST360</span>
           </div>
         </div>
 
         {/* Main Authentication card form container */}
-        <div className="max-w-sm w-full mx-auto space-y-6 py-12">
+        <div className="max-w-sm w-full mx-auto space-y-6 py-12 font-sans">
           
           <div className="text-center lg:text-left space-y-1.5">
             <BrandedLogo width={40} height={40} className="mx-auto lg:mx-0 hidden lg:block" />
@@ -221,7 +221,7 @@ export default function LoginPage() {
             {loading ? (
               <div className="flex flex-col items-center justify-center space-y-4 py-8">
                 <BrandedLogo animated={true} width={40} height={40} />
-                <span className="text-[10px] uppercase font-mono font-bold text-[#6B7280] tracking-widest">
+                <span className="text-[10px] uppercase font-mono font-bold text-[#6B7280] tracking-widest text-center block">
                   Establishing secure tunnel...
                 </span>
               </div>
@@ -288,7 +288,7 @@ export default function LoginPage() {
                 <Button 
                   type="submit"
                   disabled={authenticating}
-                  className="w-full py-2.5 bg-[#111827] hover:bg-[#6B7280] text-[10px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono"
+                  className="w-full py-2.5 bg-[#2563EB] hover:bg-blue-700 text-[10px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono border-none"
                 >
                   {authenticating ? 'Verifying...' : 'Sign In'}
                 </Button>
@@ -297,41 +297,6 @@ export default function LoginPage() {
             )}
 
           </Card>
-
-          {/* Social authentication buttons */}
-          <div className="space-y-2.5 font-mono text-[9px] uppercase tracking-wider">
-            
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-[#E5E7EB]"></div>
-              <span className="flex-shrink mx-4 text-[#6B7280]">Or Sign In With</span>
-              <div className="flex-grow border-t border-[#E5E7EB]"></div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => toast.info('Microsoft OAuth directory is disabled on demo accounts.')}
-                className="w-full h-9 border-[#E5E7EB] hover:bg-[#FAFAFA] hover:text-[#111827] flex items-center justify-center gap-2 text-[#6B7280]"
-              >
-                <Server size={12} className="text-[#2563EB]" /> Continue with Microsoft
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => toast.info('Google SSO integration is disabled on demo accounts.')}
-                className="w-full h-9 border-[#E5E7EB] hover:bg-[#FAFAFA] hover:text-[#111827] flex items-center justify-center gap-2 text-[#6B7280]"
-              >
-                <Globe size={12} className="text-[#10B981]" /> Continue with Google
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => toast.info('Azure Active Directory SSO is disabled on demo accounts.')}
-                className="w-full h-9 border-[#E5E7EB] hover:bg-[#FAFAFA] hover:text-[#111827] flex items-center justify-center gap-2 text-[#6B7280]"
-              >
-                <Shield size={12} className="text-[#2563EB]" /> Continue with Azure AD
-              </Button>
-            </div>
-
-          </div>
 
         </div>
 
