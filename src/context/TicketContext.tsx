@@ -271,6 +271,7 @@ interface TicketContextType {
   }>;
   resetMockData: () => void;
   fetchTicketById: (ticketId: string) => Promise<Ticket | null>;
+  refetchData: () => Promise<void>;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -5415,7 +5416,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         createSystemNotification,
         getChatResponse,
         resetMockData,
-        fetchTicketById
+        fetchTicketById,
+        refetchData: fetchData
       }}
     >
       {children}

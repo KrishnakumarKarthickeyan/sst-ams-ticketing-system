@@ -30,7 +30,7 @@ interface UserProfile {
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
-  const { profiles } = useTickets();
+  const { profiles, refetchData } = useTickets();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -95,7 +95,7 @@ export default function AdminUsersPage() {
   };
 
   const fetchUsers = () => {
-    // TicketContext handles reactive refetching automatically via Realtime DB changes
+    refetchData().catch(err => console.error('Error fetching users:', err));
   };
 
   useEffect(() => {
@@ -293,7 +293,7 @@ export default function AdminUsersPage() {
 
         toast.success('User profile updated successfully.', { id: toastId });
         setSelectedUser(null);
-        window.location.reload();
+        await refetchData();
       } catch (err: any) {
         toast.error(`Update failed: ${err.message}`, { id: toastId });
       }
@@ -410,7 +410,7 @@ export default function AdminUsersPage() {
         if (!res.success) throw new Error(res.error);
         toast.success(`Account access changed to: ${!currentActive ? 'Active' : 'Disabled'}`, { id: toastId });
         setSelectedUser(null);
-        window.location.reload();
+        await refetchData();
       } catch (err: any) {
         toast.error(`Operation failed: ${err.message}`, { id: toastId });
       }
@@ -435,7 +435,7 @@ export default function AdminUsersPage() {
         if (!res.success) throw new Error(res.error);
         toast.success('Force setup enabled. User must create new credentials on next authentication.', { id: toastId });
         setSelectedUser(null);
-        window.location.reload();
+        await refetchData();
       } catch (err: any) {
         toast.error(`Force setup failed: ${err.message}`, { id: toastId });
       }
@@ -459,7 +459,7 @@ export default function AdminUsersPage() {
         if (!res.success) throw new Error(res.error);
         toast.success('Account unlocked successfully.', { id: toastId });
         setSelectedUser(null);
-        window.location.reload();
+        await refetchData();
       } catch (err: any) {
         toast.error(`Unlock failed: ${err.message}`, { id: toastId });
       }
@@ -484,7 +484,7 @@ export default function AdminUsersPage() {
 
           toast.success('User removed completely.', { id: toastId });
           setSelectedUser(null);
-          window.location.reload();
+          await refetchData();
         } catch (err: any) {
           toast.error(`Prune failed: ${err.message}`, { id: toastId });
         }

@@ -284,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (user && user.firstLoginCompleted === false) {
       if (typeof window !== 'undefined' && window.location.pathname !== '/first-login-reset') {
-        window.location.href = '/first-login-reset';
+        router.push('/first-login-reset');
       }
     }
   }, [user]);

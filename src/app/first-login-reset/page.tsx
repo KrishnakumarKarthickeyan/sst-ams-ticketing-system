@@ -32,20 +32,21 @@ export default function FirstLoginResetPage() {
   const redirectToDashboard = (role: string) => {
     switch (role) {
       case 'SuperAdmin':
-        window.location.href = '/admin/dashboard';
+        router.push('/admin/dashboard');
         break;
       case 'Manager':
-        window.location.href = '/manager/dashboard';
+        router.push('/manager/dashboard');
         break;
       case 'Consultant':
-        window.location.href = '/consultant/dashboard';
+        router.push('/consultant/dashboard');
         break;
       case 'Customer':
-        window.location.href = '/customer/dashboard';
+        router.push('/customer/dashboard');
         break;
       default:
-        window.location.href = '/dashboard';
+        router.push('/dashboard');
     }
+    router.refresh();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

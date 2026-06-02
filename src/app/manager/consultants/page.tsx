@@ -61,7 +61,7 @@ interface CustomerProfile {
 }
 
 export default function ManagerConsultantsPage() {
-  const { tickets, profiles, contracts, orgMap, orgShortCodeMap } = useTickets();
+  const { tickets, profiles, contracts, orgMap, orgShortCodeMap, refetchData } = useTickets();
   const { user } = useAuth();
 
   // Tab State
@@ -161,8 +161,8 @@ export default function ManagerConsultantsPage() {
     localStorage.setItem('sst_stakeholder_customers', JSON.stringify(list));
   };
 
-  const fetchStakeholders = () => {
-    // TicketContext handles reactive refetching automatically via Realtime DB changes
+  const fetchStakeholders = async () => {
+    await refetchData();
   };
 
   // --- Search / Filter operations ---
@@ -264,7 +264,7 @@ export default function ManagerConsultantsPage() {
         }
 
         toast.success(`Consultant profile created successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
-        fetchStakeholders();
+        await fetchStakeholders();
         closeActionModal();
       } catch (err: any) {
         let msg = err.message;
@@ -314,7 +314,7 @@ export default function ManagerConsultantsPage() {
 
         if (error) throw new Error(error.message);
         toast.success('Consultant profile updated.', { id: toastId });
-        fetchStakeholders();
+        await fetchStakeholders();
         closeActionModal();
       } catch (err: any) {
         toast.error(`Update failed: ${err.message}`, { id: toastId });
@@ -354,7 +354,7 @@ export default function ManagerConsultantsPage() {
 
         if (error) throw new Error(error.message);
         toast.success(`Account access changed to: ${!current.active ? 'Active' : 'Disabled'}`, { id: toastId });
-        fetchStakeholders();
+        await fetchStakeholders();
       } catch (err: any) {
         toast.error(`Operation failed: ${err.message}`, { id: toastId });
       }
@@ -385,7 +385,7 @@ export default function ManagerConsultantsPage() {
           if (error) throw new Error(error.message);
 
           toast.success('Consultant removed completely.', { id: toastId });
-          fetchStakeholders();
+          await fetchStakeholders();
         } catch (err: any) {
           toast.error(`Prune failed: ${err.message}`, { id: toastId });
         }
@@ -518,7 +518,7 @@ export default function ManagerConsultantsPage() {
         }
 
         toast.success(`Customer created successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
-        fetchStakeholders();
+        await fetchStakeholders();
         closeActionModal();
       } catch (err: any) {
         let msg = err.message;
@@ -614,7 +614,7 @@ export default function ManagerConsultantsPage() {
         }
 
         toast.success('Customer profile saved.', { id: toastId });
-        fetchStakeholders();
+        await fetchStakeholders();
         closeActionModal();
       } catch (err: any) {
         toast.error(`Update failed: ${err.message}`, { id: toastId });
@@ -654,7 +654,7 @@ export default function ManagerConsultantsPage() {
 
         if (error) throw new Error(error.message);
         toast.success(`Account access changed to: ${!current.active ? 'Active' : 'Disabled'}`, { id: toastId });
-        fetchStakeholders();
+        await fetchStakeholders();
       } catch (err: any) {
         toast.error(`Operation failed: ${err.message}`, { id: toastId });
       }
@@ -685,7 +685,7 @@ export default function ManagerConsultantsPage() {
           if (error) throw new Error(error.message);
 
           toast.success('Customer record pruned.', { id: toastId });
-          fetchStakeholders();
+          await fetchStakeholders();
         } catch (err: any) {
           toast.error(`Prune failed: ${err.message}`, { id: toastId });
         }
@@ -706,6 +706,7 @@ export default function ManagerConsultantsPage() {
         const res = await resetUserPasswordAdmin(activeAction.targetId, passwordResetValue);
         if (res.success) {
           toast.success(`Password reset successful! User must change their password on next login.`, { id: toastId, duration: 6000 });
+          await fetchStakeholders();
           closeActionModal();
         } else if (res.error === 'NO_SERVICE_KEY') {
           toast.error('Overwriting passwords from the dashboard requires configuring the SUPABASE_SERVICE_ROLE_KEY environment variable on the server.', { id: toastId, duration: 6000 });
@@ -875,12 +876,45 @@ export default function ManagerConsultantsPage() {
                 return acc;
               }, 0);
 
-              // Simulation values for dashboard metrics
-              const seed = c.name.charCodeAt(0) % 10;
-              const workloadHours = 120 + seed * 4;
-              const utilRate = Math.min(100, Math.round((workloadHours / 168) * 100));
-              const slaCompliance = 94.2 + (seed % 3) * 1.1;
-              const avgResTime = 16.5 + (seed % 4) * 0.9;
+              const consultantTickets = tickets.filter(t => t.assignedConsultant === c.name);
+              const backlogCount = activeTickets.length;
+              
+              let utilRateStr = '0%';
+              let slaRateStr = 'N/A';
+              let avgResTimeStr = 'N/A';
+              
+              if (consultantTickets.length > 0) {
+                const utilRate = Math.min(100, Math.round((totalHours / 168) * 100));
+                utilRateStr = `${utilRate}%`;
+                
+                const slaTickets = consultantTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable');
+                if (slaTickets.length > 0) {
+                  const metSlaTickets = slaTickets.filter(t => {
+                    const resolvedOrClosed = t.resolvedAt || t.closedAt;
+                    if (resolvedOrClosed) {
+                      return new Date(resolvedOrClosed).getTime() <= new Date(t.slaDueAt).getTime();
+                    }
+                    return new Date().getTime() <= new Date(t.slaDueAt).getTime();
+                  });
+                  const slaRate = Math.round((metSlaTickets.length / slaTickets.length) * 100);
+                  slaRateStr = `${slaRate}%`;
+                }
+                
+                const resolvedTickets = consultantTickets.filter(t => t.resolvedAt || t.closedAt);
+                if (resolvedTickets.length > 0) {
+                  const avgResTime = resolvedTickets.reduce((sum, t) => sum + (new Date((t.resolvedAt || t.closedAt) as string).getTime() - new Date(t.createdAt).getTime()) / (3600 * 1000), 0) / resolvedTickets.length;
+                  avgResTimeStr = `${avgResTime.toFixed(1)}h`;
+                }
+              }
+
+              const lastActivityDate = (() => {
+                const dates = consultantTickets
+                  .map(t => t.updatedAt ? new Date(t.updatedAt).getTime() : 0)
+                  .filter(time => time > 0 && !isNaN(time));
+                if (dates.length === 0) return 'N/A';
+                const maxTime = Math.max(...dates);
+                return new Date(maxTime).toLocaleDateString() + ' ' + new Date(maxTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              })();
 
               return (
                 <Card key={c.id} className={`bg-white border border-zinc-200/80 rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition duration-300 flex flex-col justify-between ${!c.active ? 'opacity-65 border-dashed bg-zinc-50/50' : ''}`}>
@@ -909,19 +943,19 @@ export default function ManagerConsultantsPage() {
                   <div className="p-5 bg-zinc-50/30 border-b border-zinc-100 grid grid-cols-4 gap-3 text-center">
                     <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
                       <span className="text-[8px] text-zinc-450 uppercase font-mono block">Backlog</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{activeTickets.length} active</strong>
+                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{backlogCount} active</strong>
                     </div>
                     <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
                       <span className="text-[8px] text-zinc-450 uppercase font-mono block">Utilization</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{utilRate}%</strong>
+                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{utilRateStr}</strong>
                     </div>
                     <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
                       <span className="text-[8px] text-zinc-450 uppercase font-mono block">SLA Rate</span>
-                      <strong className="text-sm font-bold text-emerald-600 block mt-1 font-mono">{slaCompliance.toFixed(1)}%</strong>
+                      <strong className={`text-sm font-bold block mt-1 font-mono ${slaRateStr === 'N/A' ? 'text-zinc-900' : 'text-emerald-600'}`}>{slaRateStr}</strong>
                     </div>
                     <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
                       <span className="text-[8px] text-zinc-450 uppercase font-mono block">Res. Speed</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{avgResTime.toFixed(1)}h</strong>
+                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{avgResTimeStr}</strong>
                     </div>
                   </div>
 
@@ -937,6 +971,31 @@ export default function ManagerConsultantsPage() {
                         <strong>Skills:</strong> {c.skills}
                       </p>
                     </div>
+
+                    {/* Live Ticket & Hours Stats Grid (Requirement 10) */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] pt-3 border-t border-zinc-100 font-sans">
+                      <div>
+                        <span className="text-zinc-400">Assigned Tickets:</span>{' '}
+                        <strong className="text-zinc-800 font-mono">{consultantTickets.length}</strong>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">Open Tickets:</span>{' '}
+                        <strong className="text-zinc-800 font-mono">{backlogCount}</strong>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">Closed Tickets:</span>{' '}
+                        <strong className="text-zinc-800 font-mono">{closedTicketsCount}</strong>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">Approved Hours:</span>{' '}
+                        <strong className="text-zinc-800 font-mono">{totalHours.toFixed(1)}h</strong>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-zinc-400 font-medium">Last Activity:</span>{' '}
+                        <strong className="text-zinc-800 font-mono text-[10px]">{lastActivityDate}</strong>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-zinc-400 pt-2 border-t border-zinc-50">
                       <div className="flex items-center gap-1.5">
                         <Mail size={11} />
@@ -1190,7 +1249,9 @@ export default function ManagerConsultantsPage() {
       {/* --- FORM ACTIONS DIALOGS / MODALS (STATE CONTROLLED) --- */}
       {activeAction.type && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <Card className="bg-white border border-zinc-200 w-full max-w-md overflow-hidden rounded-2xl shadow-2xl text-zinc-950">
+          <Card className={`bg-white border border-zinc-200 w-full overflow-hidden rounded-2xl shadow-2xl text-zinc-950 transition-all ${
+            (activeAction.type === 'add_customer' || activeAction.type === 'edit_customer') ? 'max-w-3xl' : 'max-w-md'
+          }`}>
             {/* Header */}
             <div className="bg-zinc-50 border-b border-zinc-200 px-5 py-4 flex justify-between items-center">
               <div>
@@ -1336,198 +1397,213 @@ export default function ManagerConsultantsPage() {
 
               {/* CUSTOMER FORM */}
               {(activeAction.type === 'add_customer' || activeAction.type === 'edit_customer') && (
-                <form onSubmit={activeAction.type === 'add_customer' ? handleAddCustomer : handleEditCustomerSubmit} className="space-y-3.5 text-xs">
-                  {/* Row 1: Company Details */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Company Name *</label>
-                      <input
-                        type="text"
-                        required
-                        value={formCompany}
-                        onChange={(e) => setFormCompany(e.target.value)}
-                        placeholder="e.g. Apex Global Industries"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Short Code *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. BIT"
-                        value={formShortCode}
-                        onChange={(e) => setFormShortCode(e.target.value.toUpperCase())}
-                        maxLength={6}
-                        disabled={activeAction.type === 'edit_customer'}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-mono uppercase disabled:bg-zinc-50 disabled:text-zinc-500"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Industry</label>
-                      <input
-                        type="text"
-                        value={formIndustry}
-                        onChange={(e) => setFormIndustry(e.target.value)}
-                        placeholder="e.g. Manufacturing, Energy"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 2: Main Contact details */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1 col-span-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Main Contact Agent</label>
-                      <input
-                        type="text"
-                        required
-                        value={formContact}
-                        onChange={(e) => setFormContact(e.target.value)}
-                        placeholder="e.g. Sarah Jenkins"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
-                    <div className="space-y-1 col-span-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Email Address</label>
-                      <input
-                        type="email"
-                        required
-                        value={formEmail}
-                        onChange={(e) => setFormEmail(e.target.value)}
-                        placeholder="e.g. customer@sap.com"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
-                    <div className="space-y-1 col-span-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Phone</label>
-                      <input
-                        type="text"
-                        value={formPhone}
-                        onChange={(e) => setFormPhone(e.target.value)}
-                        placeholder="e.g. +1 555-0199"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 3: Address */}
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Address</label>
-                    <input
-                      type="text"
-                      value={formAddress}
-                      onChange={(e) => setFormAddress(e.target.value)}
-                      placeholder="e.g. 100 Main St, Suite 400, New York, NY"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                    />
-                  </div>
-
-                  {/* Row 4: Contract Details Part 1 */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract SLA Type</label>
-                      <select
-                        value={formContract || 'AMS'}
-                        onChange={(e) => setFormContract(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-sans"
-                      >
-                        <option value="AMS">AMS Support</option>
-                        <option value="Implementation Support">Implementation</option>
-                        <option value="Rollout Support">Rollout</option>
-                        <option value="Migration Support">Migration</option>
-                        <option value="Upgrade Support">Upgrade Support</option>
-                        <option value="Hypercare Support">Hypercare Support</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Total Contract Hours</label>
-                      <input
-                        type="number"
-                        value={formTotalContractHours}
-                        onChange={(e) => setFormTotalContractHours(e.target.value)}
-                        placeholder="e.g. 1920"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Monthly Hour Cap</label>
-                      <input
-                        type="number"
-                        value={formHours}
-                        onChange={(e) => setFormHours(e.target.value)}
-                        placeholder="e.g. 160"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 5: Contract Details Part 2 */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract Start Date</label>
-                      <input
-                        type="date"
-                        value={formContractStartDate}
-                        onChange={(e) => setFormContractStartDate(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract End Date</label>
-                      <input
-                        type="date"
-                        value={formContractEndDate}
-                        onChange={(e) => setFormContractEndDate(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Contract Status</label>
-                      <select
-                        value={formContractStatus}
-                        onChange={(e) => setFormContractStatus(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-sans"
-                      >
-                        <option value="Active">Active</option>
-                        <option value="Suspended">Suspended</option>
-                        <option value="Expired">Expired</option>
-                        <option value="Pending">Pending</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Row 6: Passwords & Access Control */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {activeAction.type === 'add_customer' && (
-                      <div className="space-y-1">
-                        <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Temporary Password</label>
+                <form onSubmit={activeAction.type === 'add_customer' ? handleAddCustomer : handleEditCustomerSubmit} className="space-y-6 text-xs">
+                  
+                  {/* Section 1: Company Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-zinc-950 uppercase tracking-wider border-b border-zinc-200 pb-2">
+                      Company Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Company Name *</label>
                         <input
-                          type="password"
+                          type="text"
                           required
-                          value={formPassword}
-                          onChange={(e) => setFormPassword(e.target.value)}
-                          placeholder="Assign a secure password"
-                          className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                          value={formCompany}
+                          onChange={(e) => setFormCompany(e.target.value)}
+                          placeholder="e.g. Apex Global Industries"
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
                         />
                       </div>
-                    )}
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Login Enabled</label>
-                      <select
-                        value={formLoginEnabled ? 'true' : 'false'}
-                        onChange={(e) => setFormLoginEnabled(e.target.value === 'true')}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-sans"
-                      >
-                        <option value="true">Enabled</option>
-                        <option value="false">Disabled / Locked</option>
-                      </select>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Customer Short Code *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. BIT"
+                          value={formShortCode}
+                          onChange={(e) => setFormShortCode(e.target.value.toUpperCase())}
+                          maxLength={6}
+                          disabled={activeAction.type === 'edit_customer'}
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150 font-mono uppercase disabled:bg-zinc-50 disabled:text-zinc-500 disabled:border-zinc-200"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Industry</label>
+                        <input
+                          type="text"
+                          value={formIndustry}
+                          onChange={(e) => setFormIndustry(e.target.value)}
+                          placeholder="e.g. Manufacturing, Energy"
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-3">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Address</label>
+                        <input
+                          type="text"
+                          value={formAddress}
+                          onChange={(e) => setFormAddress(e.target.value)}
+                          placeholder="e.g. 100 Main St, Suite 400, New York, NY"
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 mt-4">
-                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                    <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">
+                  {/* Section 2: Contract Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-zinc-955 uppercase tracking-wider border-b border-zinc-200 pb-2">
+                      Contract Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Contract SLA Type</label>
+                        <select
+                          value={formContract || 'AMS'}
+                          onChange={(e) => setFormContract(e.target.value)}
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150 font-sans"
+                        >
+                          <option value="AMS">AMS Support</option>
+                          <option value="Implementation Support">Implementation</option>
+                          <option value="Rollout Support">Rollout</option>
+                          <option value="Migration Support">Migration</option>
+                          <option value="Upgrade Support">Upgrade Support</option>
+                          <option value="Hypercare Support">Hypercare Support</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Total Contract Hours</label>
+                        <input
+                          type="number"
+                          value={formTotalContractHours}
+                          onChange={(e) => setFormTotalContractHours(e.target.value)}
+                          placeholder="e.g. 1920"
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Monthly Hour Cap</label>
+                        <input
+                          type="number"
+                          value={formHours}
+                          onChange={(e) => setFormHours(e.target.value)}
+                          placeholder="e.g. 160"
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Contract Start Date</label>
+                        <input
+                          type="date"
+                          value={formContractStartDate}
+                          onChange={(e) => setFormContractStartDate(e.target.value)}
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Contract End Date</label>
+                        <input
+                          type="date"
+                          value={formContractEndDate}
+                          onChange={(e) => setFormContractEndDate(e.target.value)}
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Contract Status</label>
+                        <select
+                          value={formContractStatus}
+                          onChange={(e) => setFormContractStatus(e.target.value)}
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150 font-sans"
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Suspended">Suspended</option>
+                          <option value="Expired">Expired</option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 3: Contact Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-zinc-950 uppercase tracking-wider border-b border-zinc-200 pb-2">
+                      Contact Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Main Contact Agent *</label>
+                        <input
+                          type="text"
+                          required
+                          value={formContact}
+                          onChange={(e) => setFormContact(e.target.value)}
+                          placeholder="e.g. Sarah Jenkins"
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Email Address *</label>
+                        <input
+                          type="email"
+                          required
+                          value={formEmail}
+                          onChange={(e) => setFormEmail(e.target.value)}
+                          placeholder="e.g. customer@sap.com"
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Phone</label>
+                        <input
+                          type="text"
+                          value={formPhone}
+                          onChange={(e) => setFormPhone(e.target.value)}
+                          placeholder="e.g. +1 555-0199"
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 4 & 5: Account Information & System Access */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-zinc-955 uppercase tracking-wider border-b border-zinc-200 pb-2">
+                      Account Information & System Access
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {activeAction.type === 'add_customer' && (
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Initial Password *</label>
+                          <input
+                            type="password"
+                            required
+                            value={formPassword}
+                            onChange={(e) => setFormPassword(e.target.value)}
+                            placeholder="Assign a secure password"
+                            className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Login Enabled</label>
+                        <select
+                          value={formLoginEnabled ? 'true' : 'false'}
+                          onChange={(e) => setFormLoginEnabled(e.target.value === 'true')}
+                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150 font-sans"
+                        >
+                          <option value="true">Enabled</option>
+                          <option value="false">Disabled / Locked</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 border-t border-zinc-200 pt-4 mt-6">
+                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8 px-4">Cancel</Button>
+                    <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 px-4 cursor-pointer">
                       {activeAction.type === 'add_customer' ? 'Create Record' : 'Save Changes'}
                     </Button>
                   </div>
