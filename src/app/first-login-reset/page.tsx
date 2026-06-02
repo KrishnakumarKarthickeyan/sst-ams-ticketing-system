@@ -8,9 +8,10 @@ import { BrandedLogo } from '../../components/ui/BrandedLogo';
 import { BRAND_CONFIG } from '../../config/branding';
 import { supabase } from '../../lib/supabase/client';
 import { toast } from 'sonner';
+import { logUserAuditAction } from '../actions/auth';
 
 export default function FirstLoginResetPage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, refreshProfile } = useAuth();
   const router = useRouter();
   
   const [password, setPassword] = useState('');
@@ -84,14 +85,22 @@ export default function FirstLoginResetPage() {
 
       if (dbErr) throw dbErr;
 
+      // 3. Log user audit action
+      if (user?.email) {
+        await logUserAuditAction(user.email, 'Force Password Change', user.email);
+      }
+
+      // 4. Force context refresh
+      const refreshedUser = await refreshProfile();
+
       toast.success('Security settings initialized. Redirecting to workspace...', { id: toastId });
       
-      // Delay briefly to allow session to refresh
-      setTimeout(() => {
-        if (user) {
-          redirectToDashboard(user.role);
-        }
-      }, 1000);
+      // Redirect immediately using refreshed state
+      if (refreshedUser) {
+        redirectToDashboard(refreshedUser.role);
+      } else if (user) {
+        redirectToDashboard(user.role);
+      }
 
     } catch (err: any) {
       console.error('Password reset failure:', err);

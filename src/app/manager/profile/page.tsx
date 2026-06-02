@@ -2,20 +2,17 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useTickets } from '../../../context/TicketContext';
-import { ShieldCheck, User, Building2, Check, Mail, Award, Clock, KeyRound, Lock } from 'lucide-react';
+import { ShieldCheck, User, Check, Mail, KeyRound, Lock } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { Badge } from '../../../components/ui/badge';
 import { supabase } from '../../../lib/supabase/client';
 import { logUserAuditAction } from '../../actions/auth';
 import { toast } from 'sonner';
 
-export default function CustomerProfilePage() {
+export default function ManagerProfilePage() {
   const { user, updateProfile } = useAuth();
-  const { contracts } = useTickets();
   const [name, setName] = useState(user?.name || '');
   const [success, setSuccess] = useState(false);
 
@@ -25,9 +22,6 @@ export default function CustomerProfilePage() {
   const [passwordUpdating, setPasswordUpdating] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
-
-  const customerCompany = user?.company || 'Apex Global Industries';
-  const contract = contracts.find(c => c.organizationName === customerCompany);
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,16 +76,15 @@ export default function CustomerProfilePage() {
     }
   };
 
-
   return (
     <div className="space-y-6 max-w-xl mx-auto">
       {/* Header */}
       <div className="border-b border-zinc-200 pb-4">
         <h1 className="text-xl font-bold tracking-tight font-mono text-zinc-950 uppercase">
-          My Account Profile
+          Manager Profile
         </h1>
         <p className="text-xs text-zinc-500 font-medium">
-          Manage your personal support user settings and review organizational SLA contract budgets.
+          Manage your personal manager profile settings and password credentials.
         </p>
       </div>
 
@@ -218,62 +211,6 @@ export default function CustomerProfilePage() {
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
-
-      {/* Contract card */}
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-          <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center gap-1.5">
-            <Building2 size={14} />
-            Active Service Contract Pool Summary
-          </CardTitle>
-          <CardDescription className="text-[11px] font-mono">
-            Service allocation details and validation records of AMS contracts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6 space-y-4 font-mono text-xs">
-          {contract ? (
-            <div className="space-y-3.5 text-zinc-750">
-              <div className="flex justify-between items-center">
-                <span>Contract Type Classification:</span>
-                <Badge className="bg-zinc-100 text-zinc-850 hover:bg-zinc-100 font-mono text-[10px] border-zinc-200 rounded py-0.5 px-1.5">
-                  {contract.contractType}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span>Contract Validation Ends:</span>
-                <span className="font-bold text-zinc-950 font-mono">{contract.endDate}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Services Hours Pool Used:</span>
-                <span className="font-bold text-zinc-950 font-mono">{contract.usedHours} / {contract.totalHours} Hours</span>
-              </div>
-              
-              <div className="space-y-1.5 pt-2 border-t border-zinc-100">
-                <div className="flex justify-between text-[10px] font-bold text-zinc-400">
-                  <span>POOL USAGE BURN RATE</span>
-                  <span>{((contract.usedHours / contract.totalHours) * 100).toFixed(1)}% CONSUMED</span>
-                </div>
-                <div className="w-full h-3.5 bg-zinc-100 border border-zinc-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-zinc-950 transition-all duration-300"
-                    style={{ width: `${(contract.usedHours / contract.totalHours) * 100}%` }}
-                  ></div>
-                </div>
-                <span className="text-[9px] text-zinc-400 block font-mono text-right font-bold uppercase mt-1">
-                  {contract.totalHours - contract.usedHours} hours remaining
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5 text-[9px] text-zinc-400 font-bold uppercase pt-4 border-t border-zinc-100">
-                <ShieldCheck size={13} className="text-zinc-500" />
-                <span>Security Notice: Mapped under active database Row Level Security (RLS) policies</span>
-              </div>
-            </div>
-          ) : (
-            <div className="text-zinc-400 italic py-4 text-center">No support contracts currently registered for your company profile.</div>
-          )}
         </CardContent>
       </Card>
     </div>

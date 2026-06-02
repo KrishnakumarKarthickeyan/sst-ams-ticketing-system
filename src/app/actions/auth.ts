@@ -291,7 +291,27 @@ export async function getOrganizationShortCodeMap() {
 }
 
 
-export async function resetUserPasswordAdmin(userId: string, newPassword?: string) {
+export async function logUserAuditAction(userEmail: string, action: string, performedBy: string) {
+  const client = getAdminClient();
+  if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
+  try {
+    const { error } = await client.from('audit_logs').insert({
+      user_email: userEmail.trim().toLowerCase(),
+      action: action,
+      performed_by: performedBy.trim()
+    });
+    if (error) {
+      console.error('Audit log insertion error:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (e: any) {
+    console.error('Audit log fatal error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+export async function resetUserPasswordAdmin(userId: string, newPassword?: string, performedBy?: string, userEmail?: string) {
   const client = getAdminClient();
   if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
   try {
@@ -310,8 +330,135 @@ export async function resetUserPasswordAdmin(userId: string, newPassword?: strin
       .eq('id', userId);
     if (dbErr) return { success: false, error: dbErr.message };
 
+    // Log audit
+    let targetEmail: string = userEmail || '';
+    if (!targetEmail) {
+      const { data: prof } = await client.from('profiles').select('email').eq('id', userId).single();
+      targetEmail = prof?.email || 'unknown';
+    }
+    
+    await logUserAuditAction(targetEmail, 'Password Reset', performedBy || 'SuperAdmin');
+
     return { success: true, password };
   } catch (e: any) {
     return { success: false, error: e.message || 'Reset failed' };
   }
 }
+
+export async function adminUpdatePasswordDirect(userId: string, newPassword: string, performedBy?: string, userEmail?: string) {
+  const client = getAdminClient();
+  if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
+  try {
+    // SuperAdmin directly updates password without resetting first_login_completed
+    const { error } = await client.auth.admin.updateUserById(userId, {
+      password: newPassword
+    });
+    if (error) return { success: false, error: error.message };
+
+    // Also update password_changed_at in profiles table
+    const { error: dbErr } = await client
+      .from('profiles')
+      .update({ password_changed_at: new Date().toISOString() })
+      .eq('id', userId);
+    if (dbErr) return { success: false, error: dbErr.message };
+
+    // Log audit
+    let targetEmail: string = userEmail || '';
+    if (!targetEmail) {
+      const { data: prof } = await client.from('profiles').select('email').eq('id', userId).single();
+      targetEmail = prof?.email || 'unknown';
+    }
+    
+    await logUserAuditAction(targetEmail, 'Password Update', performedBy || 'SuperAdmin');
+
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || 'Update failed' };
+  }
+}
+
+export async function updateUserAuthStatus(
+  userId: string,
+  userEmail: string,
+  isActive: boolean,
+  isLocked: boolean,
+  performedBy: string
+) {
+  const client = getAdminClient();
+  if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
+  try {
+    // 1. Get original profile to see what changed for logging
+    const { data: originalProfile } = await client
+      .from('profiles')
+      .select('is_active, is_locked')
+      .eq('id', userId)
+      .single();
+    
+    // 2. Update Profiles table
+    const { error: dbErr } = await client.from('profiles').update({
+      is_active: isActive,
+      is_locked: isLocked
+    }).eq('id', userId);
+    if (dbErr) return { success: false, error: dbErr.message };
+
+    // 3. Handle Lock/Unlock or Disable in Supabase Auth
+    if (isLocked === false && originalProfile?.is_locked === true) {
+      // Unlock account (lift ban)
+      const { error: authErr } = await client.auth.admin.updateUserById(userId, {
+        ban_duration: 'none'
+      });
+      if (authErr) console.warn('Unlock auth warn:', authErr.message);
+      
+      // Log audit
+      await logUserAuditAction(userEmail, 'Account Unlock', performedBy);
+    } else if (isLocked !== originalProfile?.is_locked && isLocked) {
+      await logUserAuditAction(userEmail, 'Account Lock', performedBy);
+    }
+    
+    if (isActive !== originalProfile?.is_active) {
+      const action = isActive ? 'Account Enable' : 'Account Disable';
+      await logUserAuditAction(userEmail, action, performedBy);
+      
+      // If disabling the user, sign them out globally and ban them
+      if (!isActive) {
+        await client.auth.admin.signOut(userId);
+        await client.auth.admin.updateUserById(userId, {
+          ban_duration: '876000h' // ban for 100 years
+        });
+      } else {
+        // If enabling, lift any ban
+        await client.auth.admin.updateUserById(userId, {
+          ban_duration: 'none'
+        });
+      }
+    }
+
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || 'Status update failed' };
+  }
+}
+
+export async function adminForcePasswordChange(userId: string, userEmail: string, performedBy: string) {
+  const client = getAdminClient();
+  if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
+  try {
+    const { error: authErr } = await client.auth.admin.updateUserById(userId, {
+      user_metadata: { first_login_completed: false }
+    });
+    if (authErr) return { success: false, error: authErr.message };
+
+    const { error: dbErr } = await client
+      .from('profiles')
+      .update({ first_login_completed: false })
+      .eq('id', userId);
+    if (dbErr) return { success: false, error: dbErr.message };
+
+    await logUserAuditAction(userEmail, 'Force Password Change', performedBy);
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || 'Force password change failed' };
+  }
+}
+
+

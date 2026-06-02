@@ -24,6 +24,7 @@ interface AuthContextType {
   login: (email: string, password?: string) => Promise<{ success: boolean; user?: UserSession; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (name: string) => void;
+  refreshProfile: () => Promise<UserSession | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,19 +39,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const activeProfileFetchRef = React.useRef<Promise<UserSession | null> | null>(null);
   const isLoggingInRef = React.useRef(false);
 
-  const fetchAndSetProfile = async (session: any) => {
+  const fetchAndSetProfile = async (session: any, force = false) => {
     if (!session || !activeRef.current) {
       return null;
     }
-    if (isLoggingInRef.current) return null;
+    if (isLoggingInRef.current && !force) return null;
     
     // Prevent duplicate fetches if profile is already loaded and matches current session user
-    if (user && user.id === session.user.id) {
+    if (!force && user && user.id === session.user.id) {
       setLoading(false);
       return user;
     }
 
-    if (activeProfileFetchRef.current) {
+    if (activeProfileFetchRef.current && !force) {
       return activeProfileFetchRef.current;
     }
 
@@ -266,6 +267,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshProfile = async (): Promise<UserSession | null> => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          return await fetchAndSetProfile(session, true);
+        }
+      } catch (err) {
+        console.error('Error refreshing user profile:', err);
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (user && user.firstLoginCompleted === false) {
       if (typeof window !== 'undefined' && window.location.pathname !== '/first-login-reset') {
@@ -275,7 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateProfile, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

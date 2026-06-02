@@ -7,7 +7,17 @@ import { User, Plus, ShieldCheck, Mail, ShieldAlert, XCircle } from 'lucide-reac
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser, resetUserPasswordAdmin } from '../../actions/auth';
+import { 
+  createAuthUser, 
+  updateAuthUserPassword, 
+  deleteAuthUser, 
+  provisionUser, 
+  resetUserPasswordAdmin,
+  updateUserAuthStatus,
+  adminUpdatePasswordDirect,
+  adminForcePasswordChange,
+  logUserAuditAction
+} from '../../actions/auth';
 
 interface UserProfile {
   id: string;
@@ -28,6 +38,26 @@ export default function AdminUsersPage() {
   const [newRole, setNewRole] = useState('Customer');
   const [newOrg, setNewOrg] = useState('Apex Global Industries');
 
+  // Management console modal states
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<'view' | 'edit' | 'credentials' | 'danger'>('view');
+  const [modalFormName, setModalFormName] = useState('');
+  const [modalFormPhone, setModalFormPhone] = useState('');
+  const [modalFormRole, setModalFormRole] = useState('');
+  const [modalFormOrgId, setModalFormOrgId] = useState('');
+  const [modalPassInput, setModalPassInput] = useState('');
+  const [modalPassOption, setModalPassOption] = useState<'temp' | 'manual'>('temp');
+  const [generatedPassResult, setGeneratedPassResult] = useState('');
+  const [organizationsList, setOrganizationsList] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('organizations').select('id, name').then(({ data }) => {
+        if (data) setOrganizationsList(data);
+      });
+    }
+  }, []);
+
   const [localUsersList, setLocalUsersList] = useState<UserProfile[]>([]);
 
   const usersList = useMemo(() => {
@@ -38,7 +68,13 @@ export default function AdminUsersPage() {
         email: u.email,
         role: u.role,
         organization: u.organization || (u.organizations as any)?.name || 'Support Studio',
-        active: u.is_active
+        active: u.is_active,
+        is_locked: u.is_locked || false,
+        first_login_completed: u.first_login_completed || false,
+        password_changed_at: u.password_changed_at || null,
+        phone_number: u.phone_number || '',
+        consultant_type: u.consultant_type || '',
+        sap_modules: u.sap_modules || []
       }));
     } else {
       return localUsersList;
@@ -208,80 +244,247 @@ export default function AdminUsersPage() {
     }
   };
 
-  const toggleUserStatus = async (id: string) => {
-    const current = usersList.find(u => u.id === id);
-    if (!current) return;
+  const handleOpenUserModal = (u: any, tab: 'view' | 'edit' | 'credentials' | 'danger' = 'view') => {
+    setSelectedUser(u);
+    setActiveTab(tab);
+    setModalFormName(u.name || '');
+    setModalFormPhone(u.phone_number || '');
+    setModalFormRole(u.role || 'Customer');
+    
+    // Resolve organization ID
+    const org = organizationsList.find(o => o.name === u.organization);
+    setModalFormOrgId(org ? org.id : '');
+    
+    setModalPassInput('');
+    setModalPassOption('temp');
+    setGeneratedPassResult('');
+  };
 
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    const targetUserId = selectedUser.id;
+    const targetUserEmail = selectedUser.email;
+    
     if (isSupabaseConfigured && supabase) {
-      const toastId = toast.loading('Toggling account access...');
+      const toastId = toast.loading('Updating user profile...');
       try {
+        const updateData: any = {
+          full_name: modalFormName,
+          role: modalFormRole,
+          phone_number: modalFormPhone
+        };
+        
+        if (modalFormRole === 'Customer' && modalFormOrgId) {
+          updateData.organization_id = modalFormOrgId;
+        } else {
+          updateData.organization_id = null;
+        }
+
         const { error } = await supabase
           .from('profiles')
-          .update({ is_active: !current.active })
-          .eq('id', id);
+          .update(updateData)
+          .eq('id', targetUserId);
+          
+        if (error) throw error;
+        
+        // Log audit
+        await logUserAuditAction(targetUserEmail, `Updated User Profile (Role: ${modalFormRole})`, user?.email || 'SuperAdmin');
 
-        if (error) throw new Error(error.message);
-        toast.success(`Account access changed to: ${!current.active ? 'Active' : 'Disabled'}`, { id: toastId });
-        fetchUsers();
+        toast.success('User profile updated successfully.', { id: toastId });
+        setSelectedUser(null);
+        window.location.reload();
+      } catch (err: any) {
+        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      // Local fallback
+      const updated = usersList.map(u => {
+        if (u.id === targetUserId) {
+          const selectedOrgName = organizationsList.find(o => o.id === modalFormOrgId)?.name || 'Support Studio';
+          return {
+            ...u,
+            name: modalFormName,
+            role: modalFormRole,
+            organization: modalFormRole === 'Customer' ? selectedOrgName : 'Support Studio'
+          };
+        }
+        return u;
+      });
+      setLocalUsersList(updated);
+      localStorage.setItem('sst_admin_users', JSON.stringify(updated));
+      toast.success('Local user updated successfully.');
+      setSelectedUser(null);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    const targetUserId = selectedUser.id;
+    const targetUserEmail = selectedUser.email;
+
+    let finalPassword = modalPassInput.trim();
+    if (modalPassOption === 'temp') {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+      let randomPass = '';
+      for (let i = 0; i < 10; i++) {
+        randomPass += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      finalPassword = 'Temp@' + randomPass;
+    } else {
+      if (finalPassword.length < 6) {
+        toast.error('Manual password must be at least 6 characters long.');
+        return;
+      }
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Authorizing password overwrite...');
+      try {
+        const res = await resetUserPasswordAdmin(
+          targetUserId,
+          finalPassword,
+          user?.email || 'SuperAdmin',
+          targetUserEmail
+        );
+        if (!res.success) throw new Error(res.error);
+        
+        setGeneratedPassResult(finalPassword);
+        toast.success('Temporary password generated successfully.', { id: toastId });
+      } catch (err: any) {
+        toast.error(`Reset failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      setGeneratedPassResult(finalPassword);
+      toast.success(`Local password updated to: ${finalPassword}`);
+    }
+  };
+
+  const handleUpdatePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    const targetUserId = selectedUser.id;
+    const targetUserEmail = selectedUser.email;
+    const finalPassword = modalPassInput.trim();
+
+    if (finalPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Authorizing permanent password update...');
+      try {
+        const res = await adminUpdatePasswordDirect(
+          targetUserId,
+          finalPassword,
+          user?.email || 'SuperAdmin',
+          targetUserEmail
+        );
+        if (!res.success) throw new Error(res.error);
+        
+        toast.success('User password updated successfully. They can login without force setup.', { id: toastId });
+        setModalPassInput('');
+        setSelectedUser(null);
+      } catch (err: any) {
+        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      toast.success(`Local Password updated to: ${finalPassword}`);
+      setSelectedUser(null);
+    }
+  };
+
+  const handleToggleUserStatus = async (id: string, email: string, currentActive: boolean) => {
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Updating account access...');
+      try {
+        const res = await updateUserAuthStatus(
+          id,
+          email,
+          !currentActive,
+          false,
+          user?.email || 'SuperAdmin'
+        );
+        if (!res.success) throw new Error(res.error);
+        toast.success(`Account access changed to: ${!currentActive ? 'Active' : 'Disabled'}`, { id: toastId });
+        setSelectedUser(null);
+        window.location.reload();
       } catch (err: any) {
         toast.error(`Operation failed: ${err.message}`, { id: toastId });
       }
     } else {
       const updated = usersList.map(u => {
         if (u.id === id) {
-          return { ...u, active: !u.active };
+          return { ...u, active: !currentActive };
         }
         return u;
       });
       setLocalUsersList(updated);
       localStorage.setItem('sst_admin_users', JSON.stringify(updated));
+      setSelectedUser(null);
     }
   };
 
-  const handleResetPassword = async (id: string) => {
-    const newPass = prompt("Enter new password for this user account:");
-    if (!newPass) return;
-    if (newPass.length < 6) {
-      alert("Password must be at least 6 characters long.");
-      return;
-    }
-
+  const handleForcePasswordChange = async (id: string, email: string) => {
     if (isSupabaseConfigured && supabase) {
-      const toastId = toast.loading('Authorizing password overwrite...');
+      const toastId = toast.loading('Enforcing password setup...');
       try {
-        const res = await resetUserPasswordAdmin(id, newPass);
-        if (res.success) {
-          toast.success('Password overwrite successful!', { id: toastId });
-        } else if (res.error === 'NO_SERVICE_KEY') {
-          toast.error('Overwriting passwords from the dashboard requires configuring the SUPABASE_SERVICE_ROLE_KEY environment variable on the server.', { id: toastId, duration: 6000 });
-        } else {
-          throw new Error(res.error);
-        }
+        const res = await adminForcePasswordChange(id, email, user?.email || 'SuperAdmin');
+        if (!res.success) throw new Error(res.error);
+        toast.success('Force setup enabled. User must create new credentials on next authentication.', { id: toastId });
+        setSelectedUser(null);
+        window.location.reload();
       } catch (err: any) {
-        toast.error(`Authorization failed: ${err.message}`, { id: toastId });
+        toast.error(`Force setup failed: ${err.message}`, { id: toastId });
       }
     } else {
-      alert(`Local reset: Password updated to "${newPass}" for account ID "${id}".`);
+      toast.success('Local password change forced.');
+      setSelectedUser(null);
     }
   };
 
-  const handleDeleteUser = async (id: string) => {
+  const handleUnlockUser = async (id: string, email: string, isActive: boolean) => {
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Lifting lockout ban...');
+      try {
+        const res = await updateUserAuthStatus(
+          id,
+          email,
+          isActive,
+          false, // Clear lockout is_locked status
+          user?.email || 'SuperAdmin'
+        );
+        if (!res.success) throw new Error(res.error);
+        toast.success('Account unlocked successfully.', { id: toastId });
+        setSelectedUser(null);
+        window.location.reload();
+      } catch (err: any) {
+        toast.error(`Unlock failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      toast.success('Local account unlocked.');
+      setSelectedUser(null);
+    }
+  };
+
+  const handleDeleteUser = async (id: string, email: string) => {
     if (confirm('Are you sure you want to permanently remove this user account?')) {
       if (isSupabaseConfigured && supabase) {
         const toastId = toast.loading('Pruning user registration...');
         try {
-          // Delete auth record (requires service role)
           const authRes = await deleteAuthUser(id);
           if (!authRes.success && authRes.error !== 'NO_SERVICE_KEY') {
             throw new Error(authRes.error);
           }
 
-          // Delete DB row
           const { error } = await supabase.from('profiles').delete().eq('id', id);
           if (error) throw new Error(error.message);
 
           toast.success('User removed completely.', { id: toastId });
-          fetchUsers();
+          setSelectedUser(null);
+          window.location.reload();
         } catch (err: any) {
           toast.error(`Prune failed: ${err.message}`, { id: toastId });
         }
@@ -289,6 +492,7 @@ export default function AdminUsersPage() {
         const updated = usersList.filter(u => u.id !== id);
         setLocalUsersList(updated);
         localStorage.setItem('sst_admin_users', JSON.stringify(updated));
+        setSelectedUser(null);
       }
     }
   };
@@ -465,28 +669,11 @@ export default function AdminUsersPage() {
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => toggleUserStatus(u.id)}
-                        className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
-                          u.active ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                        }`}
+                        onClick={() => handleOpenUserModal(u, 'view')}
+                        className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded border border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800 transition cursor-pointer"
                       >
-                        {u.active ? 'Disable' : 'Enable'}
+                        Manage
                       </button>
-                      <button
-                        onClick={() => handleResetPassword(u.id)}
-                        className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-zinc-200 text-zinc-550 hover:bg-zinc-50 transition cursor-pointer"
-                      >
-                        Reset Pass
-                      </button>
-                      {user?.email !== u.email && (
-                        <button
-                          onClick={() => handleDeleteUser(u.id)}
-                          className="p-1 rounded hover:bg-red-50 text-zinc-400 hover:text-red-600 transition cursor-pointer"
-                          title="Remove User"
-                        >
-                          <XCircle size={15} />
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -495,6 +682,421 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Unified User Management Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono text-xs text-zinc-900">
+          <div className="bg-white border border-zinc-200 rounded-lg shadow-lg w-full max-w-2xl overflow-hidden flex flex-col h-[550px]">
+            {/* Header */}
+            <div className="bg-zinc-50 border-b border-zinc-150 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm uppercase text-zinc-950 tracking-wide">
+                  IAM Operations: {selectedUser.name}
+                </h3>
+                <span className="text-[10px] text-zinc-400 block mt-0.5 select-all">{selectedUser.email}</span>
+              </div>
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="w-6 h-6 border border-zinc-200 hover:border-zinc-950 text-zinc-550 hover:text-zinc-950 rounded flex items-center justify-center text-xs font-bold transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Tab Links */}
+            <div className="bg-zinc-50/50 border-b border-zinc-150 px-6 flex gap-1">
+              <button
+                type="button"
+                onClick={() => { setActiveTab('view'); setGeneratedPassResult(''); }}
+                className={`py-2 px-3 border-b-2 font-bold uppercase text-[9px] tracking-wider transition cursor-pointer ${
+                  activeTab === 'view' ? 'border-zinc-950 text-zinc-950' : 'border-transparent text-zinc-400 hover:text-zinc-650'
+                }`}
+              >
+                Diagnostic
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('edit'); setGeneratedPassResult(''); }}
+                className={`py-2 px-3 border-b-2 font-bold uppercase text-[9px] tracking-wider transition cursor-pointer ${
+                  activeTab === 'edit' ? 'border-zinc-950 text-zinc-950' : 'border-transparent text-zinc-400 hover:text-zinc-650'
+                }`}
+              >
+                Edit Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('credentials'); setGeneratedPassResult(''); }}
+                className={`py-2 px-3 border-b-2 font-bold uppercase text-[9px] tracking-wider transition cursor-pointer ${
+                  activeTab === 'credentials' ? 'border-zinc-950 text-zinc-950' : 'border-transparent text-zinc-400 hover:text-zinc-650'
+                }`}
+              >
+                Credentials (IAM)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('danger'); setGeneratedPassResult(''); }}
+                className={`py-2 px-3 border-b-2 font-bold uppercase text-[9px] tracking-wider transition cursor-pointer ${
+                  activeTab === 'danger' ? 'border-zinc-950 text-zinc-950' : 'border-transparent text-zinc-400 hover:text-zinc-650'
+                }`}
+              >
+                Danger Zone
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              
+              {/* Tab 1: Diagnostic */}
+              {activeTab === 'view' && (
+                <div className="space-y-3.5">
+                  <h4 className="font-bold uppercase tracking-wider text-[10px] text-zinc-450 border-b border-zinc-100 pb-1.5">
+                    Account Metadata Status
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-zinc-700">
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">Setup Status:</span>
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        selectedUser.first_login_completed ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                      }`}>
+                        {selectedUser.first_login_completed ? 'Setup Completed' : 'Pending Initial Reset'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">IAM Lockout Status:</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          selectedUser.is_locked ? 'bg-red-50 text-red-750 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        }`}>
+                          {selectedUser.is_locked ? 'Account Locked' : 'Account Active'}
+                        </span>
+                        {selectedUser.is_locked && (
+                          <button
+                            type="button"
+                            onClick={() => handleUnlockUser(selectedUser.id, selectedUser.email, selectedUser.active)}
+                            className="px-2 py-0.5 border border-zinc-300 hover:border-zinc-950 hover:bg-zinc-50 rounded text-[9px] font-bold uppercase tracking-wide cursor-pointer"
+                          >
+                            Unlock Account
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">Last Password Update:</span>
+                      <span className="font-mono text-zinc-800 text-[11px] font-bold">
+                        {selectedUser.password_changed_at ? new Date(selectedUser.password_changed_at).toLocaleString() : 'Never Changed'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">Account Status:</span>
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        selectedUser.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-750 border border-red-100'
+                      }`}>
+                        {selectedUser.active ? 'Access Enabled' : 'Access Disabled'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">SaaS Identity ID:</span>
+                      <span className="font-mono text-zinc-500 text-[10px] select-all block mt-0.5">{selectedUser.id}</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">RLS Policy Gate:</span>
+                      <span className="font-bold text-zinc-800 uppercase text-[10px]">
+                        {isSupabaseConfigured ? 'Enforced (Tenant Isolation)' : 'State Simulated'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {selectedUser.role === 'Consultant' && (
+                    <div className="space-y-3 pt-3 border-t border-zinc-150">
+                      <h4 className="font-bold uppercase tracking-wider text-[10px] text-zinc-450">
+                        Consultant Expertise Mappings
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-[9px] uppercase text-zinc-400 font-bold block">Consultant Category:</span>
+                          <span className="font-bold text-zinc-800 text-[11px] block mt-0.5">{selectedUser.consultant_type || 'Functional'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] uppercase text-zinc-400 font-bold block">Assigned SAP Modules:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {selectedUser.sap_modules && selectedUser.sap_modules.length > 0 ? (
+                              selectedUser.sap_modules.map((m: string) => (
+                                <span key={m} className="bg-zinc-100 border border-zinc-200 text-zinc-800 px-1 rounded text-[10px] font-bold">
+                                  {m}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-zinc-400 italic">None assigned</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab 2: Edit Profile */}
+              {activeTab === 'edit' && (
+                <form onSubmit={handleEditUserSubmit} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-700 uppercase text-[9px]">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={modalFormName}
+                      onChange={(e) => setModalFormName(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-700 uppercase text-[9px]">Contact Phone</label>
+                    <input
+                      type="text"
+                      value={modalFormPhone}
+                      onChange={(e) => setModalFormPhone(e.target.value)}
+                      placeholder="e.g. +1 555-0199"
+                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px]">Role Group</label>
+                      <select
+                        value={modalFormRole}
+                        onChange={(e) => setModalFormRole(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                      >
+                        <option value="Customer">Customer Client</option>
+                        <option value="Consultant">SAP Consultant</option>
+                        <option value="Manager">SAP Manager</option>
+                        <option value="SuperAdmin">Super Admin</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px]">Assigned Company (Customers only)</label>
+                      <select
+                        value={modalFormOrgId}
+                        onChange={(e) => setModalFormOrgId(e.target.value)}
+                        disabled={modalFormRole !== 'Customer'}
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono disabled:opacity-50"
+                      >
+                        <option value="">Select Company</option>
+                        {organizationsList.map(org => (
+                          <option key={org.id} value={org.id}>{org.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-zinc-950 text-white hover:bg-zinc-800 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                    >
+                      Update Profile
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Tab 3: Credentials (IAM) */}
+              {activeTab === 'credentials' && (
+                <div className="space-y-6">
+                  
+                  {/* Option 1 & 2: Reset Password (Temp vs Manual) */}
+                  <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5 border border-zinc-200 bg-zinc-50/30 rounded p-4">
+                    <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5">
+                      Reset Password (Forces Setup Page Redirection)
+                    </h5>
+                    
+                    {generatedPassResult && (
+                      <div className="bg-zinc-950 text-white border border-zinc-900 rounded p-3 text-[11px] font-bold space-y-1">
+                        <span className="text-[10px] text-zinc-400 font-normal uppercase block">Password Reset Successful!</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-400">{generatedPassResult}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(generatedPassResult);
+                              toast.success('Password copied to clipboard!');
+                            }}
+                            className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 rounded text-[9px] font-bold uppercase transition"
+                          >
+                            Copy Pass
+                          </button>
+                        </div>
+                        <span className="text-[9px] text-zinc-500 block font-normal pt-1.5 leading-normal">
+                          Notice: Provide this password to the user. They will be forced to change it immediately upon next login.
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4 text-xs">
+                      <label className="flex items-center gap-1.5 font-semibold text-zinc-700 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="reset_option"
+                          checked={modalPassOption === 'temp'}
+                          onChange={() => { setModalPassOption('temp'); setGeneratedPassResult(''); }}
+                          className="accent-zinc-950"
+                        />
+                        Generate Temporary Password
+                      </label>
+                      <label className="flex items-center gap-1.5 font-semibold text-zinc-700 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="reset_option"
+                          checked={modalPassOption === 'manual'}
+                          onChange={() => { setModalPassOption('manual'); setGeneratedPassResult(''); }}
+                          className="accent-zinc-950"
+                        />
+                        Enter Password Manually
+                      </label>
+                    </div>
+
+                    {modalPassOption === 'manual' && (
+                      <div className="space-y-1">
+                        <label className="font-bold text-zinc-750 uppercase text-[9px]">Define Password Override</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Assist@123"
+                          value={modalPassInput}
+                          onChange={(e) => setModalPassInput(e.target.value)}
+                          className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 border border-zinc-900 text-zinc-900 hover:bg-zinc-950 hover:text-white rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                      >
+                        {modalPassOption === 'temp' ? 'Generate & Reset Password' : 'Override & Reset Password'}
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Option 3: Update Password (Direct) */}
+                  <form onSubmit={handleUpdatePasswordSubmit} className="space-y-3.5 border border-zinc-200 bg-zinc-50/30 rounded p-4">
+                    <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5">
+                      Direct Password Update (No Force Setup Required)
+                    </h5>
+                    
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-750 uppercase text-[9px]">New Password</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Assist@456"
+                        value={modalPassInput}
+                        onChange={(e) => setModalPassInput(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 border border-zinc-900 text-zinc-900 hover:bg-zinc-950 hover:text-white rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                      >
+                        Direct Password Save
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Setup & Lock Adjusters */}
+                  <div className="grid grid-cols-2 gap-4 border border-zinc-200 bg-zinc-50/30 rounded p-4">
+                    <div className="space-y-2">
+                      <span className="font-bold uppercase text-[9px] text-zinc-450 block">Force Setup redirection</span>
+                      <button
+                        type="button"
+                        onClick={() => handleForcePasswordChange(selectedUser.id, selectedUser.email)}
+                        className="w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                      >
+                        Force Password Change
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="font-bold uppercase text-[9px] text-zinc-450 block">Lifts failed attempts lockout</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUnlockUser(selectedUser.id, selectedUser.email, selectedUser.active)}
+                        className="w-full py-2 border border-zinc-350 hover:bg-zinc-950 hover:text-white rounded text-zinc-700 font-bold uppercase text-[10px] tracking-wider transition cursor-pointer disabled:opacity-50"
+                        disabled={!selectedUser.is_locked}
+                      >
+                        Unlock Account
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* Tab 4: Danger Zone */}
+              {activeTab === 'danger' && (
+                <div className="space-y-6">
+                  
+                  {/* Disable account block */}
+                  <div className="border border-zinc-200 bg-zinc-50/30 rounded p-4 space-y-3">
+                    <h5 className="font-mono text-xs font-bold uppercase text-zinc-900">
+                      Enable / Disable Account Access
+                    </h5>
+                    <p className="text-zinc-500 leading-relaxed text-[11px]">
+                      Disabling the account bans the user in Supabase Auth, terminates all active sessions, and blocks logins.
+                    </p>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleUserStatus(selectedUser.id, selectedUser.email, selectedUser.active)}
+                        className={`px-4 py-2 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer ${
+                          selectedUser.active ? 'bg-amber-50 border border-amber-300 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                        }`}
+                      >
+                        {selectedUser.active ? 'Disable User Access' : 'Enable User Access'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Remove Account Block */}
+                  {user?.email !== selectedUser.email && (
+                    <div className="border border-red-200 bg-red-50/30 rounded p-4 space-y-3">
+                      <h5 className="font-mono text-xs font-bold uppercase text-red-900">
+                        Prune Account Registration
+                      </h5>
+                      <p className="text-red-700/80 leading-relaxed text-[11px]">
+                        Warning: This action is irreversible. Permanently deletes the user record from both the database profiles and authentication registry.
+                      </p>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(selectedUser.id, selectedUser.email)}
+                          className="px-4 py-2 bg-red-650 text-white hover:bg-red-700 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                        >
+                          Prune User Account
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

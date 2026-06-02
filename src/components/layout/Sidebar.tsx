@@ -26,7 +26,8 @@ import {
   UserCheck,
   CheckSquare,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  User
 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../ui/tooltip';
 
@@ -72,7 +73,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
     { title: 'Customers 360', href: '/admin/organizations', icon: <Building2 size={16} /> },
     { title: 'Global Reports', href: '/admin/reports', icon: <FileSpreadsheet size={16} /> },
     { title: 'Audit Logs', href: '/admin/audit-logs', icon: <History size={16} /> },
-    { title: 'Settings', href: '/admin/settings', icon: <Settings size={16} /> }
+    { title: 'Settings', href: '/admin/settings', icon: <Settings size={16} /> },
+    { title: 'Profile Settings', href: '/admin/profile', icon: <User size={16} /> }
   ];
 
   const managerMenu: MenuItem[] = [
@@ -82,13 +84,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
     { title: 'Consultants Workload', href: '/manager/consultants', icon: <UserCheck size={16} /> },
     { title: 'SLA Monitoring', href: '/manager/sla-monitoring', icon: <Clock size={16} /> },
     { title: 'Knowledgebase', href: '/manager/knowledgebase', icon: <Bookmark size={16} /> },
-    { title: 'Performance Reports', href: '/manager/reports', icon: <FileSpreadsheet size={16} /> }
+    { title: 'Performance Reports', href: '/manager/reports', icon: <FileSpreadsheet size={16} /> },
+    { title: 'Profile Settings', href: '/manager/profile', icon: <User size={16} /> }
   ];
 
   const consultantMenu: MenuItem[] = [
     { title: 'Dashboard', href: '/consultant/dashboard', icon: <LayoutDashboard size={16} /> },
     { title: 'My Tickets', href: '/consultant/my-tickets', icon: <Ticket size={16} /> },
-    { title: 'My Reports', href: '/consultant/reports', icon: <FileSpreadsheet size={16} /> }
+    { title: 'My Reports', href: '/consultant/reports', icon: <FileSpreadsheet size={16} /> },
+    { title: 'Profile Settings', href: '/consultant/profile', icon: <User size={16} /> }
   ];
 
   const customerMenu: MenuItem[] = [
@@ -97,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
     { title: 'Create Ticket', href: '/customer/create-ticket', icon: <FileCode2 size={16} /> },
     { title: 'Support Reports', href: '/customer/reports', icon: <FileText size={16} /> },
     { title: 'Contacts', href: '/customer/contacts', icon: <Users size={16} /> },
-    { title: 'Profile Settings', href: '/customer/profile', icon: <Settings size={16} /> }
+    { title: 'Profile Settings', href: '/customer/profile', icon: <User size={16} /> }
   ];
 
   let activeMenu: MenuItem[] = [];

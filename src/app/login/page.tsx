@@ -64,8 +64,11 @@ export default function LoginPage() {
 
     const res = await login(email, password);
     if (res.success && res.user) {
+      // ServiceNow-grade authentication guard delay: wait 250ms to ensure browser completes cookie persistence
+      await new Promise(resolve => setTimeout(resolve, 250));
       redirectToDashboard(res.user.role);
     } else if (res.success) {
+      await new Promise(resolve => setTimeout(resolve, 250));
       redirectToDashboard('Customer');
     } else {
       setError(res.error || 'Invalid credentials.');
