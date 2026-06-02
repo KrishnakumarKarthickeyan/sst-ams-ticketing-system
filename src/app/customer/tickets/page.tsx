@@ -196,6 +196,7 @@ export default function CustomerTicketsPage() {
         const q = searchQuery.toLowerCase();
         const matches =
           t.id.toLowerCase().includes(q) ||
+          (t.ticketNumber && t.ticketNumber.toLowerCase().includes(q)) ||
           t.title.toLowerCase().includes(q) ||
           t.description.toLowerCase().includes(q);
         if (!matches) return false;
@@ -562,7 +563,7 @@ export default function CustomerTicketsPage() {
     const effortsVal = getConsumedHours(ticket).toFixed(1);
     const content = `SAP SUPPORT DESK - TICKET RECORD EXPORT
 ==================================================
-Ticket ID      : ${ticket.id}
+Ticket ID      : ${ticket.ticketNumber || ticket.id}
 Created By     : ${ticket.createdByName || ticket.requestedBy}
 Created At     : ${new Date(ticket.createdAt).toLocaleString()}
 Subject        : ${ticket.title}
@@ -881,7 +882,7 @@ ${ticket.description}
                               return (
                                 <TableCell key={col.key} className="py-2.5 px-4 font-mono font-bold text-zinc-950 text-[11px]">
                                   <Link href={`/customer/tickets/${t.id}`} className="hover:underline hover:text-zinc-600">
-                                    {t.id}
+                                    {t.ticketNumber || t.id}
                                   </Link>
                                 </TableCell>
                               );

@@ -202,7 +202,8 @@ export interface TicketDeleteRequest {
 }
 
 export interface Ticket {
-  id: string; // e.g. SST-MM-1001
+  id: string; // e.g. UUID (internal) or legacy SST-MM-1001
+  ticketNumber?: string; // e.g. BIT-FICO-000001
   title: string;
   description: string;
   organization: string; // Organization Name

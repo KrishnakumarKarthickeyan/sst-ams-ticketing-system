@@ -1153,7 +1153,7 @@ export default function ConsultantDashboardPage() {
                 <div className="space-y-2 text-xs">
                   {slaDueThisWeek.slice(0, 3).map(t => (
                     <div key={t.id} className="flex justify-between items-center">
-                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.id}</Link>
+                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.ticketNumber || t.id}</Link>
                       <span className="text-red-655 font-bold">{getSlaHoursLeft(t.slaDueAt)}</span>
                     </div>
                   ))}
@@ -1174,7 +1174,7 @@ export default function ConsultantDashboardPage() {
                 <div className="space-y-2 text-xs">
                   {customerActionPendingTickets.slice(0, 3).map(t => (
                     <div key={t.id} className="flex justify-between items-center">
-                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.id}</Link>
+                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.ticketNumber || t.id}</Link>
                       <span className="text-zinc-550 truncate max-w-[150px]">{t.title}</span>
                     </div>
                   ))}
@@ -1195,7 +1195,7 @@ export default function ConsultantDashboardPage() {
                 <div className="space-y-2 text-xs">
                   {closureAwaitingApproval.slice(0, 3).map(t => (
                     <div key={t.id} className="flex justify-between items-center">
-                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.id}</Link>
+                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.ticketNumber || t.id}</Link>
                       <span className="text-zinc-550 truncate max-w-[150px]">{t.title}</span>
                     </div>
                   ))}

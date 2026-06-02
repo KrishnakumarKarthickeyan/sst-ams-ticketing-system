@@ -324,6 +324,7 @@ export default function ManagerTicketsPage() {
         const q = searchQuery.toLowerCase();
         return (
           t.id.toLowerCase().includes(q) ||
+          (t.ticketNumber && t.ticketNumber.toLowerCase().includes(q)) ||
           t.title.toLowerCase().includes(q) ||
           t.organization.toLowerCase().includes(q) ||
           (t.description || '').toLowerCase().includes(q) ||
@@ -804,7 +805,7 @@ export default function ManagerTicketsPage() {
                         onChange={() => toggleSelectTicket(t.id)}
                         className="cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950"
                       />
-                      <span className="font-bold text-[10px] text-zinc-950 tracking-wider">{t.id}</span>
+                      <span className="font-bold text-[10px] text-zinc-950 tracking-wider">{t.ticketNumber || t.id}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`inline-flex items-center px-1.5 py-0.2 rounded border text-[8px] font-bold uppercase font-mono ${statusCfg.color}`}>
@@ -1015,7 +1016,7 @@ export default function ManagerTicketsPage() {
                         />
                       </td>
                       <td className="py-2.5 px-4 font-bold text-zinc-950">
-                        <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.id}</Link>
+                        <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
                       </td>
                       <td className="py-2.5 px-4 font-semibold text-zinc-650 truncate max-w-[100px]" title={t.organization}>
                         {t.organization}

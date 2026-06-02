@@ -40,12 +40,14 @@ export default function ManagerEffortApprovalsPage() {
     isOpen: boolean;
     type: 'estimate' | 'timesheet' | 'closure' | 'unlock' | 'reopen' | 'delete';
     ticketId: string;
+    ticketNumber?: string;
     targetId: string;
     rejectionReason: string;
   }>({
     isOpen: false,
     type: 'timesheet',
     ticketId: '',
+    ticketNumber: '',
     targetId: '',
     rejectionReason: ''
   });
@@ -64,6 +66,7 @@ export default function ManagerEffortApprovalsPage() {
             sapModule: ticket.sapModule,
             organization: ticket.organization,
             priority: ticket.priority,
+            ticketNumber: ticket.ticketNumber || ticket.id,
             originalHours: est.status === 'Revision Requested' && original ? original.totalEstimatedHours : 0
           };
         })
@@ -87,7 +90,8 @@ export default function ManagerEffortApprovalsPage() {
         ticketTitle: ticket.title,
         sapModule: ticket.sapModule,
         organization: ticket.organization,
-        priority: ticket.priority
+        priority: ticket.priority,
+        ticketNumber: ticket.ticketNumber || ticket.id
       }))
     );
     logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -128,6 +132,7 @@ export default function ManagerEffortApprovalsPage() {
             organization: ticket.organization,
             priority: ticket.priority,
             quotedHours: ticket.quotedHours || 0,
+            ticketNumber: ticket.ticketNumber || ticket.id,
             estimatedFuncHours: latestApprovedEstimate?.functionalEstimatedHours || 0,
             estimatedTechHours: latestApprovedEstimate?.technicalEstimatedHours || 0,
             estimatedTotalHours: latestApprovedEstimate?.totalEstimatedHours || ticket.quotedHours || 0
@@ -175,6 +180,7 @@ export default function ManagerEffortApprovalsPage() {
         sapModule: ticket.sapModule,
         organization: ticket.organization,
         priority: ticket.priority,
+        ticketNumber: ticket.ticketNumber || ticket.id,
         reopenedCount: ticket.reopenedCount || 1,
         reopenedAt: reopenHistory?.createdAt || ticket.updatedAt,
         reopenedBy: reopenHistory?.changedBy || 'Customer Client',
@@ -199,7 +205,8 @@ export default function ManagerEffortApprovalsPage() {
           ticketTitle: ticket.title,
           sapModule: ticket.sapModule,
           organization: ticket.organization,
-          priority: ticket.priority
+          priority: ticket.priority,
+          ticketNumber: ticket.ticketNumber || ticket.id
         }))
     );
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -221,7 +228,8 @@ export default function ManagerEffortApprovalsPage() {
           ticketTitle: ticket.title,
           sapModule: ticket.sapModule,
           organization: ticket.organization,
-          priority: ticket.priority
+          priority: ticket.priority,
+          ticketNumber: ticket.ticketNumber || ticket.id
         }))
     );
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -272,13 +280,15 @@ export default function ManagerEffortApprovalsPage() {
   const triggerRejectionModal = (
     type: 'estimate' | 'timesheet' | 'closure' | 'unlock' | 'reopen' | 'delete',
     ticketId: string,
-    targetId: string
+    targetId: string,
+    ticketNumber?: string
   ) => {
     setRejectionModal({
       isOpen: true,
       type,
       ticketId,
       targetId,
+      ticketNumber: ticketNumber || ticketId,
       rejectionReason: ''
     });
   };
@@ -482,7 +492,7 @@ export default function ManagerEffortApprovalsPage() {
                   pendingEstimates.map((est) => (
                     <tr key={est.id} className="hover:bg-zinc-50/50 transition">
                       <td className="py-3 px-4 font-mono">
-                        <Link href={`/manager/tickets/${est.ticketId}`} className="font-bold text-zinc-900 hover:underline">{est.ticketId}</Link>
+                        <Link href={`/manager/tickets/${est.ticketId}`} className="font-bold text-zinc-900 hover:underline">{est.ticketNumber || est.ticketId}</Link>
                         <div className="text-[10px] text-zinc-500 truncate max-w-[200px] mt-0.5">{est.ticketTitle}</div>
                         <div className="flex gap-1.5 mt-1">
                           <span className="text-[8px] px-1 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded font-bold uppercase">{est.sapModule}</span>
@@ -518,8 +528,8 @@ export default function ManagerEffortApprovalsPage() {
                             <Check size={13} />
                           </button>
                           <button
-                            onClick={() => triggerRejectionModal('estimate', est.ticketId, est.id)}
-                            className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-650 hover:bg-red-50 rounded transition"
+                            onClick={() => triggerRejectionModal('estimate', est.ticketId, est.id, est.ticketNumber)}
+                            className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-655 hover:bg-red-50 rounded transition"
                             title="Reject Estimate"
                           >
                             <X size={13} />
@@ -582,7 +592,7 @@ export default function ManagerEffortApprovalsPage() {
                     filteredTimesheetLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-zinc-50/50 transition">
                         <td className="py-3 px-4 font-mono">
-                          <Link href={`/manager/tickets/${log.ticketId}`} className="font-bold text-zinc-900 hover:underline">{log.ticketId}</Link>
+                          <Link href={`/manager/tickets/${log.ticketId}`} className="font-bold text-zinc-900 hover:underline">{log.ticketNumber || log.ticketId}</Link>
                           <div className="text-[10px] text-zinc-500 truncate max-w-[155px] mt-0.5">{log.ticketTitle}</div>
                           <div className="text-[9px] text-zinc-400 mt-0.5">{log.organization}</div>
                         </td>
@@ -612,8 +622,8 @@ export default function ManagerEffortApprovalsPage() {
                                 <Check size={12} />
                               </button>
                               <button
-                                onClick={() => triggerRejectionModal('timesheet', log.ticketId, log.id)}
-                                className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-650 hover:bg-red-50 rounded transition"
+                                onClick={() => triggerRejectionModal('timesheet', log.ticketId, log.id, log.ticketNumber)}
+                                className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-655 hover:bg-red-50 rounded transition"
                                 title="Reject Timesheet"
                               >
                                 <X size={12} />
@@ -670,7 +680,7 @@ export default function ManagerEffortApprovalsPage() {
                     return (
                       <tr key={req.id} className="hover:bg-zinc-50/50 transition">
                         <td className="py-3 px-4 font-mono align-top">
-                          <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketId}</Link>
+                          <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber || req.ticketId}</Link>
                           <div className="text-[10px] text-zinc-500 truncate max-w-[150px] mt-0.5">{req.ticketTitle}</div>
                           <div className="text-[9px] text-zinc-400 mt-0.5">{req.organization}</div>
                           {req.status === 'Resubmitted' && (
@@ -745,8 +755,8 @@ export default function ManagerEffortApprovalsPage() {
                               <Check size={13} />
                             </button>
                             <button
-                              onClick={() => triggerRejectionModal('closure', req.ticketId, req.id)}
-                              className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-650 hover:bg-red-50 rounded transition"
+                              onClick={() => triggerRejectionModal('closure', req.ticketId, req.id, req.ticketNumber)}
+                              className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-655 hover:bg-red-50 rounded transition"
                               title="Reject Closure Request"
                             >
                               <X size={13} />
@@ -791,7 +801,7 @@ export default function ManagerEffortApprovalsPage() {
                   reopenRequests.map((req) => (
                     <tr key={req.id} className="hover:bg-zinc-50/50 transition">
                       <td className="py-3 px-4 font-mono">
-                        <Link href={`/manager/tickets/${req.id}`} className="font-bold text-zinc-900 hover:underline">{req.id}</Link>
+                        <Link href={`/manager/tickets/${req.id}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber || req.id}</Link>
                         <div className="text-[10px] text-zinc-500 truncate max-w-[200px] mt-0.5">{req.title}</div>
                         <div className="flex gap-1.5 mt-1">
                           <span className="text-[8px] px-1 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded font-bold uppercase">{req.sapModule}</span>
@@ -819,8 +829,8 @@ export default function ManagerEffortApprovalsPage() {
                             <span>Resume</span>
                           </button>
                           <button
-                            onClick={() => triggerRejectionModal('reopen', req.id, req.id)}
-                            className="inline-flex items-center gap-1 py-1 px-2.5 bg-white border border-zinc-200 text-red-650 hover:bg-red-50 rounded transition font-bold text-[9px] uppercase"
+                            onClick={() => triggerRejectionModal('reopen', req.id, req.id, req.ticketNumber)}
+                            className="inline-flex items-center gap-1 py-1 px-2.5 bg-white border border-zinc-200 text-red-655 hover:bg-red-50 rounded transition font-bold text-[9px] uppercase"
                             title="Reject Reopen & Close"
                           >
                             <X size={11} />
@@ -866,7 +876,7 @@ export default function ManagerEffortApprovalsPage() {
                   unlockRequests.map((req) => (
                     <tr key={req.id} className="hover:bg-zinc-50/50 transition">
                       <td className="py-3 px-4 font-mono">
-                        <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketId}</Link>
+                        <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber || req.ticketId}</Link>
                         <div className="text-[10px] text-zinc-500 truncate max-w-[150px] mt-0.5">{req.ticketTitle}</div>
                         <div className="text-[9px] text-zinc-400 mt-0.5">{req.organization}</div>
                       </td>
@@ -885,8 +895,8 @@ export default function ManagerEffortApprovalsPage() {
                             <Check size={12} />
                           </button>
                           <button
-                            onClick={() => triggerRejectionModal('unlock', req.ticketId, req.id)}
-                            className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-650 hover:bg-red-50 rounded transition"
+                            onClick={() => triggerRejectionModal('unlock', req.ticketId, req.id, req.ticketNumber)}
+                            className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-655 hover:bg-red-50 rounded transition"
                             title="Reject Unlock"
                           >
                             <X size={12} />
@@ -929,7 +939,7 @@ export default function ManagerEffortApprovalsPage() {
                   pendingDeletes.map((req) => (
                     <tr key={req.id} className="hover:bg-zinc-50/50 transition">
                       <td className="py-3 px-4 font-mono">
-                        <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketId}</Link>
+                        <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber || req.ticketId}</Link>
                         <div className="text-[10px] text-zinc-500 truncate max-w-[200px] mt-0.5">{req.ticketTitle}</div>
                         <div className="flex gap-1.5 mt-1">
                           <span className="text-[8px] px-1 bg-zinc-100 border border-zinc-200 text-zinc-650 rounded font-bold uppercase">{req.sapModule}</span>
@@ -949,7 +959,7 @@ export default function ManagerEffortApprovalsPage() {
                             <Check size={12} />
                           </button>
                           <button
-                            onClick={() => triggerRejectionModal('delete', req.ticketId, req.id)}
+                            onClick={() => triggerRejectionModal('delete', req.ticketId, req.id, req.ticketNumber)}
                             className="inline-flex items-center justify-center p-1 bg-white border border-zinc-200 text-red-655 hover:bg-red-50 rounded transition"
                             title="Reject Delete Request"
                           >
@@ -978,7 +988,7 @@ export default function ManagerEffortApprovalsPage() {
 
             <div className="space-y-1">
               <p className="text-zinc-600 font-medium">
-                You are rejecting a submission for ticket <strong className="text-zinc-950">{rejectionModal.ticketId}</strong>.
+                You are rejecting a submission for ticket <strong className="text-zinc-950">{rejectionModal.ticketNumber || rejectionModal.ticketId}</strong>.
               </p>
               <p className="text-[10px] text-zinc-550">
                  rejections require a mandatory justification. Your reasoning will be logged in the permanent audit history and emailed directly to the consultant.

@@ -154,7 +154,7 @@ export default function ManagerSlaMonitoringPage() {
                       
                       {/* Ticket ID */}
                       <td className="py-3 px-4 font-bold text-zinc-900 font-mono">
-                        <Link href={`/tickets/${t.id}`} className="hover:underline">{t.id}</Link>
+                        <Link href={`/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
                       </td>
 
                       {/* Ticket Title */}

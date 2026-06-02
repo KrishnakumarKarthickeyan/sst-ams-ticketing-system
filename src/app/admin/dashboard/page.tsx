@@ -534,6 +534,7 @@ export default function AdminDashboardPage() {
     const list: Array<{
       id: string;
       ticketId: string;
+      ticketNumber?: string;
       type: 'Actual Hours' | 'Closure' | 'Reopen' | 'Unlock' | 'Delete';
       details: string;
       requester: string;
@@ -553,6 +554,7 @@ export default function AdminDashboardPage() {
           list.push({
             id: `ah-${ah.id}`,
             ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
             type: 'Actual Hours',
             details: `${ah.actualHours} Hours (${ah.consultantType}) - Billable: ${ah.billable ? 'Yes' : 'No'}`,
             requester: consultantProfile?.full_name || 'Consultant',
@@ -574,6 +576,7 @@ export default function AdminDashboardPage() {
           list.push({
             id: `closure-${cr.id}`,
             ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
             type: 'Closure',
             details: `Actual Hours: ${cr.totalActualHours}h. Root Cause: ${cr.rootCause || 'N/A'}`,
             requester: cr.requestedBy || 'Consultant',
@@ -595,6 +598,7 @@ export default function AdminDashboardPage() {
           list.push({
             id: `unlock-${ur.id}`,
             ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
             type: 'Unlock',
             details: `Change: ${ur.requestedChange}. Reason: ${ur.reason}`,
             requester: ur.requestedBy,
@@ -610,6 +614,7 @@ export default function AdminDashboardPage() {
           list.push({
             id: `delete-${dr.id}`,
             ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
             type: 'Delete',
             details: `Soft Delete Request. Reason: ${dr.reason}`,
             requester: dr.requestedBy,
@@ -624,6 +629,7 @@ export default function AdminDashboardPage() {
         list.push({
           id: `reopen-${t.id}`,
           ticketId: t.id,
+          ticketNumber: t.ticketNumber || t.id,
           type: 'Reopen',
           details: 'Awaiting Reopen request validation',
           requester: t.requestedBy || 'Customer',
@@ -866,7 +872,7 @@ export default function AdminDashboardPage() {
           id: `t-reopen-${t.id}`,
           severity: 'High',
           category: 'Rework Risk',
-          reason: `Ticket ${t.id} has been reopened ${t.reopenedCount} times.`,
+          reason: `Ticket ${t.ticketNumber || t.id} has been reopened ${t.reopenedCount} times.`,
           owner: t.assignedConsultant || 'Unassigned',
           action: 'Request technical lead audit on ticket solution.'
         });
@@ -876,7 +882,7 @@ export default function AdminDashboardPage() {
           id: `t-esc-${t.id}`,
           severity: t.priority === 'Critical' ? 'Critical' : 'High',
           category: 'Active Escalation',
-          reason: `Ticket ${t.id} is escalated (Priority: ${t.priority}).`,
+          reason: `Ticket ${t.ticketNumber || t.id} is escalated (Priority: ${t.priority}).`,
           owner: t.assignedManager || 'Assigned Manager',
           action: 'Acknowledge escalation and review details.'
         });
@@ -889,7 +895,7 @@ export default function AdminDashboardPage() {
         id: `t-slawarn-${t.id}`,
         severity: 'Warning',
         category: 'SLA Breach Risk',
-        reason: `Incident ${t.id} is approaching its SLA threshold (slaDueAt: ${new Date(t.slaDueAt).toLocaleTimeString()}).`,
+        reason: `Incident ${t.ticketNumber || t.id} is approaching its SLA threshold (slaDueAt: ${new Date(t.slaDueAt).toLocaleTimeString()}).`,
         owner: t.assignedConsultant || 'Unassigned',
         action: 'Notify consultant to prioritize this incident.'
       });
@@ -1912,7 +1918,7 @@ export default function AdminDashboardPage() {
                     {escalationControl.list.map(t => (
                       <TableRow key={t.id} className="hover:bg-red-50/20 bg-red-50/5 transition-colors">
                         <TableCell className="py-2.5 px-4 font-bold text-red-750">
-                          <Link href={`/admin/tickets/${t.id}`} className="hover:underline">{t.id}</Link>
+                          <Link href={`/admin/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
                         </TableCell>
                         <TableCell className="py-2.5 px-4 text-zinc-950 font-bold">{t.organization}</TableCell>
                         <TableCell className="py-2.5 px-4">
@@ -1985,7 +1991,7 @@ export default function AdminDashboardPage() {
                     {approvalsControl.pendingList.map(item => (
                       <TableRow key={item.id} className="hover:bg-zinc-50/50 transition-colors">
                         <TableCell className="py-2.5 px-4 font-bold text-zinc-950">
-                          <Link href={`/admin/tickets/${item.ticketId}`} className="hover:underline">{item.ticketId}</Link>
+                          <Link href={`/admin/tickets/${item.ticketId}`} className="hover:underline">{item.ticketNumber || item.ticketId}</Link>
                         </TableCell>
                         <TableCell className="py-2.5 px-4">
                           <Badge variant="secondary" className="text-[8px] font-bold rounded uppercase font-mono">{item.type}</Badge>

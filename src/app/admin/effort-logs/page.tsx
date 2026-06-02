@@ -19,7 +19,8 @@ export default function AdminEffortLogsPage() {
       ticketTitle: ticket.title,
       sapModule: ticket.sapModule,
       organization: ticket.organization,
-      priority: ticket.priority
+      priority: ticket.priority,
+      ticketNumber: ticket.ticketNumber
     }))
   );
 
@@ -34,6 +35,7 @@ export default function AdminEffortLogsPage() {
   const filteredLogs = allLogs.filter(log => {
     const matchesSearch = 
       log.ticketId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.ticketNumber && log.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
       log.ticketTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.consultantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -69,10 +71,11 @@ export default function AdminEffortLogsPage() {
   const ticketBreakdown = filteredLogs.reduce((acc, log) => {
     acc[log.ticketId] = {
       hours: (acc[log.ticketId]?.hours || 0) + log.hoursLogged,
-      title: log.ticketTitle
+      title: log.ticketTitle,
+      ticketNumber: log.ticketNumber
     };
     return acc;
-  }, {} as Record<string, { hours: number; title: string }>);
+  }, {} as Record<string, { hours: number; title: string; ticketNumber?: string }>);
 
   // Group by month
   const monthBreakdown = filteredLogs.reduce((acc, log) => {
@@ -159,7 +162,7 @@ export default function AdminEffortLogsPage() {
                 <div key={ticketId} className="flex justify-between items-start text-[11px]">
                   <div className="truncate w-3/4">
                     <Link href={`/admin/tickets/${ticketId}`} className="font-bold text-zinc-900 hover:underline">
-                      {ticketId}
+                      {info.ticketNumber || ticketId}
                     </Link>
                     <div className="text-zinc-400 truncate text-[9px]">{info.title}</div>
                   </div>
@@ -309,7 +312,7 @@ export default function AdminEffortLogsPage() {
                 <tr key={log.id} className="hover:bg-zinc-50 transition">
                   <td className="py-2.5 px-4 whitespace-nowrap">
                     <Link href={`/admin/tickets/${log.ticketId}`} className="font-bold text-zinc-900 hover:underline">
-                      {log.ticketId}
+                      {log.ticketNumber || log.ticketId}
                     </Link>
                     <span className="ml-1.5 px-1 py-0.5 bg-zinc-100 text-zinc-500 rounded text-[9px]">
                       {log.sapModule}

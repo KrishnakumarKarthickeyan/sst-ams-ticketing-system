@@ -50,6 +50,7 @@ interface ConsultantProfile {
 interface CustomerProfile {
   id: string;
   company: string;
+  customerShortCode?: string;
   contact: string;
   email: string;
   phone: string;
@@ -60,7 +61,7 @@ interface CustomerProfile {
 }
 
 export default function ManagerConsultantsPage() {
-  const { tickets, profiles, contracts, orgMap } = useTickets();
+  const { tickets, profiles, contracts, orgMap, orgShortCodeMap } = useTickets();
   const { user } = useAuth();
 
   // Tab State
@@ -96,6 +97,7 @@ export default function ManagerConsultantsPage() {
         return {
           id: c.id,
           company: orgContract?.organizationName || orgMap[c.organization_id] || c.organization || (c.organizations as any)?.name || 'Apex Global Industries',
+          customerShortCode: orgShortCodeMap?.[c.organization_id] || '',
           contact: c.full_name,
           email: c.email,
           phone: c.phone_number || 'N/A',
@@ -105,7 +107,7 @@ export default function ManagerConsultantsPage() {
           csat: 5.0
         };
       });
-  }, [profiles, contracts, orgMap]);
+  }, [profiles, contracts, orgMap, orgShortCodeMap]);
 
   // CRUD state
   const [activeAction, setActiveAction] = useState<{
@@ -129,6 +131,7 @@ export default function ManagerConsultantsPage() {
   const [passwordResetValue, setPasswordResetValue] = useState('password123');
 
   // Extended Customer Form States
+  const [formShortCode, setFormShortCode] = useState('');
   const [formAddress, setFormAddress] = useState('');
   const [formIndustry, setFormIndustry] = useState('');
   const [formContractStartDate, setFormContractStartDate] = useState('');
@@ -397,6 +400,12 @@ export default function ManagerConsultantsPage() {
     e.preventDefault();
     if (!formCompany || !formEmail) return;
 
+    const shortCodeClean = formShortCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{2,6}$/.test(shortCodeClean)) {
+      toast.error('Short Code must be 2 to 6 alphanumeric characters.');
+      return;
+    }
+
     if (isSupabaseConfigured && supabase) {
       const password = formPassword || 'Password@12345';
       const toastId = toast.loading(`Registering customer user ${formEmail}...`);
@@ -412,6 +421,7 @@ export default function ManagerConsultantsPage() {
           fullName: formContact,
           role: 'Customer',
           companyName: formCompany,
+          customerShortCode: shortCodeClean,
           contractType: formContract || 'AMS',
           contractHours: hoursNum,
           phoneNumber: formPhone || 'N/A',
@@ -445,7 +455,7 @@ export default function ManagerConsultantsPage() {
             throw new Error('This email address may already be registered. Please try a different email or sign in.');
           }
 
-          // 3. Resolve or insert organization with address/industry
+          // 3. Resolve or insert organization with address/industry and short code
           let orgId = '';
           const { data: existingOrg } = await supabase
             .from('organizations')
@@ -457,13 +467,15 @@ export default function ManagerConsultantsPage() {
             orgId = existingOrg.id;
             await supabase.from('organizations').update({
               address: formAddress || null,
-              industry: formIndustry || null
+              industry: formIndustry || null,
+              customer_short_code: shortCodeClean
             }).eq('id', orgId);
           } else {
             const { data: newOrg, error: orgErr } = await supabase
               .from('organizations')
               .insert({
                 name: formCompany.trim(),
+                customer_short_code: shortCodeClean,
                 address: formAddress || null,
                 industry: formIndustry || null
               })
@@ -520,6 +532,7 @@ export default function ManagerConsultantsPage() {
       const newCustomer: CustomerProfile = {
         id: `cust-${Date.now()}`,
         company: formCompany,
+        customerShortCode: shortCodeClean,
         contact: formContact,
         email: formEmail,
         phone: formPhone || 'N/A',
@@ -536,6 +549,12 @@ export default function ManagerConsultantsPage() {
   const handleEditCustomerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeAction.targetId || !formCompany) return;
+
+    const shortCodeClean = formShortCode.trim().toUpperCase();
+    if (shortCodeClean && !/^[A-Z0-9]{2,6}$/.test(shortCodeClean)) {
+      toast.error('Short Code must be 2 to 6 alphanumeric characters.');
+      return;
+    }
 
     if (isSupabaseConfigured && supabase) {
       const toastId = toast.loading('Saving customer updates...');
@@ -563,11 +582,15 @@ export default function ManagerConsultantsPage() {
 
         if (profErr) throw new Error(profErr.message);
 
-        // Update organization name if modified
-        if (orgId && formCompany.trim() !== target.company) {
+        // Update organization name and customer_short_code if modified
+        if (orgId) {
+          const updatePayload: any = { name: formCompany.trim() };
+          if (shortCodeClean) {
+            updatePayload.customer_short_code = shortCodeClean;
+          }
           await supabase
             .from('organizations')
-            .update({ name: formCompany.trim() })
+            .update(updatePayload)
             .eq('id', orgId);
         }
 
@@ -602,6 +625,7 @@ export default function ManagerConsultantsPage() {
           return {
             ...c,
             company: formCompany,
+            customerShortCode: shortCodeClean,
             contact: formContact,
             email: formEmail,
             phone: formPhone,
@@ -711,6 +735,7 @@ export default function ManagerConsultantsPage() {
     setFormHours('160');
     setFormPassword('');
     setPasswordResetValue('password123');
+    setFormShortCode('');
     setFormAddress('');
     setFormIndustry('');
     setFormContractStartDate('');
@@ -1014,7 +1039,14 @@ export default function ManagerConsultantsPage() {
                         <Building2 size={18} className="text-zinc-650" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-sm text-zinc-950">{c.company}</h3>
+                        <h3 className="font-bold text-sm text-zinc-950 flex items-center gap-1.5">
+                          {c.company}
+                          {c.customerShortCode && (
+                            <span className="font-mono bg-zinc-150 text-zinc-700 px-1.5 py-0.5 rounded text-[8px] font-bold">
+                              {c.customerShortCode}
+                            </span>
+                          )}
+                        </h3>
                         <p className="text-[10px] text-zinc-450 mt-0.5">SLA Plan: <strong className="text-zinc-700 font-medium">{c.contractType}</strong></p>
                       </div>
                     </div>
@@ -1072,6 +1104,7 @@ export default function ManagerConsultantsPage() {
                       <Button
                         onClick={() => {
                           setFormCompany(c.company);
+                          setFormShortCode(c.customerShortCode || '');
                           setFormContact(c.contact);
                           setFormEmail(c.email);
                           setFormPhone(c.phone);
@@ -1305,9 +1338,9 @@ export default function ManagerConsultantsPage() {
               {(activeAction.type === 'add_customer' || activeAction.type === 'edit_customer') && (
                 <form onSubmit={activeAction.type === 'add_customer' ? handleAddCustomer : handleEditCustomerSubmit} className="space-y-3.5 text-xs">
                   {/* Row 1: Company Details */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Company Name</label>
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Company Name *</label>
                       <input
                         type="text"
                         required
@@ -1315,6 +1348,19 @@ export default function ManagerConsultantsPage() {
                         onChange={(e) => setFormCompany(e.target.value)}
                         placeholder="e.g. Apex Global Industries"
                         className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Short Code *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. BIT"
+                        value={formShortCode}
+                        onChange={(e) => setFormShortCode(e.target.value.toUpperCase())}
+                        maxLength={6}
+                        disabled={activeAction.type === 'edit_customer'}
+                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-mono uppercase disabled:bg-zinc-50 disabled:text-zinc-500"
                       />
                     </div>
                     <div className="space-y-1">

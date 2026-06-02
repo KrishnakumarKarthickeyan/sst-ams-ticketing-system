@@ -16,7 +16,7 @@ export default function AdminAuditLogsPage() {
           timestamp: h.createdAt,
           actor: h.changedBy || 'System',
           action: `Update ${h.fieldChanged || 'Ticket'}`,
-          target: ticket.title || `Ticket #${ticket.id.slice(0, 8)}`,
+          target: ticket.title || `Ticket #${ticket.ticketNumber || ticket.id}`,
           details: h.fieldChanged
             ? `Changed ${h.fieldChanged} from "${h.oldValue}" to "${h.newValue}"`
             : `Ticket activity logged.`

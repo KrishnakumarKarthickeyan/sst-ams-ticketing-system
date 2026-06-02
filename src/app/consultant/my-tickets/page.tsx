@@ -244,10 +244,11 @@ export default function ConsultantMyTicketsPage() {
         }
       }
 
-      if (searchQuery.trim()) {
+        if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
           t.id.toLowerCase().includes(q) ||
+          (t.ticketNumber && t.ticketNumber.toLowerCase().includes(q)) ||
           t.title.toLowerCase().includes(q) ||
           t.organization.toLowerCase().includes(q) ||
           (t.description || '').toLowerCase().includes(q)
@@ -584,7 +585,7 @@ export default function ConsultantMyTicketsPage() {
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${priCfg.dot} ${t.priority === 'Critical' ? 'animate-pulse' : ''}`} />
-                  <span className="text-[11px] font-bold text-zinc-900 font-mono tracking-wider">{t.id}</span>
+                  <span className="text-[11px] font-bold text-zinc-900 font-mono tracking-wider">{t.ticketNumber || t.id}</span>
                   {isLocked && <Lock size={10} className="text-zinc-400" />}
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -714,7 +715,7 @@ export default function ConsultantMyTicketsPage() {
                 <TableRow key={t.id} className={`hover:bg-zinc-50/40 transition-colors ${isLocked ? 'bg-zinc-50/25' : ''}`}>
                   <TableCell className="font-mono font-bold text-zinc-500 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
-                      {t.id}
+                      {t.ticketNumber || t.id}
                       {isLocked && <Lock size={9} className="text-zinc-400" />}
                     </div>
                   </TableCell>

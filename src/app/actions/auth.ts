@@ -87,6 +87,7 @@ export async function provisionUser(params: {
   skills?: string;
   // Customer specific fields:
   companyName?: string;
+  customerShortCode?: string;
   contractType?: string;
   contractHours?: number;
   address?: string;
@@ -145,7 +146,7 @@ export async function provisionUser(params: {
       const companyName = (params.companyName || 'Apex Global Industries').trim();
       let orgId = '';
 
-      // Resolve or insert organization with address/industry
+      // Resolve or insert organization with address/industry and short code
       const { data: existingOrg, error: findOrgErr } = await client
         .from('organizations')
         .select('id')
@@ -160,7 +161,8 @@ export async function provisionUser(params: {
           .from('organizations')
           .update({
             address: params.address || null,
-            industry: params.industry || null
+            industry: params.industry || null,
+            customer_short_code: params.customerShortCode ? params.customerShortCode.trim().toUpperCase() : undefined
           })
           .eq('id', orgId);
         if (orgUpdErr) throw orgUpdErr;
@@ -169,6 +171,7 @@ export async function provisionUser(params: {
           .from('organizations')
           .insert({
             name: companyName,
+            customer_short_code: params.customerShortCode ? params.customerShortCode.trim().toUpperCase() : null,
             address: params.address || null,
             industry: params.industry || null
           })
@@ -269,6 +272,24 @@ export async function getOrganizationMap() {
     return {};
   }
 }
+
+export async function getOrganizationShortCodeMap() {
+  const client = getAdminClient();
+  if (!client) return {};
+  try {
+    const { data, error } = await client.from('organizations').select('id, customer_short_code');
+    if (error || !data) return {};
+    const map: Record<string, string> = {};
+    data.forEach(org => {
+      map[org.id] = org.customer_short_code || '';
+    });
+    return map;
+  } catch (e) {
+    console.error('Failed to fetch organization short code map:', e);
+    return {};
+  }
+}
+
 
 export async function resetUserPasswordAdmin(userId: string, newPassword?: string) {
   const client = getAdminClient();

@@ -13,6 +13,7 @@ interface OrganizationItem {
   id: string;
   name: string;
   domain: string;
+  customer_short_code?: string;
 }
 
 export default function AdminOrganizationsPage() {
@@ -25,6 +26,7 @@ export default function AdminOrganizationsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDomain, setNewDomain] = useState('');
+  const [newShortCode, setNewShortCode] = useState('');
 
   // Selected organization for Customer 360 View
   const [selectedOrg, setSelectedOrg] = useState<OrganizationItem | null>(null);
@@ -68,6 +70,11 @@ export default function AdminOrganizationsPage() {
   const handleAddOrg = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
+    const shortCodeClean = newShortCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{2,6}$/.test(shortCodeClean)) {
+      toast.error('Short Code must be 2 to 6 alphanumeric characters.');
+      return;
+    }
 
     const loadId = toast.loading(`Registering organization ${newName}...`);
 
@@ -77,7 +84,8 @@ export default function AdminOrganizationsPage() {
           .from('organizations')
           .insert({
             name: newName.trim(),
-            domain: newDomain.trim() || null
+            domain: newDomain.trim() || null,
+            customer_short_code: shortCodeClean
           })
           .select('*')
           .single();
@@ -86,6 +94,7 @@ export default function AdminOrganizationsPage() {
         toast.success(`Organization ${newName} registered successfully.`, { id: loadId });
         setNewName('');
         setNewDomain('');
+        setNewShortCode('');
         setShowAddForm(false);
         fetchOrgsAndProfiles();
       } catch (err: any) {
@@ -95,7 +104,8 @@ export default function AdminOrganizationsPage() {
       const newOrg: OrganizationItem = {
         id: `org-${Date.now()}`,
         name: newName.trim(),
-        domain: newDomain.trim() || 'n/a'
+        domain: newDomain.trim() || 'n/a',
+        customer_short_code: shortCodeClean
       };
       const updated = [...organizations, newOrg];
       setOrganizations(updated);
@@ -256,6 +266,20 @@ export default function AdminOrganizationsPage() {
                 />
               </div>
 
+              <div className="space-y-1">
+                <label className="font-bold text-zinc-700 uppercase text-[9px]">Customer Short Code *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. APX"
+                  value={newShortCode}
+                  onChange={(e) => setNewShortCode(e.target.value.toUpperCase())}
+                  className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono uppercase"
+                  maxLength={6}
+                />
+                <span className="text-[8px] text-zinc-400 block font-mono">Alphanumeric, 2–6 characters, uppercase.</span>
+              </div>
+
               <div className="flex gap-2 justify-end pt-2">
                 <button
                   type="button"
@@ -297,6 +321,11 @@ export default function AdminOrganizationsPage() {
                       <div className="flex items-center gap-2">
                         <Building2 size={14} className="text-zinc-400" />
                         <span className="font-bold text-zinc-800 text-xs">{org.name}</span>
+                        {org.customer_short_code && (
+                          <span className="font-mono bg-zinc-100 text-zinc-650 px-1 py-0.2 rounded text-[8px] font-bold">
+                            {org.customer_short_code}
+                          </span>
+                        )}
                       </div>
                       <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
                         openCount > 0 ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'
@@ -326,7 +355,10 @@ export default function AdminOrganizationsPage() {
               {/* Dashboard Header */}
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
-                  <h2 className="text-base font-bold text-zinc-950 uppercase">{selectedOrg.name}</h2>
+                  <h2 className="text-base font-bold text-zinc-950 uppercase">
+                    {selectedOrg.name} 
+                    {selectedOrg.customer_short_code && ` (${selectedOrg.customer_short_code})`}
+                  </h2>
                   <span className="text-[10px] text-zinc-450 font-mono flex items-center gap-1.5 mt-1">
                     <Globe size={12} />
                     Domain: {selectedOrg.domain || 'N/A'}

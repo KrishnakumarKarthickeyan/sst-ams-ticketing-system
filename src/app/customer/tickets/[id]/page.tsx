@@ -482,7 +482,7 @@ export default function CustomerTicketDetailPage() {
           <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> My Tickets
         </Link>
         <ChevronRight size={14} className="text-zinc-300" />
-        <span className="text-zinc-900 font-semibold">{ticket.id}</span>
+        <span className="text-zinc-900 font-semibold">{ticket.ticketNumber || ticket.id}</span>
       </div>
 
       {/* ── Hero Header Card ── */}
@@ -562,7 +562,7 @@ export default function CustomerTicketDetailPage() {
                         <DialogHeader>
                           <DialogTitle className="text-lg font-bold text-zinc-900">Close Ticket</DialogTitle>
                           <DialogDescription className="text-sm text-zinc-500">
-                            Rate the resolution quality before closing ticket {ticket.id}.
+                            Rate the resolution quality before closing ticket {ticket.ticketNumber || ticket.id}.
                           </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleRatingSubmit} className="space-y-5">

@@ -1486,7 +1486,7 @@ export default function ManagerDashboardPage() {
                         {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable').slice(0, 4).map(t => (
                           <tr key={t.id} className="hover:bg-zinc-50/50">
                             <td className="py-2 px-3 font-bold text-zinc-950">
-                              <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.id}</Link>
+                              <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
                             </td>
                             <td className="py-2 px-3 font-semibold text-zinc-650 truncate max-w-[100px]">{t.organization}</td>
                             <td className="py-2 px-3 text-center font-bold text-red-650">{t.priority}</td>
@@ -1589,7 +1589,7 @@ export default function ManagerDashboardPage() {
                           (t.assignedConsultant === c.name || t.consultantEfforts?.some(e => e.consultantName === c.name && !e.isDeleted))
                         ).map(t => (
                           <div key={t.id} className="flex justify-between items-center text-[9px] py-1 border-b border-zinc-100 last:border-0 hover:bg-zinc-100/50 px-1 rounded">
-                            <Link href={`/manager/tickets/${t.id}`} className="font-bold text-zinc-800 hover:underline truncate max-w-[120px]">{t.id} - {t.title}</Link>
+                            <Link href={`/manager/tickets/${t.id}`} className="font-bold text-zinc-800 hover:underline truncate max-w-[120px]">{t.ticketNumber || t.id} - {t.title}</Link>
                             <Badge className="bg-zinc-100 text-zinc-700 border-none font-bold text-[8px] py-0 px-1 uppercase">{t.priority}</Badge>
                           </div>
                         ))}

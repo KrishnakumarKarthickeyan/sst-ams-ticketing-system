@@ -904,7 +904,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                   <div className="space-y-3">
                     <div>
                       <span className="text-[9px] text-zinc-450 uppercase font-bold block">Incident ID</span>
-                      <span className="font-bold text-zinc-900 block mt-0.5">{ticket.id}</span>
+                      <span className="font-bold text-zinc-900 block mt-0.5">{ticket.ticketNumber || ticket.id}</span>
                     </div>
                     <div>
                       <span className="text-[9px] text-zinc-450 uppercase font-bold block">Client Requestor</span>
@@ -1113,7 +1113,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[8px] font-bold text-zinc-450 uppercase block">Estimated Hours</label>
+                          <label className="text-[8px] font-bold text-zinc-450 uppercase">Estimated Hours</label>
                           <input
                             type="number"
                             required
@@ -1124,7 +1124,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[8px] font-bold text-zinc-450 uppercase block">Allocation Remarks</label>
+                          <label className="text-[8px] font-bold text-zinc-450 uppercase">Allocation Remarks</label>
                           <input
                             type="text"
                             placeholder="Role remarks..."
@@ -2517,7 +2517,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
 
             <div className="space-y-1">
               <p className="text-zinc-655 leading-relaxed">
-                You are rejecting a submission for ticket <strong className="text-zinc-955">{ticket.id}</strong>.
+                You are rejecting a submission for ticket <strong className="text-zinc-955">{ticket.ticketNumber || ticket.id}</strong>.
               </p>
               <p className="text-[10px] text-zinc-500 font-semibold">
                 Rejections require a detailed audit explanation. This will be appended to the timeline and notified to the consultant.

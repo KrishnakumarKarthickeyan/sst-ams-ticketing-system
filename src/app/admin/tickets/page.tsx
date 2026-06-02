@@ -114,6 +114,7 @@ export default function AdminTicketsPage() {
         const q = searchQuery.toLowerCase();
         return (
           t.id.toLowerCase().includes(q) ||
+          (t.ticketNumber && t.ticketNumber.toLowerCase().includes(q)) ||
           t.title.toLowerCase().includes(q) ||
           t.organization.toLowerCase().includes(q) ||
           (t.assignedConsultant && t.assignedConsultant.toLowerCase().includes(q)) ||
@@ -373,7 +374,7 @@ export default function AdminTicketsPage() {
                         href={`/admin/tickets/${t.id}`} 
                         className="font-bold text-zinc-950 hover:underline font-mono"
                       >
-                        {t.id}
+                        {t.ticketNumber || t.id}
                       </Link>
                     </td>
                     <td className="p-3">

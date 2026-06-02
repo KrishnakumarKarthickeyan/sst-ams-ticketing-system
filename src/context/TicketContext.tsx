@@ -43,7 +43,7 @@ import {
 } from '../utils/mockData';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import { useAuth } from './AuthContext';
-import { getOrganizationMap } from '../app/actions/auth';
+import { getOrganizationMap, getOrganizationShortCodeMap } from '../app/actions/auth';
 
 // Query retry and timeout helpers
 const fetchWithRetryAndTimeout = async <T,>(
@@ -92,6 +92,7 @@ interface TicketContextType {
   notifications: Notification[];
   profiles: any[];
   orgMap: Record<string, string>;
+  orgShortCodeMap: Record<string, string>;
   loading: boolean;
   
   // Ticket Operations
@@ -285,6 +286,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
+  const [orgShortCodeMap, setOrgShortCodeMap] = useState<Record<string, string>>({});
 
   const fetchData = async () => {
     if (authLoading) {
@@ -306,6 +308,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try {
         const [
           organizationMap,
+          organizationShortCodeMap,
           dbProfiles,
           dbTickets,
           dbContracts,
@@ -315,6 +318,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           dbNotifications
         ] = await Promise.all([
           getOrganizationMap(),
+          getOrganizationShortCodeMap(),
           wrapQuery(() => supabase.from('profiles').select('*')),
           wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, created_at, author_id, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, file_name, file_size, created_at), ticket_attachments(id, ticket_id, file_name, file_size, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')),
           wrapQuery(() => supabase.from('customer_contracts').select('*')),
@@ -325,6 +329,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ]);
 
         setOrgMap(organizationMap);
+        setOrgShortCodeMap(organizationShortCodeMap);
 
         const profilesList = dbProfiles || [];
         setProfiles(profilesList);
@@ -468,6 +473,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     return {
       id: t.id,
+      ticketNumber: t.ticket_number || t.id,
       title: t.title,
       description: t.description,
       organization: (t.organization_id ? activeOrgMap[t.organization_id] : null) || (t.organizations as any)?.name || t.organization_id, // Organization Name
@@ -841,13 +847,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Cache/update it in local state
         setTickets(prev => {
           const index = prev.findIndex(t => t.id === mapped.id);
+          let next;
           if (index >= 0) {
-            const next = [...prev];
+            next = [...prev];
             next[index] = mapped;
-            return next;
           } else {
-            return [...prev, mapped];
+            next = [...prev, mapped];
           }
+          return next.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         });
 
         return mapped;
@@ -866,8 +873,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const syncTickets = (updated: Ticket[]) => {
-    setTickets(updated);
-    localStorage.setItem('sst_tickets', JSON.stringify(updated));
+    const sorted = [...updated].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setTickets(sorted);
+    localStorage.setItem('sst_tickets', JSON.stringify(sorted));
   };
 
   const syncNotifications = (updated: Notification[]) => {
@@ -985,12 +993,12 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     else if (data.priority === 'High') slaHours = 8;
     else if (data.priority === 'Low') slaHours = 120;
 
-    const nextIdNum = tickets.reduce((max, t) => {
-      const num = parseInt(t.id.split('-').pop() || '1000');
-      return num > max ? num : max;
-    }, 1000) + 1;
-
-    const ticketId = `SST-${data.sapModule}-${nextIdNum}`;
+    const ticketId = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
 
     // Map Attachments local objects (will link to public bucket files on upload)
     const newAttachments: Attachment[] = [];
@@ -1130,12 +1138,17 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (mgrData) managerId = mgrData.id;
         }
 
+        const primaryModule = data.sapModules && data.sapModules.length > 0
+          ? data.sapModules[0]
+          : (data.sapModule || 'FICO').split(',')[0].trim().toUpperCase() || 'FICO';
+
         // Insert ticket registry entry using select().single() for transactional validation
         const ticketPayload = {
           id: ticketId,
           organization_id: orgId,
           requested_by: requestorId,
           sap_module: data.sapModule,
+          primary_module: primaryModule,
           category: data.category,
           priority: data.priority,
           status: initialStatus,
@@ -5366,6 +5379,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         notifications,
         profiles,
         orgMap,
+        orgShortCodeMap,
         loading,
         createTicket,
         updateTicket,
