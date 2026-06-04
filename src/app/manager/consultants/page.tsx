@@ -32,7 +32,7 @@ import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { useAuth } from '../../../context/AuthContext';
-import { createAuthUser, updateAuthUserPassword, deleteAuthUser, provisionUser, resetUserPasswordAdmin } from '../../actions/auth';
+import { createAuthUser, deleteAuthUser, provisionUser, resetUserPasswordAdmin, verifyPasswordPolicy } from '../../actions/auth';
 
 interface ConsultantProfile {
   id: string;
@@ -128,7 +128,11 @@ export default function ManagerConsultantsPage() {
   const [formContract, setFormContract] = useState('');
   const [formHours, setFormHours] = useState('160');
   const [formPassword, setFormPassword] = useState('');
+  const [formPwdOption, setFormPwdOption] = useState<'auto' | 'manual'>('auto');
   const [passwordResetValue, setPasswordResetValue] = useState('password123');
+  const [resetPwdOption, setResetPwdOption] = useState<'auto' | 'manual'>('auto');
+  const [generatedPassResult, setGeneratedPassResult] = useState('');
+  const [creationSuccessModal, setCreationSuccessModal] = useState<{ email: string; tempPass: string } | null>(null);
 
   // Extended Customer Form States
   const [formShortCode, setFormShortCode] = useState('');
@@ -202,8 +206,15 @@ export default function ManagerConsultantsPage() {
     e.preventDefault();
     if (!formName || !formEmail) return;
 
+    if (formPwdOption === 'manual') {
+      const policy = await verifyPasswordPolicy(formPassword);
+      if (!policy.isValid) {
+        toast.error(`Invalid Password: ${policy.error}`);
+        return;
+      }
+    }
+
     if (isSupabaseConfigured && supabase) {
-      const password = formPassword || 'Password@12345';
       const toastId = toast.loading(`Registering consultant ${formEmail} in database...`);
       try {
         let authId = '';
@@ -212,23 +223,27 @@ export default function ManagerConsultantsPage() {
         // 1. Try server action first (service role)
         const authRes = await provisionUser({
           email: formEmail,
-          password,
           fullName: formName,
           role: 'Consultant',
           consultantType: formType as any,
           sapModules: modulesArray,
           phoneNumber: formPhone || 'N/A',
           roleTitle: formRole || `${formType} Specialist`,
-          skills: formSkills
+          skills: formSkills,
+          performedBy: user?.email || 'Manager',
+          initialPassword: formPwdOption === 'manual' ? formPassword : undefined
         });
 
         if (authRes.error === 'NO_SERVICE_KEY') {
+          // Generate client-side password fallback
+          const tempPass = formPwdOption === 'manual' ? formPassword : (Math.random().toString(36).substring(2, 10) + 'A1!');
+          
           // 2. Fallback to client-side non-persisted sign up and client inserts
           const authClient = getClientSideAuthClient();
           if (!authClient) throw new Error('Client-side auth manager failed to initialize.');
           const { data, error: signUpErr } = await authClient.auth.signUp({
             email: formEmail.trim().toLowerCase(),
-            password: password,
+            password: tempPass,
             options: {
               data: {
                 full_name: formName,
@@ -255,16 +270,22 @@ export default function ManagerConsultantsPage() {
             phone_number: formPhone || 'N/A',
             role_title: formRole || `${formType} Specialist`,
             skills: formSkills,
-            first_login_completed: false
+            first_login_completed: false,
+            force_password_change: false
           });
 
           if (profErr) throw new Error(profErr.message);
+          
+          setCreationSuccessModal({ email: formEmail, tempPass: tempPass });
+          toast.success('Consultant provisioned successfully.', { id: toastId });
         } else if (!authRes.success) {
           throw new Error(authRes.error);
+        } else {
+          setCreationSuccessModal({ email: formEmail, tempPass: authRes.password || '' });
+          toast.success('Consultant provisioned successfully.', { id: toastId });
         }
 
-        toast.success(`Consultant profile created successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
-        await fetchStakeholders();
+        await refetchData();
         closeActionModal();
       } catch (err: any) {
         let msg = err.message;
@@ -275,7 +296,7 @@ export default function ManagerConsultantsPage() {
         console.error(err);
       }
     } else {
-      // Local fallback
+      const tempPass = formPwdOption === 'manual' ? formPassword : (Math.random().toString(36).substring(2, 10) + 'A1!');
       const newConsultant: ConsultantProfile = {
         id: `usr-consult-${Date.now()}`,
         name: formName,
@@ -289,6 +310,7 @@ export default function ManagerConsultantsPage() {
         consultantType: formType
       };
       saveConsultants([...consultants, newConsultant]);
+      setCreationSuccessModal({ email: formEmail, tempPass: tempPass });
       closeActionModal();
     }
   };
@@ -406,8 +428,15 @@ export default function ManagerConsultantsPage() {
       return;
     }
 
+    if (formPwdOption === 'manual') {
+      const policy = await verifyPasswordPolicy(formPassword);
+      if (!policy.isValid) {
+        toast.error(`Invalid Password: ${policy.error}`);
+        return;
+      }
+    }
+
     if (isSupabaseConfigured && supabase) {
-      const password = formPassword || 'Password@12345';
       const toastId = toast.loading(`Registering customer user ${formEmail}...`);
       try {
         let authId = '';
@@ -417,7 +446,6 @@ export default function ManagerConsultantsPage() {
         // 1. Try server-side provisioning (Service Role client)
         const authRes = await provisionUser({
           email: formEmail,
-          password,
           fullName: formContact,
           role: 'Customer',
           companyName: formCompany,
@@ -431,16 +459,21 @@ export default function ManagerConsultantsPage() {
           contractEndDate: formContractEndDate || undefined,
           monthlyAllocatedHours: monthlyHoursNum,
           contractStatus: formContractStatus,
-          loginEnabled: formLoginEnabled
+          loginEnabled: formLoginEnabled,
+          performedBy: user?.email || 'Manager',
+          initialPassword: formPwdOption === 'manual' ? formPassword : undefined
         });
 
         if (authRes.error === 'NO_SERVICE_KEY') {
-          // 2. Fallback to client-side non-persisted sign up and manual inserts
+          // Generate client-side password fallback
+          const tempPass = formPwdOption === 'manual' ? formPassword : (Math.random().toString(36).substring(2, 10) + 'A1!');
+
+          // 2. Fallback to client-side signup
           const authClient = getClientSideAuthClient();
           if (!authClient) throw new Error('Client-side auth manager failed to initialize.');
           const { data, error: signUpErr } = await authClient.auth.signUp({
             email: formEmail.trim().toLowerCase(),
-            password: password,
+            password: tempPass,
             options: {
               data: {
                 full_name: formContact,
@@ -494,7 +527,8 @@ export default function ManagerConsultantsPage() {
             is_active: formLoginEnabled,
             organization_id: orgId,
             phone_number: formPhone || 'N/A',
-            first_login_completed: false
+            first_login_completed: false,
+            force_password_change: false
           });
 
           if (profErr) throw new Error(profErr.message);
@@ -513,12 +547,17 @@ export default function ManagerConsultantsPage() {
           });
 
           if (contractErr) console.warn('Non-blocking contract error:', contractErr.message);
+          
+          setCreationSuccessModal({ email: formEmail, tempPass: tempPass });
+          toast.success('Customer provisioned successfully.', { id: toastId });
         } else if (!authRes.success) {
           throw new Error(authRes.error);
+        } else {
+          setCreationSuccessModal({ email: formEmail, tempPass: authRes.password || '' });
+          toast.success('Customer provisioned successfully.', { id: toastId });
         }
 
-        toast.success(`Customer created successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
-        await fetchStakeholders();
+        await refetchData();
         closeActionModal();
       } catch (err: any) {
         let msg = err.message;
@@ -529,6 +568,7 @@ export default function ManagerConsultantsPage() {
         console.error(err);
       }
     } else {
+      const tempPass = formPwdOption === 'manual' ? formPassword : (Math.random().toString(36).substring(2, 10) + 'A1!');
       const newCustomer: CustomerProfile = {
         id: `cust-${Date.now()}`,
         company: formCompany,
@@ -542,6 +582,7 @@ export default function ManagerConsultantsPage() {
         csat: 5.0
       };
       saveCustomers([...customers, newCustomer]);
+      setCreationSuccessModal({ email: formEmail, tempPass: tempPass });
       closeActionModal();
     }
   };
@@ -698,16 +739,32 @@ export default function ManagerConsultantsPage() {
 
   const handlePasswordResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeAction.targetId || !passwordResetValue) return;
+    if (!activeAction.targetId) return;
+
+    const isManual = resetPwdOption === 'manual';
+    const manualPwd = passwordResetValue.trim();
+
+    if (isManual) {
+      const policy = await verifyPasswordPolicy(manualPwd);
+      if (!policy.isValid) {
+        toast.error(`Password reset failed: ${policy.error}`);
+        return;
+      }
+    }
 
     if (isSupabaseConfigured && supabase) {
       const toastId = toast.loading('Authorizing password overwrite...');
       try {
-        const res = await resetUserPasswordAdmin(activeAction.targetId, passwordResetValue);
+        const res = await resetUserPasswordAdmin(
+          activeAction.targetId,
+          user?.email || 'Manager',
+          undefined,
+          isManual ? manualPwd : undefined
+        );
         if (res.success) {
-          toast.success(`Password reset successful! User must change their password on next login.`, { id: toastId, duration: 6000 });
-          await fetchStakeholders();
-          closeActionModal();
+          setGeneratedPassResult(isManual ? manualPwd : (res.password || ''));
+          toast.success(`Password reset successful! Provide the temporary password to the user.`, { id: toastId });
+          await refetchData();
         } else if (res.error === 'NO_SERVICE_KEY') {
           toast.error('Overwriting passwords from the dashboard requires configuring the SUPABASE_SERVICE_ROLE_KEY environment variable on the server.', { id: toastId, duration: 6000 });
         } else {
@@ -717,8 +774,9 @@ export default function ManagerConsultantsPage() {
         toast.error(`Authorization failed: ${err.message}`, { id: toastId });
       }
     } else {
-      alert(`Security Notice: Password for stakeholder account ID "${activeAction.targetId}" successfully reset to: "${passwordResetValue}". Notification email queued in system backlog.`);
-      closeActionModal();
+      const tempPass = isManual ? manualPwd : ('Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!');
+      setGeneratedPassResult(tempPass);
+      toast.success(`Local password updated to: ${tempPass}`);
     }
   };
 
@@ -736,6 +794,7 @@ export default function ManagerConsultantsPage() {
     setFormHours('160');
     setFormPassword('');
     setPasswordResetValue('password123');
+    setGeneratedPassResult('');
     setFormShortCode('');
     setFormAddress('');
     setFormIndustry('');
@@ -1275,21 +1334,87 @@ export default function ManagerConsultantsPage() {
               {activeAction.type === 'reset_password' && (
                 <form onSubmit={handlePasswordResetSubmit} className="space-y-4 text-xs font-sans">
                   <p className="text-zinc-550 leading-relaxed">
-                    You are authorizing a secure password override for account **{activeAction.targetId}**.
+                    You are authorizing a secure password override for account ID: **{activeAction.targetId}**.
                   </p>
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">New Password</label>
-                    <input
-                      type="text"
-                      required
-                      value={passwordResetValue}
-                      onChange={(e) => setPasswordResetValue(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-mono"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 mt-4">
-                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                    <Button type="submit" className="bg-red-600 hover:bg-red-750 text-white text-[10px] font-bold uppercase h-8 cursor-pointer">Confirm Reset</Button>
+                  
+                  {generatedPassResult ? (
+                    <div className="bg-zinc-950 text-white border border-zinc-900 rounded p-4 text-[11px] font-bold space-y-2">
+                      <span className="text-[10px] text-emerald-400 font-normal uppercase block">Password Reset Successful!</span>
+                      <div className="flex items-center justify-between gap-2 bg-zinc-900/60 p-2.5 rounded border border-zinc-800">
+                        <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-400">{generatedPassResult}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedPassResult);
+                            toast.success('Password copied to clipboard!');
+                          }}
+                          className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 rounded text-[9px] font-bold uppercase transition"
+                        >
+                          Copy Pass
+                        </button>
+                      </div>
+                      <span className="text-[9px] text-zinc-500 block font-normal pt-1 leading-normal">
+                        Notice: Provide this temporary password to the user. They will be forced to change it immediately upon their next login.
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5 pt-1">
+                        <label className="font-bold text-zinc-700 uppercase text-[9px] block">Reset Option</label>
+                        <div className="flex items-center gap-4 text-xs font-sans">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="managerResetOption"
+                              checked={resetPwdOption === 'auto'}
+                              onChange={() => setResetPwdOption('auto')}
+                              className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
+                            />
+                            <span>Generate Automatically</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="managerResetOption"
+                              checked={resetPwdOption === 'manual'}
+                              onChange={() => setResetPwdOption('manual')}
+                              className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
+                            />
+                            <span>Define Manually</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {resetPwdOption === 'manual' ? (
+                        <div className="space-y-1">
+                          <label className="font-bold text-zinc-750 uppercase text-[9px] block">Manual Reset Password *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Assign manual reset password"
+                            value={passwordResetValue}
+                            onChange={(e) => setPasswordResetValue(e.target.value)}
+                            className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                          />
+                          <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-zinc-500 bg-zinc-50 border border-zinc-200 rounded p-3">
+                          This will reset the credentials to a secure system-generated temporary password, forcing the user to create a new password upon their next sign-in.
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                  <div className="flex justify-end gap-2 border-t border-zinc-150 pt-3 mt-4">
+                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">
+                      {generatedPassResult ? 'Close' : 'Cancel'}
+                    </Button>
+                    {!generatedPassResult && (
+                      <Button type="submit" className="bg-red-650 hover:bg-red-750 text-white text-[10px] font-bold uppercase h-8 cursor-pointer">
+                        {resetPwdOption === 'manual' ? 'Set Password & Reset' : 'Generate Temporary Password & Reset'}
+                      </Button>
+                    )}
                   </div>
                 </form>
               )}
@@ -1353,19 +1478,52 @@ export default function ManagerConsultantsPage() {
                       className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
                     />
                   </div>
+
                   {activeAction.type === 'add_consultant' && (
-                    <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Login Password</label>
-                      <input
-                        type="password"
-                        required
-                        value={formPassword}
-                        onChange={(e) => setFormPassword(e.target.value)}
-                        placeholder="Assign a secure password"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
+                    <>
+                      <div className="space-y-1.5 pt-1">
+                        <label className="font-bold text-zinc-700 uppercase text-[9px] block">Initial Password Option</label>
+                        <div className="flex items-center gap-4 text-xs font-sans">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="consultantPwdOption"
+                              checked={formPwdOption === 'auto'}
+                              onChange={() => setFormPwdOption('auto')}
+                              className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
+                            />
+                            <span>Generate Automatically</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="consultantPwdOption"
+                              checked={formPwdOption === 'manual'}
+                              onChange={() => setFormPwdOption('manual')}
+                              className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
+                            />
+                            <span>Define Manually</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {formPwdOption === 'manual' && (
+                        <div className="space-y-1">
+                          <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider block">Initial Password *</label>
+                          <input
+                            type="password"
+                            required
+                            value={formPassword}
+                            onChange={(e) => setFormPassword(e.target.value)}
+                            placeholder="Assign a secure password"
+                            className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-955 font-mono"
+                          />
+                          <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
+                        </div>
+                      )}
+                    </>
                   )}
+
                   <div className="space-y-1">
                     <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">SAP Module Tags (Comma Separated)</label>
                     <input
@@ -1574,19 +1732,7 @@ export default function ManagerConsultantsPage() {
                       Account Information & System Access
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {activeAction.type === 'add_customer' && (
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Initial Password *</label>
-                          <input
-                            type="password"
-                            required
-                            value={formPassword}
-                            onChange={(e) => setFormPassword(e.target.value)}
-                            placeholder="Assign a secure password"
-                            className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
-                          />
-                        </div>
-                      )}
+
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Login Enabled</label>
                         <select
@@ -1598,6 +1744,51 @@ export default function ManagerConsultantsPage() {
                           <option value="false">Disabled / Locked</option>
                         </select>
                       </div>
+
+                      {activeAction.type === 'add_customer' && (
+                        <>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Initial Password Option</label>
+                            <div className="flex items-center gap-4 text-xs font-sans py-2">
+                              <label className="flex items-center gap-1.5 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="customerPwdOption"
+                                  checked={formPwdOption === 'auto'}
+                                  onChange={() => setFormPwdOption('auto')}
+                                  className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
+                                />
+                                <span>Generate Automatically</span>
+                              </label>
+                              <label className="flex items-center gap-1.5 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="customerPwdOption"
+                                  checked={formPwdOption === 'manual'}
+                                  onChange={() => setFormPwdOption('manual')}
+                                  className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
+                                />
+                                <span>Define Manually</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {formPwdOption === 'manual' && (
+                            <div className="space-y-1.5 md:col-span-2">
+                              <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Initial Password *</label>
+                              <input
+                                type="password"
+                                required
+                                value={formPassword}
+                                onChange={(e) => setFormPassword(e.target.value)}
+                                placeholder="Assign a secure password"
+                                className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-955 focus:border-zinc-955 transition duration-150 font-mono"
+                              />
+                              <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -1614,6 +1805,65 @@ export default function ManagerConsultantsPage() {
         </div>
       )}
 
+      {/* USER CREATED SUCCESSFULLY MODAL */}
+      {creationSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono text-xs text-zinc-900 animate-fade-in">
+          <div className="bg-white border border-zinc-200 rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
+            <div className="border-b border-zinc-150 pb-2">
+              <h3 className="font-bold text-xs uppercase text-emerald-800 tracking-wide flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                User Created Successfully
+              </h3>
+            </div>
+            
+            <div className="space-y-3 font-mono">
+              <div className="space-y-1">
+                <span className="text-[9px] uppercase text-zinc-400 font-bold block">Email Address:</span>
+                <span className="font-bold text-zinc-800 select-all block text-xs bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5">{creationSuccessModal.email}</span>
+              </div>
+              
+              <div className="space-y-1">
+                <span className="text-[9px] uppercase text-zinc-400 font-bold block">Temporary Password:</span>
+                <span className="font-mono text-xs tracking-wider select-all font-extrabold text-zinc-950 bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5 block">{creationSuccessModal.tempPass}</span>
+              </div>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[10px] text-amber-800 leading-normal">
+              <span className="font-bold">Important Notice:</span> Provide this temporary password to the user. They will be forced to change it immediately upon their first login to access the workspace.
+            </div>
+            
+            <div className="flex gap-2 justify-end pt-2 border-t border-zinc-150">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(creationSuccessModal.tempPass);
+                  toast.success('Temporary password copied to clipboard!');
+                }}
+                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+              >
+                Copy Password
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`Email: ${creationSuccessModal.email}\nPassword: ${creationSuccessModal.tempPass}`);
+                  toast.success('Credentials copied to clipboard!');
+                }}
+                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+              >
+                Copy Credentials
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreationSuccessModal(null)}
+                className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

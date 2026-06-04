@@ -14,6 +14,62 @@ const getAdminClient = () => {
   });
 };
 
+// Password Policy Checker helper
+export async function verifyPasswordPolicy(password: string): Promise<{ isValid: boolean; error?: string }> {
+  const hasMinLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(password);
+
+  if (!hasMinLength) {
+    return { isValid: false, error: 'Password must be at least 8 characters long.' };
+  }
+  if (!hasUppercase || !hasLowercase) {
+    return { isValid: false, error: 'Password must contain both uppercase and lowercase letters.' };
+  }
+  if (!hasNumber) {
+    return { isValid: false, error: 'Password must contain at least one number.' };
+  }
+  if (!hasSpecial) {
+    return { isValid: false, error: 'Password must contain at least one special character (e.g. !@#$%).' };
+  }
+
+  return { isValid: true };
+}
+
+// Automatic Secure Temporary Password Generator
+function generateTemporaryPassword(): string {
+  const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // exclude easily confused characters (I, O)
+  const lowers = 'abcdefghijkmnopqrstuvwxyz'; // exclude l
+  const numbers = '23456789'; // exclude 0, 1
+  const specials = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  
+  const getRand = (str: string) => str[Math.floor(Math.random() * str.length)];
+  
+  // Ensure we satisfy the complexity requirements:
+  const chars = [
+    getRand(uppers),
+    getRand(lowers),
+    getRand(numbers),
+    getRand(specials)
+  ];
+  
+  const allChars = uppers + lowers + numbers + specials;
+  const length = 10; // between 8-12 characters
+  for (let i = 4; i < length; i++) {
+    chars.push(getRand(allChars));
+  }
+  
+  // Shuffle characters
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  
+  return chars.join('');
+}
+
 export async function createAuthUser(email: string, password: string, fullName: string, role: string) {
   const client = getAdminClient();
   if (!client) {
@@ -25,60 +81,22 @@ export async function createAuthUser(email: string, password: string, fullName: 
       email: email.trim().toLowerCase(),
       password,
       email_confirm: true,
-      user_metadata: { full_name: fullName, role }
+      user_metadata: { full_name: fullName, role, first_login_completed: false, force_password_change: false }
     });
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    return { success: true, id: data.user.id };
+    if (error) return { success: false, error: error.message };
+    return { success: true, user: data.user };
   } catch (e: any) {
-    return { success: false, error: e.message || 'Server action failed' };
-  }
-}
-
-export async function updateAuthUserPassword(userId: string, password: string) {
-  const client = getAdminClient();
-  if (!client) {
-    return { success: false, error: 'NO_SERVICE_KEY' };
-  }
-
-  try {
-    const { data, error } = await client.auth.admin.updateUserById(userId, {
-      password
-    });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Server action failed' };
-  }
-}
-
-export async function deleteAuthUser(userId: string) {
-  const client = getAdminClient();
-  if (!client) {
-    return { success: false, error: 'NO_SERVICE_KEY' };
-  }
-
-  try {
-    const { error } = await client.auth.admin.deleteUser(userId);
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Server action failed' };
+    return { success: false, error: e.message };
   }
 }
 
 export async function provisionUser(params: {
   email: string;
-  password?: string;
   fullName: string;
   role: 'SuperAdmin' | 'Manager' | 'Consultant' | 'Customer';
+  performedBy?: string;
+  initialPassword?: string;
   // Consultant specific fields:
   consultantType?: 'Functional' | 'Technical';
   sapModules?: string[];
@@ -104,24 +122,35 @@ export async function provisionUser(params: {
   }
 
   const email = params.email.trim().toLowerCase();
-  const password = params.password || 'Password@12345';
+  const password = params.initialPassword ? params.initialPassword.trim() : generateTemporaryPassword();
   const fullName = params.fullName.trim();
   const role = params.role;
+  const performedBy = params.performedBy || 'Admin';
+
+  if (params.initialPassword) {
+    const policy = await verifyPasswordPolicy(password);
+    if (!policy.isValid) {
+      return { success: false, error: policy.error };
+    }
+  }
 
   try {
-    // 1. Create auth user
+    // 1. Create auth user with temporary password and metadata
     const { data: authUser, error: authErr } = await client.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: fullName, role, first_login_completed: false }
+      user_metadata: { 
+        full_name: fullName, 
+        role, 
+        first_login_completed: false,
+        force_password_change: false
+      }
     });
 
     let userId = '';
     if (authErr) {
-      // Check if user already exists
       if (authErr.message.includes('already registered') || authErr.message.includes('already exists')) {
-        // Find existing user's ID
         const { data: { users }, error: listErr } = await client.auth.admin.listUsers();
         if (listErr) throw listErr;
         const existing = users.find(u => u.email === email);
@@ -146,7 +175,6 @@ export async function provisionUser(params: {
       const companyName = (params.companyName || 'Apex Global Industries').trim();
       let orgId = '';
 
-      // Resolve or insert organization with address/industry and short code
       const { data: existingOrg, error: findOrgErr } = await client
         .from('organizations')
         .select('id')
@@ -182,7 +210,7 @@ export async function provisionUser(params: {
         orgId = newOrg.id;
       }
 
-      // Upsert profile
+      // Upsert profile with force_password_change and first_login_completed
       const { error: profErr } = await client.from('profiles').upsert({
         id: userId,
         email,
@@ -191,7 +219,8 @@ export async function provisionUser(params: {
         is_active: params.loginEnabled !== undefined ? params.loginEnabled : true,
         organization_id: orgId,
         phone_number: params.phoneNumber || 'N/A',
-        first_login_completed: false
+        first_login_completed: false,
+        force_password_change: false
       });
 
       if (profErr) throw profErr;
@@ -210,7 +239,6 @@ export async function provisionUser(params: {
         status: params.contractStatus || 'Active'
       });
 
-      // We won't block if contract already exists, but log it
       if (contractErr) {
         console.warn('Non-blocking contract error:', contractErr.message);
       }
@@ -221,7 +249,6 @@ export async function provisionUser(params: {
       const skills = params.skills || 'SAP Specialist';
       const phoneNumber = params.phoneNumber || 'N/A';
 
-      // Upsert profile
       const { error: profErr } = await client.from('profiles').upsert({
         id: userId,
         email,
@@ -233,7 +260,8 @@ export async function provisionUser(params: {
         phone_number: phoneNumber,
         role_title: roleTitle,
         skills: skills,
-        first_login_completed: false
+        first_login_completed: false,
+        force_password_change: false
       });
 
       if (profErr) throw profErr;
@@ -245,10 +273,15 @@ export async function provisionUser(params: {
         full_name: fullName,
         role,
         is_active: true,
-        first_login_completed: false
+        first_login_completed: false,
+        force_password_change: false
       });
       if (profErr) throw profErr;
     }
+
+    // Write Audit logs as required
+    await logUserAuditAction(email, 'User Created', performedBy);
+    await logUserAuditAction(email, 'Initial Password Generated', performedBy);
 
     return { success: true, userId, password };
   } catch (e: any) {
@@ -290,7 +323,6 @@ export async function getOrganizationShortCodeMap() {
   }
 }
 
-
 export async function logUserAuditAction(userEmail: string, action: string, performedBy: string) {
   const client = getAdminClient();
   if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
@@ -311,36 +343,68 @@ export async function logUserAuditAction(userEmail: string, action: string, perf
   }
 }
 
-export async function resetUserPasswordAdmin(userId: string, newPassword?: string, performedBy?: string, userEmail?: string) {
+export async function resetUserPasswordAdmin(
+  userId: string,
+  performedBy?: string,
+  userEmail?: string,
+  newPassword?: string
+) {
   const client = getAdminClient();
   if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
+  
+  let targetEmail = userEmail || '';
   try {
-    const password = newPassword || 'Password@12345';
-    // Update both password and reset first_login_completed metadata to false
-    const { error } = await client.auth.admin.updateUserById(userId, {
-      password,
-      user_metadata: { first_login_completed: false }
-    });
-    if (error) return { success: false, error: error.message };
-    
-    // Also update public.profiles
-    const { error: dbErr } = await client
-      .from('profiles')
-      .update({ first_login_completed: false })
-      .eq('id', userId);
-    if (dbErr) return { success: false, error: dbErr.message };
-
-    // Log audit
-    let targetEmail: string = userEmail || '';
     if (!targetEmail) {
       const { data: prof } = await client.from('profiles').select('email').eq('id', userId).single();
       targetEmail = prof?.email || 'unknown';
     }
+
+    const password = newPassword ? newPassword.trim() : generateTemporaryPassword();
+
+    if (newPassword) {
+      const policy = await verifyPasswordPolicy(password);
+      if (!policy.isValid) {
+        await logUserAuditAction(targetEmail, 'Failed Password Reset', performedBy || 'SuperAdmin');
+        return { success: false, error: policy.error };
+      }
+    }
     
+    // 1. Update password in Supabase Auth, lift bans, and set metadata setup flags
+    const { error } = await client.auth.admin.updateUserById(userId, {
+      password,
+      ban_duration: 'none',
+      user_metadata: { first_login_completed: false, force_password_change: true }
+    });
+    
+    if (error) {
+      await logUserAuditAction(targetEmail, 'Failed Password Reset', performedBy || 'SuperAdmin');
+      return { success: false, error: error.message };
+    }
+    
+    // 2. Update profiles table (unlock and clear attempts)
+    const { error: dbErr } = await client
+      .from('profiles')
+      .update({ 
+        first_login_completed: false, 
+        force_password_change: true,
+        is_locked: false,
+        failed_attempts: 0
+      })
+      .eq('id', userId);
+      
+    if (dbErr) {
+      await logUserAuditAction(targetEmail, 'Failed Password Reset', performedBy || 'SuperAdmin');
+      return { success: false, error: dbErr.message };
+    }
+
+    // 3. Log audit log success
     await logUserAuditAction(targetEmail, 'Password Reset', performedBy || 'SuperAdmin');
 
     return { success: true, password };
   } catch (e: any) {
+    if (targetEmail) {
+      await logUserAuditAction(targetEmail, 'Failed Password Reset', performedBy || 'SuperAdmin');
+    }
     return { success: false, error: e.message || 'Reset failed' };
   }
 }
@@ -348,31 +412,56 @@ export async function resetUserPasswordAdmin(userId: string, newPassword?: strin
 export async function adminUpdatePasswordDirect(userId: string, newPassword: string, performedBy?: string, userEmail?: string) {
   const client = getAdminClient();
   if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
+  
+  let targetEmail = userEmail || '';
   try {
-    // SuperAdmin directly updates password without resetting first_login_completed
-    const { error } = await client.auth.admin.updateUserById(userId, {
-      password: newPassword
-    });
-    if (error) return { success: false, error: error.message };
-
-    // Also update password_changed_at in profiles table
-    const { error: dbErr } = await client
-      .from('profiles')
-      .update({ password_changed_at: new Date().toISOString() })
-      .eq('id', userId);
-    if (dbErr) return { success: false, error: dbErr.message };
-
-    // Log audit
-    let targetEmail: string = userEmail || '';
     if (!targetEmail) {
       const { data: prof } = await client.from('profiles').select('email').eq('id', userId).single();
       targetEmail = prof?.email || 'unknown';
     }
-    
-    await logUserAuditAction(targetEmail, 'Password Update', performedBy || 'SuperAdmin');
+
+    // Validate password policy first
+    const policy = await verifyPasswordPolicy(newPassword);
+    if (!policy.isValid) {
+      await logUserAuditAction(targetEmail, 'Failed Password Update', performedBy || 'SuperAdmin');
+      return { success: false, error: policy.error };
+    }
+
+    // 1. SuperAdmin directly updates password, lifts bans, and updates metadata
+    const { error } = await client.auth.admin.updateUserById(userId, {
+      password: newPassword,
+      ban_duration: 'none',
+      user_metadata: { first_login_completed: true, force_password_change: false }
+    });
+    if (error) {
+      await logUserAuditAction(targetEmail, 'Failed Password Update', performedBy || 'SuperAdmin');
+      return { success: false, error: error.message };
+    }
+
+    // 2. Update profiles table (unlock and clear attempts)
+    const { error: dbErr } = await client
+      .from('profiles')
+      .update({ 
+        first_login_completed: true,
+        force_password_change: false,
+        is_locked: false,
+        failed_attempts: 0,
+        password_changed_at: new Date().toISOString() 
+      })
+      .eq('id', userId);
+    if (dbErr) {
+      await logUserAuditAction(targetEmail, 'Failed Password Update', performedBy || 'SuperAdmin');
+      return { success: false, error: dbErr.message };
+    }
+
+    // 3. Log audit log success
+    await logUserAuditAction(targetEmail, 'Password Updated', performedBy || 'SuperAdmin');
 
     return { success: true };
   } catch (e: any) {
+    if (targetEmail) {
+      await logUserAuditAction(targetEmail, 'Failed Password Update', performedBy || 'SuperAdmin');
+    }
     return { success: false, error: e.message || 'Update failed' };
   }
 }
@@ -387,31 +476,39 @@ export async function updateUserAuthStatus(
   const client = getAdminClient();
   if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
   try {
-    // 1. Get original profile to see what changed for logging
     const { data: originalProfile } = await client
       .from('profiles')
       .select('is_active, is_locked')
       .eq('id', userId)
       .single();
     
-    // 2. Update Profiles table
-    const { error: dbErr } = await client.from('profiles').update({
+    const updatePayload: any = {
       is_active: isActive,
       is_locked: isLocked
-    }).eq('id', userId);
+    };
+    if (!isLocked) {
+      updatePayload.failed_attempts = 0;
+    }
+
+    const { error: dbErr } = await client
+      .from('profiles')
+      .update(updatePayload)
+      .eq('id', userId);
     if (dbErr) return { success: false, error: dbErr.message };
 
-    // 3. Handle Lock/Unlock or Disable in Supabase Auth
     if (isLocked === false && originalProfile?.is_locked === true) {
-      // Unlock account (lift ban)
       const { error: authErr } = await client.auth.admin.updateUserById(userId, {
         ban_duration: 'none'
       });
       if (authErr) console.warn('Unlock auth warn:', authErr.message);
       
-      // Log audit
       await logUserAuditAction(userEmail, 'Account Unlock', performedBy);
     } else if (isLocked !== originalProfile?.is_locked && isLocked) {
+      const { error: authErr } = await client.auth.admin.updateUserById(userId, {
+        ban_duration: '876000h'
+      });
+      if (authErr) console.warn('Lock auth warn:', authErr.message);
+      await client.auth.admin.signOut(userId);
       await logUserAuditAction(userEmail, 'Account Lock', performedBy);
     }
     
@@ -419,14 +516,12 @@ export async function updateUserAuthStatus(
       const action = isActive ? 'Account Enable' : 'Account Disable';
       await logUserAuditAction(userEmail, action, performedBy);
       
-      // If disabling the user, sign them out globally and ban them
       if (!isActive) {
         await client.auth.admin.signOut(userId);
         await client.auth.admin.updateUserById(userId, {
-          ban_duration: '876000h' // ban for 100 years
+          ban_duration: '876000h'
         });
       } else {
-        // If enabling, lift any ban
         await client.auth.admin.updateUserById(userId, {
           ban_duration: 'none'
         });
@@ -444,13 +539,13 @@ export async function adminForcePasswordChange(userId: string, userEmail: string
   if (!client) return { success: false, error: 'NO_SERVICE_KEY' };
   try {
     const { error: authErr } = await client.auth.admin.updateUserById(userId, {
-      user_metadata: { first_login_completed: false }
+      user_metadata: { first_login_completed: false, force_password_change: true }
     });
     if (authErr) return { success: false, error: authErr.message };
 
     const { error: dbErr } = await client
       .from('profiles')
-      .update({ first_login_completed: false })
+      .update({ first_login_completed: false, force_password_change: true })
       .eq('id', userId);
     if (dbErr) return { success: false, error: dbErr.message };
 
@@ -461,4 +556,127 @@ export async function adminForcePasswordChange(userId: string, userEmail: string
   }
 }
 
+export async function checkUserLockedStatus(email: string) {
+  const client = getAdminClient();
+  if (!client) return { success: true };
 
+  try {
+    const { data: profile, error } = await client
+      .from('profiles')
+      .select('is_locked, is_active')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (error) throw error;
+    if (profile) {
+      if (profile.is_active === false) {
+        return { success: false, error: 'Your account has been disabled. Please contact your administrator.' };
+      }
+      if (profile.is_locked === true) {
+        return { success: false, error: 'Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock it.' };
+      }
+    }
+    return { success: true };
+  } catch (e: any) {
+    console.error('Lock status check error:', e);
+    return { success: true };
+  }
+}
+
+export async function handleFailedLogin(email: string) {
+  const client = getAdminClient();
+  if (!client) return { locked: false };
+
+  const normalizedEmail = email.trim().toLowerCase();
+  try {
+    const { data: profile, error } = await client
+      .from('profiles')
+      .select('id, failed_attempts, is_locked, is_active')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!profile) return { locked: false };
+
+    const newAttempts = (profile.failed_attempts || 0) + 1;
+    
+    if (newAttempts >= 5) {
+      // Lock account in DB
+      const { error: dbErr } = await client
+        .from('profiles')
+        .update({ is_locked: true, failed_attempts: newAttempts })
+        .eq('id', profile.id);
+      
+      if (dbErr) throw dbErr;
+
+      // Ban in Supabase Auth
+      const { error: authErr } = await client.auth.admin.updateUserById(profile.id, {
+        ban_duration: '876000h'
+      });
+      if (authErr) console.warn('Auth ban lock warn:', authErr.message);
+
+      // Sign out current sessions
+      await client.auth.admin.signOut(profile.id);
+
+      // Audit log
+      await logUserAuditAction(normalizedEmail, 'Account Lock', 'System');
+
+      return { locked: true, error: 'Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock it.' };
+    } else {
+      const { error: dbErr } = await client
+        .from('profiles')
+        .update({ failed_attempts: newAttempts })
+        .eq('id', profile.id);
+      
+      if (dbErr) throw dbErr;
+
+      return { locked: false, attemptsRemaining: 5 - newAttempts };
+    }
+  } catch (e: any) {
+    console.error('Failed login tracker fatal error:', e);
+    return { locked: false };
+  }
+}
+
+export async function handleSuccessfulLogin(email: string) {
+  const client = getAdminClient();
+  if (!client) return { success: false };
+
+  const normalizedEmail = email.trim().toLowerCase();
+  try {
+    const { data: profile, error } = await client
+      .from('profiles')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!profile) return { success: false };
+
+    const { error: dbErr } = await client
+      .from('profiles')
+      .update({ failed_attempts: 0 })
+      .eq('id', profile.id);
+
+    if (dbErr) throw dbErr;
+    return { success: true };
+  } catch (e: any) {
+    console.error('Successful login reset fatal error:', e);
+    return { success: false };
+  }
+}
+
+export async function deleteAuthUser(userId: string) {
+  const client = getAdminClient();
+  if (!client) {
+    return { success: false, error: 'NO_SERVICE_KEY' };
+  }
+
+  try {
+    const { error } = await client.auth.admin.deleteUser(userId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || 'Deletion failed' };
+  }
+}

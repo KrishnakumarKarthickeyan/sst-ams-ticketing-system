@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { KeyRound, ShieldCheck, ArrowRight, Lock } from 'lucide-react';
+import { KeyRound, ShieldCheck, ArrowRight, Lock, CheckCircle2, Circle } from 'lucide-react';
 import { BrandedLogo } from '../../components/ui/BrandedLogo';
 import { BRAND_CONFIG } from '../../config/branding';
 import { supabase } from '../../lib/supabase/client';
@@ -19,11 +19,20 @@ export default function FirstLoginResetPage() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
 
+  // Password policy checks
+  const hasMinLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(password);
+  
+  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
+
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (user.firstLoginCompleted === true) {
+      } else if (user.firstLoginCompleted === true && user.forcePasswordChange !== true) {
         redirectToDashboard(user.role);
       }
     }
@@ -53,8 +62,8 @@ export default function FirstLoginResetPage() {
     e.preventDefault();
     setError('');
     
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (!isPasswordValid) {
+      setError('Password does not meet the complexity requirements.');
       return;
     }
     
@@ -70,7 +79,7 @@ export default function FirstLoginResetPage() {
       // 1. Update Auth password and user metadata
       const { error: authErr } = await supabase.auth.updateUser({
         password: password,
-        data: { first_login_completed: true }
+        data: { first_login_completed: true, force_password_change: false }
       });
 
       if (authErr) throw authErr;
@@ -80,6 +89,7 @@ export default function FirstLoginResetPage() {
         .from('profiles')
         .update({
           first_login_completed: true,
+          force_password_change: false,
           password_changed_at: new Date().toISOString()
         })
         .eq('id', user?.id);
@@ -88,11 +98,14 @@ export default function FirstLoginResetPage() {
 
       // 3. Log user audit action
       if (user?.email) {
-        await logUserAuditAction(user.email, 'Force Password Change', user.email);
+        await logUserAuditAction(user.email, 'Password Update', user.email);
       }
 
       // 4. Force context refresh
       const refreshedUser = await refreshProfile();
+
+      // Enforce 350ms delay to allow Supabase cookie flush before triggering middleware redirects
+      await new Promise(resolve => setTimeout(resolve, 350));
 
       toast.success('Security settings initialized. Redirecting to workspace...', { id: toastId });
       
@@ -108,6 +121,9 @@ export default function FirstLoginResetPage() {
       setError(err.message || 'An error occurred during password update.');
       setUpdating(false);
       toast.error('Failed to update credentials.', { id: toastId });
+      if (user?.email) {
+        await logUserAuditAction(user.email, 'Failed Password Update', user.email);
+      }
     }
   };
 
@@ -115,7 +131,7 @@ export default function FirstLoginResetPage() {
     return (
       <main className="min-h-screen flex flex-col justify-center items-center px-4 bg-zinc-50 font-mono text-xs">
         <BrandedLogo animated={true} width={48} height={48} />
-        <div className="mt-4 uppercase tracking-widest text-zinc-550 font-bold">
+        <div className="mt-4 uppercase tracking-widest text-zinc-550 font-bold animate-pulse">
           Verifying security context...
         </div>
       </main>
@@ -167,11 +183,58 @@ export default function FirstLoginResetPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 6 characters"
+                  placeholder="Min. 8 characters"
                   className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
                   disabled={updating}
                   required
                 />
+              </div>
+            </div>
+
+            {/* Realtime Password Policy Validation Visual */}
+            <div className="bg-zinc-50 border border-zinc-150 rounded p-3.5 space-y-2 text-[10px]">
+              <span className="font-bold uppercase tracking-wider text-zinc-500 text-[8px] block mb-1">Password Complexity Rules:</span>
+              <div className="grid grid-cols-2 gap-2 text-zinc-650">
+                <div className="flex items-center gap-1.5">
+                  {hasMinLength ? (
+                    <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle size={12} className="text-zinc-300 shrink-0" />
+                  )}
+                  <span className={hasMinLength ? 'text-emerald-700 font-medium' : ''}>Min. 8 characters</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {hasUppercase ? (
+                    <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle size={12} className="text-zinc-300 shrink-0" />
+                  )}
+                  <span className={hasUppercase ? 'text-emerald-700 font-medium' : ''}>Uppercase letter</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {hasLowercase ? (
+                    <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle size={12} className="text-zinc-300 shrink-0" />
+                  )}
+                  <span className={hasLowercase ? 'text-emerald-700 font-medium' : ''}>Lowercase letter</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {hasNumber ? (
+                    <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle size={12} className="text-zinc-300 shrink-0" />
+                  )}
+                  <span className={hasNumber ? 'text-emerald-700 font-medium' : ''}>Number digit</span>
+                </div>
+                <div className="flex items-center gap-1.5 col-span-2">
+                  {hasSpecial ? (
+                    <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle size={12} className="text-zinc-300 shrink-0" />
+                  )}
+                  <span className={hasSpecial ? 'text-emerald-700 font-medium' : ''}>Special character (!@#$%)</span>
+                </div>
               </div>
             </div>
 
@@ -197,7 +260,7 @@ export default function FirstLoginResetPage() {
               <button
                 type="submit"
                 className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-800 text-[11px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                disabled={updating}
+                disabled={updating || !isPasswordValid}
               >
                 <span>Save Credentials & Login</span>
                 <ArrowRight size={13} />

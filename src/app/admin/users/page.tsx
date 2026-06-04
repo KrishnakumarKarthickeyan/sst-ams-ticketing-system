@@ -3,20 +3,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useTickets } from '../../../context/TicketContext';
-import { User, Plus, ShieldCheck, Mail, ShieldAlert, XCircle } from 'lucide-react';
+import { User, Plus, ShieldCheck, Mail, ShieldAlert, XCircle, Lock, KeyRound } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { 
   createAuthUser, 
-  updateAuthUserPassword, 
   deleteAuthUser, 
   provisionUser, 
   resetUserPasswordAdmin,
   updateUserAuthStatus,
   adminUpdatePasswordDirect,
   adminForcePasswordChange,
-  logUserAuditAction
+  logUserAuditAction,
+  verifyPasswordPolicy
 } from '../../actions/auth';
 
 interface UserProfile {
@@ -35,6 +35,7 @@ export default function AdminUsersPage() {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [pwdOption, setPwdOption] = useState<'auto' | 'manual'>('auto');
   const [newRole, setNewRole] = useState('Customer');
   const [newOrg, setNewOrg] = useState('Apex Global Industries');
 
@@ -47,8 +48,11 @@ export default function AdminUsersPage() {
   const [modalFormOrgId, setModalFormOrgId] = useState('');
   const [modalPassInput, setModalPassInput] = useState('');
   const [modalPassOption, setModalPassOption] = useState<'temp' | 'manual'>('temp');
+  const [resetPwdMethod, setResetPwdMethod] = useState<'auto' | 'manual'>('auto');
+  const [resetManualPwd, setResetManualPwd] = useState('');
   const [generatedPassResult, setGeneratedPassResult] = useState('');
   const [organizationsList, setOrganizationsList] = useState<{ id: string; name: string }[]>([]);
+  const [creationSuccessModal, setCreationSuccessModal] = useState<{ email: string; tempPass: string } | null>(null);
 
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
@@ -122,7 +126,6 @@ export default function AdminUsersPage() {
     if (!newName.trim() || !newEmail.trim()) return;
 
     if (isSupabaseConfigured && supabase) {
-      const password = newPassword || 'Password@12345';
       const toastId = toast.loading(`Registering user ${newEmail}...`);
       try {
         let authId = '';
@@ -130,16 +133,25 @@ export default function AdminUsersPage() {
         // 1. Try server-side provisioning (Service Role client)
         const authRes = await provisionUser({
           email: newEmail,
-          password,
           fullName: newName,
           role: newRole as any,
           companyName: newRole === 'Customer' ? newOrg : undefined,
           contractType: 'AMS',
-          contractHours: 160.00
+          contractHours: 160.00,
+          performedBy: user?.email || 'SuperAdmin',
+          initialPassword: pwdOption === 'manual' ? newPassword : undefined
         });
 
         if (authRes.error === 'NO_SERVICE_KEY') {
-          // Fallback to client-side non-persisted signup and manual inserts
+          // Generate password on client fallback
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+          let tempPass = '';
+          for (let i = 0; i < 10; i++) {
+            tempPass += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          const password = pwdOption === 'manual' ? newPassword : ('Temp@' + tempPass);
+
+          // Fallback to client-side signup
           const authClient = getClientSideAuthClient();
           if (!authClient) throw new Error('Client-side auth manager failed to initialize.');
           const { data, error: signUpErr } = await authClient.auth.signUp({
@@ -161,12 +173,12 @@ export default function AdminUsersPage() {
 
           // 2. Resolve organization if role is Customer
           let orgId = null;
-            if (newRole === 'Customer') {
-              const { data: existingOrg } = await supabase
-                .from('organizations')
-                .select('id')
-                .eq('name', newOrg.trim())
-                .maybeSingle();
+          if (newRole === 'Customer') {
+            const { data: existingOrg } = await supabase
+              .from('organizations')
+              .select('id')
+              .eq('name', newOrg.trim())
+              .maybeSingle();
 
             if (existingOrg) {
               orgId = existingOrg.id;
@@ -188,7 +200,9 @@ export default function AdminUsersPage() {
             full_name: newName,
             role: newRole,
             is_active: true,
-            organization_id: orgId
+            organization_id: orgId || undefined,
+            first_login_completed: false,
+            force_password_change: false
           });
 
           if (profErr) throw new Error(profErr.message);
@@ -207,15 +221,21 @@ export default function AdminUsersPage() {
             });
             if (contractErr) console.warn('Non-blocking contract error:', contractErr.message);
           }
+          
+          setCreationSuccessModal({ email: newEmail, tempPass: password });
+          toast.success('User provisioned successfully.', { id: toastId });
         } else if (!authRes.success) {
           throw new Error(authRes.error);
+        } else {
+          setCreationSuccessModal({ email: newEmail, tempPass: authRes.password || '' });
+          toast.success('User provisioned successfully.', { id: toastId });
         }
 
-        toast.success(`User provisioned successfully. Login password is: ${password}`, { id: toastId, duration: 8000 });
         fetchUsers();
         setNewName('');
         setNewEmail('');
         setNewPassword('');
+        setPwdOption('auto');
         setShowAddForm(false);
       } catch (err: any) {
         let msg = err.message;
@@ -226,6 +246,7 @@ export default function AdminUsersPage() {
         console.error(err);
       }
     } else {
+      const tempPass = Math.random().toString(36).substring(2, 10) + 'A1!';
       const newUser: UserProfile = {
         id: `usr-${Date.now()}`,
         name: newName,
@@ -237,9 +258,9 @@ export default function AdminUsersPage() {
       const updated = [...usersList, newUser];
       setLocalUsersList(updated);
       localStorage.setItem('sst_admin_users', JSON.stringify(updated));
+      setCreationSuccessModal({ email: newEmail, tempPass: tempPass });
       setNewName('');
       setNewEmail('');
-      setNewPassword('');
       setShowAddForm(false);
     }
   };
@@ -258,6 +279,8 @@ export default function AdminUsersPage() {
     setModalPassInput('');
     setModalPassOption('temp');
     setGeneratedPassResult('');
+    setResetPwdMethod('auto');
+    setResetManualPwd('');
   };
 
   const handleEditUserSubmit = async (e: React.FormEvent) => {
@@ -323,18 +346,13 @@ export default function AdminUsersPage() {
     if (!selectedUser) return;
     const targetUserId = selectedUser.id;
     const targetUserEmail = selectedUser.email;
+    const isManual = resetPwdMethod === 'manual';
+    const manualPwd = resetManualPwd.trim();
 
-    let finalPassword = modalPassInput.trim();
-    if (modalPassOption === 'temp') {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-      let randomPass = '';
-      for (let i = 0; i < 10; i++) {
-        randomPass += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      finalPassword = 'Temp@' + randomPass;
-    } else {
-      if (finalPassword.length < 6) {
-        toast.error('Manual password must be at least 6 characters long.');
+    if (isManual) {
+      const policy = await verifyPasswordPolicy(manualPwd);
+      if (!policy.isValid) {
+        toast.error(`Password reset failed: ${policy.error}`);
         return;
       }
     }
@@ -344,20 +362,24 @@ export default function AdminUsersPage() {
       try {
         const res = await resetUserPasswordAdmin(
           targetUserId,
-          finalPassword,
           user?.email || 'SuperAdmin',
-          targetUserEmail
+          targetUserEmail,
+          isManual ? manualPwd : undefined
         );
         if (!res.success) throw new Error(res.error);
         
-        setGeneratedPassResult(finalPassword);
-        toast.success('Temporary password generated successfully.', { id: toastId });
+        setGeneratedPassResult(isManual ? manualPwd : (res.password || ''));
+        toast.success('Password reset successfully.', { id: toastId });
+        setResetManualPwd('');
+        fetchUsers();
       } catch (err: any) {
         toast.error(`Reset failed: ${err.message}`, { id: toastId });
       }
     } else {
-      setGeneratedPassResult(finalPassword);
-      toast.success(`Local password updated to: ${finalPassword}`);
+      const tempPass = isManual ? manualPwd : ('Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!');
+      setGeneratedPassResult(tempPass);
+      toast.success(`Local password updated to: ${tempPass}`);
+      setResetManualPwd('');
     }
   };
 
@@ -368,8 +390,15 @@ export default function AdminUsersPage() {
     const targetUserEmail = selectedUser.email;
     const finalPassword = modalPassInput.trim();
 
-    if (finalPassword.length < 6) {
-      toast.error('Password must be at least 6 characters long.');
+    // Validate password policy
+    const hasMinLength = finalPassword.length >= 8;
+    const hasUppercase = /[A-Z]/.test(finalPassword);
+    const hasLowercase = /[a-z]/.test(finalPassword);
+    const hasNumber = /[0-9]/.test(finalPassword);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(finalPassword);
+
+    if (!hasMinLength || !hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
+      toast.error('Password does not meet complexity requirements. Must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special character.');
       return;
     }
 
@@ -387,6 +416,7 @@ export default function AdminUsersPage() {
         toast.success('User password updated successfully. They can login without force setup.', { id: toastId });
         setModalPassInput('');
         setSelectedUser(null);
+        fetchUsers();
       } catch (err: any) {
         toast.error(`Update failed: ${err.message}`, { id: toastId });
       }
@@ -541,17 +571,48 @@ export default function AdminUsersPage() {
               className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
             />
           </div>
-          <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Password</label>
-            <input
-              type="password"
-              required
-              placeholder="Assign a secure password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
-            />
+
+          <div className="space-y-1.5 pt-1">
+            <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Assignment</label>
+            <div className="flex items-center gap-4 text-xs font-sans">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="newPwdOption"
+                  checked={pwdOption === 'auto'}
+                  onChange={() => setPwdOption('auto')}
+                  className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
+                />
+                <span>Generate Automatically</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="newPwdOption"
+                  checked={pwdOption === 'manual'}
+                  onChange={() => setPwdOption('manual')}
+                  className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
+                />
+                <span>Define Manually</span>
+              </label>
+            </div>
           </div>
+
+          {pwdOption === 'manual' && (
+            <div className="space-y-1">
+              <label className="font-bold text-zinc-700 uppercase text-[9px]">Initial Password</label>
+              <input
+                type="password"
+                required
+                placeholder="Assign manual initial password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+              />
+              <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="font-bold text-zinc-700 uppercase text-[9px]">Role Group</label>
@@ -912,16 +973,17 @@ export default function AdminUsersPage() {
               {activeTab === 'credentials' && (
                 <div className="space-y-6">
                   
-                  {/* Option 1 & 2: Reset Password (Temp vs Manual) */}
+                  {/* Reset Password */}
                   <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5 border border-zinc-200 bg-zinc-50/30 rounded p-4">
-                    <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5">
-                      Reset Password (Forces Setup Page Redirection)
+                    <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5 flex items-center gap-1">
+                      <Lock size={12} className="text-zinc-550" />
+                      Reset Password (Forces Initial Setup)
                     </h5>
                     
                     {generatedPassResult && (
-                      <div className="bg-zinc-950 text-white border border-zinc-900 rounded p-3 text-[11px] font-bold space-y-1">
-                        <span className="text-[10px] text-zinc-400 font-normal uppercase block">Password Reset Successful!</span>
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="bg-zinc-950 text-white border border-zinc-900 rounded p-4 text-[11px] font-bold space-y-2">
+                        <span className="text-[10px] text-emerald-400 font-normal uppercase block">Password Reset Successful!</span>
+                        <div className="flex items-center justify-between gap-2 bg-zinc-900/60 p-2.5 rounded border border-zinc-800">
                           <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-400">{generatedPassResult}</span>
                           <button
                             type="button"
@@ -934,75 +996,85 @@ export default function AdminUsersPage() {
                             Copy Pass
                           </button>
                         </div>
-                        <span className="text-[9px] text-zinc-500 block font-normal pt-1.5 leading-normal">
+                        <span className="text-[9px] text-zinc-500 block font-normal pt-1 leading-normal">
                           Notice: Provide this password to the user. They will be forced to change it immediately upon next login.
                         </span>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-4 text-xs">
-                      <label className="flex items-center gap-1.5 font-semibold text-zinc-700 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="reset_option"
-                          checked={modalPassOption === 'temp'}
-                          onChange={() => { setModalPassOption('temp'); setGeneratedPassResult(''); }}
-                          className="accent-zinc-950"
-                        />
-                        Generate Temporary Password
-                      </label>
-                      <label className="flex items-center gap-1.5 font-semibold text-zinc-700 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="reset_option"
-                          checked={modalPassOption === 'manual'}
-                          onChange={() => { setModalPassOption('manual'); setGeneratedPassResult(''); }}
-                          className="accent-zinc-950"
-                        />
-                        Enter Password Manually
-                      </label>
+                    <div className="space-y-1.5 pt-1">
+                      <label className="font-bold text-zinc-700 uppercase text-[9px] block">Reset Option</label>
+                      <div className="flex items-center gap-4 text-xs font-sans">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="adminResetOption"
+                            checked={resetPwdMethod === 'auto'}
+                            onChange={() => setResetPwdMethod('auto')}
+                            className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
+                          />
+                          <span>Generate Automatically</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="adminResetOption"
+                            checked={resetPwdMethod === 'manual'}
+                            onChange={() => setResetPwdMethod('manual')}
+                            className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
+                          />
+                          <span>Define Manually</span>
+                        </label>
+                      </div>
                     </div>
 
-                    {modalPassOption === 'manual' && (
+                    {resetPwdMethod === 'manual' && (
                       <div className="space-y-1">
-                        <label className="font-bold text-zinc-750 uppercase text-[9px]">Define Password Override</label>
+                        <label className="font-bold text-zinc-750 uppercase text-[9px]">Manual Reset Password</label>
                         <input
                           type="text"
                           required
-                          placeholder="e.g. Assist@123"
-                          value={modalPassInput}
-                          onChange={(e) => setModalPassInput(e.target.value)}
+                          placeholder="Assign manual reset password"
+                          value={resetManualPwd}
+                          onChange={(e) => setResetManualPwd(e.target.value)}
                           className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
                         />
+                        <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
                       </div>
                     )}
 
-                    <div className="flex justify-end">
+                    <p className="text-[10px] text-zinc-500 leading-relaxed">
+                      Resets user credentials and redirects them to the force password setup screen on their next login.
+                    </p>
+
+                    <div className="flex justify-end pt-1">
                       <button
                         type="submit"
-                        className="px-4 py-2 border border-zinc-900 text-zinc-900 hover:bg-zinc-950 hover:text-white rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                        className="px-4 py-2 bg-zinc-950 text-white hover:bg-zinc-800 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
                       >
-                        {modalPassOption === 'temp' ? 'Generate & Reset Password' : 'Override & Reset Password'}
+                        Reset Password & Force Setup
                       </button>
                     </div>
                   </form>
 
-                  {/* Option 3: Update Password (Direct) */}
+                  {/* Update Password (Direct) */}
                   <form onSubmit={handleUpdatePasswordSubmit} className="space-y-3.5 border border-zinc-200 bg-zinc-50/30 rounded p-4">
-                    <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5">
-                      Direct Password Update (No Force Setup Required)
+                    <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5 flex items-center gap-1">
+                      <KeyRound size={12} className="text-zinc-550" />
+                      Direct Password Update (No Force Setup)
                     </h5>
                     
                     <div className="space-y-1">
-                      <label className="font-bold text-zinc-750 uppercase text-[9px]">New Password</label>
+                      <label className="font-bold text-zinc-750 uppercase text-[9px]">Set Manual Password</label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Assist@456"
+                        placeholder="Assign final manual password"
                         value={modalPassInput}
                         onChange={(e) => setModalPassInput(e.target.value)}
                         className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
                       />
+                      <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.</span>
                     </div>
 
                     <div className="flex justify-end">
@@ -1093,6 +1165,65 @@ export default function AdminUsersPage() {
                 </div>
               )}
 
+            </div>
+          </div>
+        </div>
+      )}
+      {/* USER CREATED SUCCESSFULLY MODAL */}
+      {creationSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono text-xs text-zinc-900 animate-fade-in">
+          <div className="bg-white border border-zinc-200 rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
+            <div className="border-b border-zinc-150 pb-2">
+              <h3 className="font-bold text-xs uppercase text-emerald-800 tracking-wide flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                User Created Successfully
+              </h3>
+            </div>
+            
+            <div className="space-y-3 font-mono">
+              <div className="space-y-1">
+                <span className="text-[9px] uppercase text-zinc-400 font-bold block">Email Address:</span>
+                <span className="font-bold text-zinc-800 select-all block text-xs bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5">{creationSuccessModal.email}</span>
+              </div>
+              
+              <div className="space-y-1">
+                <span className="text-[9px] uppercase text-zinc-400 font-bold block">Temporary Password:</span>
+                <span className="font-mono text-xs tracking-wider select-all font-extrabold text-zinc-950 bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5 block">{creationSuccessModal.tempPass}</span>
+              </div>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[10px] text-amber-800 leading-normal">
+              <span className="font-bold">Important Notice:</span> Provide this temporary password to the user. They will be forced to change it immediately upon their first login to access the workspace.
+            </div>
+            
+            <div className="flex gap-2 justify-end pt-2 border-t border-zinc-150">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(creationSuccessModal.tempPass);
+                  toast.success('Temporary password copied to clipboard!');
+                }}
+                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+              >
+                Copy Password
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`Email: ${creationSuccessModal.email}\nPassword: ${creationSuccessModal.tempPass}`);
+                  toast.success('Credentials copied to clipboard!');
+                }}
+                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+              >
+                Copy Credentials
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreationSuccessModal(null)}
+                className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

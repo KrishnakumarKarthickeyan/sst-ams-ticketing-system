@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
+import { checkUserLockedStatus, handleFailedLogin, handleSuccessfulLogin } from '../app/actions/auth';
 
 export type UserRole = 'SuperAdmin' | 'Manager' | 'Consultant' | 'Customer';
 
@@ -16,6 +17,8 @@ export interface UserSession {
   modules?: string[];
   phoneNumber?: string;
   firstLoginCompleted?: boolean;
+  forcePasswordChange?: boolean;
+  isLocked?: boolean;
 }
 
 interface AuthContextType {
@@ -59,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const profilePromise = supabase!
           .from('profiles')
-          .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, first_login_completed, organizations(name)')
+          .select('full_name, role, is_active, is_locked, consultant_type, sap_modules, phone_number, first_login_completed, force_password_change, organizations(name)')
           .eq('id', session.user.id)
           .single();
 
@@ -69,8 +72,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
 
-        if (error || !profile || !profile.is_active) {
-          console.error("Failed or inactive user profile. Clearing auth session:", error);
+        if (error || !profile || !profile.is_active || profile.is_locked === true) {
+          console.error("Failed, inactive, or locked user profile. Clearing auth session:", error);
           await supabase!.auth.signOut();
           setUser(null);
           setLoading(false);
@@ -87,7 +90,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           consultantType: profile.consultant_type as any,
           modules: profile.sap_modules || [],
           phoneNumber: profile.phone_number,
-          firstLoginCompleted: profile.first_login_completed
+          firstLoginCompleted: profile.first_login_completed,
+          forcePasswordChange: profile.force_password_change,
+          isLocked: profile.is_locked
         };
         
         setUser(sessionUser);
@@ -167,6 +172,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured && supabase) {
       try {
+        // Pre-check user locked/active status from profiles
+        const lockCheck = await checkUserLockedStatus(normalizedEmail);
+        if (!lockCheck.success) {
+          isLoggingInRef.current = false;
+          return { success: false, error: lockCheck.error };
+        }
+
         const loginPromise = supabase.auth.signInWithPassword({
           email: normalizedEmail,
           password: password || ''
@@ -176,17 +188,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTimeout(() => reject(new Error('Authentication service timeout. Please verify your connection status.')), 15000)
         );
 
-        // Enforce a strict 10s network timeout safety check
+        // Enforce a strict network timeout safety check
         const { data, error } = await Promise.race([loginPromise, timeoutPromise]) as any;
 
         if (error) {
-          return { success: false, error: error.message };
+          // Increment failed attempts and trigger lockout if limit reached
+          const failedRes = await handleFailedLogin(normalizedEmail);
+          const errorMsg = failedRes.locked ? failedRes.error : (error.message || 'Invalid credentials.');
+          isLoggingInRef.current = false;
+          return { success: false, error: errorMsg };
         }
 
         if (data.user) {
+          // Successful login: reset failed attempts
+          await handleSuccessfulLogin(normalizedEmail);
+
           const fetchProfile = () => supabase
             .from('profiles')
-            .select('full_name, role, is_active, consultant_type, sap_modules, phone_number, first_login_completed, organizations(name)')
+            .select('full_name, role, is_active, is_locked, consultant_type, sap_modules, phone_number, first_login_completed, force_password_change, organizations(name)')
             .eq('id', data.user.id)
             .single();
 
@@ -204,6 +223,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setUser(null);
               return { success: false, error: 'Your account has been disabled. Please contact your administrator.' };
             }
+            if (profile.is_locked) {
+              await supabase.auth.signOut();
+              setUser(null);
+              return { success: false, error: 'Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock it.' };
+            }
             const userOrg = profile.organizations as any;
             const sessionUser: UserSession = {
               id: data.user.id,
@@ -214,7 +238,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               consultantType: profile.consultant_type as any,
               modules: profile.sap_modules || [],
               phoneNumber: profile.phone_number,
-              firstLoginCompleted: profile.first_login_completed
+              firstLoginCompleted: profile.first_login_completed,
+              forcePasswordChange: profile.force_password_change,
+              isLocked: profile.is_locked
             };
             
             setUser(sessionUser);
