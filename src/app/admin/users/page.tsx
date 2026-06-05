@@ -139,7 +139,7 @@ export default function AdminUsersPage() {
           contractType: 'AMS',
           contractHours: 160.00,
           performedBy: user?.email || 'SuperAdmin',
-          initialPassword: pwdOption === 'manual' ? newPassword : undefined
+          initialPassword: (newRole === 'SuperAdmin' && pwdOption === 'manual') ? newPassword : undefined
         });
 
         if (authRes.error === 'NO_SERVICE_KEY') {
@@ -345,41 +345,30 @@ export default function AdminUsersPage() {
     e.preventDefault();
     if (!selectedUser) return;
     const targetUserId = selectedUser.id;
-    const targetUserEmail = selectedUser.email;
-    const isManual = resetPwdMethod === 'manual';
-    const manualPwd = resetManualPwd.trim();
-
-    if (isManual) {
-      const policy = await verifyPasswordPolicy(manualPwd);
-      if (!policy.isValid) {
-        toast.error(`Password reset failed: ${policy.error}`);
-        return;
-      }
-    }
 
     if (isSupabaseConfigured && supabase) {
       const toastId = toast.loading('Authorizing password overwrite...');
       try {
-        const res = await resetUserPasswordAdmin(
-          targetUserId,
-          user?.email || 'SuperAdmin',
-          targetUserEmail,
-          isManual ? manualPwd : undefined
-        );
-        if (!res.success) throw new Error(res.error);
+        const apiRes = await fetch('/api/admin/users/reset-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ targetUserId })
+        });
+        const res = await apiRes.json();
+        if (!apiRes.ok || !res.success) throw new Error(res.error || 'API request failed');
         
-        setGeneratedPassResult(isManual ? manualPwd : (res.password || ''));
+        setGeneratedPassResult(res.tempPassword);
         toast.success('Password reset successfully.', { id: toastId });
-        setResetManualPwd('');
         fetchUsers();
       } catch (err: any) {
         toast.error(`Reset failed: ${err.message}`, { id: toastId });
       }
     } else {
-      const tempPass = isManual ? manualPwd : ('Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!');
+      const tempPass = 'Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!';
       setGeneratedPassResult(tempPass);
       toast.success(`Local password updated to: ${tempPass}`);
-      setResetManualPwd('');
     }
   };
 
@@ -387,7 +376,6 @@ export default function AdminUsersPage() {
     e.preventDefault();
     if (!selectedUser) return;
     const targetUserId = selectedUser.id;
-    const targetUserEmail = selectedUser.email;
     const finalPassword = modalPassInput.trim();
 
     // Validate password policy
@@ -405,13 +393,15 @@ export default function AdminUsersPage() {
     if (isSupabaseConfigured && supabase) {
       const toastId = toast.loading('Authorizing permanent password update...');
       try {
-        const res = await adminUpdatePasswordDirect(
-          targetUserId,
-          finalPassword,
-          user?.email || 'SuperAdmin',
-          targetUserEmail
-        );
-        if (!res.success) throw new Error(res.error);
+        const apiRes = await fetch('/api/admin/users/update-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ targetUserId, newPassword: finalPassword })
+        });
+        const res = await apiRes.json();
+        if (!apiRes.ok || !res.success) throw new Error(res.error || 'API request failed');
         
         toast.success('User password updated successfully. They can login without force setup.', { id: toastId });
         setModalPassInput('');
@@ -572,44 +562,53 @@ export default function AdminUsersPage() {
             />
           </div>
 
-          <div className="space-y-1.5 pt-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Assignment</label>
-            <div className="flex items-center gap-4 text-xs font-sans">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="radio"
-                  name="newPwdOption"
-                  checked={pwdOption === 'auto'}
-                  onChange={() => setPwdOption('auto')}
-                  className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
-                />
-                <span>Generate Automatically</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="radio"
-                  name="newPwdOption"
-                  checked={pwdOption === 'manual'}
-                  onChange={() => setPwdOption('manual')}
-                  className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
-                />
-                <span>Define Manually</span>
-              </label>
-            </div>
-          </div>
+          {newRole === 'SuperAdmin' ? (
+            <>
+              <div className="space-y-1.5 pt-1">
+                <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Assignment</label>
+                <div className="flex items-center gap-4 text-xs font-sans">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="newPwdOption"
+                      checked={pwdOption === 'auto'}
+                      onChange={() => setPwdOption('auto')}
+                      className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
+                    />
+                    <span>Generate Automatically</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="newPwdOption"
+                      checked={pwdOption === 'manual'}
+                      onChange={() => setPwdOption('manual')}
+                      className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
+                    />
+                    <span>Define Manually</span>
+                  </label>
+                </div>
+              </div>
 
-          {pwdOption === 'manual' && (
-            <div className="space-y-1">
-              <label className="font-bold text-zinc-700 uppercase text-[9px]">Initial Password</label>
-              <input
-                type="password"
-                required
-                placeholder="Assign manual initial password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
-              />
-              <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
+              {pwdOption === 'manual' && (
+                <div className="space-y-1">
+                  <label className="font-bold text-zinc-700 uppercase text-[9px]">Initial Password</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Assign manual initial password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                  />
+                  <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-1 pt-1">
+              <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Assignment</label>
+              <p className="text-[10px] text-zinc-500 font-mono italic">A secure temporary password will be auto-generated for this role.</p>
             </div>
           )}
 
@@ -977,7 +976,7 @@ export default function AdminUsersPage() {
                   <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5 border border-zinc-200 bg-zinc-50/30 rounded p-4">
                     <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5 flex items-center gap-1">
                       <Lock size={12} className="text-zinc-550" />
-                      Reset Password (Forces Initial Setup)
+                      Reset Password (Forces Setup on Next Login)
                     </h5>
                     
                     {generatedPassResult && (
@@ -999,47 +998,6 @@ export default function AdminUsersPage() {
                         <span className="text-[9px] text-zinc-500 block font-normal pt-1 leading-normal">
                           Notice: Provide this password to the user. They will be forced to change it immediately upon next login.
                         </span>
-                      </div>
-                    )}
-
-                    <div className="space-y-1.5 pt-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] block">Reset Option</label>
-                      <div className="flex items-center gap-4 text-xs font-sans">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="adminResetOption"
-                            checked={resetPwdMethod === 'auto'}
-                            onChange={() => setResetPwdMethod('auto')}
-                            className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
-                          />
-                          <span>Generate Automatically</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="adminResetOption"
-                            checked={resetPwdMethod === 'manual'}
-                            onChange={() => setResetPwdMethod('manual')}
-                            className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
-                          />
-                          <span>Define Manually</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {resetPwdMethod === 'manual' && (
-                      <div className="space-y-1">
-                        <label className="font-bold text-zinc-750 uppercase text-[9px]">Manual Reset Password</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Assign manual reset password"
-                          value={resetManualPwd}
-                          onChange={(e) => setResetManualPwd(e.target.value)}
-                          className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
-                        />
-                        <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
                       </div>
                     )}
 

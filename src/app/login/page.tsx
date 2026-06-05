@@ -11,6 +11,14 @@ import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../../components/ui/dialog';
+import {
   AreaChart,
   Area,
   ResponsiveContainer
@@ -24,6 +32,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
   // Auto redirect to correct dashboard if already logged in
   useEffect(() => {
@@ -63,16 +72,22 @@ export default function LoginPage() {
       return;
     }
 
-    const res = await login(email, password);
-    if (res.success && res.user) {
-      // ServiceNow-grade authentication guard delay: wait 250ms to ensure browser completes cookie persistence
-      await new Promise(resolve => setTimeout(resolve, 250));
-      redirectToDashboard(res.user.role);
-    } else if (res.success) {
-      await new Promise(resolve => setTimeout(resolve, 250));
-      redirectToDashboard('Customer');
-    } else {
-      setError(res.error || 'Invalid credentials.');
+    try {
+      const res = await login(email, password);
+      if (res.success && res.user) {
+        // ServiceNow-grade authentication guard delay: wait 250ms to ensure browser completes cookie persistence
+        await new Promise(resolve => setTimeout(resolve, 250));
+        redirectToDashboard(res.user.role);
+      } else if (res.success) {
+        await new Promise(resolve => setTimeout(resolve, 250));
+        redirectToDashboard('Customer');
+      } else {
+        setError(res.error || 'Invalid credentials.');
+        setAuthenticating(false);
+      }
+    } catch (err: any) {
+      console.error('Login submission error:', err);
+      setError(err.message || 'An unexpected authentication error occurred.');
       setAuthenticating(false);
     }
   };
@@ -259,9 +274,13 @@ export default function LoginPage() {
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <label className="font-bold text-[#111827] uppercase tracking-wider text-[9px]">Password</label>
-                    <Link href="/forgot-password" className="text-[9px] text-[#6B7280] hover:text-[#111827] hover:underline">
+                    <button
+                      type="button"
+                      onClick={() => setForgotPasswordOpen(true)}
+                      className="text-[9px] text-[#6B7280] hover:text-[#111827] hover:underline bg-transparent border-none cursor-pointer p-0"
+                    >
                       Forgot Password?
-                    </Link>
+                    </button>
                   </div>
                   <div className="relative">
                     <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
@@ -310,6 +329,27 @@ export default function LoginPage() {
         </div>
 
       </div>
+
+      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+        <DialogContent className="max-w-md bg-white border border-zinc-200 shadow-lg p-6 rounded-lg font-mono text-xs">
+          <DialogHeader className="space-y-1 text-center sm:text-left">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-950">
+              Password Reset Required
+            </DialogTitle>
+            <DialogDescription className="text-[11px] text-zinc-550 pt-2 leading-relaxed">
+              Please contact your Super Admin to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex justify-end">
+            <Button
+              onClick={() => setForgotPasswordOpen(false)}
+              className="px-4 py-2 bg-zinc-950 hover:bg-zinc-800 text-white rounded text-[10px] font-bold uppercase tracking-wider transition border-none cursor-pointer"
+            >
+              Okay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </main>
   );

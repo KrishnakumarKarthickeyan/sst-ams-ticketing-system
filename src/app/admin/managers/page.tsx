@@ -102,7 +102,7 @@ export default function AdminManagersPage() {
 
   const handleAddManager = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || (pwdOption === 'manual' && !password.trim())) {
+    if (!name.trim() || !email.trim()) {
       toast.error('All required fields must be filled out.');
       return;
     }
@@ -116,11 +116,11 @@ export default function AdminManagersPage() {
           fullName: name,
           role: 'Manager',
           phoneNumber: phoneNumber || 'N/A',
-          initialPassword: pwdOption === 'manual' ? password : undefined
+          initialPassword: undefined
         });
 
         if (res.success) {
-          const actualPass = res.password || password;
+          const actualPass = res.password || '';
           toast.success(`Manager account provisioned successfully. Initial Password: ${actualPass}`, { id: loadId, duration: 8000 });
           setName('');
           setEmail('');
@@ -137,7 +137,7 @@ export default function AdminManagersPage() {
       }
     } else {
       // Local fallback
-      const actualPass = pwdOption === 'manual' ? password : 'Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!';
+      const actualPass = 'Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!';
       const newMgr: ManagerProfile = {
         id: `mgr-${Date.now()}`,
         name,
@@ -186,33 +186,30 @@ export default function AdminManagersPage() {
   };
 
   const handleResetPassword = async (mgr: ManagerProfile) => {
-    const input = prompt(`Reset Password for ${mgr.name}:\n- Type a new manual secure password\n- Or leave empty and click OK to generate a secure temporary password automatically:`);
-    if (input === null) return; // user cancelled
+    if (!confirm(`Are you sure you want to reset the password for ${mgr.name}? This will generate a new secure temporary password and force a password change on next login.`)) {
+      return;
+    }
 
-    const isManual = input.trim().length > 0;
-    const manualPwd = input.trim();
-
-    const loadId = toast.loading(`Overwriting login credentials for ${mgr.name}...`);
+    const loadId = toast.loading(`Resetting credentials for ${mgr.name}...`);
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const res = await resetUserPasswordAdmin(
-          mgr.id,
-          user?.email || 'SuperAdmin',
-          mgr.email,
-          isManual ? manualPwd : undefined
-        );
-        if (res.success) {
-          const finalPass = isManual ? manualPwd : (res.password || '');
-          toast.success(`Credentials updated successfully. Password: ${finalPass}`, { id: loadId, duration: 8000 });
-        } else {
-          throw new Error(res.error || 'Operation denied by database constraints.');
-        }
+        const apiRes = await fetch('/api/admin/users/reset-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ targetUserId: mgr.id })
+        });
+        const res = await apiRes.json();
+        if (!apiRes.ok || !res.success) throw new Error(res.error || 'API request failed');
+        
+        toast.success(`Credentials updated successfully. Password: ${res.tempPassword}`, { id: loadId, duration: 12000 });
       } catch (err: any) {
         toast.error(`Reset failed: ${err.message}`, { id: loadId });
       }
     } else {
-      const finalPass = isManual ? manualPwd : ('Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!');
+      const finalPass = 'Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!';
       alert(`Local fallback reset complete. Password set to: ${finalPass}`);
       toast.dismiss(loadId);
     }
@@ -348,45 +345,10 @@ export default function AdminManagersPage() {
                     className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
                   />
                 </div>
-                <div className="space-y-1.5 pt-1 md:col-span-2">
+                <div className="space-y-1 pt-1 md:col-span-2">
                   <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Assignment</label>
-                  <div className="flex items-center gap-4 text-xs font-sans">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="mgrPwdOption"
-                        checked={pwdOption === 'auto'}
-                        onChange={() => setPwdOption('auto')}
-                        className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
-                      />
-                      <span>Generate Automatically</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="mgrPwdOption"
-                        checked={pwdOption === 'manual'}
-                        onChange={() => setPwdOption('manual')}
-                        className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
-                      />
-                      <span>Define Manually</span>
-                    </label>
-                  </div>
+                  <p className="text-[10px] text-zinc-500 font-mono italic">A secure temporary password will be auto-generated for this role.</p>
                 </div>
-                {pwdOption === 'manual' && (
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px]">Initial Password *</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Assign manual secure password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
-                    />
-                    <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
-                  </div>
-                )}
                 <div className="space-y-1">
                   <label className="font-bold text-zinc-700 uppercase text-[9px]">Phone Number</label>
                   <input

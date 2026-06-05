@@ -1087,14 +1087,7 @@ export default function ManagerConsultantsPage() {
                       >
                         Edit Profile
                       </Button>
-                      <Button
-                        onClick={() => setActiveAction({ type: 'reset_password', targetId: c.id })}
-                        size="sm"
-                        variant="outline"
-                        className="text-[10px] font-bold uppercase h-7 text-zinc-500 cursor-pointer"
-                      >
-                        Reset Password
-                      </Button>
+
                     </div>
                     <div className="flex gap-2 items-center">
                       <button
@@ -1236,14 +1229,7 @@ export default function ManagerConsultantsPage() {
                       >
                         Edit Account
                       </Button>
-                      <Button
-                        onClick={() => setActiveAction({ type: 'reset_password', targetId: c.id })}
-                        size="sm"
-                        variant="outline"
-                        className="text-[10px] font-bold uppercase h-7 text-zinc-500 cursor-pointer"
-                      >
-                        Reset Password
-                      </Button>
+
                     </div>
                     <div className="flex gap-2 items-center">
                       <button
@@ -1479,50 +1465,7 @@ export default function ManagerConsultantsPage() {
                     />
                   </div>
 
-                  {activeAction.type === 'add_consultant' && (
-                    <>
-                      <div className="space-y-1.5 pt-1">
-                        <label className="font-bold text-zinc-700 uppercase text-[9px] block">Initial Password Option</label>
-                        <div className="flex items-center gap-4 text-xs font-sans">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="consultantPwdOption"
-                              checked={formPwdOption === 'auto'}
-                              onChange={() => setFormPwdOption('auto')}
-                              className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
-                            />
-                            <span>Generate Automatically</span>
-                          </label>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="consultantPwdOption"
-                              checked={formPwdOption === 'manual'}
-                              onChange={() => setFormPwdOption('manual')}
-                              className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
-                            />
-                            <span>Define Manually</span>
-                          </label>
-                        </div>
-                      </div>
 
-                      {formPwdOption === 'manual' && (
-                        <div className="space-y-1">
-                          <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider block">Initial Password *</label>
-                          <input
-                            type="password"
-                            required
-                            value={formPassword}
-                            onChange={(e) => setFormPassword(e.target.value)}
-                            placeholder="Assign a secure password"
-                            className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-955 font-mono"
-                          />
-                          <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
-                        </div>
-                      )}
-                    </>
-                  )}
 
                   <div className="space-y-1">
                     <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">SAP Module Tags (Comma Separated)</label>
@@ -1745,50 +1688,7 @@ export default function ManagerConsultantsPage() {
                         </select>
                       </div>
 
-                      {activeAction.type === 'add_customer' && (
-                        <>
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Initial Password Option</label>
-                            <div className="flex items-center gap-4 text-xs font-sans py-2">
-                              <label className="flex items-center gap-1.5 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="customerPwdOption"
-                                  checked={formPwdOption === 'auto'}
-                                  onChange={() => setFormPwdOption('auto')}
-                                  className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
-                                />
-                                <span>Generate Automatically</span>
-                              </label>
-                              <label className="flex items-center gap-1.5 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="customerPwdOption"
-                                  checked={formPwdOption === 'manual'}
-                                  onChange={() => setFormPwdOption('manual')}
-                                  className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
-                                />
-                                <span>Define Manually</span>
-                              </label>
-                            </div>
-                          </div>
 
-                          {formPwdOption === 'manual' && (
-                            <div className="space-y-1.5 md:col-span-2">
-                              <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Initial Password *</label>
-                              <input
-                                type="password"
-                                required
-                                value={formPassword}
-                                onChange={(e) => setFormPassword(e.target.value)}
-                                placeholder="Assign a secure password"
-                                className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-955 focus:border-zinc-955 transition duration-150 font-mono"
-                              />
-                              <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
-                            </div>
-                          )}
-                        </>
-                      )}
                     </div>
                   </div>
 

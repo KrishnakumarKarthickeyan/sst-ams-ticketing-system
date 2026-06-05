@@ -76,32 +76,20 @@ export default function FirstLoginResetPage() {
     const toastId = toast.loading('Securing your new credentials...');
 
     try {
-      // 1. Update Auth password and user metadata
-      const { error: authErr } = await supabase.auth.updateUser({
-        password: password,
-        data: { first_login_completed: true, force_password_change: false }
+      const apiRes = await fetch('/api/users/set-new-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ newPassword: password })
       });
 
-      if (authErr) throw authErr;
-
-      // 2. Update profiles table
-      const { error: dbErr } = await supabase
-        .from('profiles')
-        .update({
-          first_login_completed: true,
-          force_password_change: false,
-          password_changed_at: new Date().toISOString()
-        })
-        .eq('id', user?.id);
-
-      if (dbErr) throw dbErr;
-
-      // 3. Log user audit action
-      if (user?.email) {
-        await logUserAuditAction(user.email, 'Password Update', user.email);
+      const resData = await apiRes.json();
+      if (!apiRes.ok || !resData.success) {
+        throw new Error(resData.error || 'Failed to update credentials.');
       }
 
-      // 4. Force context refresh
+      // Force context refresh
       const refreshedUser = await refreshProfile();
 
       // Enforce 350ms delay to allow Supabase cookie flush before triggering middleware redirects
@@ -121,9 +109,6 @@ export default function FirstLoginResetPage() {
       setError(err.message || 'An error occurred during password update.');
       setUpdating(false);
       toast.error('Failed to update credentials.', { id: toastId });
-      if (user?.email) {
-        await logUserAuditAction(user.email, 'Failed Password Update', user.email);
-      }
     }
   };
 
