@@ -36,13 +36,20 @@ export default function LoginPage() {
 
   // Auto redirect to correct dashboard if already logged in
   useEffect(() => {
-    if (!loading && user) {
-      redirectToDashboard(user.role);
+    if (!loading && user && !authenticating) {
+      redirectToDashboard(user);
     }
-  }, [user, loading]);
+  }, [user, loading, authenticating]);
 
-  const redirectToDashboard = (role: string) => {
-    switch (role) {
+  const redirectToDashboard = (sessionUser: any) => {
+    const isForce = sessionUser.forcePasswordChange === true || sessionUser.firstLoginCompleted === false;
+    if (isForce) {
+      router.push('/first-login-reset');
+      router.refresh();
+      return;
+    }
+
+    switch (sessionUser.role) {
       case 'SuperAdmin':
         router.push('/admin/dashboard');
         break;
@@ -72,23 +79,41 @@ export default function LoginPage() {
       return;
     }
 
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setError('Login is taking longer than expected. Please try again.');
+      setAuthenticating(false);
+    }, 8000);
+
     try {
       const res = await login(email, password);
+      clearTimeout(timeoutId);
+
+      if (timedOut) return;
+
       if (res.success && res.user) {
-        // ServiceNow-grade authentication guard delay: wait 250ms to ensure browser completes cookie persistence
-        await new Promise(resolve => setTimeout(resolve, 250));
-        redirectToDashboard(res.user.role);
-      } else if (res.success) {
-        await new Promise(resolve => setTimeout(resolve, 250));
-        redirectToDashboard('Customer');
+        // Wait for the auth cookie to be written to document.cookie
+        const hasCookie = () => document.cookie.split(';').some(c => c.trim().startsWith('sb-'));
+        if (!hasCookie()) {
+          for (let i = 0; i < 20; i++) {
+            await new Promise(r => setTimeout(r, 50));
+            if (hasCookie()) break;
+          }
+        }
+        
+        redirectToDashboard(res.user);
       } else {
         setError(res.error || 'Invalid credentials.');
         setAuthenticating(false);
       }
     } catch (err: any) {
-      console.error('Login submission error:', err);
-      setError(err.message || 'An unexpected authentication error occurred.');
-      setAuthenticating(false);
+      clearTimeout(timeoutId);
+      if (!timedOut) {
+        console.error('Login submission error:', err);
+        setError(err.message || 'An unexpected authentication error occurred.');
+        setAuthenticating(false);
+      }
     }
   };
 

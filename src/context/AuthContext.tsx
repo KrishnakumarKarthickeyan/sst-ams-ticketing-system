@@ -236,8 +236,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return { success: true, user: sessionUser };
           }
         }
+        await supabase.auth.signOut();
+        setUser(null);
         return { success: false, error: 'User profile mapping failed.' };
       } catch (e: any) {
+        if (supabase) {
+          await supabase.auth.signOut().catch(() => {});
+        }
+        setUser(null);
         return { success: false, error: e.message || 'An error occurred during authentication.' };
       } finally {
         setTimeout(() => { isLoggingInRef.current = false; }, 1500);

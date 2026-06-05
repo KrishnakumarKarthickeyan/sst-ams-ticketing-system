@@ -18,6 +18,14 @@ import {
   logUserAuditAction,
   verifyPasswordPolicy
 } from '../../actions/auth';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../../../components/ui/dialog';
 
 interface UserProfile {
   id: string;
@@ -53,6 +61,107 @@ export default function AdminUsersPage() {
   const [generatedPassResult, setGeneratedPassResult] = useState('');
   const [organizationsList, setOrganizationsList] = useState<{ id: string; name: string }[]>([]);
   const [creationSuccessModal, setCreationSuccessModal] = useState<{ email: string; tempPass: string } | null>(null);
+
+  // Reset Password Dialog states
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetTargetUser, setResetTargetUser] = useState<any | null>(null);
+  const [resetManualPassword, setResetManualPassword] = useState('');
+  const [resetGeneratedPassword, setResetGeneratedPassword] = useState('');
+  const [resetDone, setResetDone] = useState(false);
+
+  // Update Password Dialog states
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [updateTargetUser, setUpdateTargetUser] = useState<any | null>(null);
+  const [updateNewPassword, setUpdateNewPassword] = useState('');
+  const [updateConfirmPassword, setUpdateConfirmPassword] = useState('');
+  const [updateForceChange, setUpdateForceChange] = useState(false);
+
+  const generatePass = () => {
+    const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowers = 'abcdefghijkmnopqrstuvwxyz';
+    const numbers = '23456789';
+    const specials = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const getRand = (str: string) => str[Math.floor(Math.random() * str.length)];
+    const chars = [getRand(uppers), getRand(lowers), getRand(numbers), getRand(specials)];
+    const allChars = uppers + lowers + numbers + specials;
+    for (let i = 4; i < 10; i++) chars.push(getRand(allChars));
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
+  };
+
+  const handleDirectResetPassword = async () => {
+    if (!resetTargetUser) return;
+    const targetUserId = resetTargetUser.id;
+    const manualPassword = resetManualPassword.trim();
+
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Resetting password...');
+      try {
+        const apiRes = await fetch('/api/admin/users/reset-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ targetUserId, manualPassword })
+        });
+        const res = await apiRes.json();
+        if (!apiRes.ok || !res.success) throw new Error(res.error || 'API request failed');
+        
+        setResetGeneratedPassword(res.tempPassword);
+        setResetDone(true);
+        toast.success('Password reset successfully.', { id: toastId });
+        fetchUsers();
+      } catch (err: any) {
+        toast.error(`Reset failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      const tempPass = manualPassword !== '' ? manualPassword : ('Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!');
+      setResetGeneratedPassword(tempPass);
+      setResetDone(true);
+      toast.success(`Local password reset to: ${tempPass}`);
+    }
+  };
+
+  const handleDirectUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!updateTargetUser) return;
+    const targetUserId = updateTargetUser.id;
+    const newPassword = updateNewPassword.trim();
+    const confirmPassword = updateConfirmPassword.trim();
+    const forcePasswordChange = updateForceChange;
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match.');
+      return;
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Updating password...');
+      try {
+        const apiRes = await fetch('/api/admin/users/update-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ targetUserId, newPassword, forcePasswordChange })
+        });
+        const res = await apiRes.json();
+        if (!apiRes.ok || !res.success) throw new Error(res.error || 'API request failed');
+        
+        toast.success('Password updated successfully.', { id: toastId });
+        setUpdateDialogOpen(false);
+        fetchUsers();
+      } catch (err: any) {
+        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      }
+    } else {
+      toast.success(`Local password updated successfully (Force Change: ${forcePasswordChange ? 'Yes' : 'No'})`);
+      setUpdateDialogOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
@@ -728,6 +837,34 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {!isAdmin && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setResetTargetUser(u);
+                              setResetManualPassword('');
+                              setResetGeneratedPassword(generatePass());
+                              setResetDone(false);
+                              setResetDialogOpen(true);
+                            }}
+                            className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-zinc-300 hover:border-zinc-950 hover:bg-zinc-50 transition cursor-pointer"
+                          >
+                            Reset Password
+                          </button>
+                          <button
+                            onClick={() => {
+                              setUpdateTargetUser(u);
+                              setUpdateNewPassword('');
+                              setUpdateConfirmPassword('');
+                              setUpdateForceChange(false);
+                              setUpdateDialogOpen(true);
+                            }}
+                            className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-zinc-300 hover:border-zinc-950 hover:bg-zinc-50 transition cursor-pointer"
+                          >
+                            Update Password
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => handleOpenUserModal(u, 'view')}
                         className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded border border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800 transition cursor-pointer"
@@ -1186,6 +1323,213 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+      {/* Reset Password Dialog */}
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg text-zinc-955 font-mono text-xs">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Authorize a temporary credentials reset for this user account.
+            </DialogDescription>
+          </DialogHeader>
+
+          {resetTargetUser && (
+            <div className="space-y-4 my-2">
+              <div className="grid grid-cols-3 gap-1 border-b border-zinc-100 pb-2">
+                <span className="font-bold text-zinc-400 uppercase text-[9px]">User Name</span>
+                <span className="col-span-2 text-zinc-900 font-bold">{resetTargetUser.name}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1 border-b border-zinc-100 pb-2">
+                <span className="font-bold text-zinc-400 uppercase text-[9px]">User Email</span>
+                <span className="col-span-2 text-zinc-900 font-bold break-all">{resetTargetUser.email}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1 border-b border-zinc-100 pb-2">
+                <span className="font-bold text-zinc-400 uppercase text-[9px]">User Role</span>
+                <span className="col-span-2 text-zinc-900 font-bold">{resetTargetUser.role}</span>
+              </div>
+
+              {!resetDone ? (
+                <>
+                  <div className="bg-zinc-955 text-white rounded p-4 text-[11px] font-bold space-y-2">
+                    <span className="text-[9px] text-zinc-400 font-normal uppercase block">Auto Generated Temporary Password</span>
+                    <div className="flex items-center justify-between gap-2 bg-zinc-900/60 p-2.5 rounded border border-zinc-800">
+                      <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-400">{resetGeneratedPassword}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-700 uppercase text-[9px] block">Set Manual Temporary Password</label>
+                    <input
+                      type="text"
+                      placeholder="Enter custom temporary password"
+                      value={resetManualPassword}
+                      onChange={(e) => setResetManualPassword(e.target.value)}
+                      className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+                    />
+                    <span className="text-[9px] text-zinc-450 block pt-0.5">Leave empty to use the system-generated password.</span>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pwd = resetManualPassword.trim() || resetGeneratedPassword;
+                        navigator.clipboard.writeText(pwd);
+                        toast.success('Password copied to clipboard!');
+                      }}
+                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                    >
+                      Copy Password
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pwd = resetManualPassword.trim() || resetGeneratedPassword;
+                        navigator.clipboard.writeText(`Email: ${resetTargetUser.email}\nPassword: ${pwd}`);
+                        toast.success('Credentials copied to clipboard!');
+                      }}
+                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                    >
+                      Copy Credentials
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDirectResetPassword}
+                      className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                    >
+                      Confirm Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetDialogOpen(false)}
+                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-350 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-emerald-50 border border-emerald-250 text-emerald-900 rounded p-4 text-[11px] font-bold space-y-2">
+                    <span className="text-[10px] text-emerald-800 uppercase block">Password Reset Successful!</span>
+                    <div className="flex items-center justify-between gap-2 bg-white p-2.5 rounded border border-emerald-200">
+                      <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-700">
+                        {resetManualPassword.trim() !== '' ? resetManualPassword.trim() : resetGeneratedPassword}
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-emerald-700 block font-normal pt-1 leading-normal">
+                      User must login with this password and create a new password on their next login.
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pwd = resetManualPassword.trim() || resetGeneratedPassword;
+                        navigator.clipboard.writeText(pwd);
+                        toast.success('Password copied to clipboard!');
+                      }}
+                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-350 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                    >
+                      Copy Password
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pwd = resetManualPassword.trim() || resetGeneratedPassword;
+                        navigator.clipboard.writeText(`Email: ${resetTargetUser.email}\nPassword: ${pwd}`);
+                        toast.success('Credentials copied to clipboard!');
+                      }}
+                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-350 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                    >
+                      Copy Credentials
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetDialogOpen(false)}
+                      className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Password Dialog */}
+      <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
+        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg text-zinc-955 font-mono text-xs">
+          <DialogHeader>
+            <DialogTitle>Update Password</DialogTitle>
+            <DialogDescription>
+              Directly assign a new password for this user.
+            </DialogDescription>
+          </DialogHeader>
+
+          {updateTargetUser && (
+            <form onSubmit={handleDirectUpdatePassword} className="space-y-4 my-2">
+              <div className="space-y-1">
+                <label className="font-bold text-zinc-700 uppercase text-[9px] block">New Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter new password"
+                  value={updateNewPassword}
+                  onChange={(e) => setUpdateNewPassword(e.target.value)}
+                  className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-zinc-700 uppercase text-[9px] block">Confirm Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Confirm new password"
+                  value={updateConfirmPassword}
+                  onChange={(e) => setUpdateConfirmPassword(e.target.value)}
+                  className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  type="checkbox"
+                  id="force-change-checkbox"
+                  checked={updateForceChange}
+                  onChange={(e) => setUpdateForceChange(e.target.checked)}
+                  className="w-4 h-4 text-zinc-955 focus:ring-zinc-955 border-zinc-300 rounded cursor-pointer"
+                />
+                <label htmlFor="force-change-checkbox" className="font-bold text-zinc-700 uppercase text-[9px] cursor-pointer select-none">
+                  Force user to change password on next login
+                </label>
+              </div>
+
+              <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.</span>
+
+              <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150">
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                >
+                  Save Password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUpdateDialogOpen(false)}
+                  className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-350 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

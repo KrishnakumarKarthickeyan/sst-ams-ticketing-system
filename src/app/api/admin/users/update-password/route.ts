@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Parse target user and password parameters
-    const { targetUserId, newPassword } = await request.json();
+    const { targetUserId, newPassword, forcePasswordChange } = await request.json();
     if (!targetUserId || !newPassword) {
       return NextResponse.json({ success: false, error: 'Target user identity and new password are required.' }, { status: 400 });
     }
@@ -64,6 +64,14 @@ export async function POST(request: Request) {
     // 4. Validate password policy
     const policy = await verifyPasswordPolicy(newPassword);
     if (!policy.isValid) {
+      // Log failed update password audit
+      const adminClientInit = getAdminClient();
+      if (adminClientInit) {
+        const { data: tp } = await adminClientInit.from('profiles').select('email').eq('id', targetUserId).maybeSingle();
+        if (tp) {
+          await logUserAuditAction(tp.email, 'Failed password update', requesterProfile.email || 'SuperAdmin');
+        }
+      }
       return NextResponse.json({ success: false, error: policy.error }, { status: 400 });
     }
 
@@ -83,19 +91,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Target user profile not found.' }, { status: 404 });
     }
 
-    // 6. Verify target user role is not SuperAdmin
-    if (targetProfile.role === 'SuperAdmin') {
-      return NextResponse.json({ success: false, error: 'Cannot update password for another Super Admin.' }, { status: 400 });
+    // 6. Verify target user role is Manager, Customer (Client), or Consultant
+    const allowedRoles = ['Manager', 'Customer', 'Consultant'];
+    if (!allowedRoles.includes(targetProfile.role)) {
+      return NextResponse.json({ success: false, error: 'Target user role must be Manager, Customer (Client), or Consultant.' }, { status: 400 });
     }
 
     // 7. Update target user password and metadata in Supabase Auth
+    const isForce = !!forcePasswordChange;
     const { error: updateAuthErr } = await adminClient.auth.admin.updateUserById(targetUserId, {
       password: newPassword,
       ban_duration: 'none',
-      user_metadata: { first_login_completed: true, force_password_change: false }
+      user_metadata: { first_login_completed: !isForce, force_password_change: isForce }
     });
 
     if (updateAuthErr) {
+      await logUserAuditAction(targetProfile.email, 'Failed password update', requesterProfile.email || 'SuperAdmin');
       return NextResponse.json({ success: false, error: `Auth update failed: ${updateAuthErr.message}` }, { status: 500 });
     }
 
@@ -103,9 +114,9 @@ export async function POST(request: Request) {
     const { error: updateDbErr } = await adminClient
       .from('profiles')
       .update({
-        first_login_completed: true,
-        force_password_change: false,
-        password_changed_at: new Date().toISOString(),
+        first_login_completed: !isForce,
+        force_password_change: isForce,
+        password_changed_at: isForce ? null : new Date().toISOString(),
         is_locked: false,
         failed_attempts: 0
       })
@@ -116,7 +127,8 @@ export async function POST(request: Request) {
     }
 
     // 9. Log audit event
-    await logUserAuditAction(targetProfile.email, 'Password Updated', requesterProfile.email || 'SuperAdmin');
+    const actionLabel = isForce ? 'Force password change' : 'Password Updated';
+    await logUserAuditAction(targetProfile.email, actionLabel, requesterProfile.email || 'SuperAdmin');
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { logUserAuditAction } from '@/app/actions/auth';
+import { logUserAuditAction, verifyPasswordPolicy } from '@/app/actions/auth';
 
 const getAdminClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Parse and validate target user parameters
-    const { targetUserId } = await request.json();
+    const { targetUserId, manualPassword } = await request.json();
     if (!targetUserId) {
       return NextResponse.json({ success: false, error: 'Target user identity reference is required.' }, { status: 400 });
     }
@@ -103,13 +103,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Target user profile not found.' }, { status: 404 });
     }
 
-    // 5. Verify target user role is not SuperAdmin
-    if (targetProfile.role === 'SuperAdmin') {
-      return NextResponse.json({ success: false, error: 'Cannot reset password for another Super Admin.' }, { status: 400 });
+    // 5. Verify target user role is Manager, Customer (Client), or Consultant
+    const allowedRoles = ['Manager', 'Customer', 'Consultant'];
+    if (!allowedRoles.includes(targetProfile.role)) {
+      return NextResponse.json({ success: false, error: 'Target user role must be Manager, Customer (Client), or Consultant.' }, { status: 400 });
     }
 
-    // 6. Generate secure temporary password
-    const tempPassword = generateTemporaryPassword();
+    // 6. Generate or validate secure temporary password
+    let tempPassword = '';
+    if (manualPassword && manualPassword.trim() !== '') {
+      const policy = await verifyPasswordPolicy(manualPassword);
+      if (!policy.isValid) {
+        // Log failed password reset audit
+        await logUserAuditAction(targetProfile.email, 'Failed password reset', requesterProfile.email || 'SuperAdmin');
+        return NextResponse.json({ success: false, error: policy.error }, { status: 400 });
+      }
+      tempPassword = manualPassword.trim();
+    } else {
+      tempPassword = generateTemporaryPassword();
+    }
 
     // 7. Update target user password and metadata in Supabase Auth
     const { error: updateAuthErr } = await adminClient.auth.admin.updateUserById(targetUserId, {
@@ -119,6 +131,8 @@ export async function POST(request: Request) {
     });
 
     if (updateAuthErr) {
+      // Log failed password reset audit
+      await logUserAuditAction(targetProfile.email, 'Failed password reset', requesterProfile.email || 'SuperAdmin');
       return NextResponse.json({ success: false, error: `Auth update failed: ${updateAuthErr.message}` }, { status: 500 });
     }
 
