@@ -105,7 +105,7 @@ export default function LandingPage() {
   const [demoType, setDemoType] = useState('Standard Demo');
 
   // Interactive UI State
-  const [heroRefreshTime, setHeroRefreshTime] = useState(new Date().toLocaleTimeString());
+  const [heroRefreshTime, setHeroRefreshTime] = useState('12:00:00 PM');
   const [heroIncidents, setHeroIncidents] = useState(14);
   const [heroSla, setHeroSla] = useState(98.7);
   const [heroCSAT, setHeroCSAT] = useState(4.9);
@@ -137,6 +137,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     setMounted(true);
+    setHeroRefreshTime(new Date().toLocaleTimeString());
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
