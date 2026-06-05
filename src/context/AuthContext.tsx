@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
-import { checkUserLockedStatus, handleFailedLogin, handleSuccessfulLogin } from '../app/actions/auth';
+import { checkUserLockedStatus, handleFailedLogin, handleSuccessfulLogin, getUserProfileServer } from '../app/actions/auth';
 
 export type UserRole = 'SuperAdmin' | 'Manager' | 'Consultant' | 'Customer';
 
@@ -60,17 +60,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchPromise = (async () => {
       try {
-        const profilePromise = supabase!
-          .from('profiles')
-          .select('full_name, role, is_active, is_locked, consultant_type, sap_modules, phone_number, first_login_completed, force_password_change, organizations(name)')
-          .eq('id', session.user.id)
-          .single();
-
-        const timeoutPromise = new Promise<any>((resolve) =>
-          setTimeout(() => resolve({ data: null, error: { message: 'Profile fetch timeout' } }), 15000)
-        );
-
-        const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
+        const profileRes = await getUserProfileServer(session.user.id);
+        const profile = profileRes.success ? profileRes.profile : null;
+        const error = profileRes.success ? null : { message: profileRes.error || 'Profile fetch failed' };
 
         if (error || !profile || !profile.is_active || profile.is_locked === true) {
           console.error("Failed, inactive, or locked user profile. Clearing auth session:", error);
@@ -203,18 +195,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Successful login: reset failed attempts
           await handleSuccessfulLogin(normalizedEmail);
 
-          const fetchProfile = () => supabase
-            .from('profiles')
-            .select('full_name, role, is_active, is_locked, consultant_type, sap_modules, phone_number, first_login_completed, force_password_change, organizations(name)')
-            .eq('id', data.user.id)
-            .single();
-
-          let { data: profile } = await fetchProfile();
+          const getProfileRes = () => getUserProfileServer(data.user.id);
+          let profileRes = await getProfileRes();
+          let profile = profileRes.success ? profileRes.profile : null;
           if (!profile) {
             // JWT race on first login: wait briefly and try again
             await new Promise(r => setTimeout(r, 600));
-            const retry = await fetchProfile();
-            profile = retry.data;
+            profileRes = await getProfileRes();
+            profile = profileRes.success ? profileRes.profile : null;
           }
 
           if (profile) {

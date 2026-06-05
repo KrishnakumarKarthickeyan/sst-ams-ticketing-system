@@ -680,3 +680,25 @@ export async function deleteAuthUser(userId: string) {
     return { success: false, error: e.message || 'Deletion failed' };
   }
 }
+
+export async function getUserProfileServer(userId: string) {
+  const client = getAdminClient();
+  if (!client) {
+    return { success: false, error: 'NO_SERVICE_KEY' };
+  }
+
+  try {
+    const { data: profile, error } = await client
+      .from('profiles')
+      .select('full_name, role, is_active, is_locked, consultant_type, sap_modules, phone_number, first_login_completed, force_password_change, organizations(name)')
+      .eq('id', userId)
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, profile };
+  } catch (e: any) {
+    console.error('getUserProfileServer error:', e);
+    return { success: false, error: e.message || 'Failed to fetch user profile' };
+  }
+}
+
