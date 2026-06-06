@@ -431,7 +431,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [user, authLoading]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase || !user) return;
+    if (!isSupabaseConfigured || !supabase) return;
 
     // Subscribing to public schema changes resolves sync delays across all tables
     const channel = supabase
@@ -443,13 +443,21 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           console.log('Realtime DB change detected:', payload);
           debouncedRefetch();
         }
-      )
-      .subscribe();
+      );
+
+    channel.subscribe((status) => {
+      console.log('Realtime subscription status:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('Realtime successfully connected to public schema.');
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('Realtime subscription failed to connect.');
+      }
+    });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, []);
 
   // Helper mapper for Supabase format
   const mapDbTicket = (t: any, dbProfiles: any[], dbContacts: any[] = [], currentOrgMap?: Record<string, string>): Ticket => {
@@ -877,11 +885,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const sorted = [...updated].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setTickets(sorted);
     localStorage.setItem('sst_tickets', JSON.stringify(sorted));
+    debouncedRefetch();
   };
 
   const syncNotifications = (updated: Notification[]) => {
     setNotifications(updated);
     localStorage.setItem('sst_notifications', JSON.stringify(updated));
+    debouncedRefetch();
   };
 
   const syncKbArticles = (updated: KnowledgebaseArticle[]) => {
@@ -1312,6 +1322,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             });
           }
 
+          debouncedRefetch();
           return { success: true, ticketId: mappedTicket.id };
         }
 

@@ -56,9 +56,17 @@ export default function AdminDashboardPage() {
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<string>('cockpit');
 
-  // Search and filter states
+  // Search and filter states (10 Global Filters + Sub-filters)
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('All');
+  const [quarterFilter, setQuarterFilter] = useState('All');
+  const [yearFilter, setYearFilter] = useState('All');
   const [customerFilter, setCustomerFilter] = useState('All');
+  const [consultantFilter, setConsultantFilter] = useState('All');
   const [managerFilter, setManagerFilter] = useState('All');
+  const [moduleFilter, setModuleFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
 
   // IAM User management state
@@ -181,15 +189,91 @@ export default function AdminDashboardPage() {
     return Array.from(new Set(profiles.filter(p => p.role === 'Manager').map(p => p.full_name || p.email))).sort();
   }, [profiles]);
 
+  const consultantsProfilesList = useMemo(() => {
+    return Array.from(new Set(profiles.filter(p => p.role === 'Consultant').map(p => p.full_name || p.email))).sort();
+  }, [profiles]);
+
+  const modulesList = useMemo(() => {
+    return Array.from(new Set(tickets.map(t => t.sapModule))).filter(Boolean).sort();
+  }, [tickets]);
+
+  const statusList = useMemo(() => {
+    return Array.from(new Set(tickets.map(t => t.status))).filter(Boolean).sort();
+  }, [tickets]);
+
   // Base tickets selection filter
   const activeTickets = useMemo(() => {
     return tickets.filter(t => {
+      // 1. Customer
       if (customerFilter !== 'All' && t.organization !== customerFilter) return false;
+      // 2. Manager
       if (managerFilter !== 'All' && t.assignedManager !== managerFilter) return false;
+      // 3. Consultant
+      if (consultantFilter !== 'All' && t.assignedConsultant !== consultantFilter) return false;
+      // 4. Priority
       if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
+      // 5. Status
+      if (statusFilter !== 'All' && t.status !== statusFilter) return false;
+      // 6. SAP Module
+      if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
+
+      // Date parsing
+      const createdDate = new Date(t.createdAt);
+      
+      // 7. Date Range
+      if (startDateFilter) {
+        const start = new Date(startDateFilter);
+        start.setHours(0, 0, 0, 0);
+        if (createdDate < start) return false;
+      }
+      if (endDateFilter) {
+        const end = new Date(endDateFilter);
+        end.setHours(23, 59, 59, 999);
+        if (createdDate > end) return false;
+      }
+
+      // 8. Year
+      if (yearFilter !== 'All') {
+        if (createdDate.getFullYear().toString() !== yearFilter) return false;
+      }
+
+      // 9. Month
+      if (monthFilter !== 'All') {
+        const monthNames = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const ticketMonthName = monthNames[createdDate.getMonth()];
+        if (ticketMonthName !== monthFilter) return false;
+      }
+
+      // 10. Quarter
+      if (quarterFilter !== 'All') {
+        const month = createdDate.getMonth(); // 0-11
+        let ticketQuarter = 'Q1';
+        if (month >= 3 && month <= 5) ticketQuarter = 'Q2';
+        else if (month >= 6 && month <= 8) ticketQuarter = 'Q3';
+        else if (month >= 9 && month <= 11) ticketQuarter = 'Q4';
+        
+        if (ticketQuarter !== quarterFilter) return false;
+      }
+
       return true;
     });
-  }, [tickets, customerFilter, managerFilter, priorityFilter]);
+  }, [
+    tickets,
+    customerFilter,
+    managerFilter,
+    consultantFilter,
+    priorityFilter,
+    statusFilter,
+    moduleFilter,
+    startDateFilter,
+    endDateFilter,
+    yearFilter,
+    monthFilter,
+    quarterFilter
+  ]);
 
   // color configs
   const THEME_COLORS = ['#09090b', '#18181b', '#27272a', '#3f3f46', '#52525b', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7', '#f4f4f5'];
@@ -885,61 +969,154 @@ export default function AdminDashboardPage() {
   // ── 10. ANALYTICS WALL (20+ UNIQUE VISUALIZATIONS) ──
   const analyticsWallData = useMemo(() => {
     // 1. Ticket Volume Trend
-    const ticketVolumeTrend = [
-      { name: 'Jan', Incidents: 45, Requests: 140 },
-      { name: 'Feb', Incidents: 41, Requests: 155 },
-      { name: 'Mar', Incidents: 53, Requests: 180 },
-      { name: 'Apr', Incidents: 39, Requests: 165 },
-      { name: 'May', Incidents: 32, Requests: 190 },
-      { name: 'Jun', Incidents: 29, Requests: 210 }
-    ];
+    const getMonthTrend = () => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const trendMap: Record<string, { Incidents: number; Requests: number }> = {};
+      
+      // Initialize last 6 months
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mName = months[d.getMonth()];
+        trendMap[mName] = { Incidents: 0, Requests: 0 };
+      }
+
+      activeTickets.forEach(t => {
+        const date = new Date(t.createdAt);
+        const mName = months[date.getMonth()];
+        if (trendMap[mName]) {
+          if (t.ticketType === 'Incident' || !t.ticketType) {
+            trendMap[mName].Incidents++;
+          } else {
+            trendMap[mName].Requests++;
+          }
+        }
+      });
+
+      return Object.entries(trendMap).map(([name, val]) => ({
+        name,
+        Incidents: val.Incidents,
+        Requests: val.Requests
+      }));
+    };
+    const ticketVolumeTrend = getMonthTrend();
 
     // 2. Ticket Growth
-    const ticketGrowth = [
-      { name: 'Jan', total: 185 },
-      { name: 'Feb', total: 381 },
-      { name: 'Mar', total: 614 },
-      { name: 'Apr', total: 818 },
-      { name: 'May', total: 1040 },
-      { name: 'Jun', total: 1279 }
-    ];
+    const getTicketGrowthTrend = () => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const countsMap: Record<string, number> = {};
+      
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mName = months[d.getMonth()];
+        countsMap[mName] = 0;
+      }
+
+      activeTickets.forEach(t => {
+        const date = new Date(t.createdAt);
+        const mName = months[date.getMonth()];
+        if (mName in countsMap) {
+          countsMap[mName]++;
+        }
+      });
+
+      let cumulative = 0;
+      return Object.entries(countsMap).map(([name, count]) => {
+        cumulative += count;
+        return { name, total: cumulative };
+      });
+    };
+    const ticketGrowth = getTicketGrowthTrend();
 
     // 3. Open vs Closed
-    const openVsClosed = [
-      { name: 'SAP MM', Open: 12, Closed: 85 },
-      { name: 'SAP Basis', Open: 4, Closed: 120 },
-      { name: 'SAP SD', Open: 8, Closed: 62 },
-      { name: 'SAP FICO', Open: 15, Closed: 95 }
-    ];
+    const getOpenVsClosedByModule = () => {
+      const modulesMap: Record<string, { Open: number; Closed: number }> = {};
+      activeTickets.forEach(t => {
+        const mod = t.sapModule || 'Other';
+        if (!modulesMap[mod]) {
+          modulesMap[mod] = { Open: 0, Closed: 0 };
+        }
+        if (t.status === 'Closed' || t.status === 'Resolved') {
+          modulesMap[mod].Closed++;
+        } else {
+          modulesMap[mod].Open++;
+        }
+      });
+      return Object.entries(modulesMap).map(([name, val]) => ({
+        name,
+        Open: val.Open,
+        Closed: val.Closed
+      })).slice(0, 8);
+    };
+    const openVsClosed = getOpenVsClosedByModule();
 
     // 4. Escalation Trend
-    const escalationTrend = [
-      { name: 'Jan', count: 3 },
-      { name: 'Feb', count: 5 },
-      { name: 'Mar', count: 8 },
-      { name: 'Apr', count: 4 },
-      { name: 'May', count: 2 },
-      { name: 'Jun', count: 1 }
-    ];
+    const getEscalationTrend = () => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const escMap: Record<string, number> = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mName = months[d.getMonth()];
+        escMap[mName] = 0;
+      }
+      activeTickets.forEach(t => {
+        if (t.escalationFlag) {
+          const date = new Date(t.createdAt);
+          const mName = months[date.getMonth()];
+          if (mName in escMap) {
+            escMap[mName]++;
+          }
+        }
+      });
+      return Object.entries(escMap).map(([name, count]) => ({ name, count }));
+    };
+    const escalationTrend = getEscalationTrend();
 
     // 5. SLA Trend
-    const slaTrend = [
-      { name: 'Jan', compliance: 96.8 },
-      { name: 'Feb', compliance: 97.4 },
-      { name: 'Mar', compliance: 98.2 },
-      { name: 'Apr', compliance: 98.5 },
-      { name: 'May', compliance: 99.1 },
-      { name: 'Jun', compliance: 99.42 }
-    ];
+    const getSlaTrend = () => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const slaMap: Record<string, { total: number; breached: number }> = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mName = months[d.getMonth()];
+        slaMap[mName] = { total: 0, breached: 0 };
+      }
+
+      activeTickets.forEach(t => {
+        if ((t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable') {
+          const date = new Date(t.createdAt);
+          const mName = months[date.getMonth()];
+          if (mName in slaMap) {
+            slaMap[mName].total++;
+            const due = new Date(t.slaDueAt).getTime();
+            const end = t.status === 'Resolved' || t.status === 'Closed'
+              ? new Date(t.resolvedAt || t.closedAt || Date.now()).getTime()
+              : Date.now();
+            if (end > due) {
+              slaMap[mName].breached++;
+            }
+          }
+        }
+      });
+
+      return Object.entries(slaMap).map(([name, val]) => {
+        const compliance = val.total > 0 ? ((val.total - val.breached) / val.total) * 100 : 100;
+        return { name, compliance: Math.round(compliance * 10) / 10 };
+      });
+    };
+    const slaTrend = getSlaTrend();
 
     // 6. Customer Activity
-    const customerActivity = customerPortfolio.slice(0, 5).map(c => ({
+    const customerActivity = customerPortfolio.slice(0, 10).map(c => ({
       name: c.name.split(' ')[0],
       tickets: c.openCount + c.closedCount
     }));
 
     // 7. Consultant Utilization
-    const consultantUtilization = consultantsPortfolio.slice(0, 5).map(c => ({
+    const consultantUtilization = consultantsPortfolio.slice(0, 10).map(c => ({
       name: c.name.split(' ')[0],
       utilization: Math.round(c.utilization)
     }));
@@ -951,102 +1128,177 @@ export default function AdminDashboardPage() {
     }));
 
     // 9. Contract Budget Consumption
-    const contractConsumption = customerPortfolio.slice(0, 5).map(c => ({
+    const contractConsumption = customerPortfolio.slice(0, 10).map(c => ({
       name: c.name.split(' ')[0],
       Allocated: c.annualHours,
       Consumed: c.approvedHours
     }));
 
-    // 10. Resolution Time Trend (hours)
-    const resolutionTimeTrend = [
-      { name: 'Jan', hours: 4.8 },
-      { name: 'Feb', hours: 4.2 },
-      { name: 'Mar', hours: 3.5 },
-      { name: 'Apr', hours: 2.8 },
-      { name: 'May', hours: 1.9 },
-      { name: 'Jun', hours: 1.2 }
-    ];
+    // 10. Resolution Time Trend
+    const getResolutionTimeTrend = () => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const resMap: Record<string, { totalHours: number; count: number }> = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mName = months[d.getMonth()];
+        resMap[mName] = { totalHours: 0, count: 0 };
+      }
+
+      activeTickets.forEach(t => {
+        if ((t.status === 'Resolved' || t.status === 'Closed') && t.resolvedAt) {
+          const date = new Date(t.createdAt);
+          const mName = months[date.getMonth()];
+          if (mName in resMap) {
+            const hrs = (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60);
+            resMap[mName].totalHours += hrs;
+            resMap[mName].count++;
+          }
+        }
+      });
+
+      return Object.entries(resMap).map(([name, val]) => ({
+        name,
+        hours: val.count > 0 ? Math.round((val.totalHours / val.count) * 10) / 10 : 0
+      }));
+    };
+    const resolutionTimeTrend = getResolutionTimeTrend();
 
     // 11. Approval Response Trend
-    const approvalResponseTrend = [
-      { name: 'Jan', pendingApprovals: 18 },
-      { name: 'Feb', pendingApprovals: 12 },
-      { name: 'Mar', pendingApprovals: 24 },
-      { name: 'Apr', pendingApprovals: 15 },
-      { name: 'May', pendingApprovals: 8 },
-      { name: 'Jun', pendingApprovals: 3 }
-    ];
+    const getApprovalResponseTrend = () => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const appMap: Record<string, number> = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mName = months[d.getMonth()];
+        appMap[mName] = 0;
+      }
+
+      activeTickets.forEach(t => {
+        const isPending = t.status === 'Reopen Requested' ||
+          (t.actualHoursLogs || []).some(h => h.approvalStatus?.toLowerCase() === 'pending') ||
+          (t.closureRequests || []).some(r => r.status === 'Pending Manager Approval' || r.managerApprovalStatus === 'Pending') ||
+          (t.unlockRequests || []).some(u => u.status === 'Pending') ||
+          (t.deleteRequests || []).some(r => r.managerApproval === 'Pending' || r.adminApproval === 'Pending');
+
+        if (isPending) {
+          const date = new Date(t.createdAt);
+          const mName = months[date.getMonth()];
+          if (mName in appMap) {
+            appMap[mName]++;
+          }
+        }
+      });
+
+      return Object.entries(appMap).map(([name, pendingApprovals]) => ({
+        name,
+        pendingApprovals
+      }));
+    };
+    const approvalResponseTrend = getApprovalResponseTrend();
 
     // 12. Approved Actual Hours
-    const approvedHoursTrend = [
-      { name: 'Jan', hours: 320 },
-      { name: 'Feb', hours: 410 },
-      { name: 'Mar', hours: 550 },
-      { name: 'Apr', hours: 490 },
-      { name: 'May', hours: 620 },
-      { name: 'Jun', hours: 780 }
-    ];
+    const getApprovedHoursTrend = () => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const hoursMap: Record<string, number> = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mName = months[d.getMonth()];
+        hoursMap[mName] = 0;
+      }
+
+      activeTickets.forEach(t => {
+        (t.actualHoursLogs || []).forEach(log => {
+          if (log.approvalStatus?.toLowerCase() === 'approved' && log.approvedAt) {
+            const date = new Date(log.approvedAt);
+            const mName = months[date.getMonth()];
+            if (mName in hoursMap) {
+              hoursMap[mName] += log.actualHours;
+            }
+          }
+        });
+      });
+
+      return Object.entries(hoursMap).map(([name, hours]) => ({
+        name,
+        hours: Math.round(hours * 10) / 10
+      }));
+    };
+    const approvedHoursTrend = getApprovedHoursTrend();
 
     // 13. Estimated vs Actual Hours
-    const estVsActual = [
-      { name: 'T-Basis-429', Estimated: 8.0, Actual: 4.5 },
-      { name: 'T-MM-942', Estimated: 12.0, Actual: 14.5 },
-      { name: 'T-GRC-112', Estimated: 4.0, Actual: 2.5 },
-      { name: 'T-FICO-89', Estimated: 16.0, Actual: 16.0 }
-    ];
+    const getEstVsActual = () => {
+      const ticketsWithEffort = activeTickets.filter(t => 
+        (t.actualHoursLogs && t.actualHoursLogs.length > 0) || 
+        (t.hourEstimates && t.hourEstimates.length > 0)
+      ).slice(0, 6);
+
+      return ticketsWithEffort.map(t => {
+        const totalEst = (t.hourEstimates || []).reduce((sum, h) => sum + (h.totalEstimatedHours || 0), 0);
+        const totalAct = (t.actualHoursLogs || []).reduce((sum, a) => sum + (a.actualHours || 0), 0);
+        return {
+          name: t.ticketNumber || t.id.slice(0, 8),
+          Estimated: totalEst,
+          Actual: totalAct
+        };
+      });
+    };
+    const estVsActual = getEstVsActual();
 
     // 14. Priority Counts Distribution
     const priorityDistribution = [
-      { name: 'Critical', value: tickets.filter(t => t.priority === 'Critical').length || 4 },
-      { name: 'High', value: tickets.filter(t => t.priority === 'High').length || 18 },
-      { name: 'Medium', value: tickets.filter(t => t.priority === 'Medium').length || 45 },
-      { name: 'Low', value: tickets.filter(t => t.priority === 'Low').length || 12 }
+      { name: 'Critical', value: activeTickets.filter(t => t.priority === 'Critical').length },
+      { name: 'High', value: activeTickets.filter(t => t.priority === 'High').length },
+      { name: 'Medium', value: activeTickets.filter(t => t.priority === 'Medium').length },
+      { name: 'Low', value: activeTickets.filter(t => t.priority === 'Low').length }
     ];
 
     // 15. Ticket Categories Spread
     const categoryDistribution = [
-      { name: 'Functional', value: tickets.filter(t => t.functionalOrTechnical === 'Functional').length || 55 },
-      { name: 'Technical', value: tickets.filter(t => t.functionalOrTechnical === 'Technical').length || 32 }
+      { name: 'Functional', value: activeTickets.filter(t => t.functionalOrTechnical === 'Functional' || t.category?.toLowerCase().includes('functional')).length },
+      { name: 'Technical', value: activeTickets.filter(t => t.functionalOrTechnical === 'Technical' || t.category?.toLowerCase().includes('technical')).length }
     ];
 
     // 16. SAP Module Distribution
-    const moduleDistribution = [
-      { name: 'FICO', value: tickets.filter(t => t.sapModule === 'FICO').length || 24 },
-      { name: 'MM', value: tickets.filter(t => t.sapModule === 'MM').length || 18 },
-      { name: 'SD', value: tickets.filter(t => t.sapModule === 'SD').length || 14 },
-      { name: 'ABAP', value: tickets.filter(t => t.sapModule === 'ABAP').length || 15 },
-      { name: 'Basis', value: tickets.filter(t => t.sapModule === 'BASIS').length || 12 }
-    ];
+    const getModuleDistribution = () => {
+      const modMap: Record<string, number> = {};
+      activeTickets.forEach(t => {
+        const mod = t.sapModule || 'Other';
+        modMap[mod] = (modMap[mod] || 0) + 1;
+      });
+      return Object.entries(modMap).map(([name, value]) => ({ name, value }));
+    };
+    const moduleDistribution = getModuleDistribution();
 
     // 17. Customer Health Score Spread
-    const healthScoreSpread = [
-      { subject: 'Apex Global', score: 92 },
-      { subject: 'Titan Energy', score: 85 },
-      { subject: 'AlSuhaimi', score: 96 },
-      { subject: 'Gulf Group', score: 78 }
-    ];
+    const healthScoreSpread = customerPortfolio.slice(0, 6).map(c => ({
+      subject: c.name.split(' ')[0],
+      score: Math.round(c.slaCompliance)
+    }));
 
     // 18. Operational Risk Heatmap
     const riskHeatmap = [
-      { subject: 'Database Load', risk: 42 },
-      { subject: 'SLA Warnings', risk: 65 },
-      { subject: 'Approval Delay', risk: 28 },
-      { subject: 'Capacity Peak', risk: 84 },
-      { subject: 'Escalations', risk: 12 }
+      { subject: 'Database Load', risk: Math.min(100, Math.round(globalStats.platformHealthScore * 0.8)) },
+      { subject: 'SLA Warnings', risk: Math.min(100, Math.round((globalStats.slaBreachesCount / (activeTickets.length || 1)) * 100)) },
+      { subject: 'Approval Delay', risk: Math.min(100, Math.round(globalStats.pendingApprovalsCount * 5)) },
+      { subject: 'Capacity Peak', risk: Math.min(100, Math.round((globalStats.totalApprovedHours / (globalStats.totalApprovedHours + globalStats.remainingContractHours || 1)) * 100)) },
+      { subject: 'Escalations', risk: Math.min(100, Math.round((globalStats.escalatedTicketsCount / (activeTickets.length || 1)) * 100)) }
     ];
 
     // 19. Manager Delivery Health
     const managerDeliveryHealth = managersPortfolio.map(m => ({
       name: m.name.split(' ')[0],
-      score: m.deliveryHealth
+      score: Math.round(m.deliveryHealth)
     }));
 
     // 20. Resource Capacity Forecast
     const capacityForecast = [
-      { month: 'Jul', Utilized: 450, Remaining: 210 },
-      { month: 'Aug', Utilized: 480, Remaining: 180 },
-      { month: 'Sep', Utilized: 520, Remaining: 140 },
-      { month: 'Oct', Utilized: 550, Remaining: 110 }
+      { month: 'Jul', Utilized: Math.round(globalStats.currentMonthUtilizedHours), Remaining: Math.round(globalStats.remainingContractHours) },
+      { month: 'Aug', Utilized: Math.round(globalStats.currentMonthUtilizedHours * 0.9), Remaining: Math.round(globalStats.remainingContractHours * 0.9) },
+      { month: 'Sep', Utilized: Math.round(globalStats.currentMonthUtilizedHours * 1.1), Remaining: Math.round(globalStats.remainingContractHours * 0.8) },
+      { month: 'Oct', Utilized: Math.round(globalStats.currentMonthUtilizedHours * 1.05), Remaining: Math.round(globalStats.remainingContractHours * 0.7) }
     ];
 
     return {
@@ -1071,7 +1323,7 @@ export default function AdminDashboardPage() {
       managerDeliveryHealth,
       capacityForecast
     };
-  }, [tickets, customerPortfolio, consultantsPortfolio, managersPortfolio]);
+  }, [activeTickets, tickets, globalStats, customerPortfolio, consultantsPortfolio, managersPortfolio]);
 
   if (loading) {
     return (
@@ -1135,6 +1387,196 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* ── GLOBAL FILTERS COCKPIT ── */}
+      <Card className="bg-zinc-50 border border-zinc-200 shadow-sm rounded-xl p-4 font-mono text-xs">
+        <div className="flex items-center justify-between border-b border-zinc-200 pb-2.5 mb-4">
+          <div className="flex items-center gap-2">
+            <Filter size={13} className="text-zinc-500" />
+            <span className="font-bold text-zinc-900 uppercase">Global Analytics & Data Filters</span>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setStartDateFilter('');
+              setEndDateFilter('');
+              setMonthFilter('All');
+              setQuarterFilter('All');
+              setYearFilter('All');
+              setCustomerFilter('All');
+              setConsultantFilter('All');
+              setManagerFilter('All');
+              setModuleFilter('All');
+              setStatusFilter('All');
+              setPriorityFilter('All');
+            }}
+            className="h-6 text-[9px] uppercase font-bold text-zinc-500 hover:text-zinc-900"
+          >
+            Reset Filters
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+          {/* 1. Date Range: Start */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Start Date</span>
+            <input
+              type="date"
+              value={startDateFilter}
+              onChange={(e) => setStartDateFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 rounded px-2 text-[10px] bg-white text-zinc-700 outline-none focus:border-zinc-400"
+            />
+          </div>
+
+          {/* 2. Date Range: End */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">End Date</span>
+            <input
+              type="date"
+              value={endDateFilter}
+              onChange={(e) => setEndDateFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 rounded px-2 text-[10px] bg-white text-zinc-700 outline-none focus:border-zinc-400"
+            />
+          </div>
+
+          {/* 3. Year */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Year</span>
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Years</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+            </select>
+          </div>
+
+          {/* 4. Month */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Month</span>
+            <select
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Months</option>
+              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 5. Quarter */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Quarter</span>
+            <select
+              value={quarterFilter}
+              onChange={(e) => setQuarterFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Quarters</option>
+              <option value="Q1">Q1 (Jan-Mar)</option>
+              <option value="Q2">Q2 (Apr-Jun)</option>
+              <option value="Q3">Q3 (Jul-Sep)</option>
+              <option value="Q4">Q4 (Oct-Dec)</option>
+            </select>
+          </div>
+
+          {/* 6. Customer */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Customer</span>
+            <select
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Customers</option>
+              {customerOrgsList.map(org => (
+                <option key={org} value={org}>{org}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 7. Consultant */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Consultant</span>
+            <select
+              value={consultantFilter}
+              onChange={(e) => setConsultantFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Consultants</option>
+              {consultantsProfilesList.map(cons => (
+                <option key={cons} value={cons}>{cons}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 8. Manager */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Manager</span>
+            <select
+              value={managerFilter}
+              onChange={(e) => setManagerFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Managers</option>
+              {managersProfilesList.map(mgr => (
+                <option key={mgr} value={mgr}>{mgr}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 9. Module */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">SAP Module</span>
+            <select
+              value={moduleFilter}
+              onChange={(e) => setModuleFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Modules</option>
+              {modulesList.map(mod => (
+                <option key={mod} value={mod}>{mod}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 10. Status */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Status</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Statuses</option>
+              {statusList.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 11. Priority */}
+          <div className="space-y-1 flex flex-col">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Priority</span>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+            >
+              <option value="All">All Priorities</option>
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
       {/* ── NAVIGATION TABS ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="flex flex-wrap h-auto bg-zinc-100 p-1 border border-zinc-200 rounded-lg font-mono text-[9px] gap-0.5">
@@ -1161,7 +1603,6 @@ export default function AdminDashboardPage() {
           <TabsTrigger value="health" className="py-2 px-3 uppercase font-bold rounded-md">Health</TabsTrigger>
           <TabsTrigger value="audits" className="py-2 px-3 uppercase font-bold rounded-md">Audits</TabsTrigger>
           <TabsTrigger value="iam" className="py-2 px-3 uppercase font-bold rounded-md">Passwords & IAM</TabsTrigger>
-          <TabsTrigger value="wall" className="py-2 px-3 uppercase font-bold rounded-md">Analytics Wall</TabsTrigger>
         </TabsList>
 
         {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
@@ -1258,6 +1699,330 @@ export default function AdminDashboardPage() {
                 ))}
               </CardContent>
             </Card>
+          </div>
+
+          {/* ── 20 DISTINCT CHARTS INTEGRATED INTO COCKPIT ── */}
+          <div className="border-t border-zinc-250 pt-6 mt-6">
+            <div className="text-center max-w-xl mx-auto space-y-1 mb-6">
+              <h3 className="text-xs font-bold font-mono uppercase text-zinc-900">Assist360 Operations Analytics Wall</h3>
+              <p className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+                20 completely unique system visualizations and performance analysis charts
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              
+              {/* Chart 1: Ticket Volume Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">1. Ticket Volume Trend (Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.ticketVolumeTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="Requests" stroke="#09090b" fill="#09090b" fillOpacity={0.05} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 2: Cumulative Ticket Growth */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">2. Cumulative Ticket Growth (Line)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsWallData.ticketGrowth} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Line type="monotone" dataKey="total" stroke="#09090b" strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 3: Open vs Closed Tickets */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">3. Open vs Closed Tickets (Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.openVsClosed} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="Closed" fill="#09090b" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="Open" fill="#71717a" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 4: Escalation Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">4. Escalation Trend (Line)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsWallData.escalationTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 5: SLA Compliance Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">5. SLA Compliance Trend (Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.slaTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <YAxis domain={[90, 100]} fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="compliance" stroke="#09090b" fill="#09090b" fillOpacity={0.08} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 6: Customer Case Activity */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">6. Customer Case Activity (Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.customerActivity} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="tickets" fill="#18181b" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 7: Consultant Utilization Spread */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">7. Consultant Utilization Spread (H-Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.consultantUtilization} layout="vertical" margin={{ top: 2, right: 2, left: -22, bottom: 2 }}>
+                      <XAxis type="number" fontSize={8} tickLine={false} />
+                      <YAxis dataKey="name" type="category" fontSize={8} tickLine={false} />
+                      <Bar dataKey="utilization" fill="#09090b" radius={[0, 2, 2, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 8: Manager Case Allocation */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">8. Manager Case Allocation (Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.managerWorkload} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="tickets" fill="#27272a" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 9: Contract Budget Consumption */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">9. Contract Budget Consumption (Stacked Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.contractConsumption} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="Allocated" fill="#e4e4e7" stackId="a" />
+                      <Bar dataKey="Consumed" fill="#09090b" stackId="a" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 10: Resolution Time Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">10. Resolution Time Trend (Line)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsWallData.resolutionTimeTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Line type="monotone" dataKey="hours" stroke="#09090b" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 11: Approval Response Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">11. Approval Response Trend (Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.approvalResponseTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="pendingApprovals" stroke="#71717a" fill="#71717a" fillOpacity={0.05} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 12: Approved Actual Hours */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">12. Approved Actual Hours (Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.approvedHoursTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="hours" stroke="#09090b" fill="#09090b" fillOpacity={0.06} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 13: Estimated vs Actual Hours */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">13. Estimated vs Actual Hours (Composed)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={analyticsWallData.estVsActual} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={7} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="Actual" fill="#09090b" radius={[2, 2, 0, 0]} />
+                      <Line type="monotone" dataKey="Estimated" stroke="#71717a" strokeWidth={1.5} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 14: Priority Counts Distribution */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">14. Priority Counts Distribution (Pie)</span>
+                <div className="h-44 w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analyticsWallData.priorityDistribution}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={40}
+                        dataKey="value"
+                        label={({ name }) => name ? name.slice(0, 3) : ''}
+                      >
+                        {analyticsWallData.priorityDistribution.map((entry, idx) => (
+                          <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 15: Ticket Categories Spread */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">15. Ticket Categories Spread (Donut)</span>
+                <div className="h-44 w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analyticsWallData.categoryDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={25}
+                        outerRadius={40}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {analyticsWallData.categoryDistribution.map((entry, idx) => (
+                          <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 16: SAP Module Distribution */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">16. SAP Module Distribution (Pie)</span>
+                <div className="h-44 w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analyticsWallData.moduleDistribution}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={40}
+                        dataKey="value"
+                      >
+                        {analyticsWallData.moduleDistribution.map((entry, idx) => (
+                          <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 17: Customer Health Score Spread */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">17. Customer Health Score Spread (Radar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={analyticsWallData.healthScoreSpread}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="subject" fontSize={7} />
+                      <Radar dataKey="score" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 18: Operational Risk Heatmap */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">18. Operational Risk Heatmap (Radar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={analyticsWallData.riskHeatmap}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="subject" fontSize={7} />
+                      <Radar dataKey="risk" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 19: Manager Delivery Health */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">19. Manager Delivery Health (Line)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsWallData.managerDeliveryHealth} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis domain={[50, 100]} fontSize={8} tickLine={false} />
+                      <Line type="monotone" dataKey="score" stroke="#09090b" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 20: Resource Capacity Forecast */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">20. Resource Capacity Forecast (Stacked Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.capacityForecast} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="month" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="Utilized" stackId="a" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
+                      <Area type="monotone" dataKey="Remaining" stackId="a" stroke="#e4e4e7" fill="#e4e4e7" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+            </div>
           </div>
         </TabsContent>
 
@@ -1913,331 +2678,6 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* ── ANALYTICS WALL (20+ DISTINCT CHARTS) ── */}
-        <TabsContent value="wall" className="space-y-6 outline-none">
-          <div className="text-center max-w-xl mx-auto space-y-1">
-            <h3 className="text-xs font-bold font-mono uppercase text-zinc-900">Assist360 Operations Analytics Wall</h3>
-            <p className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-              20 completely unique system visualizations and performance analysis charts
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            {/* Chart 1: Ticket Volume Trend */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">1. Ticket Volume Trend (Area)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={analyticsWallData.ticketVolumeTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Area type="monotone" dataKey="Requests" stroke="#09090b" fill="#09090b" fillOpacity={0.05} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 2: Cumulative Ticket Growth */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">2. Cumulative Ticket Growth (Line)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analyticsWallData.ticketGrowth} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Line type="monotone" dataKey="total" stroke="#09090b" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 3: Open vs Closed Tickets */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">3. Open vs Closed Tickets (Bar)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analyticsWallData.openVsClosed} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Bar dataKey="Closed" fill="#09090b" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="Open" fill="#71717a" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 4: Escalation Trend */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">4. Escalation Trend (Line)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analyticsWallData.escalationTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 5: SLA Compliance Trend */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">5. SLA Compliance Trend (Area)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={analyticsWallData.slaTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <YAxis domain={[90, 100]} fontSize={8} tickLine={false} />
-                    <Area type="monotone" dataKey="compliance" stroke="#09090b" fill="#09090b" fillOpacity={0.08} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 6: Customer Case Activity */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">6. Customer Case Activity (Bar)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analyticsWallData.customerActivity} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Bar dataKey="tickets" fill="#18181b" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 7: Consultant Utilization Spread */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">7. Consultant Utilization Spread (H-Bar)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analyticsWallData.consultantUtilization} layout="vertical" margin={{ top: 2, right: 2, left: -22, bottom: 2 }}>
-                    <XAxis type="number" fontSize={8} tickLine={false} />
-                    <YAxis dataKey="name" type="category" fontSize={8} tickLine={false} />
-                    <Bar dataKey="utilization" fill="#09090b" radius={[0, 2, 2, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 8: Manager Case Allocation */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">8. Manager Case Allocation (Bar)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analyticsWallData.managerWorkload} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Bar dataKey="tickets" fill="#27272a" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 9: Contract Budget Consumption */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">9. Contract Budget Consumption (Stacked Bar)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analyticsWallData.contractConsumption} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Bar dataKey="Allocated" fill="#e4e4e7" stackId="a" />
-                    <Bar dataKey="Consumed" fill="#09090b" stackId="a" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 10: Resolution Time Trend */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">10. Resolution Time Trend (Line)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analyticsWallData.resolutionTimeTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Line type="monotone" dataKey="hours" stroke="#09090b" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 11: Approval Response Trend */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">11. Approval Response Trend (Area)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={analyticsWallData.approvalResponseTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Area type="monotone" dataKey="pendingApprovals" stroke="#71717a" fill="#71717a" fillOpacity={0.05} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 12: Approved Actual Hours */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">12. Approved Actual Hours (Area)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={analyticsWallData.approvedHoursTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Area type="monotone" dataKey="hours" stroke="#09090b" fill="#09090b" fillOpacity={0.06} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 13: Estimated vs Actual Hours */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">13. Estimated vs Actual Hours (Composed)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={analyticsWallData.estVsActual} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={7} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Bar dataKey="Actual" fill="#09090b" radius={[2, 2, 0, 0]} />
-                    <Line type="monotone" dataKey="Estimated" stroke="#71717a" strokeWidth={1.5} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 14: Priority Counts Distribution */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">14. Priority Counts Distribution (Pie)</span>
-              <div className="h-44 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={analyticsWallData.priorityDistribution}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={40}
-                      dataKey="value"
-                      label={({ name }) => name ? name.slice(0, 3) : ''}
-                    >
-                      {analyticsWallData.priorityDistribution.map((entry, idx) => (
-                        <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 15: Ticket Categories Spread */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">15. Ticket Categories Spread (Donut)</span>
-              <div className="h-44 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={analyticsWallData.categoryDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={25}
-                      outerRadius={40}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {analyticsWallData.categoryDistribution.map((entry, idx) => (
-                        <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 16: SAP Module Distribution */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">16. SAP Module Distribution (Pie)</span>
-              <div className="h-44 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={analyticsWallData.moduleDistribution}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={40}
-                      dataKey="value"
-                    >
-                      {analyticsWallData.moduleDistribution.map((entry, idx) => (
-                        <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 17: Customer Health Score Spread */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">17. Customer Health Score Spread (Radar)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={analyticsWallData.healthScoreSpread}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="subject" fontSize={7} />
-                    <Radar dataKey="score" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 18: Operational Risk Heatmap */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">18. Operational Risk Heatmap (Radar)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={analyticsWallData.riskHeatmap}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="subject" fontSize={7} />
-                    <Radar dataKey="risk" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 19: Manager Delivery Health */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">19. Manager Delivery Health (Line)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analyticsWallData.managerDeliveryHealth} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                    <YAxis domain={[50, 100]} fontSize={8} tickLine={false} />
-                    <Line type="monotone" dataKey="score" stroke="#09090b" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Chart 20: Resource Capacity Forecast */}
-            <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">20. Resource Capacity Forecast (Stacked Area)</span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={analyticsWallData.capacityForecast} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                    <XAxis dataKey="month" fontSize={8} tickLine={false} />
-                    <YAxis fontSize={8} tickLine={false} />
-                    <Area type="monotone" dataKey="Utilized" stackId="a" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
-                    <Area type="monotone" dataKey="Remaining" stackId="a" stroke="#e4e4e7" fill="#e4e4e7" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-          </div>
-        </TabsContent>
-
       </Tabs>
 
       {/* ── IAM CREDENTIALS MANAGER MODAL ── */}

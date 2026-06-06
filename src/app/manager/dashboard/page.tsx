@@ -220,6 +220,107 @@ export default function ManagerDashboardPage() {
   // Manager is the single point of contact for the whole operation — see all tickets, like admin
   const scopedTickets = useMemo(() => tickets, [tickets]);
 
+  const waitingAssignmentTickets = useMemo(() => {
+    return tickets.filter(t => 
+      t.status !== 'Closed' && 
+      t.status !== 'Resolved' && 
+      (!t.assignedConsultant || t.status === 'New' || t.status === 'Reopened')
+    );
+  }, [tickets]);
+
+  const approvalsQueueList = useMemo(() => {
+    const list: any[] = [];
+    tickets.forEach(t => {
+      // Hours effort logs
+      (t.actualHoursLogs || []).forEach(log => {
+        if (log.approvalStatus?.toLowerCase() === 'pending') {
+          list.push({
+            type: 'Hours Approval',
+            id: log.id,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+            title: t.title,
+            detail: `${log.actualHours}h by ${log.consultantId || 'Consultant'}`,
+            actionTab: 'approvals'
+          });
+        }
+      });
+
+      // Closure requests
+      (t.closureRequests || []).forEach(r => {
+        if (r.status === 'Pending Manager Approval' || r.managerApprovalStatus === 'Pending') {
+          list.push({
+            type: 'Closure Approval',
+            id: r.id,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+            title: t.title,
+            detail: `Actual hours: ${r.totalActualHours}h - ${r.workCompletedSummary?.slice(0, 40)}...`,
+            actionTab: 'approvals'
+          });
+        }
+      });
+
+      // Unlock requests
+      (t.unlockRequests || []).forEach(u => {
+        if (u.status === 'Pending') {
+          list.push({
+            type: 'Unlock Request',
+            id: u.id,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+            title: t.title,
+            detail: `Reason: ${u.reason?.slice(0, 40)}...`,
+            actionTab: 'approvals'
+          });
+        }
+      });
+    });
+    return list;
+  }, [tickets]);
+
+  const escalationsAndBreachesList = useMemo(() => {
+    const now = SYSTEM_NOW;
+    const list: any[] = [];
+    tickets.forEach(t => {
+      if (t.status === 'Closed') return;
+      
+      const hasSlaBreached = t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < now;
+      if (hasSlaBreached) {
+        list.push({
+          type: 'SLA Breach',
+          ticketId: t.id,
+          ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+          title: t.title,
+          priority: t.priority,
+          detail: `Breached on ${new Date(t.slaDueAt).toLocaleDateString()}`,
+          badgeColor: 'bg-red-100 text-red-800 border-red-200'
+        });
+      } else if (t.priority === 'Critical') {
+        list.push({
+          type: 'Critical Ticket',
+          ticketId: t.id,
+          ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+          title: t.title,
+          priority: t.priority,
+          detail: `SLA: ${t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' ? new Date(t.slaDueAt).toLocaleString() : 'N/A'}`,
+          badgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+        });
+      } else if (t.escalationFlag) {
+        list.push({
+          type: 'Escalated',
+          ticketId: t.id,
+          ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+          title: t.title,
+          priority: t.priority,
+          detail: `Escalated flag set to TRUE`,
+          badgeColor: 'bg-red-50 text-red-750 border-red-100'
+        });
+      }
+    });
+    return list;
+  }, [tickets]);
+
   // Unique dropdown options extracted from data
   // Unique dropdown options extracted from contracts and tickets
   const customersList = useMemo(() => {
@@ -268,10 +369,12 @@ export default function ManagerDashboardPage() {
   const filteredDashboardTickets = useMemo(() => {
     return scopedTickets.filter(t => {
       // Month calculation matches selector
-      const createdDate = new Date(t.createdAt);
-      const [y, m] = selectedMonthStr.split('-');
-      const matchesMonth = createdDate.getFullYear() === parseInt(y, 10) && createdDate.getMonth() === parseInt(m, 10) - 1;
-      if (!matchesMonth) return false;
+      if (selectedMonthStr !== 'All') {
+        const createdDate = new Date(t.createdAt);
+        const [y, m] = selectedMonthStr.split('-');
+        const matchesMonth = createdDate.getFullYear() === parseInt(y, 10) && createdDate.getMonth() === parseInt(m, 10) - 1;
+        if (!matchesMonth) return false;
+      }
 
       if (customerFilter !== 'All' && t.organization !== customerFilter) return false;
 
@@ -289,6 +392,9 @@ export default function ManagerDashboardPage() {
 
   // Working days helper Sunday to Thursday
   const workingDaysInMonth = useMemo(() => {
+    if (selectedMonthStr === 'All') {
+      return 66; // Total average working days for April + May + June
+    }
     const [y, m] = selectedMonthStr.split('-');
     const year = parseInt(y, 10);
     const month = parseInt(m, 10);
@@ -942,6 +1048,7 @@ export default function ManagerDashboardPage() {
                 onChange={(e) => setSelectedMonthStr(e.target.value)}
                 className="bg-transparent text-[10px] font-bold text-zinc-800 focus:outline-none cursor-pointer font-mono"
               >
+                <option value="All">All Months</option>
                 <option value="2026-05">June 2026</option>
                 <option value="2026-04">May 2026</option>
                 <option value="2026-03">April 2026</option>
@@ -2079,6 +2186,130 @@ export default function ManagerDashboardPage() {
               </div>
             </Card>
 
+          </div>
+
+          {/* SECTION 4: WORKFLOW MANAGEMENT CONSOLE */}
+          <div className="space-y-4 pt-4 border-t border-zinc-200">
+            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">
+              4. Operational Workflow Management Console
+            </span>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-mono text-[11px]">
+              
+              {/* Widget 1: Waiting Assignment */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[380px]">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                  <span className="font-extrabold text-zinc-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <Users size={12} className="text-zinc-500" />
+                    Waiting Assignment ({waitingAssignmentTickets.length})
+                  </span>
+                  <Badge className="bg-zinc-100 text-zinc-800 text-[9px] font-bold px-1.5 py-0.5">NEW / UNASSIGNED</Badge>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                  {waitingAssignmentTickets.map((t) => (
+                    <div key={t.id} className="p-2.5 bg-zinc-50 border border-zinc-150 rounded-lg hover:border-zinc-350 transition flex flex-col justify-between gap-1.5">
+                      <div className="flex justify-between items-start">
+                        <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-extrabold text-zinc-900 hover:underline text-[10px] uppercase">
+                          {t.ticketNumber || t.id.slice(0, 8)}
+                        </Link>
+                        <span className={`text-[8px] font-extrabold uppercase px-1 py-0.5 rounded ${
+                          t.priority === 'Critical' ? 'bg-red-50 text-red-700' : 'bg-zinc-100 text-zinc-700'
+                        }`}>
+                          {t.priority}
+                        </span>
+                      </div>
+                      <span className="text-zinc-700 font-semibold line-clamp-1">{t.title}</span>
+                      <div className="flex justify-between items-center text-[9px] text-zinc-400">
+                        <span>Org: {t.organization}</span>
+                        <span className="text-zinc-500">{t.sapModule}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {waitingAssignmentTickets.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-12">
+                      <CheckCircle size={24} className="text-emerald-500 mb-2" />
+                      All tickets assigned successfully.
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Widget 2: Approvals Queue */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[380px]">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                  <span className="font-extrabold text-zinc-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <Timer size={12} className="text-zinc-500" />
+                    Approvals & Governance ({approvalsQueueList.length})
+                  </span>
+                  <Badge className="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5">PENDING SIGN-OFF</Badge>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                  {approvalsQueueList.map((app, idx) => (
+                    <div key={idx} className="p-2.5 bg-zinc-50 border border-zinc-150 rounded-lg hover:border-zinc-350 transition flex flex-col justify-between gap-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="font-extrabold text-[9px] uppercase tracking-wider text-zinc-500">{app.type}</span>
+                        <span className="font-bold text-zinc-900 text-[9px]">{app.ticketNumber}</span>
+                      </div>
+                      <span className="text-zinc-700 font-semibold line-clamp-1">{app.title}</span>
+                      <p className="text-[9px] text-zinc-500 bg-zinc-100/50 p-1 rounded font-mono break-all">{app.detail}</p>
+                      <div className="flex justify-end gap-1.5 pt-1">
+                        <Button
+                          onClick={() => setSelectedTab(app.actionTab)}
+                          size="sm"
+                          className="h-5 text-[8px] uppercase font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2"
+                        >
+                          Resolve Approval
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {approvalsQueueList.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-12">
+                      <CheckCircle size={24} className="text-emerald-500 mb-2" />
+                      No approvals pending decision.
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Widget 3: Escalations & SLA Breaches */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[380px]">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                  <span className="font-extrabold text-zinc-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <ShieldAlert size={12} className="text-zinc-500" />
+                    Escalations & SLA Breaches ({escalationsAndBreachesList.length})
+                  </span>
+                  <Badge className="bg-red-100 text-red-800 text-[9px] font-bold px-1.5 py-0.5">EXPOSURE WARNING</Badge>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                  {escalationsAndBreachesList.map((esc, idx) => (
+                    <div key={idx} className="p-2.5 bg-red-50/10 border border-red-100 rounded-lg hover:border-red-200 transition flex flex-col justify-between gap-1.5">
+                      <div className="flex justify-between items-start">
+                        <span className={`text-[8px] font-extrabold uppercase px-1 py-0.5 rounded border ${esc.badgeColor}`}>
+                          {esc.type}
+                        </span>
+                        <span className="font-bold text-zinc-950 text-[9px]">{esc.ticketNumber}</span>
+                      </div>
+                      <span className="text-zinc-800 font-semibold line-clamp-1">{esc.title}</span>
+                      <div className="flex justify-between items-center text-[9px] text-zinc-400">
+                        <span className="text-red-650 font-bold">{esc.detail}</span>
+                        <span className="text-zinc-500 font-bold">Priority: {esc.priority}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {escalationsAndBreachesList.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-12">
+                      <CheckCircle size={24} className="text-emerald-500 mb-2" />
+                      All delivery agreements are running healthy.
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+            </div>
           </div>
         </TabsContent>
 

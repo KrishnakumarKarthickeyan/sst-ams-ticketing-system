@@ -78,6 +78,7 @@ function getWorkingDaysCount(year: number, monthIndex: number) {
 }
 
 const MONTH_OPTIONS = [
+  { value: 'All', label: 'All Months' },
   { value: '2025-11', label: 'December 2025' },
   { value: '2026-00', label: 'January 2026' },
   { value: '2026-01', label: 'February 2026' },
@@ -178,6 +179,10 @@ export default function ConsultantDashboardPage() {
   // --- Dynamic Month Selector State ---
   const [selectedMonthStr, setSelectedMonthStr] = useState('2026-04'); // Default to May 2026
   const [selectedYear, selectedMonth] = useMemo(() => {
+    if (selectedMonthStr === 'All') {
+      const now = new Date();
+      return [now.getFullYear(), now.getMonth()];
+    }
     const [y, m] = selectedMonthStr.split('-');
     return [parseInt(y, 10), parseInt(m, 10)];
   }, [selectedMonthStr]);
@@ -217,14 +222,15 @@ export default function ConsultantDashboardPage() {
   // --- Dynamic Operations Calculator ---
   const monthlyStats = useMemo(() => {
     const now = new Date();
-    const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+    const isCurrentMonth = selectedMonthStr === 'All' ? false : selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
     
     // 1. Working days & Expected Hours
-    const workingDays = getWorkingDaysCount(selectedYear, selectedMonth);
+    const workingDays = selectedMonthStr === 'All' ? 66 : getWorkingDaysCount(selectedYear, selectedMonth);
     const expectedHours = workingDays * 8;
 
     // Filter database tickets for selected month
     const dbMonthTickets = roleTickets.filter(t => {
+      if (selectedMonthStr === 'All') return true;
       const d = new Date(t.createdAt);
       return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
     });

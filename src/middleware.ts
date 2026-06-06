@@ -32,28 +32,8 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL('/login', request.url));
 
-  // Query database profiles table to check is_active and is_locked in real-time
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('is_active, is_locked, first_login_completed, force_password_change')
-    .eq('id', user.id)
-    .single();
-
-  if (error || !profile || profile.is_active === false || profile.is_locked === true) {
-    // Session is no longer valid: sign out from auth and redirect to login
-    await supabase.auth.signOut();
-    const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
-    // Clear cookies explicitly
-    request.cookies.getAll().forEach(cookie => {
-      if (cookie.name.startsWith('sb-') || cookie.name.includes('supabase')) {
-        redirectResponse.cookies.delete(cookie.name);
-      }
-    });
-    return redirectResponse;
-  }
-
-  // Use DB values to decide first-login force password reset redirections
-  const isFirstLogin = profile.first_login_completed === false || profile.force_password_change === true;
+  // Use user_metadata values from JWT session payload to decide first-login force password reset redirections
+  const isFirstLogin = user.user_metadata?.first_login_completed === false || user.user_metadata?.force_password_change === true;
   if (isFirstLogin && pathname !== '/first-login-reset') {
     return NextResponse.redirect(new URL('/first-login-reset', request.url));
   }
