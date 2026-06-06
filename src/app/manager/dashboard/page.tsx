@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
-import { getManagerDashboardData } from '../../../utils/dashboardService';
+import { getManagerDashboardData, getSlaStatus } from '../../../utils/dashboardService';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
@@ -169,14 +169,20 @@ export default function ManagerDashboardPage() {
   }, [profiles]);
 
   // --- FILTERS & INTERACTION STATES ---
-  const [selectedMonthStr, setSelectedMonthStr] = useState('2026-05'); // June 2026
+  const [selectedMonthStr, setSelectedMonthStr] = useState('All');
+  const [selectedQuarter, setSelectedQuarter] = useState('All');
+  const [selectedYear, setSelectedYear] = useState('All');
   const [customerFilter, setCustomerFilter] = useState('All');
   const [consultantFilter, setConsultantFilter] = useState('All');
+  const [managerFilter, setManagerFilter] = useState('All');
   const [moduleFilter, setModuleFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [selectedTab, setSelectedTab] = useState('health');
+  const [escalatedFilter, setEscalatedFilter] = useState('All');
+  const [slaStatusFilter, setSlaStatusFilter] = useState('All');
+  const [selectedTab, setSelectedTab] = useState('analytics');
   const [selectedConsultant, setSelectedConsultant] = useState<string | null>(null);
+  const [trendGrouping, setTrendGrouping] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
 
   // Modals state
   const [rejectDialog, setRejectDialog] = useState<{
@@ -359,36 +365,101 @@ export default function ManagerDashboardPage() {
     });
     return Array.from(list).filter(Boolean).sort();
   }, [consultantsDbList, scopedTickets]);
-
   const managedCustomersList = customersList;
   const managedConsultantsList = consultantsList;
   const managedCustomersCount = managedCustomersList.length;
   const managedConsultantsCount = managedConsultantsList.length;
 
+  const managersList = useMemo(() => {
+    return (profiles || [])
+      .filter(p => p.role === 'Manager')
+      .map(p => p.full_name)
+      .filter(Boolean)
+      .sort();
+  }, [profiles]);
+
   // Filtered dataset for dashboard metrics
   const filteredDashboardTickets = useMemo(() => {
     return scopedTickets.filter(t => {
-      // Month calculation matches selector
+      // 1. Month Filter
       if (selectedMonthStr !== 'All') {
         const createdDate = new Date(t.createdAt);
         const [y, m] = selectedMonthStr.split('-');
-        const matchesMonth = createdDate.getFullYear() === parseInt(y, 10) && createdDate.getMonth() === parseInt(m, 10) - 1;
+        const matchesMonth = createdDate.getFullYear() === parseInt(y, 10) && (createdDate.getMonth() + 1) === parseInt(m, 10);
         if (!matchesMonth) return false;
       }
 
+      // 2. Quarter Filter
+      if (selectedQuarter !== 'All') {
+        const createdDate = new Date(t.createdAt);
+        const month = createdDate.getMonth(); // 0-indexed
+        let q = '';
+        if (month >= 0 && month <= 2) q = 'Q1';
+        else if (month >= 3 && month <= 5) q = 'Q2';
+        else if (month >= 6 && month <= 8) q = 'Q3';
+        else if (month >= 9 && month <= 11) q = 'Q4';
+        if (q !== selectedQuarter) return false;
+      }
+
+      // 3. Year Filter
+      if (selectedYear !== 'All') {
+        const createdDate = new Date(t.createdAt);
+        if (createdDate.getFullYear().toString() !== selectedYear) return false;
+      }
+
+      // 4. Customer Filter
       if (customerFilter !== 'All' && t.organization !== customerFilter) return false;
 
-      const allocatedNames = (t.consultantEfforts || []).map(e => e.consultantName);
-      if (t.assignedConsultant) allocatedNames.push(t.assignedConsultant);
-      if (consultantFilter !== 'All' && !allocatedNames.includes(consultantFilter)) return false;
+      // 5. Consultant Filter
+      if (consultantFilter !== 'All') {
+        const allocatedNames = (t.consultantEfforts || []).map(e => e.consultantName);
+        if (t.assignedConsultant) allocatedNames.push(t.assignedConsultant);
+        if (!allocatedNames.includes(consultantFilter)) return false;
+      }
 
+      // 6. Manager Filter
+      if (managerFilter !== 'All') {
+        if (t.assignedManager !== managerFilter) return false;
+      }
+
+      // 7. SAP Module Filter
       if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
+
+      // 8. Priority Filter
       if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
+
+      // 9. Status Filter
       if (statusFilter !== 'All' && t.status !== statusFilter) return false;
+
+      // 10. Escalated Filter
+      if (escalatedFilter !== 'All') {
+        const isEsc = t.escalationFlag === true;
+        if (escalatedFilter === 'Yes' && !isEsc) return false;
+        if (escalatedFilter === 'No' && isEsc) return false;
+      }
+
+      // 11. SLA Status Filter
+      if (slaStatusFilter !== 'All') {
+        const status = getSlaStatus(t, SYSTEM_NOW);
+        if (status !== slaStatusFilter) return false;
+      }
 
       return true;
     });
-  }, [scopedTickets, selectedMonthStr, customerFilter, consultantFilter, moduleFilter, priorityFilter, statusFilter]);
+  }, [
+    scopedTickets,
+    selectedMonthStr,
+    selectedQuarter,
+    selectedYear,
+    customerFilter,
+    consultantFilter,
+    managerFilter,
+    moduleFilter,
+    priorityFilter,
+    statusFilter,
+    escalatedFilter,
+    slaStatusFilter
+  ]);
 
   // Working days helper Sunday to Thursday
   const workingDaysInMonth = useMemo(() => {
@@ -625,6 +696,14 @@ export default function ManagerDashboardPage() {
         }
       });
     });
+    const resolvedClosed = ticketsList.filter(t => (t.status === 'Closed' || t.status === 'Resolved') && (t.resolvedAt || t.closedAt));
+    const avgResolutionTime = resolvedClosed.length > 0
+      ? (resolvedClosed.reduce((sum, t) => {
+          const s = new Date(t.createdAt).getTime();
+          const e = new Date(t.resolvedAt || t.closedAt || s).getTime();
+          return sum + (e - s) / (1000 * 60 * 60);
+        }, 0) / resolvedClosed.length).toFixed(1)
+      : '0.0';
 
     return {
       executive: {
@@ -667,7 +746,8 @@ export default function ManagerDashboardPage() {
         slaHealthy,
         slaWarning,
         slaBreached,
-        averageSlaCompliance: slaCompliance
+        averageSlaCompliance: slaCompliance,
+        averageResolutionTime: avgResolutionTime
       },
       actionCenter: {
         ticketsAwaitingAssign,
@@ -770,21 +850,268 @@ export default function ManagerDashboardPage() {
 
   // Recharts chart calculations
   const chartsData = useMemo(() => {
-    // 1. Status Distribution
+    const now = new Date(SYSTEM_NOW);
+    const monthsNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // 1. Ticket Trend (Daily, Weekly, Monthly, Yearly)
+    let ticketTrendData: { name: string; Tickets: number }[] = [];
+    if (trendGrouping === 'daily') {
+      const days: Record<string, number> = {};
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        days[key] = 0;
+      }
+      filteredDashboardTickets.forEach(t => {
+        const key = new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (key in days) days[key]++;
+      });
+      ticketTrendData = Object.entries(days).map(([name, count]) => ({ name, Tickets: count }));
+    } else if (trendGrouping === 'weekly') {
+      const weeks: Record<string, number> = {};
+      for (let i = 7; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i * 7);
+        const key = `Wk -${i}`;
+        weeks[key] = 0;
+      }
+      filteredDashboardTickets.forEach(t => {
+        const diffMs = now.getTime() - new Date(t.createdAt).getTime();
+        const weekIdx = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7));
+        if (weekIdx >= 0 && weekIdx < 8) {
+          weeks[`Wk -${weekIdx}`]++;
+        }
+      });
+      ticketTrendData = Object.entries(weeks).reverse().map(([name, count]) => ({ name, Tickets: count }));
+    } else if (trendGrouping === 'yearly') {
+      const years: Record<string, number> = {};
+      for (let i = 4; i >= 0; i--) {
+        const key = (now.getFullYear() - i).toString();
+        years[key] = 0;
+      }
+      filteredDashboardTickets.forEach(t => {
+        const yr = new Date(t.createdAt).getFullYear().toString();
+        if (yr in years) years[yr]++;
+      });
+      ticketTrendData = Object.entries(years).map(([name, count]) => ({ name, Tickets: count }));
+    } else {
+      // monthly (default)
+      const monthsData: Record<string, number> = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now);
+        d.setMonth(d.getMonth() - i);
+        const key = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+        monthsData[key] = 0;
+      }
+      filteredDashboardTickets.forEach(t => {
+        const created = new Date(t.createdAt);
+        const key = `${monthsNames[created.getMonth()]} ${created.getFullYear().toString().slice(-2)}`;
+        if (key in monthsData) monthsData[key]++;
+      });
+      ticketTrendData = Object.entries(monthsData).map(([name, count]) => ({ name, Tickets: count }));
+    }
+
+    // 2. Open vs Closed (Bar Chart)
+    const openVsClosedTrendData = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - (5 - i));
+      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+
+      const raised = filteredDashboardTickets.filter(t => {
+        const created = new Date(t.createdAt);
+        return created.getFullYear() === year && created.getMonth() === monthIdx;
+      }).length;
+
+      const closed = filteredDashboardTickets.filter(t => {
+        const created = new Date(t.createdAt);
+        return created.getFullYear() === year && created.getMonth() === monthIdx && (t.status === 'Closed' || t.status === 'Resolved');
+      }).length;
+
+      return {
+        name: monthLabel,
+        Open: raised - closed,
+        Closed: closed
+      };
+    });
+
+    // 3. SLA Compliance (Area Chart)
+    const slaComplianceTrendData = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - (5 - i));
+      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+
+      const monthTickets = filteredDashboardTickets.filter(t => {
+        const created = new Date(t.createdAt);
+        return created.getFullYear() === year && created.getMonth() === monthIdx && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable';
+      });
+
+      const breached = monthTickets.filter(t => {
+        const due = new Date(t.slaDueAt!).getTime();
+        const end = t.status === 'Resolved' || t.status === 'Closed'
+          ? new Date(t.resolvedAt || t.closedAt || due).getTime()
+          : SYSTEM_NOW;
+        return end > due;
+      }).length;
+
+      const compliance = monthTickets.length > 0
+        ? Math.round(((monthTickets.length - breached) / monthTickets.length) * 100)
+        : 100;
+
+      return {
+        name: monthLabel,
+        'SLA Compliance %': compliance
+      };
+    });
+
+    // 4. Escalation Trend (Line Chart)
+    const escalationTrendData = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - (5 - i));
+      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+
+      const count = filteredDashboardTickets.filter(t => {
+        const created = new Date(t.createdAt);
+        return created.getFullYear() === year && created.getMonth() === monthIdx && t.escalationFlag;
+      }).length;
+
+      return {
+        name: monthLabel,
+        Escalations: count
+      };
+    });
+
+    // 5. Customer Ticket Distribution (Donut Chart)
+    const countsCustomers: Record<string, number> = {};
+    filteredDashboardTickets.forEach(t => {
+      if (t.organization) {
+        countsCustomers[t.organization] = (countsCustomers[t.organization] || 0) + 1;
+      }
+    });
+    const customerTicketDistribution = Object.entries(countsCustomers).map(([name, value]) => ({ name, value }));
+
+    // 6. Module Wise Tickets (Bar Chart)
+    const modules = ['FICO', 'MM', 'PP', 'ABAP', 'Basis', 'PM', 'QM', 'WM'];
+    const countsModules: Record<string, number> = { Others: 0 };
+    modules.forEach(m => { countsModules[m] = 0; });
+    filteredDashboardTickets.forEach(t => {
+      const mod = t.sapModule || 'General';
+      const match = modules.find(m => m.toLowerCase() === mod.toLowerCase());
+      if (match) {
+        countsModules[match]++;
+      } else {
+        countsModules.Others++;
+      }
+    });
+    const moduleWiseTickets = Object.entries(countsModules).map(([name, value]) => ({ name, value }));
+
+    // 7. Consultant UtilizationData
+    const consultantUtilizationData = consultantsLoad.map(c => ({
+      name: c.name,
+      'Utilization %': c.loadPercentage
+    })).sort((a, b) => b['Utilization %'] - a['Utilization %']);
+
+    // 8. Resolution Time Trend (Area Chart)
+    const resolutionTimeTrendData = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - (5 - i));
+      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+
+      const resolvedInMonth = filteredDashboardTickets.filter(t => {
+        const created = new Date(t.createdAt);
+        return created.getFullYear() === year && created.getMonth() === monthIdx && (t.status === 'Closed' || t.status === 'Resolved') && (t.resolvedAt || t.closedAt);
+      });
+
+      const avgHours = resolvedInMonth.length > 0
+        ? resolvedInMonth.reduce((sum, t) => {
+            const start = new Date(t.createdAt).getTime();
+            const end = new Date(t.resolvedAt || t.closedAt || start).getTime();
+            return sum + (end - start) / (1000 * 60 * 60);
+          }, 0) / resolvedInMonth.length
+        : 0;
+
+      return {
+        name: monthLabel,
+        'Resolution Time (Hrs)': parseFloat(avgHours.toFixed(1))
+      };
+    });
+
+    // 9. Approval Volume (Stacked Chart)
+    const approvalVolumeData = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - (5 - i));
+      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+
+      const monthTickets = filteredDashboardTickets.filter(t => {
+        const created = new Date(t.createdAt);
+        return created.getFullYear() === year && created.getMonth() === monthIdx;
+      });
+
+      const effortCount = monthTickets.reduce((sum, t) => 
+        sum + (t.efforts || []).filter(e => e.status === 'Approved' && isCreatedInMonth(e.approvedAt, year, monthIdx)).length, 0);
+
+      const closureCount = monthTickets.reduce((sum, t) => 
+        sum + (t.closureRequests || []).filter(r => r.status === 'Approved' && isCreatedInMonth(r.managerApprovedAt, year, monthIdx)).length, 0);
+
+      const unlockCount = monthTickets.reduce((sum, t) => 
+        sum + (t.unlockRequests || []).filter(u => u.status === 'Approved' && isCreatedInMonth(u.managerApprovedAt, year, monthIdx)).length, 0);
+
+      return {
+        name: monthLabel,
+        Timesheets: effortCount,
+        Closures: closureCount,
+        Unlocks: unlockCount
+      };
+
+      function isCreatedInMonth(dateStr: string | null | undefined, yr: number, moIdx: number) {
+        if (!dateStr) return false;
+        const dt = new Date(dateStr);
+        return dt.getFullYear() === yr && dt.getMonth() === moIdx;
+      }
+    });
+
+    // 10. Customer Consumption (Grouped Bar Chart)
+    const customerConsumptionData = customersList.slice(0, 5).map(org => {
+      const contract = contracts.find(c => c.organizationName === org && c.isActive);
+      const totalHours = contract?.totalHours || 0;
+      
+      const orgTickets = filteredDashboardTickets.filter(t => t.organization === org);
+      const approvedLogs = orgTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved');
+      const approvedHours = approvedLogs.reduce((sum, ah) => sum + ah.actualHours, 0);
+      
+      const remainingHours = Math.max(0, totalHours - approvedHours);
+      
+      return {
+        name: org.slice(0, 12),
+        Contracted: totalHours,
+        Used: approvedHours,
+        Remaining: remainingHours
+      };
+    });
+
+    // Backwards compatibility for other tabs in dashboard (e.g. statusData, priorityData, typeData, moduleData, agingData, trendData)
     const statusCounts: Record<string, number> = {};
     filteredDashboardTickets.forEach(t => {
       statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
     });
     const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
-    // 2. Priority Distribution
     const priorityCounts: Record<string, number> = {};
     filteredDashboardTickets.forEach(t => {
       priorityCounts[t.priority] = (priorityCounts[t.priority] || 0) + 1;
     });
     const priorityData = Object.entries(priorityCounts).map(([name, value]) => ({ name, value }));
 
-    // 3. Type Distribution
     const typeCounts: Record<string, number> = {};
     filteredDashboardTickets.forEach(t => {
       const type = t.ticketType || 'Incident';
@@ -792,14 +1119,13 @@ export default function ManagerDashboardPage() {
     });
     const typeData = Object.entries(typeCounts).map(([name, value]) => ({ name, value }));
 
-    // 4. Module Ticket Counts
     const moduleCounts: Record<string, number> = {};
     filteredDashboardTickets.forEach(t => {
-      moduleCounts[t.sapModule] = (moduleCounts[t.sapModule] || 0) + 1;
+      const mod = t.sapModule || 'General';
+      moduleCounts[mod] = (moduleCounts[mod] || 0) + 1;
     });
-    const moduleData = Object.entries(moduleCounts).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value);
+    const moduleData = Object.entries(moduleCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
-    // 5. Aging Buckets
     let bucket1 = 0; // 0-2 Days
     let bucket2 = 0; // 3-7 Days
     let bucket3 = 0; // 8-15 Days
@@ -824,12 +1150,10 @@ export default function ManagerDashboardPage() {
       { name: '30+ Days', value: bucket5 }
     ];
 
-    // Open vs Closed Trend calculated dynamically from actual tickets
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const trendData = Array.from({ length: 5 }).map((_, i) => {
-      const d = new Date();
+      const d = new Date(SYSTEM_NOW);
       d.setMonth(d.getMonth() - (4 - i));
-      const monthLabel = months[d.getMonth()];
+      const monthLabel = monthsNames[d.getMonth()];
       const year = d.getFullYear();
       const monthIdx = d.getMonth();
 
@@ -840,7 +1164,7 @@ export default function ManagerDashboardPage() {
 
       const closedInMonth = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx && t.status === 'Closed';
+        return created.getFullYear() === year && created.getMonth() === monthIdx && (t.status === 'Closed' || t.status === 'Resolved');
       }).length;
 
       return {
@@ -851,6 +1175,16 @@ export default function ManagerDashboardPage() {
     });
 
     return {
+      ticketTrendData,
+      openVsClosedTrendData,
+      slaComplianceTrendData,
+      escalationTrendData,
+      customerTicketDistribution,
+      moduleWiseTickets,
+      consultantUtilizationData,
+      resolutionTimeTrendData,
+      approvalVolumeData,
+      customerConsumptionData,
       statusData,
       priorityData,
       typeData,
@@ -858,7 +1192,7 @@ export default function ManagerDashboardPage() {
       agingData,
       trendData
     };
-  }, [filteredDashboardTickets]);
+  }, [filteredDashboardTickets, trendGrouping, consultantsLoad, contracts, customersList]);
 
   // Live Audit Timeline list
   const auditTimelineFeed = useMemo(() => {
@@ -1041,26 +1375,33 @@ export default function ManagerDashboardPage() {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-zinc-650">
-              <Calendar size={11} className="text-zinc-400" />
-              <select
-                value={selectedMonthStr}
-                onChange={(e) => setSelectedMonthStr(e.target.value)}
-                className="bg-transparent text-[10px] font-bold text-zinc-800 focus:outline-none cursor-pointer font-mono"
-              >
-                <option value="All">All Months</option>
-                <option value="2026-05">June 2026</option>
-                <option value="2026-04">May 2026</option>
-                <option value="2026-03">April 2026</option>
-              </select>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedMonthStr('All');
+                setSelectedQuarter('All');
+                setSelectedYear('All');
+                setCustomerFilter('All');
+                setConsultantFilter('All');
+                setManagerFilter('All');
+                setModuleFilter('All');
+                setPriorityFilter('All');
+                setStatusFilter('All');
+                setEscalatedFilter('All');
+                setSlaStatusFilter('All');
+              }}
+              className="text-[10px] font-bold uppercase tracking-wider font-mono h-8 border-zinc-300 hover:bg-zinc-100 text-zinc-700"
+            >
+              Reset Filters
+            </Button>
             <Badge className="bg-zinc-950 text-white font-bold text-[9px] uppercase border-none py-1.5 px-3">
               LIVE COCKPIT
             </Badge>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-zinc-100">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 pt-3 border-t border-zinc-100">
           <div>
             <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Customer Account</label>
             <select
@@ -1082,6 +1423,18 @@ export default function ManagerDashboardPage() {
             >
               <option value="All">All Consultants</option>
               {consultantsList.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Manager Scope</label>
+            <select
+              value={managerFilter}
+              onChange={(e) => setManagerFilter(e.target.value)}
+              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
+            >
+              <option value="All">All Managers</option>
+              {managersList.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
 
@@ -1121,13 +1474,84 @@ export default function ManagerDashboardPage() {
             >
               <option value="All">All Statuses</option>
               <option value="New">New</option>
-              <option value="In Progress - Functional">IP Functional</option>
-              <option value="In Progress - Technical">IP Technical</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
               <option value="Waiting for Customer">Waiting Client</option>
               <option value="Raised to SAP">Raised to SAP</option>
               <option value="Request for Closure">Request Closure</option>
               <option value="Closed">Closed</option>
               <option value="Reopened">Reopened</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Month Selector</label>
+            <select
+              value={selectedMonthStr}
+              onChange={(e) => setSelectedMonthStr(e.target.value)}
+              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
+            >
+              <option value="All">All Months</option>
+              <option value="2026-06">June 2026</option>
+              <option value="2026-05">May 2026</option>
+              <option value="2026-04">April 2026</option>
+              <option value="2026-03">March 2026</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Quarter Selector</label>
+            <select
+              value={selectedQuarter}
+              onChange={(e) => setSelectedQuarter(e.target.value)}
+              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
+            >
+              <option value="All">All Quarters</option>
+              <option value="Q1">Q1 (Jan-Mar)</option>
+              <option value="Q2">Q2 (Apr-Jun)</option>
+              <option value="Q3">Q3 (Jul-Sep)</option>
+              <option value="Q4">Q4 (Oct-Dec)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Year Selector</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
+            >
+              <option value="All">All Years</option>
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Escalated Only</label>
+            <select
+              value={escalatedFilter}
+              onChange={(e) => setEscalatedFilter(e.target.value)}
+              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
+            >
+              <option value="All">All</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">SLA Status</label>
+            <select
+              value={slaStatusFilter}
+              onChange={(e) => setSlaStatusFilter(e.target.value)}
+              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Healthy">Healthy</option>
+              <option value="Warning">Warning</option>
+              <option value="Breached">Breached</option>
             </select>
           </div>
         </div>
@@ -1214,6 +1638,7 @@ export default function ManagerDashboardPage() {
       {/* ── CORE WORKSPACE TABS INTERFACE ── */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
         <TabsList className="flex bg-zinc-100 p-1 border border-zinc-200 rounded-lg max-w-4xl overflow-x-auto whitespace-nowrap">
+          <TabsTrigger value="analytics" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Analytics Command Center</TabsTrigger>
           <TabsTrigger value="health" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Executive Operations</TabsTrigger>
           <TabsTrigger value="tickets" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Ticket Control Center</TabsTrigger>
           <TabsTrigger value="resources" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Consultant load & Capacity</TabsTrigger>
@@ -1221,6 +1646,564 @@ export default function ManagerDashboardPage() {
           <TabsTrigger value="approvals" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Governance & Financials</TabsTrigger>
           <TabsTrigger value="timeline" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Activity & Audit Feed</TabsTrigger>
         </TabsList>
+
+        {/* ── TAB CONTENT: ANALYTICS COMMAND CENTER ── */}
+        <TabsContent value="analytics" className="space-y-6 outline-none">
+          
+          {/* SECTION 1: REBUILT EXECUTIVE HEALTH OVERVIEW */}
+          <div className="space-y-4">
+            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">
+              1. Executive Health Overview
+            </span>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              
+              {/* Card 1: Ticket Operations */}
+              <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
+                <div>
+                  <span className="font-bold text-zinc-400 uppercase text-[8px] tracking-wider block font-mono">Ticket Operations</span>
+                  <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
+                    <div className="flex justify-between"><span>Open Tickets:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length}</span></div>
+                    <div className="flex justify-between"><span>In Progress:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.status.startsWith('In Progress') || t.status === 'In Progress').length}</span></div>
+                    <div className="flex justify-between"><span>Awaiting Assignment:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').length}</span></div>
+                    <div className="flex justify-between"><span>Pending Approval:</span><span className="font-bold text-zinc-900">{pendingApprovalsCount}</span></div>
+                    <div className="flex justify-between"><span>Pending Closure:</span><span className="font-bold text-zinc-900">{pendingClosureRequests.length}</span></div>
+                    <div className="flex justify-between"><span>Escalated:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.escalationFlag).length}</span></div>
+                    <div className="flex justify-between"><span>Closed This Month:</span><span className="font-bold text-green-700">{filteredDashboardTickets.filter(t => t.status === 'Closed' && new Date(t.createdAt).getMonth() === new Date(SYSTEM_NOW).getMonth()).length}</span></div>
+                    <div className="flex justify-between"><span>Reopened:</span><span className="font-bold text-red-600">{filteredDashboardTickets.filter(t => t.status === 'Reopened').length}</span></div>
+                    <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
+                      <span>Avg Resolution Time:</span>
+                      <span className="font-bold text-zinc-900">
+                        {dashboardData.executive.averageResolutionTime} hrs
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Card 2: Resource Operations */}
+              <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
+                <div>
+                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block font-mono">Resource Operations</span>
+                  <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
+                    <div className="flex justify-between"><span>Total Consultants:</span><span className="font-bold text-zinc-900">{profiles.filter(p => p.role === 'Consultant').length}</span></div>
+                    <div className="flex justify-between"><span>Functional:</span><span className="font-bold text-zinc-900">{profiles.filter(p => p.role === 'Consultant' && p.consultant_type === 'Functional').length}</span></div>
+                    <div className="flex justify-between"><span>Technical:</span><span className="font-bold text-zinc-900">{profiles.filter(p => p.role === 'Consultant' && p.consultant_type === 'Technical').length}</span></div>
+                    <div className="flex justify-between"><span>Allocated Staff:</span><span className="font-bold text-zinc-900">{consultantsLoad.filter(c => c.activeCount > 0).length}</span></div>
+                    <div className="flex justify-between"><span>Unallocated Staff:</span><span className="font-bold text-zinc-900">{consultantsLoad.filter(c => c.activeCount === 0).length}</span></div>
+                    <div className="flex justify-between"><span>Overloaded Staff:</span><span className="font-bold text-red-600">{consultantsLoad.filter(c => c.loadStatus === 'Overloaded').length}</span></div>
+                    <div className="flex justify-between"><span>Available Capacity:</span><span className="font-bold text-zinc-900">
+                      {Math.max(0, (profiles.filter(p => p.role === 'Consultant').length * workingDaysInMonth * 8) - filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0)).toFixed(0)} hrs
+                    </span></div>
+                    <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
+                      <span>Avg Utilization %:</span>
+                      <span className="font-bold text-zinc-900">
+                        {consultantsLoad.length > 0 ? Math.round(consultantsLoad.reduce((sum, c) => sum + c.loadPercentage, 0) / consultantsLoad.length) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Card 3: SLA Governance */}
+              <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
+                <div>
+                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block font-mono">SLA Governance</span>
+                  <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
+                    <div className="flex justify-between"><span>SLA Healthy:</span><span className="font-bold text-green-700">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Healthy').length}</span></div>
+                    <div className="flex justify-between"><span>SLA Warning:</span><span className="font-bold text-amber-600">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Warning').length}</span></div>
+                    <div className="flex justify-between"><span>SLA Breached:</span><span className="font-bold text-red-600">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Breached').length}</span></div>
+                    <div className="flex justify-between"><span>Total SLA Monitored:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length}</span></div>
+                    <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
+                      <span>Avg SLA Compliance:</span>
+                      <span className="font-bold text-zinc-900">
+                        {filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length > 0
+                          ? Math.round(((filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length - filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Breached').length) / filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length) * 100)
+                          : 100}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Card 4: Customer Operations */}
+              <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
+                <div>
+                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block font-mono">Customer Operations</span>
+                  <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
+                    <div className="flex justify-between"><span>Total Customers:</span><span className="font-bold text-zinc-900">{customersList.length}</span></div>
+                    <div className="flex justify-between"><span>With Open Tickets:</span><span className="font-bold text-zinc-900">{new Set(filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').map(t => t.organization)).size}</span></div>
+                    <div className="flex justify-between"><span>With Escalations:</span><span className="font-bold text-zinc-900">{new Set(filteredDashboardTickets.filter(t => t.escalationFlag).map(t => t.organization)).size}</span></div>
+                    <div className="flex justify-between"><span>Contract Expiring &lt;30d:</span><span className="font-bold text-zinc-900">
+                      {contracts.filter(c => c.endDate && c.isActive && (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30).length}
+                    </span></div>
+                    <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
+                      <span>Mthly Hours (Used/Rem):</span>
+                      <span className="font-bold text-zinc-900">
+                        {filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved' && new Date(ah.approvedAt || '').getMonth() === new Date(SYSTEM_NOW).getMonth()).reduce((sum, ah) => sum + ah.actualHours, 0).toFixed(0)}h / {Math.max(0, contracts.filter(c => c.isActive).reduce((sum, c) => sum + (c.monthlyBudgetHours || 0), 0) - filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved' && new Date(ah.approvedAt || '').getMonth() === new Date(SYSTEM_NOW).getMonth()).reduce((sum, ah) => sum + ah.actualHours, 0)).toFixed(0)}h
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+            </div>
+          </div>
+
+          {/* SECTION 2: TODAY'S MANAGER ACTION CENTER */}
+          <div className="space-y-4">
+            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">
+              2. Today&apos;s Manager Action Center
+            </span>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-[11px]">
+              
+              {/* Box 1: Immediate Assignment Queue */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider flex items-center gap-1">
+                      Immediate Assignment Queue ({filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').length})
+                    </span>
+                    <Badge className="bg-zinc-100 text-zinc-800 text-[8px] font-bold">UNASSIGNED</Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    {filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').slice(0, 5).map(t => (
+                      <div key={t.id} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
+                        <div className="flex justify-between items-center">
+                          <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id.slice(0, 8)}</Link>
+                          <Badge className="bg-zinc-100 text-zinc-800 border-none font-bold text-[7px] py-0 px-1 uppercase">{t.priority}</Badge>
+                        </div>
+                        <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
+                        <div className="flex justify-between items-center text-[8px] text-zinc-400">
+                          <span>Org: {t.organization}</span>
+                          <span>Module: {t.sapModule}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').length === 0 && (
+                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                        All active workload allocated.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Link href="/manager/tickets?tab=unassigned" className="mt-3">
+                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                    Dispatch Backlog &rarr;
+                  </Button>
+                </Link>
+              </Card>
+
+              {/* Box 2: Approval Queue */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                      Pending Approvals ({pendingApprovalsCount})
+                    </span>
+                    <Badge className="bg-amber-100 text-amber-800 text-[8px] font-bold">SIGN-OFF</Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    {/* Closure Requests */}
+                    {pendingClosureRequests.slice(0, 3).map(r => (
+                      <div key={r.requestId} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-zinc-900">Closure: {r.ticketId}</span>
+                          <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase">Closure Approval</span>
+                        </div>
+                        <span className="text-zinc-650 truncate block font-sans">Total Hours: {r.funcHours + r.techHours}h</span>
+                        <div className="flex justify-end gap-1 mt-1">
+                          <Button size="sm" onClick={() => triggerClosureVerify(r.ticketId, r.requestId)} className="h-5 text-[8px] font-mono font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2">Verify</Button>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Effort Logs */}
+                    {pendingEffortLogs.slice(0, 3).map(log => (
+                      <div key={log.logId} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-zinc-900">Effort: {log.hours}h by {log.consultantName}</span>
+                          <span className="text-[7px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold uppercase">Timesheet Effort</span>
+                        </div>
+                        <span className="text-zinc-650 truncate block font-sans">{log.description}</span>
+                        <div className="flex justify-end gap-1 mt-1">
+                          <Button size="sm" onClick={() => handleApproveEffort(log.ticketId, log.logId, log.consultantName)} className="h-5 text-[8px] font-mono font-bold bg-green-600 hover:bg-green-750 text-white rounded px-2">Approve</Button>
+                          <Button size="sm" onClick={() => triggerRejection('effort', log.ticketId, log.logId)} className="h-5 text-[8px] font-mono font-bold bg-red-600 hover:bg-red-750 text-white rounded px-2">Reject</Button>
+                        </div>
+                      </div>
+                    ))}
+                    {pendingApprovalsCount === 0 && (
+                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                        No approvals pending decision.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Button onClick={() => setSelectedTab('approvals')} variant="outline" className="mt-3 w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  Open Approvals Console &rarr;
+                </Button>
+              </Card>
+
+              {/* Box 3: Escalation Center */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                      Escalation Center ({filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').length})
+                    </span>
+                    <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">EXPOSURE</Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    {filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').slice(0, 5).map(t => (
+                      <div key={t.id} className="p-2 bg-red-50/10 border border-red-100 rounded-lg flex flex-col justify-between gap-1">
+                        <div className="flex justify-between items-center">
+                          <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                          <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase">{t.priority}</span>
+                        </div>
+                        <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
+                        <div className="flex justify-between items-center text-[8px] text-zinc-450">
+                          <span>Org: {t.organization}</span>
+                          <span className="font-bold text-red-650">{t.escalationFlag ? 'Escalated Flag Set' : 'Critical P1 Priority'}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').length === 0 && (
+                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                        No active escalations.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Link href="/manager/tickets?tab=escalated" className="mt-3">
+                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                    Inspect Escalations &rarr;
+                  </Button>
+                </Link>
+              </Card>
+
+              {/* Box 4: SLA Risk Center */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                      SLA Risk Center ({filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length})
+                    </span>
+                    <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">WARNING</Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').slice(0, 5).map(t => (
+                      <div key={t.id} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
+                        <div className="flex justify-between items-center">
+                          <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                          <span className={`text-[7px] px-1 py-0.2 rounded font-bold uppercase ${getSlaStatus(t, SYSTEM_NOW) === 'Breached' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{getSlaStatus(t, SYSTEM_NOW)}</span>
+                        </div>
+                        <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
+                        <div className="flex justify-between items-center text-[8px] text-zinc-400">
+                          <span>Org: {t.organization}</span>
+                          <span>Due: {t.slaDueAt ? new Date(t.slaDueAt).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length === 0 && (
+                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                        All SLAs running in healthy range.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Link href="/manager/tickets?tab=slaBreached" className="mt-3">
+                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                    Inspect SLA Risks &rarr;
+                  </Button>
+                </Link>
+              </Card>
+
+              {/* Box 5: Workload Balancer */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                      Workload Balancer
+                    </span>
+                    <Badge className="bg-zinc-100 text-zinc-800 text-[8px] font-bold">CAPACITY</Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[9px]">
+                    <div className="flex justify-between border-b border-zinc-100 pb-1.5 text-zinc-500 font-bold uppercase text-[7px]">
+                      <span>Consultant</span>
+                      <span>Active Tickets</span>
+                      <span>Utilization %</span>
+                    </div>
+                    {consultantsLoad.slice(0, 5).map(c => (
+                      <div key={c.name} className="flex justify-between items-center py-1 hover:bg-zinc-50 px-1 rounded">
+                        <span className="font-bold text-zinc-900">{c.name}</span>
+                        <span className="text-zinc-650">{c.activeCount} open</span>
+                        <span className={`font-bold ${c.loadStatus === 'Overloaded' ? 'text-red-600' : c.loadStatus === 'Underutilized' ? 'text-amber-600' : 'text-green-700'}`}>{c.loadPercentage}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Button onClick={() => setSelectedTab('resources')} variant="outline" className="mt-3 w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  Balance Resources &rarr;
+                </Button>
+              </Card>
+
+              {/* Box 6: Contract Alerts */}
+              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                      Contract Alerts ({contracts.filter(c => c.isActive && ((c.usedHours / c.totalHours) >= 0.9 || (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30)).length})
+                    </span>
+                    <Badge className="bg-amber-100 text-amber-800 text-[8px] font-bold">BUDGET</Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[10px]">
+                    {contracts.filter(c => c.isActive && ((c.usedHours / c.totalHours) >= 0.9 || (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30)).map(c => {
+                      const consumption = (c.usedHours / c.totalHours) * 100;
+                      const daysRemaining = (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24);
+                      return (
+                        <div key={c.id} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col gap-1">
+                          <span className="font-bold text-zinc-900">{c.organizationName}</span>
+                          <span className="text-zinc-500 text-[8px] font-mono">FTE Total: {c.totalHours}h</span>
+                          <div className="flex justify-between text-[8px]">
+                            <span>Usage: <span className="font-bold text-zinc-800">{consumption.toFixed(0)}%</span></span>
+                            <span>Ends in: <span className="font-bold text-zinc-850">{daysRemaining.toFixed(0)} days</span></span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {contracts.filter(c => c.isActive && ((c.usedHours / c.totalHours) >= 0.9 || (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30)).length === 0 && (
+                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                        All client contracts are within budget constraints.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Button onClick={() => setSelectedTab('customers')} variant="outline" className="mt-3 w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  Inspect Contract Ledger &rarr;
+                </Button>
+              </Card>
+
+            </div>
+          </div>
+
+          {/* SECTION 3: RECHARTS 10 DISTINCT ANALYTICS SHOWCASE */}
+          <div className="space-y-4">
+            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">
+              3. Operational Analytics Showcase (10 Distinct Charts)
+            </span>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Chart 1: Ticket volume trend */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                  <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider">1. Ticket Creation Trend</span>
+                  <div className="flex gap-1">
+                    {['daily', 'weekly', 'monthly', 'yearly'].map(group => (
+                      <button
+                        key={group}
+                        onClick={() => setTrendGrouping(group as any)}
+                        className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded font-mono border ${
+                          trendGrouping === group ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50'
+                        }`}
+                      >
+                        {group}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartsData.ticketTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <YAxis stroke="#71717a" fontSize={8} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Line type="monotone" dataKey="Tickets" stroke={COLORS.blue} strokeWidth={2} dot={{ r: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 2: Open vs Closed */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">2. Active vs Closed Monthly Trend</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartsData.openVsClosedTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <YAxis stroke="#71717a" fontSize={8} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Legend wrapperStyle={{ fontSize: 8 }} />
+                      <Bar dataKey="Open" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="Closed" fill={COLORS.green} radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 3: SLA Compliance */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">3. SLA Compliance % Achievement</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartsData.slaComplianceTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="slaTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={COLORS.green} stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor={COLORS.green} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <YAxis stroke="#71717a" fontSize={8} domain={[0, 100]} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Area type="monotone" dataKey="SLA Compliance %" stroke={COLORS.green} fill="url(#slaTrendGrad)" strokeWidth={1.5} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 4: Escalation Trend */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">4. Monthly SLA Escalations Trend</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartsData.escalationTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <YAxis stroke="#71717a" fontSize={8} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Line type="monotone" dataKey="Escalations" stroke={COLORS.red} strokeWidth={2} dot={{ r: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 5: Customer Ticket Distribution */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">5. Customer Ticket Volume Distribution</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartsData.customerTicketDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={75}
+                        fill="#8884d8"
+                        paddingAngle={3}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                      >
+                        {chartsData.customerTicketDistribution.map((entry, idx) => (
+                          <Cell key={`cell-${idx}`} fill={idx % 2 === 0 ? COLORS.blue : idx % 3 === 0 ? COLORS.green : COLORS.amber} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 6: Module Wise Tickets */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">6. SAP Module Tickets Volume</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartsData.moduleWiseTickets} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <YAxis stroke="#71717a" fontSize={8} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 7: Consultant Utilization */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">7. Consultant Utilization Ratio (%)</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart layout="vertical" data={chartsData.consultantUtilizationData} margin={{ top: 5, right: 15, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis type="number" stroke="#71717a" fontSize={7} domain={[0, 100]} />
+                      <YAxis type="category" dataKey="name" stroke="#71717a" fontSize={7} width={80} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Bar dataKey="Utilization %" fill={COLORS.green} radius={[0, 2, 2, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 8: Resolution Time Trend */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">8. Average Ticket Resolution Time (Hours)</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartsData.resolutionTimeTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="resTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={COLORS.blue} stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor={COLORS.blue} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <YAxis stroke="#71717a" fontSize={8} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Area type="monotone" dataKey="Resolution Time (Hrs)" stroke={COLORS.blue} fill="url(#resTrendGrad)" strokeWidth={1.5} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 9: Approval Volume */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">9. Completed Approvals Stacked Volume</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartsData.approvalVolumeData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <YAxis stroke="#71717a" fontSize={8} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Legend wrapperStyle={{ fontSize: 8 }} />
+                      <Bar dataKey="Timesheets" stackId="a" fill={COLORS.green} />
+                      <Bar dataKey="Closures" stackId="a" fill={COLORS.blue} />
+                      <Bar dataKey="Unlocks" stackId="a" fill={COLORS.amber} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 10: Customer Consumption */}
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
+                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">10. Customer Support Contract Hours Consumption</span>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartsData.customerConsumptionData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <YAxis stroke="#71717a" fontSize={8} />
+                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                      <Legend wrapperStyle={{ fontSize: 8 }} />
+                      <Bar dataKey="Contracted" fill={COLORS.gray} />
+                      <Bar dataKey="Used" fill={COLORS.green} />
+                      <Bar dataKey="Remaining" fill={COLORS.blue} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+            </div>
+          </div>
+
+        </TabsContent>
 
         {/* ── TAB CONTENT: EXECUTIVE HEALTH ── */}
         <TabsContent value="health" className="space-y-6 outline-none">

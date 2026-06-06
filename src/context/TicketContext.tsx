@@ -2581,7 +2581,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // --- SYSTEM NOTIFICATIONS ---
 
-  const markNotificationRead = (notificationId: string) => {
+  const markNotificationRead = async (notificationId: string) => {
+    // Optimistic local state update
     const updated = notifications.map(n => {
       if (n.id === notificationId) {
         return { ...n, isRead: true };
@@ -2589,31 +2590,89 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return n;
     });
     syncNotifications(updated);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // In the database, check if id is a uuid or integer. If it's a UUID, we query it directly.
+        // If it was created offline with a format like n-..., we can try to delete or update.
+        await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
+      } catch (err) {
+        console.error('Error marking notification read in DB:', err);
+      }
+    }
   };
 
-  const createSystemNotification = (userId: string, title: string, message: string, ticketId?: string) => {
-    const newNotif: Notification = {
-      id: `n-${Date.now()}`,
-      userId,
-      title,
-      message,
-      ticketId,
-      isRead: false,
-      createdAt: new Date().toISOString()
-    };
-    const updated = [newNotif, ...notifications];
-    syncNotifications(updated);
-    
-    // Trigger toast notification
+  const createSystemNotification = async (userId: string, title: string, message: string, ticketId?: string) => {
+    // 1. Trigger toast locally
     toast(title, {
       description: message,
       action: ticketId ? {
         label: 'View Ticket',
         onClick: () => {
-          window.location.href = `/manager/tickets/${ticketId}`;
+          // Detect user role to route correctly
+          const userRole = user?.role;
+          if (userRole === 'Customer') {
+            window.location.href = `/customer/tickets/${ticketId}`;
+          } else if (userRole === 'Consultant') {
+            window.location.href = `/consultant/tickets/${ticketId}`;
+          } else {
+            window.location.href = `/manager/tickets/${ticketId}`;
+          }
         }
       } : undefined
     });
+
+    // Resolve email or name to UUID
+    let resolvedUuid = userId;
+    if (userId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+      const match = (profiles || []).find(p => 
+        p.email?.toLowerCase() === userId.toLowerCase() || 
+        p.full_name?.toLowerCase() === userId.toLowerCase()
+      );
+      if (match) {
+        resolvedUuid = match.id;
+      } else {
+        // If not found, check if it's manager or consultant default emails
+        if (userId === 'manager@supportstudio.com') {
+          const mgr = (profiles || []).find(p => p.role === 'Manager');
+          if (mgr) resolvedUuid = mgr.id;
+        } else if (userId === 'consultant@supportstudio.com') {
+          const cons = (profiles || []).find(p => p.role === 'Consultant');
+          if (cons) resolvedUuid = cons.id;
+        } else if (userId === 'customer@supportstudio.com') {
+          const cust = (profiles || []).find(p => p.role === 'Customer');
+          if (cust) resolvedUuid = cust.id;
+        }
+      }
+    }
+
+    // 2. Insert into Supabase
+    if (isSupabaseConfigured && supabase && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
+      try {
+        await supabase.from('notifications').insert({
+          user_id: resolvedUuid,
+          title,
+          message,
+          ticket_id: ticketId,
+          is_read: false
+        });
+      } catch (err) {
+        console.error('Error creating database notification:', err);
+      }
+    } else {
+      // Fallback to local storage/state
+      const newNotif: Notification = {
+        id: `n-${Date.now()}`,
+        userId: resolvedUuid || userId,
+        title,
+        message,
+        ticketId,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      };
+      const updated = [newNotif, ...notifications];
+      syncNotifications(updated);
+    }
   };
 
   // --- AI CHATBOT / ADVISOR PLACEHOLDER LOGIC ---
