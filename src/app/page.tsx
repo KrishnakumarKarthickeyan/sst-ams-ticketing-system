@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   Shield,
@@ -47,7 +48,16 @@ import {
   ShieldCheck,
   ClipboardList,
   BookOpen,
-  Workflow
+  Workflow,
+  Eye,
+  Download,
+  Maximize2,
+  CheckSquare,
+  Code,
+  Share2,
+  Compass,
+  FileSpreadsheet,
+  AlertCircle
 } from 'lucide-react';
 import {
   AreaChart,
@@ -64,7 +74,15 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ComposedChart,
+  Radar,
+  ScatterChart,
+  Scatter
 } from 'recharts';
 import { BrandedLogo } from '@/components/ui/BrandedLogo';
 import { Button } from '@/components/ui/button';
@@ -81,80 +99,92 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Progress } from '@/components/ui/progress';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-const ITSM_SUITE_METADATA: Record<string, { icon: React.ComponentType<any>; description: string }> = {
-  'Incident Management': { icon: ShieldCheck, description: 'Streamline tracking, routing, and resolution of unplanned disruptions.' },
-  'Service Requests': { icon: ClipboardList, description: 'Automate request catalog items, hardware provisioning, and access permissions.' },
-  'Workflow Automation': { icon: Workflow, description: 'Orchestrate linear and branching processes with conditional triggers.' },
-  'Analytics': { icon: BarChart3, description: 'Visualize live performance metrics and identify bottlenecks across teams.' },
-  'AI Intelligence': { icon: Sparkles, description: 'Classify tickets, route requests, and predict escalation risks autonomously.' },
-  'Knowledge Management': { icon: BookOpen, description: 'Establish a single source of truth database for resolutions and manuals.' },
-  'Asset Management': { icon: Server, description: 'Track hardware, licensing lifecycles, and VM pools seamlessly.' },
-  'Security': { icon: Lock, description: 'Enforce RLS, SAML Single Sign-On, audit trail logs, and RBAC policies.' },
-  'Customer Success': { icon: Users, description: 'Audit customer CSAT trends, NPS indices, and health index trackers.' },
-  'Executive Reporting': { icon: TrendingUp, description: 'Consolidate operational health indicators and critical risk indexes for decision makers.' }
-};
+// Custom post-mount counter for client-only number incrementation (prevents hydration mismatch)
+function AnimatedCounter({ value, suffix = "", duration = 1500 }: { value: number; suffix?: string; duration?: number }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = value;
+    if (start === end) {
+      setCount(end);
+      return;
+    }
+
+    const stepsCount = 60;
+    const increment = end / stepsCount;
+    const stepDuration = duration / stepsCount;
+    let currentStep = 0;
+
+    const timer = setInterval(() => {
+      currentStep++;
+      if (currentStep >= stepsCount) {
+        clearInterval(timer);
+        setCount(end);
+      } else {
+        setCount(Math.floor(increment * currentStep));
+      }
+    }, stepDuration);
+
+    return () => clearInterval(timer);
+  }, [value, duration]);
+
+  return <span>{count.toLocaleString()}{suffix}</span>;
+}
 
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [demoSubmitted, setDemoSubmitted] = useState(false);
+  
+  // Modals & User Telemetry States
   const [demoModalOpen, setDemoModalOpen] = useState(false);
-  const [demoType, setDemoType] = useState('Standard Demo');
+  const [demoSubmitted, setDemoSubmitted] = useState(false);
+  const [demoType, setDemoType] = useState('Standard Platform Demo');
+  const [demoName, setDemoName] = useState('');
+  const [demoEmail, setDemoEmail] = useState('');
+  const [demoCompany, setDemoCompany] = useState('');
 
-  // Interactive UI State
-  const [heroRefreshTime, setHeroRefreshTime] = useState('12:00:00 PM');
-  const [heroIncidents, setHeroIncidents] = useState(14);
-  const [heroSla, setHeroSla] = useState(98.7);
-  const [heroCSAT, setHeroCSAT] = useState(4.9);
+  // Hero interactive states
+  const [heroTicketsCount, setHeroTicketsCount] = useState(142);
+  const [heroSlaRate, setHeroSlaRate] = useState(99.42);
+  const [heroEscalations, setHeroEscalations] = useState(2);
+  const [heroSatisfaction, setHeroSatisfaction] = useState(4.92);
+  const [heroLogOutput, setHeroLogOutput] = useState<string[]>([
+    'SYSTEM: Initialized analytics bridge...',
+    'AI: Classifying incoming SAP incident ticket #SST-429...',
+    'AI: Auto-routed ticket to Basis Operations Desk (Confidence: 98%)'
+  ]);
   const [heroLoading, setHeroLoading] = useState(false);
 
-  // Active Analytics Tab (1 to 10)
-  const [activeAnalyticsCategory, setActiveAnalyticsCategory] = useState('volume');
+  // Platform Overview States
+  const [activePlatformRole, setActivePlatformRole] = useState<'customer' | 'consultant' | 'manager' | 'executive' | 'admin'>('manager');
+  const [overviewStep, setOverviewStep] = useState(0);
 
-  // Active AI Tab Capability selector
-  const [activeAiCapability, setActiveAiCapability] = useState('classify');
-  
-  // Section 5: Enterprise ITSM Suite Schema dialog selector
-  const [selectedSuiteItem, setSelectedSuiteItem] = useState<string | null>(null);
+  // AI Sections State
+  const [selectedAiFeature, setSelectedAiFeature] = useState('classify');
 
-  // Workflow Automation State
-  const [workflowStep, setWorkflowStep] = useState(0);
-  const [workflowAutoplay, setWorkflowAutoplay] = useState(false);
+  // Live Analytics tab state (12 Charts total)
+  const [activeAnalyticsCategory, setActiveAnalyticsCategory] = useState<'volume' | 'sla' | 'productivity' | 'security'>('volume');
 
-  // Comparison Matrix Filter
-  const [compareFilter, setCompareFilter] = useState('');
-
-  // Control Tower Cockpit Simulator state
-  const [controlTowerCriticalAlerts, setControlTowerCriticalAlerts] = useState(2);
-  const [controlTowerLog, setControlTowerLog] = useState<string[]>([
-    'System initialization successful.',
-    'AI Ticket routing engine: Listening for input.',
-    'Incident P1-902 assigned to Security Operations.'
+  // Command Center Showcase (Manager View) State
+  const [commandCenterLogs, setCommandCenterLogs] = useState<string[]>([
+    'CRITICAL: Incident #SST-902 (DB Latency Spike) SLA at risk (12m remaining)',
+    'ACTION: Auto-assigned escalation response team.',
+    'SECURITY: Single Sign-On token verified for Tenant Client B.'
   ]);
+  const [managerApprovals, setManagerApprovals] = useState(3);
+  const [managerSlaBreaches, setManagerSlaBreaches] = useState(1);
 
+  // Mount logic
   useEffect(() => {
     setMounted(true);
-    setHeroRefreshTime(new Date().toLocaleTimeString());
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  // Workflow Autoplay
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (workflowAutoplay) {
-      interval = setInterval(() => {
-        setWorkflowStep((prev) => (prev + 1) % 7);
-      }, 2500);
-    }
-    return () => clearInterval(interval);
-  }, [workflowAutoplay]);
 
   const handleDemoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,286 +193,326 @@ export default function LandingPage() {
     setTimeout(() => {
       setDemoSubmitted(false);
       setDemoModalOpen(false);
+      setDemoName('');
+      setDemoEmail('');
+      setDemoCompany('');
     }, 2000);
   };
 
-  const handleHeroRefresh = () => {
+  const handleHeroSimulate = () => {
     setHeroLoading(true);
     setTimeout(() => {
-      setHeroIncidents(Math.floor(Math.random() * 8) + 8);
-      setHeroSla(parseFloat((98.2 + Math.random() * 1.5).toFixed(2)));
-      setHeroCSAT(parseFloat((4.8 + Math.random() * 0.19).toFixed(1)));
-      setHeroRefreshTime(new Date().toLocaleTimeString());
+      const newCount = Math.floor(Math.random() * 50) + 120;
+      const newSla = parseFloat((98.5 + Math.random() * 1.4).toFixed(2));
+      const newEsc = Math.floor(Math.random() * 4);
+      const newCsat = parseFloat((4.8 + Math.random() * 0.19).toFixed(2));
+      setHeroTicketsCount(newCount);
+      setHeroSlaRate(newSla);
+      setHeroEscalations(newEsc);
+      setHeroSatisfaction(newCsat);
+      setHeroLogOutput((prev) => [
+        `AI: Classified ${newCount} active operations tickets.`,
+        `TELEMETRY: SLA adjusted to ${newSla}% based on active backlog.`,
+        `MONITOR: CSAT score calculated at ${newCsat} stars.`,
+        ...prev.slice(0, 2)
+      ]);
       setHeroLoading(false);
       toast.success('Live operations telemetry updated.');
     }, 800);
   };
 
-  const triggerControlTowerAiAction = () => {
-    if (controlTowerCriticalAlerts > 0) {
-      setControlTowerCriticalAlerts((prev) => prev - 1);
-      setControlTowerLog((prev) => [
-        `AI Agent automatically resolved incident SST-SEC-921 (Latency Anomaly).`,
-        ...prev
+  const executeManagerApproval = (ticketId: string) => {
+    setManagerApprovals((prev) => Math.max(0, prev - 1));
+    setCommandCenterLogs((prev) => [
+      `MANAGER: Approved request ${ticketId} (Transport Request Promotion).`,
+      ...prev.slice(0, 3)
+    ]);
+    toast.success(`Request ${ticketId} approved and promoted.`);
+  };
+
+  const triggerManagerMitigate = () => {
+    if (managerSlaBreaches > 0) {
+      setManagerSlaBreaches(0);
+      setCommandCenterLogs((prev) => [
+        `AI ACTION: Redeployed 2 idle consultants from Tier-1 support to clear queue.`,
+        `RESOLVED: SLA breach warnings successfully mitigated.`,
+        ...prev.slice(0, 3)
       ]);
-      toast.success('AI Remediation workflow completed successfully.');
+      toast.success('Mitigation scripts executed. Operations balanced.');
     } else {
-      toast.info('No pending critical alerts require manual AI intervention.');
+      toast.info('All SLAs are currently in optimal state.');
     }
   };
 
-  // --- 10 CRITICAL DISTINCT DATASETS FOR UNIQUE VISUALIZATIONS ---
+  // --- 12 DISTINCT DATASETS FOR RECHARTS (NO REPEATED PATTERNS) ---
 
-  // 1. Ticket Volume Trends (Incidents, Requests, Problems, Changes)
-  const ticketVolumeData = [
-    { name: 'Jan', Incidents: 450, Requests: 1400, Problems: 24, Changes: 80 },
-    { name: 'Feb', Incidents: 410, Requests: 1550, Problems: 18, Changes: 95 },
-    { name: 'Mar', Incidents: 530, Requests: 1800, Problems: 35, Changes: 110 },
-    { name: 'Apr', Incidents: 390, Requests: 1650, Problems: 15, Changes: 85 },
-    { name: 'May', Incidents: 320, Requests: 1900, Problems: 12, Changes: 130 },
-    { name: 'Jun', Incidents: 290, Requests: 2100, Problems: 9, Changes: 145 }
+  // 1. Ticket Volume Trend (Stacked Area Chart)
+  const dataVolumeTrend = [
+    { month: 'Jan', Incidents: 240, Requests: 680, Problems: 15, Changes: 45 },
+    { month: 'Feb', Incidents: 210, Requests: 740, Problems: 12, Changes: 60 },
+    { month: 'Mar', Incidents: 310, Requests: 890, Problems: 24, Changes: 75 },
+    { month: 'Apr', Incidents: 290, Requests: 820, Problems: 18, Changes: 55 },
+    { month: 'May', Incidents: 180, Requests: 940, Problems: 9, Changes: 90 },
+    { month: 'Jun', Incidents: 150, Requests: 1050, Problems: 5, Changes: 110 }
   ];
 
-  // 2. SLA Governance (SLA Compliance, Response SLA, Resolution SLA, Breach Trends)
-  const slaGovernanceData = [
-    { name: 'Jan', compliance: 98.2, responseSla: 99.1, resolutionSla: 98.4, breaches: 12 },
-    { name: 'Feb', compliance: 98.5, responseSla: 99.4, resolutionSla: 98.6, breaches: 8 },
-    { name: 'Mar', compliance: 98.9, responseSla: 99.5, resolutionSla: 98.9, breaches: 5 },
-    { name: 'Apr', compliance: 98.4, responseSla: 99.0, resolutionSla: 98.5, breaches: 11 },
-    { name: 'May', compliance: 98.7, responseSla: 99.3, resolutionSla: 98.8, breaches: 7 },
-    { name: 'Jun', compliance: 99.1, responseSla: 99.7, resolutionSla: 99.2, breaches: 3 }
+  // 2. Resolution Trend (Line Chart with dot highlights)
+  const dataResolutionTrend = [
+    { month: 'Jan', avgMin: 54 },
+    { month: 'Feb', avgMin: 48 },
+    { month: 'Mar', avgMin: 42 },
+    { month: 'Apr', avgMin: 35 },
+    { month: 'May', avgMin: 28 },
+    { month: 'Jun', avgMin: 19 }
   ];
 
-  // 3. Customer Experience (CSAT Trend, NPS Trend, Customer Health, Risk Scores)
-  const customerExperienceData = [
-    { name: 'Jan', CSAT: 4.82, NPS: 72, HealthScore: 92, RiskScore: 8 },
-    { name: 'Feb', CSAT: 4.85, NPS: 74, HealthScore: 94, RiskScore: 6 },
-    { name: 'Mar', CSAT: 4.89, NPS: 78, HealthScore: 95, RiskScore: 5 },
-    { name: 'Apr', CSAT: 4.87, NPS: 76, HealthScore: 93, RiskScore: 7 },
-    { name: 'May', CSAT: 4.91, NPS: 81, HealthScore: 96, RiskScore: 4 },
-    { name: 'Jun', CSAT: 4.93, NPS: 84, HealthScore: 98, RiskScore: 2 }
+  // 3. SLA Achievement (Bar Chart with radius styling)
+  const dataSlaAchievement = [
+    { month: 'Jan', slaPct: 97.4 },
+    { month: 'Feb', slaPct: 98.1 },
+    { month: 'Mar', slaPct: 98.6 },
+    { month: 'Apr', slaPct: 98.9 },
+    { month: 'May', slaPct: 99.3 },
+    { month: 'Jun', slaPct: 99.7 }
   ];
 
-  // 4. Service Performance (Resolution Time, Response Time, Escalation Rate, Backlog Trends)
-  const servicePerformanceData = [
-    { name: 'Jan', resolutionTime: 42, responseTime: 8, escalationRate: 14, backlog: 210 },
-    { name: 'Feb', resolutionTime: 38, responseTime: 6, escalationRate: 11, backlog: 180 },
-    { name: 'Mar', resolutionTime: 35, responseTime: 5, escalationRate: 8, backlog: 140 },
-    { name: 'Apr', resolutionTime: 39, responseTime: 7, escalationRate: 12, backlog: 165 },
-    { name: 'May', resolutionTime: 30, responseTime: 4, escalationRate: 6, backlog: 120 },
-    { name: 'Jun', resolutionTime: 24, responseTime: 3, escalationRate: 4, backlog: 95 }
+  // 4. Escalation Analysis (Composed Chart: Bar for Volume, Line for Escalation %)
+  const dataEscalationAnalysis = [
+    { month: 'Jan', totalTickets: 935, escalationRate: 8.4 },
+    { month: 'Feb', totalTickets: 962, escalationRate: 7.1 },
+    { month: 'Mar', totalTickets: 1224, escalationRate: 5.8 },
+    { month: 'Apr', totalTickets: 1128, escalationRate: 4.2 },
+    { month: 'May', totalTickets: 1129, escalationRate: 3.1 },
+    { month: 'Jun', totalTickets: 1215, escalationRate: 1.8 }
   ];
 
-  // 5. Team Productivity (Utilization, Capacity, Productivity, Workload Distribution)
-  const teamProductivityData = [
-    { name: 'Tier 1 Support', value: 35, fill: '#2563EB' },
-    { name: 'Tier 2 Systems', value: 25, fill: '#3B82F6' },
-    { name: 'Tier 3 Operations', value: 20, fill: '#10B981' },
-    { name: 'DB Engineers', value: 12, fill: '#F59E0B' },
-    { name: 'DevOps Desk', value: 8, fill: '#EF4444' }
+  // 5. Consultant Productivity (Radar Chart showing core metrics)
+  const dataProductivityRadar = [
+    { subject: 'Response Speed', A: 95, B: 85, fullMark: 100 },
+    { subject: 'Resolution Rate', A: 98, B: 90, fullMark: 100 },
+    { subject: 'CSAT Index', A: 99, B: 88, fullMark: 100 },
+    { subject: 'Hours Logged', A: 84, B: 95, fullMark: 100 },
+    { subject: 'SLA Adherence', A: 99, B: 92, fullMark: 100 },
+    { subject: 'Collaborative SLA', A: 92, B: 78, fullMark: 100 }
   ];
 
-  // 6. Asset Intelligence (Asset Health, Warranty Expiry, Lifecycle Tracking, Utilization)
-  const assetIntelligenceData = [
-    { name: 'Core Server Pools', Healthy: 420, LifecycleExited: 12, ActiveLoad: 78 },
-    { name: 'Virtual Instances', Healthy: 1850, LifecycleExited: 4, ActiveLoad: 62 },
-    { name: 'Network Clusters', Healthy: 130, LifecycleExited: 0, ActiveLoad: 45 },
-    { name: 'Storage Vaults', Healthy: 90, LifecycleExited: 2, ActiveLoad: 88 }
+  // 6. Customer Satisfaction (Donut/Pie Chart)
+  const dataCsatPie = [
+    { name: '5 Stars (Excellent)', value: 1890, color: '#09090b' },
+    { name: '4 Stars (Good)', value: 420, color: '#27272a' },
+    { name: '3 Stars (Average)', value: 140, color: '#52525b' },
+    { name: '2 Stars (Below Avg)', value: 40, color: '#71717a' },
+    { name: '1 Star (Critical)', value: 10, color: '#a1a1aa' }
   ];
 
-  // 7. Change Management (Success Rate, Failed Changes, Pending Changes, Risk Analysis)
-  const changeManagementData = [
-    { name: 'Jan', successRate: 94.5, failed: 4, pending: 42 },
-    { name: 'Feb', successRate: 95.1, failed: 3, pending: 35 },
-    { name: 'Mar', successRate: 96.8, failed: 2, pending: 48 },
-    { name: 'Apr', successRate: 95.4, failed: 3, pending: 52 },
-    { name: 'May', successRate: 97.2, failed: 1, pending: 38 },
-    { name: 'Jun', successRate: 98.4, failed: 1, pending: 29 }
+  // 7. Category Breakdown (Standard Flat Pie Chart)
+  const dataCategoryPie = [
+    { name: 'SAP ABAP Operations', value: 450, color: '#18181b' },
+    { name: 'Basis System Admin', value: 310, color: '#3f3f46' },
+    { name: 'Security & GRC Roles', value: 240, color: '#71717a' },
+    { name: 'FI/CO Finance Support', value: 180, color: '#a1a1aa' },
+    { name: 'SD/MM Logistics Ops', value: 120, color: '#e4e4e7' }
   ];
 
-  // 8. Executive Intelligence (Operational Health, Critical Incidents, Department Performance, Service Health)
-  const executiveIntelligenceData = [
-    { name: 'Finance', Score: 96, IncidentCount: 4 },
-    { name: 'Engineering', Score: 98, IncidentCount: 1 },
-    { name: 'HR Operations', Score: 94, IncidentCount: 3 },
-    { name: 'Logistics', Score: 91, IncidentCount: 6 },
-    { name: 'Customer Success', Score: 99, IncidentCount: 0 }
+  // 8. Priority Heatmap (Stacked Horizontal Bar representing priority spreads)
+  const dataPrioritySpread = [
+    { team: 'SAP Basis Desk', P1: 8, P2: 24, P3: 45, P4: 12 },
+    { team: 'ABAP Custom Dev', teamCode: 'ABAP', P1: 15, P2: 42, P3: 98, P4: 35 },
+    { team: 'GRC & Security Desk', teamCode: 'GRC', P1: 2, P2: 12, P3: 54, P4: 8 },
+    { team: 'FICO Finance Desk', teamCode: 'FI', P1: 4, P2: 18, P3: 38, P4: 19 }
   ];
 
-  // 9. AI Operations (AI Classification, AI Routing Accuracy, AI Predictions, AI Automation)
-  const aiOperationsData = [
-    { name: 'Auto-Routing', Accuracy: 98.4, Rate: 92 },
-    { name: 'Priority Detect', Accuracy: 99.1, Rate: 98 },
-    { name: 'Log Classification', Accuracy: 97.8, Rate: 89 },
-    { name: 'Root Cause Sync', Accuracy: 94.2, Rate: 76 }
+  // 9. Workload Distribution (Radar Chart comparing Team Loads)
+  const dataWorkloadRadar = [
+    { subject: 'Backlog Queue', Basis: 68, ABAP: 94, GRC: 35, FICO: 50 },
+    { subject: 'In-Progress Case Load', Basis: 82, ABAP: 88, GRC: 42, FICO: 65 },
+    { subject: 'Awaiting Signoff', Basis: 30, ABAP: 75, GRC: 15, FICO: 28 },
+    { subject: 'Escalated/P1s', Basis: 45, ABAP: 90, GRC: 10, FICO: 20 },
+    { subject: 'On-Call Capacity', Basis: 95, ABAP: 60, GRC: 90, FICO: 85 }
   ];
 
-  // 10. Security Operations (Security Incidents, Compliance Status, Audit Findings, Risk Monitoring)
-  const securityOperationsData = [
-    { name: 'Jan', incidents: 3, riskScore: 12 },
-    { name: 'Feb', incidents: 1, riskScore: 8 },
-    { name: 'Mar', incidents: 0, riskScore: 5 },
-    { name: 'Apr', incidents: 2, riskScore: 10 },
-    { name: 'May', incidents: 0, riskScore: 4 },
-    { name: 'Jun', incidents: 0, riskScore: 2 }
+  // 10. Monthly Volume Growth (Scatter Chart showing ticket correlations)
+  const dataGrowthScatter = [
+    { x: 100, y: 200, z: 200, name: 'Jan' },
+    { x: 120, y: 220, z: 260, name: 'Feb' },
+    { x: 170, y: 300, z: 400, name: 'Mar' },
+    { x: 140, y: 250, z: 280, name: 'Apr' },
+    { x: 190, y: 350, z: 500, name: 'May' },
+    { x: 230, y: 410, z: 680, name: 'Jun' }
   ];
 
-  const AI_CAPABILITIES_METADATA: Record<string, { title: string; latency: string; confidence: string; status: string; log: string }> = {
+  // 11. Team Performance (Grouped Side-By-Side Bars showing Closed vs Open)
+  const dataTeamPerformance = [
+    { team: 'Basis', Closed: 482, ActiveBacklog: 24 },
+    { team: 'ABAP Dev', Closed: 624, ActiveBacklog: 82 },
+    { team: 'Security', Closed: 310, ActiveBacklog: 12 },
+    { team: 'Logistics', Closed: 284, ActiveBacklog: 35 },
+    { team: 'Finance', Closed: 395, ActiveBacklog: 19 }
+  ];
+
+  // 12. Operational Health (Double Line Chart showing Availability & Network Latency)
+  const dataOperationalHealth = [
+    { hour: '00:00', availability: 99.99, latencyMs: 42 },
+    { hour: '04:00', availability: 100.00, latencyMs: 38 },
+    { hour: '08:00', availability: 99.98, latencyMs: 58 },
+    { hour: '12:00', availability: 99.95, latencyMs: 64 },
+    { hour: '16:00', availability: 99.99, latencyMs: 45 },
+    { hour: '20:00', availability: 100.00, latencyMs: 39 }
+  ];
+
+  // AI Diagnostic logs mapping
+  const AI_METADATA: Record<string, { title: string; latency: string; confidence: string; status: string; log: string }> = {
     classify: {
       title: 'AI Incident Classification Engine',
-      latency: '8ms',
+      latency: '11ms',
       confidence: '99.4%',
       status: 'Active',
-      log: 'Payload analyzed. Identified category: [SAP-BASIS-FAILOVER]. Assigned risk level: HIGH.'
-    },
-    route: {
-      title: 'AI Automated Incident Routing',
-      latency: '12ms',
-      confidence: '98.7%',
-      status: 'Active',
-      log: 'Routing lookup. Match found: [ABAP-DEV-TEAM-C]. Load balance capacity verified at 74% load.'
+      log: 'Incident payload #SST-982 analyzed. Predicted class: [BASIS-MEM-SPIKE]. Action: Set RLS context & tagged module.'
     },
     priority: {
-      title: 'AI Real-time Priority Detection',
+      title: 'AI Priority & Impact Evaluator',
       latency: '6ms',
-      confidence: '99.1%',
+      confidence: '98.9%',
       status: 'Active',
-      log: 'Sentiment and impact scan complete. Urgency: [Business Stopped]. Priority forced: P1 CRITICAL.'
-    },
-    suggest: {
-      title: 'AI Actionable Resolution Suggestions',
-      latency: '85ms',
-      confidence: '96.5%',
-      status: 'Ready',
-      log: 'Remediation script compiled. Fix command: [cluster.db_pool.recycle()]. SLA savings estimated at 38m.'
-    },
-    knowledge: {
-      title: 'AI Knowledge Suggestion Systems',
-      latency: '42ms',
-      confidence: '95.8%',
-      status: 'Active',
-      log: 'Searching database. 3 relevant articles extracted. KB-902 (Kernel patch procedure) suggested to engineer.'
-    },
-    capacity: {
-      title: 'AI Live Capacity Planning',
-      latency: '150ms',
-      confidence: '95.1%',
-      status: 'Active',
-      log: 'Team capacity balance recalculated. Suggesting transfer of 4 cases from Functional FICO to MM certified benched.'
-    },
-    risk: {
-      title: 'AI Proactive Escalation Prediction',
-      latency: '18ms',
-      confidence: '93.7%',
-      status: 'Monitoring',
-      log: 'Telemetry check. Risk score: [High Risk of SLA breach]. ETA remaining: 14m. Warning triggered.'
+      log: 'Sentiment analysis on email body completed. Urgency: [High]. Priority forced: P1 CRITICAL (business impact detected).'
     },
     escalation: {
-      title: 'AI SLA Risk Forecasting Telemetry',
+      title: 'AI SLA Escalation Risk Forecast',
       latency: '24ms',
-      confidence: '97.2%',
+      confidence: '96.2%',
       status: 'Active',
-      log: 'Historical modeling complete. Predicted resolution time: 38m. Contractual SLA limit: 30m. Breach Risk: 84%.'
+      log: 'Backlog telemetry processed. Incident #SST-902 identified as 85% risk of SLA breach. Automatic alert dispatched to Manager Operations Center.'
+    },
+    sla: {
+      title: 'AI Proactive SLA Risk Monitor',
+      latency: '15ms',
+      confidence: '95.8%',
+      status: 'Active',
+      log: 'Calculated predicted effort vs elapsed time for 142 cases. 2 items flag warnings. Suggested resolution time: 24m.'
+    },
+    workload: {
+      title: 'AI Autonomous Workload Balancer',
+      latency: '45ms',
+      confidence: '97.4%',
+      status: 'Balanced',
+      log: 'Identified bottleneck in ABAP customization desk. Recommended redistributing 3 minor enhancement requests to MM queue.'
+    },
+    resource: {
+      title: 'AI Resource Smart Recommendations',
+      latency: '82ms',
+      confidence: '94.8%',
+      status: 'Online',
+      log: 'Matching consultant credentials. Found matching expert: [C. Dupont - Basis L3 Cert]. Task #SST-1102 matched and recommended.'
+    },
+    trend: {
+      title: 'AI Predictive Trend Modeler',
+      latency: '140ms',
+      confidence: '93.5%',
+      status: 'Monitoring',
+      log: 'Analyzed weekly operational indicators. Projected 12% rise in financial operations tickets due to upcoming end-of-quarter freeze.'
     },
     insights: {
-      title: 'AI Executive Insights Generator',
-      latency: '310ms',
-      confidence: '96.8%',
+      title: 'AI Executive Insights Engine',
+      latency: '210ms',
+      confidence: '98.1%',
       status: 'Active',
-      log: 'Analyzing weekly portfolio health. Summary compiled: [SLA compliance stable at 99.1%]. Zero queue blocker identified.'
+      log: 'Weekly command briefing generated: [SLA at 99.42%], [Deflection rate: 42.5%], [Critical Risk Index: 0.12]. Ready for Executive view.'
     }
   };
 
-  const COMPARISON_ROWS = [
-    { feature: 'AI Automation', traditional: 'Basic macros and text templates', assist: 'Autonomous Incident classification, routing, and P1 prediction' },
-    { feature: 'Workflow Automation', traditional: 'Static linear approval lists', assist: 'Flexible multi-tenant states orchestration and conditional triggers' },
-    { feature: 'Executive Analytics', traditional: 'Cached CSV logs reports', assist: 'Always-live cockpits with data binding directly to operational pipelines' },
-    { feature: 'Service Governance', traditional: 'Ad-hoc log monitoring', assist: 'Strict row-level security (RLS) and real-time ledger audits' },
-    { feature: 'Asset Management', traditional: 'Offline spreadsheets', assist: 'Integrated database of systems, licenses, and VM structures' },
-    { feature: 'SLA Management', traditional: 'Static compliance numbers', assist: 'Dynamic SLA risk modeling and escalation war room triggers' },
-    { feature: 'Scalability', traditional: 'Single database bottlenecks', assist: 'Cloud-native multi-tenant architecture processing 50k+ daily actions' },
-    { feature: 'Security', traditional: 'Basic login permissions', assist: 'Row Level Security, Okta integration, FIPS 140-2 compliance' },
-    { feature: 'Customer Success Analytics', traditional: 'Unlinked survey metrics', assist: 'Real-time CSAT & Escalation indexes, sentiment telemetry trackers' }
-  ];
-
-  const filteredComparisonRows = COMPARISON_ROWS.filter(row =>
-    row.feature.toLowerCase().includes(compareFilter.toLowerCase()) ||
-    row.traditional.toLowerCase().includes(compareFilter.toLowerCase()) ||
-    row.assist.toLowerCase().includes(compareFilter.toLowerCase())
-  );
-
   return (
-    <div className="min-h-screen bg-white text-[#111827] selection:bg-[#111827] selection:text-white flex flex-col antialiased scroll-smooth">
+    <div className="min-h-screen bg-white text-[#09090b] selection:bg-[#09090b] selection:text-white flex flex-col antialiased font-sans">
       
       {/* ── HEADER NAVIGATION ── */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
-            ? 'bg-white/80 backdrop-blur-md border-b border-[#E5E7EB] py-3'
-            : 'bg-transparent py-5'
+            ? 'bg-white/80 backdrop-blur-md border-b border-zinc-200 py-3 shadow-sm'
+            : 'bg-white py-5 border-b border-zinc-100'
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 md:px-8 flex items-center justify-between">
-          <div className="flex items-center gap-10">
-            <Link href="/" className="flex items-center gap-3">
-              <BrandedLogo width={26} height={26} />
-              <span className="font-bold text-sm tracking-wider text-[#111827] font-mono">ASSIST360</span>
+          <div className="flex items-center gap-12">
+            <Link href="/" className="flex items-center gap-3 group">
+              <BrandedLogo width={28} height={28} />
+              <span className="font-bold text-sm tracking-widest text-zinc-900 font-mono transition-colors group-hover:text-zinc-500">ASSIST360</span>
             </Link>
-            <nav className="hidden lg:flex items-center gap-8 text-[11px] uppercase tracking-widest font-mono font-bold text-[#6B7280]">
-              <a href="#overview" className="hover:text-[#111827] transition">Overview</a>
-              <a href="#capabilities" className="hover:text-[#111827] transition">Capabilities</a>
-              <a href="#analytics-section" className="hover:text-[#111827] transition">Intelligence</a>
-              <a href="#ai-ops" className="hover:text-[#111827] transition">AI Platform</a>
-              <a href="#workflow-automation" className="hover:text-[#111827] transition">Workflow</a>
-              <a href="#compare" className="hover:text-[#111827] transition">Comparison</a>
+            
+            <nav className="hidden lg:flex items-center gap-8 text-[11px] uppercase tracking-widest font-mono font-bold text-zinc-500">
+              <a href="#overview" className="hover:text-zinc-900 transition-colors">Platform</a>
+              <a href="#ai-intelligence" className="hover:text-zinc-900 transition-colors">AI Intelligence</a>
+              <a href="#analytics-section" className="hover:text-zinc-900 transition-colors">Live Analytics</a>
+              <a href="#command-center" className="hover:text-zinc-900 transition-colors">Command Center</a>
+              <a href="#security" className="hover:text-zinc-900 transition-colors">Security</a>
             </nav>
           </div>
           
           <div className="flex items-center gap-4">
-            <Button asChild variant="ghost" className="h-9 text-[11px] font-medium uppercase tracking-widest font-mono text-[#6B7280] hover:text-[#111827] hover:bg-[#FAFAFA]">
-              <Link href="/login">Sign In</Link>
+            <Button asChild variant="ghost" className="h-9 text-[11px] font-semibold uppercase tracking-widest font-mono text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50">
+              <Link href="/login">Assist360 Login</Link>
             </Button>
             
             <Dialog open={demoModalOpen} onOpenChange={setDemoModalOpen}>
               <DialogTrigger asChild>
                 <Button 
                   onClick={() => setDemoType('Standard Platform Demo')}
-                  className="h-9 text-[11px] font-semibold uppercase tracking-widest font-mono bg-[#2563EB] hover:bg-blue-700 text-white rounded px-4 shadow-sm transition active:scale-[0.98]"
+                  className="h-9 text-[11px] font-bold uppercase tracking-widest font-mono bg-zinc-900 hover:bg-zinc-800 text-white rounded px-4 shadow-sm transition-all active:scale-[0.98]"
                 >
-                  Book Demo
+                  Request Demo
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-white border border-[#E5E7EB] rounded max-w-md p-6 text-[#111827] shadow-lg">
+              <DialogContent className="bg-white border border-zinc-200 rounded-lg max-w-md p-6 text-zinc-900 shadow-xl">
                 <DialogHeader>
-                  <DialogTitle className="text-md font-bold uppercase tracking-wider text-[#111827]">Request platform briefing</DialogTitle>
-                  <DialogDescription className="text-xs text-[#6B7280] font-mono mt-1">
-                    Book an architecture review and live demo for the ASSIST360 platform.
+                  <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-900 font-mono">Request Enterprise Briefing</DialogTitle>
+                  <DialogDescription className="text-xs text-zinc-500 font-sans mt-1">
+                    Schedule a live architect-led walkthrough of the Assist360 ESM platform, configured for your tenant workload profile.
                   </DialogDescription>
                 </DialogHeader>
                 {demoSubmitted ? (
                   <div className="text-center py-8 space-y-3">
-                    <div className="w-12 h-12 rounded bg-[#FAFAFA] border border-[#E5E7EB] text-[#10B981] flex items-center justify-center mx-auto">
+                    <div className="w-12 h-12 rounded-full bg-zinc-50 border border-zinc-200 text-emerald-600 flex items-center justify-center mx-auto">
                       <CheckCircle2 size={24} />
                     </div>
-                    <h3 className="text-sm font-bold text-[#111827] uppercase tracking-wider">Briefing Confirmed</h3>
-                    <p className="text-xs text-[#6B7280] font-mono">Our Enterprise Solutions desk will contact you shortly.</p>
+                    <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider font-mono">Briefing Scheduled</h3>
+                    <p className="text-xs text-zinc-500">Our Enterprise Accounts desk will contact you within 2 business hours.</p>
                   </div>
                 ) : (
                   <form onSubmit={handleDemoSubmit} className="space-y-4 pt-3">
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-[#6B7280] font-mono">Name</label>
-                      <input required type="text" placeholder="Sarah Jenkins" className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded p-2.5 text-xs text-[#111827] placeholder-[#6B7280] focus:outline-none focus:border-[#111827]" />
+                      <label className="text-[9px] uppercase font-bold text-zinc-500 font-mono">Name</label>
+                      <input 
+                        required 
+                        type="text" 
+                        value={demoName}
+                        onChange={(e) => setDemoName(e.target.value)}
+                        placeholder="Elizabeth Vance" 
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900" 
+                      />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-[#6B7280] font-mono">Enterprise Email</label>
-                      <input required type="email" placeholder="s.jenkins@company.com" className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded p-2.5 text-xs text-[#111827] placeholder-[#6B7280] focus:outline-none focus:border-[#111827]" />
+                      <label className="text-[9px] uppercase font-bold text-zinc-500 font-mono">Corporate Email</label>
+                      <input 
+                        required 
+                        type="email" 
+                        value={demoEmail}
+                        onChange={(e) => setDemoEmail(e.target.value)}
+                        placeholder="e.vance@company.com" 
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900" 
+                      />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-[#6B7280] font-mono">Company / Organization</label>
-                      <input required type="text" placeholder="Global Group Inc." className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded p-2.5 text-xs text-[#111827] placeholder-[#6B7280] focus:outline-none focus:border-[#111827]" />
+                      <label className="text-[9px] uppercase font-bold text-zinc-500 font-mono">Company</label>
+                      <input 
+                        required 
+                        type="text" 
+                        value={demoCompany}
+                        onChange={(e) => setDemoCompany(e.target.value)}
+                        placeholder="Enterprise Holdings Inc." 
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900" 
+                      />
                     </div>
                     <DialogFooter className="pt-2">
-                      <Button type="submit" className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-bold uppercase tracking-wider text-[10px] py-2.5 rounded font-mono">
+                      <Button type="submit" className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[10px] py-2.5 rounded font-mono">
                         Submit & Request Review
                       </Button>
                     </DialogFooter>
@@ -454,154 +524,183 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* ── SECTION 1: HERO EXPERIENCE ── */}
-      <section className="min-h-screen pt-32 pb-20 md:pt-40 md:pb-28 relative flex items-center bg-[#FFFFFF] border-b border-[#E5E7EB] overflow-hidden">
-        {/* Background Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-25"></div>
+      {/* ── HERO SECTION ── */}
+      <section className="min-h-screen pt-36 pb-20 md:pt-44 md:pb-28 relative flex items-center bg-white overflow-hidden border-b border-zinc-200">
+        {/* Subtle grid lines in background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f1f4_1px,transparent_1px),linear-gradient(to_bottom,#f1f1f4_1px,transparent_1px)] bg-[size:5rem_5rem] opacity-40"></div>
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[60rem] h-[30rem] bg-zinc-50 rounded-full blur-[120px] -z-10 opacity-30"></div>
         
         <div className="max-w-7xl mx-auto px-6 md:px-8 w-full relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
             
-            {/* HERO LEFT */}
+            {/* HERO LEFT COLUMN */}
             <div className="lg:col-span-6 space-y-6 text-left">
-              <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] py-1 px-3 uppercase rounded">
-                Enterprise Command Center
+              <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-zinc-50/80 py-1 px-3 uppercase rounded-full">
+                Enterprise Service Operations
               </Badge>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#111827] leading-[1.1] font-sans">
-                The Enterprise Service Management Platform Built For Modern Organizations
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-zinc-900 leading-[1.08] font-sans">
+                The Enterprise Service Management Platform Built For Modern Operations
               </h1>
               
-              <p className="text-sm md:text-base text-[#6B7280] font-medium leading-relaxed max-w-xl">
-                Manage incidents, requests, workflows, approvals, assets, analytics, AI operations, service delivery, and enterprise governance through one intelligent platform.
+              <p className="text-sm md:text-base text-zinc-500 font-medium leading-relaxed max-w-xl">
+                Unify service delivery, incident management, workflow automation, resource planning, customer support, and operational intelligence in one AI-powered platform.
               </p>
               
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center gap-4 pt-2">
                 <Button 
                   onClick={() => {
                     setDemoType('Standard Platform Demo');
                     setDemoModalOpen(true);
                   }}
-                  className="h-11 px-6 bg-[#2563EB] hover:bg-blue-700 text-white font-mono text-xs font-bold uppercase tracking-wider rounded shadow-sm"
+                  className="h-11 px-6 bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs font-bold uppercase tracking-widest rounded shadow-md active:scale-[0.98] transition-all"
                 >
-                  Book Demo
+                  Start Enterprise Demo
                 </Button>
 
                 <Button 
                   onClick={() => {
-                    setDemoType('Explore Platform');
+                    setDemoType('Platform Tour');
                     setDemoModalOpen(true);
                   }}
                   variant="outline"
-                  className="h-11 px-6 border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#FAFAFA] hover:border-[#6B7280] font-mono text-xs font-bold uppercase tracking-wider rounded"
+                  className="h-11 px-6 border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 hover:border-zinc-400 font-mono text-xs font-bold uppercase tracking-widest rounded active:scale-[0.98] transition-all"
                 >
-                  Explore Platform
+                  Watch Platform Tour
                 </Button>
               </div>
 
-              {/* Trust Badges Checkbox indicators */}
-              <div className="pt-6 border-t border-[#E5E7EB] grid grid-cols-2 gap-y-3 gap-x-6 text-[11px] font-semibold font-mono text-[#6B7280] uppercase">
+              {/* Trust Indicators */}
+              <div className="pt-8 border-t border-zinc-100 grid grid-cols-2 gap-y-4 gap-x-6 text-[10px] font-bold font-mono text-zinc-500 uppercase tracking-wider">
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-[#2563EB]" /> AI Powered
+                  <ShieldCheck size={14} className="text-zinc-900" /> Enterprise Grade Security
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-[#10B981]" /> Enterprise Ready
+                  <Cpu size={14} className="text-zinc-900" /> AI Powered Workflows
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-[#2563EB]" /> Real-Time Analytics
+                  <Activity size={14} className="text-zinc-900" /> Real-Time Analytics
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-[#10B981]" /> Secure By Design
+                  <Layers size={14} className="text-zinc-900" /> Multi-Tenant Architecture
                 </span>
               </div>
             </div>
 
-            {/* HERO RIGHT: MASSIVE PRODUCT VISUALIZATION */}
-            <div className="lg:col-span-6 relative flex items-center justify-center min-h-[440px]">
-              
-              {/* Showcase Frame */}
-              <div className="relative w-full max-w-lg p-6 bg-white border border-[#E5E7EB] rounded-lg shadow-xl space-y-4">
+            {/* HERO RIGHT COLUMN: MASSIVE INTERACTIVE DASHBOARD */}
+            <div className="lg:col-span-6">
+              <div className="relative w-full p-6 bg-white border border-zinc-200 rounded-lg shadow-xl space-y-4">
                 
-                <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-3">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#6B7280]">Service Control Desk</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500">Service Performance Telemetry</span>
                   </div>
                   <Button 
-                    onClick={handleHeroRefresh} 
+                    onClick={handleHeroSimulate} 
                     disabled={heroLoading} 
-                    className="h-6 px-2 bg-[#FAFAFA] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[9px] font-mono uppercase font-bold flex items-center gap-1 text-[#111827]"
+                    className="h-7 px-3 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-[9px] font-mono uppercase font-bold flex items-center gap-1.5 text-zinc-900 rounded"
                   >
                     <RefreshCw size={10} className={heroLoading ? 'animate-spin' : ''} /> 
-                    {heroLoading ? 'Reading...' : 'Refresh'}
+                    {heroLoading ? 'Querying...' : 'Update Telemetry'}
                   </Button>
                 </div>
 
                 {heroLoading ? (
-                  <div className="space-y-4 py-8">
-                    <div className="h-6 bg-[#FAFAFA] animate-pulse rounded w-1/3"></div>
-                    <div className="h-20 bg-[#FAFAFA] animate-pulse rounded"></div>
-                    <div className="h-10 bg-[#FAFAFA] animate-pulse rounded w-3/4"></div>
+                  <div className="py-20 flex flex-col items-center justify-center space-y-3">
+                    <RefreshCw size={24} className="animate-spin text-zinc-400" />
+                    <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest">Compiling Active Metrics...</span>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 font-mono">
-                    
-                    {/* Incident Dashboard */}
-                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] transition duration-300">
-                      <span className="text-[8px] font-bold text-[#6B7280] uppercase tracking-wider block">Incidents Open</span>
-                      <div className="mt-1 text-lg font-bold text-[#EF4444]">{heroIncidents}</div>
-                      <span className="text-[7px] text-[#6B7280] block mt-0.5">Critical response queue</span>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono">
+                      
+                      {/* Metric Card 1: Open Tickets */}
+                      <div className="p-3 bg-zinc-50 border border-zinc-100 rounded hover:border-zinc-300 transition-all">
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Active Workload</span>
+                        <div className="mt-1 text-xl font-extrabold text-zinc-900">
+                          {mounted ? <AnimatedCounter value={heroTicketsCount} /> : heroTicketsCount}
+                        </div>
+                        <span className="text-[7px] text-zinc-400 block mt-0.5">Tickets in SLA queue</span>
+                      </div>
+
+                      {/* Metric Card 2: SLA Status */}
+                      <div className="p-3 bg-zinc-50 border border-zinc-100 rounded hover:border-zinc-300 transition-all">
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">SLA Compliance</span>
+                        <div className="mt-1 text-xl font-extrabold text-emerald-600">
+                          {heroSlaRate}%
+                        </div>
+                        <span className="text-[7px] text-zinc-400 block mt-0.5">Target minimum: 98.5%</span>
+                      </div>
+
+                      {/* Metric Card 3: Escalations */}
+                      <div className="p-3 bg-zinc-50 border border-zinc-100 rounded hover:border-zinc-300 transition-all">
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Escalations</span>
+                        <div className={`mt-1 text-xl font-extrabold ${heroEscalations > 2 ? 'text-red-500' : 'text-zinc-900'}`}>
+                          {heroEscalations}
+                        </div>
+                        <span className="text-[7px] text-zinc-400 block mt-0.5">Awaiting manager sync</span>
+                      </div>
+
+                      {/* Metric Card 4: CSAT Rating */}
+                      <div className="p-3 bg-zinc-50 border border-zinc-100 rounded hover:border-zinc-300 transition-all">
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Customer Satisfaction</span>
+                        <div className="mt-1 text-md font-bold text-zinc-900 flex items-center gap-1">
+                          <Star size={12} fill="#09090b" className="stroke-none" /> {heroSatisfaction} / 5.0
+                        </div>
+                        <span className="text-[7px] text-zinc-400 block mt-0.5">Based on 2,500+ surveys</span>
+                      </div>
+
+                      {/* Metric Card 5: Operational Health */}
+                      <div className="p-3 bg-zinc-50 border border-zinc-100 rounded hover:border-zinc-300 transition-all">
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Availability</span>
+                        <div className="mt-1 text-md font-bold text-emerald-600">99.99%</div>
+                        <span className="text-[7px] text-zinc-400 block mt-0.5">All services optimal</span>
+                      </div>
+
+                      {/* Metric Card 6: Efficiency Index */}
+                      <div className="p-3 bg-zinc-50 border border-zinc-100 rounded hover:border-zinc-300 transition-all">
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">AI Deflection</span>
+                        <div className="mt-1 text-md font-bold text-zinc-900">42.5%</div>
+                        <span className="text-[7px] text-emerald-600 block mt-0.5">Deflected from agents</span>
+                      </div>
+
                     </div>
 
-                    {/* SLA Analytics */}
-                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] transition duration-300">
-                      <span className="text-[8px] font-bold text-[#6B7280] uppercase tracking-wider block">SLA Compliance</span>
-                      <div className="mt-1 text-lg font-bold text-[#10B981]">{heroSla}%</div>
-                      <span className="text-[7px] text-[#6B7280] block mt-0.5">Target SLA limits</span>
+                    {/* Miniature Resolution Trend Chart */}
+                    <div className="p-3 bg-zinc-50 border border-zinc-100 rounded space-y-2">
+                      <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase tracking-wider block">Resolution Time Trend (Last 6 Months)</span>
+                      <div className="h-24 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={dataResolutionTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                            <defs>
+                              <linearGradient id="heroChartGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#09090b" stopOpacity={0.1}/>
+                                <stop offset="95%" stopColor="#09090b" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="month" stroke="#a1a1aa" fontSize={7} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#a1a1aa" fontSize={7} tickLine={false} axisLine={false} domain={[0, 60]} />
+                            <Area type="monotone" dataKey="avgMin" stroke="#09090b" fill="url(#heroChartGrad)" strokeWidth={1.5} dot={{ r: 2 }} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
 
-                    {/* AI Insights */}
-                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] transition duration-300">
-                      <span className="text-[8px] font-bold text-[#6B7280] uppercase tracking-wider block">AI Suggestions</span>
-                      <div className="mt-1 text-lg font-bold text-[#2563EB]">Active</div>
-                      <span className="text-[7px] text-[#6B7280] block mt-0.5">Classifying logs</span>
+                    {/* Simulated terminal activity log */}
+                    <div className="p-3 bg-[#09090b] text-zinc-400 border border-zinc-800 rounded font-mono text-[9px] space-y-1">
+                      <div className="flex justify-between items-center text-[7px] text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-1 mb-1.5">
+                        <span>Terminal Activity Output</span>
+                        <span>Live Sync Ready</span>
+                      </div>
+                      {heroLogOutput.map((log, index) => (
+                        <p key={index} className="truncate">
+                          <span className="text-zinc-600">&gt;</span> {log}
+                        </p>
+                      ))}
                     </div>
-
-                    {/* Service Health */}
-                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] transition duration-300">
-                      <span className="text-[8px] font-bold text-[#6B7280] uppercase tracking-wider block">Service Health</span>
-                      <div className="mt-1 text-md font-bold text-[#10B981]">Optimal</div>
-                      <span className="text-[7px] text-[#6B7280] block mt-0.5">All servers online</span>
-                    </div>
-
-                    {/* Executive Reporting */}
-                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] transition duration-300">
-                      <span className="text-[8px] font-bold text-[#6B7280] uppercase tracking-wider block">Portfolio CSAT</span>
-                      <div className="mt-1 text-md font-bold text-[#111827]">{heroCSAT} / 5.0</div>
-                      <span className="text-[7px] text-[#6B7280] block mt-0.5">From customer logs</span>
-                    </div>
-
-                    {/* Productivity Metrics */}
-                    <div className="p-3.5 bg-white border border-[#E5E7EB] rounded hover:border-[#111827] transition duration-300">
-                      <span className="text-[8px] font-bold text-[#6B7280] uppercase tracking-wider block">Productivity</span>
-                      <div className="mt-1 text-md font-bold text-[#111827]">92.4%</div>
-                      <span className="text-[7px] text-[#10B981] block mt-0.5">Optimal allocation</span>
-                    </div>
-
                   </div>
                 )}
-
-                {/* Status Console Printout */}
-                <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded space-y-1">
-                  <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-1 mb-1 font-mono text-[8px] text-[#6B7280] uppercase tracking-widest">
-                    <span>Live operations telemetry logs</span>
-                    <span>{heroRefreshTime}</span>
-                  </div>
-                  <div className="font-mono text-[9px] text-[#6B7280] space-y-0.5 select-none">
-                    <p><span className="text-[#2563EB] font-bold">&gt;</span> Automated Classification pipeline online.</p>
-                    <p><span className="text-[#2563EB] font-bold">&gt;</span> Row Level Security active across tables.</p>
-                  </div>
-                </div>
 
               </div>
             </div>
@@ -610,762 +709,1050 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SECTION 2: TRUST INDICATORS ── */}
-      <section className="py-14 bg-[#FAFAFA] border-b border-[#E5E7EB]">
+      {/* ── SOCIAL PROOF BAR ── */}
+      <section className="py-12 bg-zinc-50 border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-8">
           <div className="text-center">
-            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#6B7280]">Proven scale across global service portfolios</span>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">Trusted by Operations Teams Worldwide</span>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            {[
-              { num: '99.95%', title: 'Platform Availability' },
-              { num: '500K+', title: 'Requests Processed' },
-              { num: '50K+', title: 'Tickets Managed' },
-              { num: '98.7%', title: 'SLA Compliance' },
-              { num: '95%', title: 'Customer CSAT' },
-              { num: '100+', title: 'Enterprise Teams' }
-            ].map((stat, idx) => (
-              <div key={idx} className="p-4 bg-white border border-[#E5E7EB] rounded text-center hover:shadow-sm transition duration-300">
-                <span className="text-xl font-bold font-mono text-[#111827] block">{stat.num}</span>
-                <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#6B7280] block mt-1">{stat.title}</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center max-w-4xl mx-auto">
+            <div className="space-y-1">
+              <div className="text-2xl font-extrabold font-mono text-zinc-900">
+                {mounted ? <AnimatedCounter value={50000} suffix="+" /> : '50,000+'}
               </div>
+              <div className="text-[9px] uppercase tracking-wider font-mono font-bold text-zinc-400">Active Operators</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-extrabold font-mono text-zinc-900">
+                {mounted ? <AnimatedCounter value={5} suffix="M+" /> : '5,000,000+'}
+              </div>
+              <div className="text-[9px] uppercase tracking-wider font-mono font-bold text-zinc-400">Tickets Processed</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-extrabold font-mono text-zinc-900">99.99%</div>
+              <div className="text-[9px] uppercase tracking-wider font-mono font-bold text-zinc-400">SLA Guarantee</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-extrabold font-mono text-zinc-900">
+                {mounted ? <AnimatedCounter value={150} suffix="+" /> : '150+'}
+              </div>
+              <div className="text-[9px] uppercase tracking-wider font-mono font-bold text-zinc-400">Enterprise Customers</div>
+            </div>
+          </div>
+
+          {/* Premium monochrome company SVG logos */}
+          <div className="flex flex-wrap items-center justify-center gap-12 opacity-40 grayscale pt-2">
+            {['Stripe', 'Vercel', 'Linear', 'Notion', 'Slack', 'Figma'].map((brand) => (
+              <span key={brand} className="text-xs font-mono font-bold tracking-widest uppercase text-zinc-600">{brand}</span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 3: PRODUCT OVERVIEW ── */}
-      <section id="overview" className="py-24 bg-[#FFFFFF] border-b border-[#E5E7EB]">
+      {/* ── ANIMATED PLATFORM OVERVIEW ── */}
+      <section id="overview" className="py-24 bg-white border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
-              Platform Architecture
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-zinc-50 rounded-full">
+              Operations Workflow
             </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Modern Service Delivery</h2>
-            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
-              Consolidate operations, incident records, infrastructure dependencies, and customer health indexes inside a single secure database.
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">Animated Platform Overview</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Experience the end-to-end flow of ticketing data. Click on any workspace role below to explore their dashboard mockup and active responsibilities.
             </p>
           </div>
 
-          <div className="border border-[#E5E7EB] rounded-lg bg-[#FAFAFA] p-6 shadow-sm font-mono text-xs">
-            <div className="flex items-center gap-2 border-b border-[#E5E7EB] pb-3 mb-4">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
-              <span className="font-bold text-[#111827] uppercase">Interactive Database Catalog</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* Stepper Navigation */}
+            <div className="lg:col-span-4 space-y-2 font-mono">
+              {[
+                { id: 'customer', step: '01', title: 'Customer Portal', subtitle: 'Submit cases & audit live hours' },
+                { id: 'consultant', step: '02', title: 'Consultant Workspace', subtitle: 'Pick tasks & log actual hours' },
+                { id: 'manager', step: '03', title: 'Manager Operations Center', subtitle: 'Mitigate risk & balance loads' },
+                { id: 'executive', step: '04', title: 'Executive Command Center', subtitle: 'Track portfolio KPI compliance' },
+                { id: 'admin', step: '05', title: 'Super Admin Governance', subtitle: 'System auditing & tenant RLS' }
+              ].map((role) => (
+                <button
+                  key={role.id}
+                  onClick={() => {
+                    setActivePlatformRole(role.id as any);
+                    setOverviewStep(role.step === '01' ? 0 : role.step === '02' ? 1 : role.step === '03' ? 2 : role.step === '04' ? 3 : 4);
+                  }}
+                  className={`w-full text-left p-4 rounded-lg border transition-all text-xs flex gap-4 ${
+                    activePlatformRole === role.id
+                      ? 'bg-zinc-900 border-zinc-900 text-white shadow-md'
+                      : 'bg-white border-zinc-200 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900'
+                  }`}
+                >
+                  <span className={`font-extrabold ${activePlatformRole === role.id ? 'text-zinc-400' : 'text-zinc-300'}`}>{role.step}</span>
+                  <div className="space-y-0.5">
+                    <span className="font-bold uppercase block">{role.title}</span>
+                    <span className={`text-[10px] block font-sans ${activePlatformRole === role.id ? 'text-zinc-400' : 'text-zinc-400'}`}>{role.subtitle}</span>
+                  </div>
+                </button>
+              ))}
             </div>
-            <p className="font-sans text-[#6B7280] leading-relaxed mb-4 max-w-2xl">
-              Each module of Assist360 routes data elements directly to partitioned Postgres schemas under strict Row Level Security (RLS) policy definitions.
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-3 bg-white border border-[#E5E7EB] rounded">
-                <span className="text-[8px] text-[#6B7280] uppercase block">Tenant Spans</span>
-                <span className="text-white bg-[#111827] px-1 rounded text-[9px] font-bold block mt-1 w-fit">Decoupled schemas</span>
-              </div>
-              <div className="p-3 bg-white border border-[#E5E7EB] rounded">
-                <span className="text-[8px] text-[#6B7280] uppercase block">Security audits</span>
-                <span className="text-white bg-[#111827] px-1 rounded text-[9px] font-bold block mt-1 w-fit">SOC2 & ISO 27001</span>
-              </div>
-              <div className="p-3 bg-white border border-[#E5E7EB] rounded">
-                <span className="text-[8px] text-[#6B7280] uppercase block">API Availability</span>
-                <span className="text-white bg-[#10B981] px-1 rounded text-[9px] font-bold block mt-1 w-fit">99.99% normal</span>
-              </div>
-              <div className="p-3 bg-white border border-[#E5E7EB] rounded">
-                <span className="text-[8px] text-[#6B7280] uppercase block">Incident routing</span>
-                <span className="text-white bg-[#2563EB] px-1 rounded text-[9px] font-bold block mt-1 w-fit">Autonomous</span>
-              </div>
+
+            {/* Dashboard Mockup Display */}
+            <div className="lg:col-span-8">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activePlatformRole}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card className="bg-white border-zinc-200 p-6 shadow-md rounded-lg space-y-4">
+                    
+                    {/* Mock Header */}
+                    <div className="flex justify-between items-center border-b border-zinc-100 pb-3 font-mono text-[10px] text-zinc-400">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
+                        <span className="font-bold uppercase tracking-wider text-zinc-900">
+                          {activePlatformRole === 'customer' && 'Customer Service Access Portal'}
+                          {activePlatformRole === 'consultant' && 'Consultant workbench cockpit'}
+                          {activePlatformRole === 'manager' && 'Manager Operations Center'}
+                          {activePlatformRole === 'executive' && 'Executive KPI board'}
+                          {activePlatformRole === 'admin' && 'Super admin governance console'}
+                        </span>
+                      </div>
+                      <Badge className="bg-zinc-50 text-zinc-600 border border-zinc-200 text-[8px] uppercase tracking-wider font-bold">
+                        ACTIVE CONTEXT
+                      </Badge>
+                    </div>
+
+                    {/* Mock Screen Content */}
+                    {activePlatformRole === 'customer' && (
+                      <div className="space-y-4">
+                        <p className="text-xs text-zinc-500 font-sans leading-relaxed">
+                          Customers have transparent, real-time access to request assistance, verify logged support efforts, request priority changes, and access historical change records under strict tenant isolation.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-lg space-y-2 font-mono">
+                            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest block">Submit Service Request</span>
+                            <div className="space-y-2 text-[10px]">
+                              <div className="bg-white border border-zinc-200 rounded p-1.5 text-zinc-400">System Outage - SAP MM Module</div>
+                              <div className="bg-white border border-zinc-200 rounded p-1.5 text-zinc-400">Impact: High Priority</div>
+                              <Button className="w-full bg-zinc-900 text-white font-mono text-[8px] h-6 uppercase font-bold">Dispatch to Desk</Button>
+                            </div>
+                          </div>
+                          <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-lg space-y-3 font-mono">
+                            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest block">Active Ticket Status</span>
+                            <div className="space-y-2 text-[10px]">
+                              <div className="flex justify-between items-center bg-white border border-zinc-100 p-2 rounded">
+                                <span>#SST-942: DB Upgrade</span>
+                                <Badge className="bg-blue-50 text-blue-700 text-[8px] font-bold">IN PROGRESS</Badge>
+                              </div>
+                              <div className="flex justify-between items-center bg-white border border-zinc-100 p-2 rounded">
+                                <span>#SST-902: Security Patch</span>
+                                <Badge className="bg-emerald-50 text-emerald-700 text-[8px] font-bold">RESOLVED</Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activePlatformRole === 'consultant' && (
+                      <div className="space-y-4">
+                        <p className="text-xs text-zinc-500 font-sans leading-relaxed">
+                          Delivery teams and consultants manage assignations through clear Kanban views, tracking progress, logging actual vs estimated hours, and reading AI suggested troubleshooting links.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-[10px]">
+                          <div className="p-3 bg-zinc-50 border border-zinc-100 rounded">
+                            <span className="text-[8px] font-bold text-zinc-400 uppercase block mb-1">To Do Queue</span>
+                            <div className="bg-white border border-zinc-200 p-2 rounded shadow-sm mb-1.5">SST-982: Setup GRC Profiles</div>
+                            <div className="bg-white border border-zinc-200 p-2 rounded shadow-sm">SST-991: ABAP Audit Report</div>
+                          </div>
+                          <div className="p-3 bg-zinc-50 border border-zinc-100 rounded">
+                            <span className="text-[8px] font-bold text-zinc-400 uppercase block mb-1">In Progress</span>
+                            <div className="bg-white border border-zinc-200 p-2 rounded shadow-sm relative">
+                              <span>SST-942: Patch Kernels</span>
+                              <span className="text-[8px] text-zinc-400 block mt-1">Logged: 4.5h / 8.0h</span>
+                            </div>
+                          </div>
+                          <div className="p-3 bg-zinc-50 border border-zinc-100 rounded">
+                            <span className="text-[8px] font-bold text-zinc-400 uppercase block mb-1">Peer Review</span>
+                            <div className="bg-white border border-zinc-200 p-2 rounded shadow-sm text-zinc-400">SST-902: DB Failover</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activePlatformRole === 'manager' && (
+                      <div className="space-y-4">
+                        <p className="text-xs text-zinc-500 font-sans leading-relaxed">
+                          Service Delivery Managers audit queue workloads, review consultant capacity allocations, approve transport orders, and receive automated risk alerts.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-[10px]">
+                          <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-lg space-y-2">
+                            <span className="text-[8px] font-bold text-zinc-400 uppercase block">Pending approvals</span>
+                            <div className="flex justify-between items-center bg-white p-2 rounded border border-zinc-200">
+                              <span>Transport #DEVK90124 (ABAP)</span>
+                              <Button size="sm" onClick={() => executeManagerApproval('DEVK90124')} className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white">Approve</Button>
+                            </div>
+                          </div>
+                          <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-lg space-y-2">
+                            <span className="text-[8px] font-bold text-zinc-400 uppercase block">Operations Risk Warning</span>
+                            <div className="bg-white p-2 rounded border border-zinc-200 flex justify-between items-center">
+                              <div>
+                                <span className="font-bold text-red-500 block">SLA BREACH ALERT</span>
+                                <span className="text-[8px] text-zinc-400">2 cases near deadline limits</span>
+                              </div>
+                              <Button size="sm" onClick={triggerManagerMitigate} className="h-6 text-[8px] uppercase font-bold bg-zinc-50 border border-zinc-200 text-zinc-900 hover:bg-zinc-100">Mitigate</Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activePlatformRole === 'executive' && (
+                      <div className="space-y-4">
+                        <p className="text-xs text-zinc-500 font-sans leading-relaxed">
+                          Executives audit operational portfolios at a macro level, reviewing SLA compliance percentages, financial burns, resource utilization metrics, and overall department satisfaction indices.
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-center">
+                          <div className="p-3 bg-zinc-50 border border-zinc-100 rounded">
+                            <span className="text-[8px] text-zinc-400 uppercase block">SLA Compliance</span>
+                            <span className="text-sm font-extrabold text-emerald-600 mt-1 block">99.42%</span>
+                          </div>
+                          <div className="p-3 bg-zinc-50 border border-zinc-100 rounded">
+                            <span className="text-[8px] text-zinc-400 uppercase block">Total CSAT</span>
+                            <span className="text-sm font-extrabold text-zinc-900 mt-1 block">4.92 / 5.0</span>
+                          </div>
+                          <div className="p-3 bg-zinc-50 border border-zinc-100 rounded">
+                            <span className="text-[8px] text-zinc-400 uppercase block">Resource Load</span>
+                            <span className="text-sm font-extrabold text-zinc-900 mt-1 block">84% Optimal</span>
+                          </div>
+                          <div className="p-3 bg-zinc-50 border border-zinc-100 rounded">
+                            <span className="text-[8px] text-zinc-400 uppercase block">Budget Utilized</span>
+                            <span className="text-sm font-extrabold text-zinc-900 mt-1 block">62.8%</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activePlatformRole === 'admin' && (
+                      <div className="space-y-4">
+                        <p className="text-xs text-zinc-500 font-sans leading-relaxed">
+                          Super Admins govern application postures, managing row-level partition keys, auditing system integration logs, verifying MFA enforce flags, and managing federated directory connectors.
+                        </p>
+                        <div className="p-4 bg-[#09090b] text-zinc-400 border border-zinc-800 rounded font-mono text-[9px] space-y-2">
+                          <div className="flex justify-between border-b border-zinc-800 pb-1 text-zinc-500 text-[8px] uppercase tracking-widest">
+                            <span>Admin Audit Trail Logs</span>
+                            <span>SSO Connectors Enabled</span>
+                          </div>
+                          <p><span className="text-emerald-500 font-bold">[OK]</span> Enforced MFA audit verification check for all tenant clients.</p>
+                          <p><span className="text-emerald-500 font-bold">[OK]</span> Rotated JWT encryption security credentials (AES-256).</p>
+                          <p><span className="text-blue-500 font-bold">[INFO]</span> Partition audit complete: 10 tenant databases isolated successfully.</p>
+                        </div>
+                      </div>
+                    )}
+
+                  </Card>
+                </motion.div>
+              </AnimatePresence>
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 4: ENTERPRISE CAPABILITIES ── */}
-      <section id="capabilities" className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
+      {/* ── AI SECTION ── */}
+      <section id="ai-intelligence" className="py-24 bg-zinc-50 border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-white rounded">
-              Core Capabilities
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-white rounded-full">
+              Machine Learning
             </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Enterprise Service Management</h2>
-            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
-              Explore the critical service operations modules built to run enterprise operations.
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">AI That Understands Service Delivery</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Assist360 processes ticketing logs with dedicated classification and prediction models to slash response times and deflect issues automatically.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {Object.entries(ITSM_SUITE_METADATA).map(([item, meta]) => {
-              const IconComponent = meta.icon;
-              return (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            
+            {/* AI Menu selector */}
+            <div className="lg:col-span-4 flex flex-col justify-between space-y-2">
+              <div className="space-y-1.5 font-mono">
+                {[
+                  { id: 'classify', title: 'AI Ticket Classification' },
+                  { id: 'priority', title: 'AI Priority Detection' },
+                  { id: 'escalation', title: 'AI Escalation Prediction' },
+                  { id: 'sla', title: 'AI SLA Risk Detection' },
+                  { id: 'workload', title: 'AI Workload Balancing' },
+                  { id: 'resource', title: 'AI Resource Recommendations' },
+                  { id: 'trend', title: 'AI Trend Analysis' },
+                  { id: 'insights', title: 'AI Executive Insights' }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedAiFeature(item.id)}
+                    className={`w-full text-left p-3 text-[10px] uppercase tracking-wider font-bold rounded border transition-all font-mono ${
+                      selectedAiFeature === item.id
+                        ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm'
+                        : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900'
+                    }`}
+                  >
+                    {item.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Console Mockup */}
+            <div className="lg:col-span-8">
+              <Card className="bg-white border-zinc-200 p-6 shadow-md rounded-lg h-full flex flex-col justify-between space-y-6">
+                <div className="space-y-4 font-mono text-xs">
+                  <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
+                    <span className="font-extrabold text-zinc-900 uppercase tracking-wider">
+                      {AI_METADATA[selectedAiFeature].title}
+                    </span>
+                    <Badge className="bg-zinc-50 text-emerald-700 border border-zinc-200 text-[8px] uppercase font-bold font-mono">
+                      {AI_METADATA[selectedAiFeature].status}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-zinc-50 border border-zinc-100 rounded-lg">
+                      <span className="text-[8px] text-zinc-400 uppercase tracking-widest block font-bold">Model Latency</span>
+                      <span className="text-zinc-900 font-extrabold block mt-1">
+                        {AI_METADATA[selectedAiFeature].latency}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-zinc-50 border border-zinc-100 rounded-lg">
+                      <span className="text-[8px] text-zinc-400 uppercase tracking-widest block font-bold">Model Confidence</span>
+                      <span className="text-emerald-600 font-extrabold block mt-1">
+                        {AI_METADATA[selectedAiFeature].confidence}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-zinc-900 text-zinc-400 border border-zinc-800 rounded-lg space-y-1.5">
+                    <span className="text-[8px] text-zinc-500 block uppercase tracking-widest">Diagnostic Output stream</span>
+                    <p className="leading-relaxed select-none">
+                      <span className="text-zinc-600 font-bold">&gt;</span> {AI_METADATA[selectedAiFeature].log}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Animated visual telemetry bar representation */}
+                <div className="pt-4 border-t border-zinc-100 flex flex-col gap-2 font-mono">
+                  <div className="flex justify-between text-[8px] text-zinc-400 uppercase">
+                    <span>Active Model Deflection Rate</span>
+                    <span className="font-bold text-zinc-900">42.5% Target Achieved</span>
+                  </div>
+                  <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="bg-zinc-900 h-2 rounded-full"
+                      initial={{ width: 0 }}
+                      whileInView={{ width: '42.5%' }}
+                      transition={{ duration: 1 }}
+                      viewport={{ once: true }}
+                    />
+                  </div>
+                </div>
+
+              </Card>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ── LIVE ANALYTICS SECTION (12 UNIQUE CHARTS) ── */}
+      <section id="analytics-section" className="py-24 bg-white border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-zinc-50 rounded-full">
+              Intelligence Console
+            </Badge>
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">Enterprise Live Analytics</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Interact with the 12 unique charts below. Each visualization displays distinct operations ledger metadata to monitor operational health in real-time.
+            </p>
+          </div>
+
+          <div className="space-y-8">
+            
+            {/* Category tabs */}
+            <div className="flex justify-center">
+              <div className="flex bg-zinc-100 p-1 rounded-lg border border-zinc-200 font-mono text-[9px]">
                 <button
-                  key={item}
-                  onClick={() => setSelectedSuiteItem(item)}
-                  className="p-5 bg-white border border-[#E5E7EB] rounded text-left hover:border-[#6B7280] hover:shadow-sm transition duration-300 flex flex-col justify-between h-40 space-y-4"
+                  onClick={() => setActiveAnalyticsCategory('volume')}
+                  className={`px-4 py-2 uppercase font-bold rounded-md transition-all ${
+                    activeAnalyticsCategory === 'volume' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
                 >
-                  <div className="w-8 h-8 rounded bg-[#FAFAFA] border border-[#E5E7EB] flex items-center justify-center text-[#2563EB]">
-                    <IconComponent size={16} />
-                  </div>
-                  <div className="font-mono text-xs uppercase tracking-wider font-bold text-[#111827]">
-                    {item}
-                  </div>
+                  01. Ticket Volumes & SLA
                 </button>
+                <button
+                  onClick={() => setActiveAnalyticsCategory('sla')}
+                  className={`px-4 py-2 uppercase font-bold rounded-md transition-all ${
+                    activeAnalyticsCategory === 'sla' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
+                >
+                  02. Resolution & Escalations
+                </button>
+                <button
+                  onClick={() => setActiveAnalyticsCategory('productivity')}
+                  className={`px-4 py-2 uppercase font-bold rounded-md transition-all ${
+                    activeAnalyticsCategory === 'productivity' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
+                >
+                  03. Team & Productivity
+                </button>
+                <button
+                  onClick={() => setActiveAnalyticsCategory('security')}
+                  className={`px-4 py-2 uppercase font-bold rounded-md transition-all ${
+                    activeAnalyticsCategory === 'security' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
+                >
+                  04. Health & Security
+                </button>
+              </div>
+            </div>
+
+            {/* Grid display of charts based on active category */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {activeAnalyticsCategory === 'volume' && (
+                <>
+                  {/* Chart 1: Ticket Volume Trend */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">1. Ticket Volume Trend (Stacked Area)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dataVolumeTrend} margin={{ top: 5, right: 5, left: -42, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f4" />
+                          <XAxis dataKey="month" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <YAxis stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                          <Area type="monotone" dataKey="Requests" name="Service Requests" stackId="1" stroke="#09090b" fill="#09090b" fillOpacity={0.08} />
+                          <Area type="monotone" dataKey="Incidents" name="Incidents" stackId="1" stroke="#27272a" fill="#27272a" fillOpacity={0.15} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Chart 2: Category Breakdown */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">2. Category Breakdown (Flat Pie)</span>
+                    <div className="h-56 w-full flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                          <Pie
+                            data={dataCategoryPie}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={65}
+                            dataKey="value"
+                            label={({ name = 'Unknown', percent = 0 }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`}
+                            labelLine={false}
+                          >
+                            {dataCategoryPie.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Chart 3: SLA Achievement */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">3. SLA Achievement % (Bar Chart)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dataSlaAchievement} margin={{ top: 5, right: 5, left: -42, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f4" />
+                          <XAxis dataKey="month" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <YAxis stroke="#a1a1aa" fontSize={8} tickLine={false} domain={[90, 100]} className="font-mono" />
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                          <Bar dataKey="slaPct" name="SLA Compliance %" fill="#09090b" radius={[2, 2, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+                </>
+              )}
+
+              {activeAnalyticsCategory === 'sla' && (
+                <>
+                  {/* Chart 4: Resolution Trend */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">4. Resolution Trend (Avg Min Line)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={dataResolutionTrend} margin={{ top: 5, right: 5, left: -42, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f4" />
+                          <XAxis dataKey="month" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <YAxis stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                          <Line type="monotone" dataKey="avgMin" name="Avg Resolution SLA (min)" stroke="#09090b" strokeWidth={2} dot={{ r: 4 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Chart 5: Escalation Analysis */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">5. Escalation Rate Analysis (Composed)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={dataEscalationAnalysis} margin={{ top: 5, right: 5, left: -42, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f4" />
+                          <XAxis dataKey="month" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <YAxis stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                          <Bar dataKey="totalTickets" name="Total Tickets" fill="#f1f1f4" yAxisId={0} radius={[2, 2, 0, 0]} />
+                          <Line type="monotone" dataKey="escalationRate" name="Escalation Rate %" stroke="#09090b" strokeWidth={2} dot={{ r: 3 }} />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Chart 6: Customer Satisfaction */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">6. Customer Satisfaction (Donut)</span>
+                    <div className="h-56 w-full flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                          <Pie
+                            data={dataCsatPie}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={4}
+                            dataKey="value"
+                          >
+                            {dataCsatPie.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+                </>
+              )}
+
+              {activeAnalyticsCategory === 'productivity' && (
+                <>
+                  {/* Chart 7: Consultant Productivity */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">7. Consultant Productivity Metrics (Radar)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={dataProductivityRadar}>
+                          <PolarGrid stroke="#e4e4e7" />
+                          <PolarAngleAxis dataKey="subject" stroke="#71717a" fontSize={7} className="font-mono" />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#a1a1aa" fontSize={7} />
+                          <Radar name="Primary SLA team" dataKey="A" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
+                          <Radar name="Contract benchmarks" dataKey="B" stroke="#71717a" fill="#71717a" fillOpacity={0.05} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Chart 8: Workload Distribution */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">8. Workload Distribution (Multi-Radar)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={dataWorkloadRadar}>
+                          <PolarGrid stroke="#e4e4e7" />
+                          <PolarAngleAxis dataKey="subject" stroke="#71717a" fontSize={7} className="font-mono" />
+                          <Radar name="SAP Basis Load" dataKey="Basis" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
+                          <Radar name="ABAP Dev Queue" dataKey="ABAP" stroke="#a1a1aa" fill="none" strokeDasharray="3 3" />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Chart 9: Team Performance */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">9. Team Closed vs Open (Grouped Bar)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dataTeamPerformance} margin={{ top: 5, right: 5, left: -42, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f4" />
+                          <XAxis dataKey="team" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <YAxis stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                          <Bar dataKey="Closed" name="Closed Tickets" fill="#09090b" radius={[2, 2, 0, 0]} />
+                          <Bar dataKey="ActiveBacklog" name="Awaiting Response" fill="#71717a" radius={[2, 2, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+                </>
+              )}
+
+              {activeAnalyticsCategory === 'security' && (
+                <>
+                  {/* Chart 10: Operational Health */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">10. Operational Health (Double Line)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={dataOperationalHealth} margin={{ top: 5, right: 5, left: -42, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f4" />
+                          <XAxis dataKey="hour" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <YAxis stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                          <Line type="monotone" dataKey="latencyMs" name="Avg Latency (ms)" stroke="#09090b" strokeWidth={1.5} dot={{ r: 2 }} />
+                          <Line type="monotone" dataKey="availability" name="Availability %" stroke="#22c55e" strokeWidth={1.5} strokeDasharray="4 4" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Chart 11: Priority Spread */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">11. Priority Heatmap/Spread (Stacked Bar)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dataPrioritySpread} layout="vertical" margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f4" />
+                          <XAxis type="number" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <YAxis dataKey="team" type="category" stroke="#a1a1aa" fontSize={7} tickLine={false} className="font-mono" />
+                          <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
+                          <Bar dataKey="P1" name="P1 Critical" fill="#09090b" stackId="priority" />
+                          <Bar dataKey="P2" name="P2 High" fill="#27272a" stackId="priority" />
+                          <Bar dataKey="P3" name="P3 Medium" fill="#71717a" stackId="priority" />
+                          <Bar dataKey="P4" name="P4 Low" fill="#e4e4e7" stackId="priority" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Chart 12: Monthly Growth */}
+                  <Card className="bg-white border-zinc-200 p-5 rounded-lg shadow-sm space-y-3">
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block">12. Compounding Growth (Scatter correlation)</span>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart margin={{ top: 5, right: 5, left: -42, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f4" />
+                          <XAxis type="number" dataKey="x" name="Requests Volume" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <YAxis type="number" dataKey="y" name="Closed Items" stroke="#a1a1aa" fontSize={8} tickLine={false} className="font-mono" />
+                          <ChartTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                          <Scatter name="Growth Points" data={dataGrowthScatter} fill="#09090b" shape="circle" />
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+                </>
+              )}
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ── COMMAND CENTER SHOWCASE (MANAGER VIEW) ── */}
+      <section id="command-center" className="py-24 bg-zinc-50 border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-white rounded-full">
+              Operations Control Deck
+            </Badge>
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">Manager Command Center</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Oversee pending requests, escalate blockers, approve release orders, and execute mitigation scripts from a central high-contrast control console.
+            </p>
+          </div>
+
+          <div className="border border-zinc-200 rounded-lg bg-white p-6 shadow-md max-w-5xl mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-100 pb-4 gap-2 font-mono text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-900 block animate-pulse"></span>
+                <span className="font-bold text-zinc-900 uppercase tracking-wider">Active Command Center Cockpit</span>
+              </div>
+              <Badge className="bg-zinc-50 text-zinc-600 border border-zinc-200 text-[8px] font-bold font-mono rounded-full uppercase tracking-wider px-2.5 py-0.5">
+                Real-time DB connection: Isolation verified
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
+              
+              {/* Approvals Widget */}
+              <Card className="p-4 bg-zinc-50 border-zinc-100 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase">Pending Approvals</span>
+                  <span className="text-zinc-900 font-extrabold">{managerApprovals} requests</span>
+                </div>
+                {managerApprovals > 0 ? (
+                  <div className="space-y-2">
+                    <div className="bg-white border border-zinc-200 p-2 rounded flex justify-between items-center text-[10px]">
+                      <span>TR #DEVK90124 (ABAP Release)</span>
+                      <Button size="sm" onClick={() => executeManagerApproval('DEVK90124')} className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white">Approve</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-zinc-400 text-[10px]">All approvals processed.</div>
+                )}
+              </Card>
+
+              {/* SLA breaches monitoring */}
+              <Card className="p-4 bg-zinc-50 border-zinc-100 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase">SLA Breaches Risk Index</span>
+                  <span className={`font-extrabold ${managerSlaBreaches > 0 ? 'text-red-500 animate-pulse' : 'text-zinc-900'}`}>{managerSlaBreaches} Warnings</span>
+                </div>
+                <div className="space-y-2 text-[10px]">
+                  {managerSlaBreaches > 0 ? (
+                    <div className="bg-white border border-zinc-200 p-2 rounded flex justify-between items-center">
+                      <div>
+                        <span className="font-bold block">SST-SEC-902 (Basis)</span>
+                        <span className="text-[8px] text-zinc-400">Time to breach: 12m</span>
+                      </div>
+                      <Button size="sm" onClick={triggerManagerMitigate} className="h-6 text-[8px] uppercase font-bold bg-zinc-900 text-white">Mitigate</Button>
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-zinc-200 p-2 rounded text-center text-emerald-600 font-bold">
+                      All SLAs compliant. No risks detected.
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Action Log Widget */}
+              <Card className="p-4 bg-zinc-50 border-zinc-100 space-y-3">
+                <span className="text-[9px] font-bold text-zinc-400 uppercase block">Active Team Workload</span>
+                <div className="space-y-2 text-[10px]">
+                  <div className="flex justify-between">
+                    <span>Basis Ops Desk:</span>
+                    <span className="font-bold">4 active tasks</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>ABAP Dev Desk:</span>
+                    <span className="font-bold text-red-500">12 tasks (High Load)</span>
+                  </div>
+                </div>
+              </Card>
+
+            </div>
+
+            {/* Simulated Live logs */}
+            <div className="p-4 bg-[#09090b] text-zinc-400 border border-zinc-800 rounded font-mono text-[9px] space-y-1">
+              <span className="text-[7px] text-zinc-500 block uppercase tracking-widest border-b border-zinc-800 pb-1 mb-1.5">Command Center Audit Log stream</span>
+              {commandCenterLogs.map((log, index) => (
+                <p key={index} className="truncate">
+                  <span className="text-zinc-600">&gt;</span> {log}
+                </p>
+              ))}
+            </div>
+
+            <div className="border-t border-zinc-100 pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 font-mono text-center text-xs">
+              <div className="p-3 bg-zinc-50 border border-zinc-100 rounded-lg">
+                <span className="text-[9px] text-zinc-400 uppercase block">Avg SLA Adherence</span>
+                <span className="text-md font-extrabold text-emerald-600 mt-1 block">99.42%</span>
+              </div>
+              <div className="p-3 bg-zinc-50 border border-zinc-100 rounded-lg">
+                <span className="text-[9px] text-zinc-400 uppercase block">System Availability</span>
+                <span className="text-md font-extrabold text-zinc-900 mt-1 block">99.99%</span>
+              </div>
+              <div className="p-3 bg-zinc-50 border border-zinc-100 rounded-lg">
+                <span className="text-[9px] text-zinc-400 uppercase block">Assigned Engineers</span>
+                <span className="text-md font-extrabold text-zinc-900 mt-1 block">24 Operators</span>
+              </div>
+              <div className="p-3 bg-zinc-50 border border-zinc-100 rounded-lg">
+                <span className="text-[9px] text-zinc-400 uppercase block">Autopilot status</span>
+                <span className="text-md font-extrabold text-emerald-600 mt-1 block">ONLINE</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ── CUSTOMER SUCCESS SECTION ── */}
+      <section className="py-24 bg-white border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-zinc-50 rounded-full">
+              Customer Experience
+            </Badge>
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">Everything Your Customers Expect</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Give your clients an interactive and fully transparent portal to request services, monitor SLAs, audit logged support efforts, and track history.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { icon: FileText, title: 'Raise Tickets', desc: 'Create service incident cases using dynamic request catalogs with customized priority routing fields.' },
+              { icon: Activity, title: 'Track Progress', desc: 'Audit ticket states, assignments, and logged effort timelines. Stay updated in real-time.' },
+              { icon: Download, title: 'Download Attachments', desc: 'Directly download patch files, test cases reports, and log bundles securely.' },
+              { icon: Clock, title: 'Review Actual Hours', desc: 'Transparency by design: Audit logged consultant time allocations against target estimates.' },
+              { icon: ShieldAlert, title: 'Escalate Requests', desc: 'Trigger escalation alerts to managers if response metrics near warning thresholds.' },
+              { icon: CheckSquare, title: 'View SLA Status', desc: 'Monitor contractual SLA indicators, response counts, and resolution compliance logs.' },
+              { icon: BookOpen, title: 'Access Service History', desc: 'Comprehensive audit trailing of historical changes, closed logs, and historical resolutions.' }
+            ].map((card, idx) => {
+              const IconComponent = card.icon;
+              return (
+                <Card key={idx} className="bg-white border-zinc-200 p-6 space-y-4 hover:border-zinc-400 hover:shadow-md transition-all rounded-lg flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="w-10 h-10 bg-zinc-50 rounded border border-zinc-200 flex items-center justify-center text-zinc-900">
+                      <IconComponent size={18} />
+                    </div>
+                    <h3 className="text-xs font-bold text-zinc-900 uppercase font-mono tracking-wider">{card.title}</h3>
+                    <p className="text-xs text-zinc-500 leading-relaxed font-sans">{card.desc}</p>
+                  </div>
+                </Card>
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 5: INTERACTIVE ANALYTICS (10 UNIQUE CHARTS) ── */}
-      <section id="analytics-section" className="py-24 bg-[#FFFFFF] border-b border-[#E5E7EB]">
+      {/* ── CONSULTANT EXPERIENCE SECTION ── */}
+      <section className="py-24 bg-zinc-50 border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
           <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
-              Intelligence Cockpit
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-white rounded-full">
+              Delivery Workbench
             </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Data Driven Service Excellence</h2>
-            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
-              Audit the 10 critical operational data streams. Each metric loads distinct data points from our service ledger databases.
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">Built For High-Performance Delivery Teams</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Empower your delivery engineers with high-performance workspaces, automated queues routing, effort logs widgets, and integrated systems knowledge.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {/* Left Category selector */}
-            <div className="lg:col-span-3 space-y-2 font-mono">
-              {[
-                { id: 'volume', title: '01. Ticket Volume' },
-                { id: 'sla', title: '02. SLA Governance' },
-                { id: 'customer', title: '03. Customer Experience' },
-                { id: 'performance', title: '04. Service Performance' },
-                { id: 'productivity', title: '05. Team Productivity' },
-                { id: 'asset', title: '06. Asset Intelligence' },
-                { id: 'change', title: '07. Change Management' },
-                { id: 'exec', title: '08. Executive Intelligence' },
-                { id: 'ai', title: '09. AI Operations' },
-                { id: 'security', title: '10. Security Operations' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveAnalyticsCategory(tab.id)}
-                  className={`w-full text-left p-3 font-mono text-[10px] uppercase tracking-wider font-bold rounded border transition ${
-                    activeAnalyticsCategory === tab.id
-                      ? 'bg-[#111117] text-white border-[#111117]'
-                      : 'bg-white text-[#6B7280] border-[#E5E7EB] hover:border-[#6B7280] hover:text-[#111827]'
-                  }`}
-                >
-                  {tab.title}
-                </button>
-              ))}
-            </div>
-
-            {/* Right Interactive Chart View */}
-            <div className="lg:col-span-9">
-              <Card className="bg-white border-[#E5E7EB] rounded-lg p-6 shadow-sm space-y-4">
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {(() => {
-                      // 1. Ticket Volume Trends (Incidents, Requests, Problems, Changes) -> custom BarChart
-                      if (activeAnalyticsCategory === 'volume') {
-                        return (
-                          <BarChart data={ticketVolumeData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <YAxis stroke="#6B7280" fontSize={9} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Bar dataKey="Incidents" name="Incidents" fill="#EF4444" radius={[2, 2, 0, 0]} />
-                            <Bar dataKey="Requests" name="Service Requests" fill="#2563EB" radius={[2, 2, 0, 0]} />
-                            <Bar dataKey="Changes" name="Change Tasks" fill="#F59E0B" radius={[2, 2, 0, 0]} />
-                          </BarChart>
-                        );
-                      }
-                      // 2. SLA Governance (SLA Compliance, Response SLA, Resolution SLA, Breach Trends) -> custom AreaChart
-                      if (activeAnalyticsCategory === 'sla') {
-                        return (
-                          <AreaChart data={slaGovernanceData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <defs>
-                              <linearGradient id="slaGradColLight" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.15} />
-                                <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <YAxis stroke="#6B7280" fontSize={9} domain={[90, 100]} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Area type="monotone" dataKey="compliance" name="Overall SLA Compliance %" stroke="#10B981" fill="url(#slaGradColLight)" strokeWidth={2} />
-                            <Area type="monotone" dataKey="responseSla" name="Response SLA %" stroke="#2563EB" fill="none" strokeWidth={1} strokeDasharray="4 4" />
-                          </AreaChart>
-                        );
-                      }
-                      // 3. Customer Experience (CSAT Trend, NPS Trend, Customer Health, Risk Scores) -> custom LineChart
-                      if (activeAnalyticsCategory === 'customer') {
-                        return (
-                          <LineChart data={customerExperienceData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <YAxis stroke="#6B7280" fontSize={9} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Line type="monotone" dataKey="NPS" name="NPS Index Score" stroke="#2563EB" strokeWidth={2} dot={{ r: 4 }} />
-                            <Line type="monotone" dataKey="HealthScore" name="Health Score %" stroke="#10B981" strokeWidth={2} />
-                          </LineChart>
-                        );
-                      }
-                      // 4. Service Performance (Resolution Time, Response Time, Escalation Rate, Backlog Trends) -> custom BarChart
-                      if (activeAnalyticsCategory === 'performance') {
-                        return (
-                          <BarChart data={servicePerformanceData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <YAxis stroke="#6B7280" fontSize={9} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Bar dataKey="resolutionTime" name="Resolution SLA (m)" fill="#2563EB" radius={[2, 2, 0, 0]} />
-                            <Bar dataKey="escalationRate" name="Escalation Rate %" fill="#EF4444" radius={[2, 2, 0, 0]} />
-                          </BarChart>
-                        );
-                      }
-                      // 5. Team Productivity (Utilization, Capacity, Productivity, Workload Distribution) -> custom DonutChart
-                      if (activeAnalyticsCategory === 'productivity') {
-                        return (
-                          <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                            <Pie
-                              data={teamProductivityData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              paddingAngle={5}
-                              dataKey="value"
-                            >
-                              {teamProductivityData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                              ))}
-                            </Pie>
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                          </PieChart>
-                        );
-                      }
-                      // 6. Asset Intelligence (Asset Health, Warranty Expiry, Lifecycle Tracking, Utilization) -> custom BarChart
-                      if (activeAnalyticsCategory === 'asset') {
-                        return (
-                          <BarChart data={assetIntelligenceData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <YAxis stroke="#6B7280" fontSize={9} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Bar dataKey="Healthy" name="Healthy Items" fill="#10B981" stackId="asset" />
-                            <Bar dataKey="ActiveLoad" name="Avg Utilization %" fill="#2563EB" stackId="asset" />
-                          </BarChart>
-                        );
-                      }
-                      // 7. Change Management (Success Rate, Failed Changes, Pending Changes, Risk Analysis) -> custom LineChart
-                      if (activeAnalyticsCategory === 'change') {
-                        return (
-                          <LineChart data={changeManagementData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <YAxis stroke="#6B7280" fontSize={9} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Line type="monotone" dataKey="successRate" name="Deploy Success Rate %" stroke="#10B981" strokeWidth={2} />
-                            <Line type="monotone" dataKey="failed" name="Failed Changes Count" stroke="#EF4444" strokeWidth={1} />
-                          </LineChart>
-                        );
-                      }
-                      // 8. Executive Intelligence (Operational Health, Critical Incidents, Department Performance, Service Health) -> custom AreaChart
-                      if (activeAnalyticsCategory === 'exec') {
-                        return (
-                          <AreaChart data={executiveIntelligenceData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <defs>
-                              <linearGradient id="anExecLightGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15} />
-                                <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <YAxis stroke="#6B7280" fontSize={9} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Area type="monotone" dataKey="Score" name="Department Health Score" stroke="#2563EB" fill="url(#anExecLightGrad)" strokeWidth={2} />
-                          </AreaChart>
-                        );
-                      }
-                      // 9. AI Operations (AI Classification, AI Routing Accuracy, AI Predictions, AI Automation) -> custom Horizontal BarChart
-                      if (activeAnalyticsCategory === 'ai') {
-                        return (
-                          <BarChart data={aiOperationsData} layout="vertical" margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis type="number" stroke="#6B7280" fontSize={9} className="font-mono" />
-                            <YAxis dataKey="name" type="category" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Bar dataKey="Accuracy" name="AI Match Accuracy %" fill="#10B981" radius={[0, 2, 2, 0]} />
-                            <Bar dataKey="Rate" name="Deflection Rate %" fill="#3B82F6" radius={[0, 2, 2, 0]} />
-                          </BarChart>
-                        );
-                      }
-                      // 10. Security Operations (Security Incidents, Compliance Status, Audit Findings, Risk Monitoring) -> custom LineChart
-                      if (activeAnalyticsCategory === 'security') {
-                        return (
-                          <LineChart data={securityOperationsData} margin={{ top: 10, right: 10, left: -40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#6B7280" fontSize={8} className="font-mono" />
-                            <YAxis stroke="#6B7280" fontSize={9} className="font-mono" />
-                            <ChartTooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', fontSize: 10, fontFamily: 'monospace' }} />
-                            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                            <Line type="monotone" dataKey="incidents" name="Security Alerts" stroke="#EF4444" strokeWidth={2} dot={{ r: 4 }} />
-                            <Line type="monotone" dataKey="riskScore" name="Risk Exposure Level" stroke="#F59E0B" strokeWidth={2} />
-                          </LineChart>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 6: AI PLATFORM ── */}
-      <section id="ai-ops" className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-white rounded">
-              Machine Intelligence
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Autonomous AI Operations Platform</h2>
-            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
-              Evaluate real-time diagnostic outputs of Assist360 AI systems. Click triggers below to preview logs.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-            
-            {/* AI Capabilities Toggles */}
-            <div className="lg:col-span-4 flex flex-col justify-between space-y-2">
-              <div className="space-y-2 font-mono">
-                {[
-                  { id: 'classify', title: 'AI Incident Classification' },
-                  { id: 'route', title: 'AI Routing' },
-                  { id: 'priority', title: 'AI Prioritization' },
-                  { id: 'suggest', title: 'AI Resolution Suggestions' },
-                  { id: 'knowledge', title: 'AI Knowledge Discovery' },
-                  { id: 'capacity', title: 'AI Capacity Forecasting' },
-                  { id: 'risk', title: 'AI Risk Detection' },
-                  { id: 'escalation', title: 'AI Escalation Prediction' },
-                  { id: 'insights', title: 'AI Executive Insights' }
-                ].map((cap) => (
-                  <button
-                    key={cap.id}
-                    onClick={() => setActiveAiCapability(cap.id)}
-                    className={`w-full text-left p-3 font-mono text-[10px] uppercase tracking-wider font-bold rounded border transition ${
-                      activeAiCapability === cap.id
-                        ? 'bg-[#111117] text-white border-[#111117]'
-                        : 'bg-white text-[#6B7280] border-[#E5E7EB] hover:border-[#6B7280] hover:text-[#111827]'
-                    }`}
-                  >
-                    {cap.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Diagnostic console */}
-            <div className="lg:col-span-8">
-              <Card className="bg-white border-[#E5E7EB] h-full flex flex-col justify-between p-6 space-y-6 shadow-sm font-mono text-xs">
-                
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-3">
-                    <span className="text-xs font-bold text-[#111827] uppercase">
-                      {AI_CAPABILITIES_METADATA[activeAiCapability].title}
-                    </span>
-                    <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[9px] uppercase font-bold">
-                      {AI_CAPABILITIES_METADATA[activeAiCapability].status}
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                      <span className="text-[9px] text-[#6B7280] uppercase block">Analysis Latency</span>
-                      <span className="text-[#111827] font-bold block mt-1">
-                        {AI_CAPABILITIES_METADATA[activeAiCapability].latency}
-                      </span>
-                    </div>
-                    <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                      <span className="text-[9px] text-[#6B7280] uppercase block">Model Confidence</span>
-                      <span className="text-[#10B981] font-bold block mt-1">
-                        {AI_CAPABILITIES_METADATA[activeAiCapability].confidence}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                    <span className="text-[9px] text-[#6B7280] block uppercase mb-2">Diagnostic Output stream</span>
-                    <p className="text-[#111827] leading-relaxed select-none">
-                      <span className="text-[#2563EB] font-bold">&gt;</span> {AI_CAPABILITIES_METADATA[activeAiCapability].log}
-                    </p>
-                  </div>
-                </div>
-
-              </Card>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 7: WORKFLOW AUTOMATION ── */}
-      <section id="workflow-automation" className="py-24 bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
-              Process Orchestrator
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Workflow Automation Platform</h2>
-            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
-              Evaluate incident lifecycle transitions with our interactive workflow simulation. Click steps or toggle autoplay.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            {/* Interactive Stepper Control */}
-            <div className="lg:col-span-4 space-y-6">
-              <div className="flex gap-2">
-                <Button 
-                  onClick={() => setWorkflowStep((prev) => Math.max(0, prev - 1))}
-                  disabled={workflowStep === 0}
-                  className="bg-white hover:bg-[#FAFAFA] border border-[#E5E7EB] text-[#111827] text-[10px] font-mono uppercase font-bold px-3 py-1.5 rounded"
-                >
-                  Back
-                </Button>
-                <Button 
-                  onClick={() => setWorkflowStep((prev) => (prev + 1) % 7)}
-                  className="bg-[#111117] hover:bg-[#6B7280] text-white text-[10px] font-mono uppercase font-bold px-3 py-1.5 rounded"
-                >
-                  Forward
-                </Button>
-                <Button 
-                  onClick={() => setWorkflowAutoplay(!workflowAutoplay)}
-                  variant="outline"
-                  className={`text-[10px] font-mono uppercase font-bold px-3 py-1.5 rounded border ${
-                    workflowAutoplay ? 'border-[#10B981] text-[#10B981]' : 'border-[#E5E7EB] text-[#6B7280]'
-                  }`}
-                >
-                  {workflowAutoplay ? 'Autoplay ON' : 'Autoplay'}
-                </Button>
-              </div>
-
-              {/* Status context description */}
-              <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded font-mono text-xs space-y-2">
-                <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider">Step Details</span>
-                <h4 className="text-[#111827] font-bold uppercase">
-                  {(() => {
-                    if (workflowStep === 0) return '01. Issue Created';
-                    if (workflowStep === 1) return '02. AI Classification';
-                    if (workflowStep === 2) return '03. Assignment';
-                    if (workflowStep === 3) return '04. Approval';
-                    if (workflowStep === 4) return '05. Resolution';
-                    if (workflowStep === 5) return '06. Feedback';
-                    return '07. Analytics';
-                  })()}
-                </h4>
-                <p className="text-[#6B7280] leading-relaxed font-sans">
-                  {(() => {
-                    if (workflowStep === 0) return 'Incident is reported through the client portal, triggering initial parsing routines.';
-                    if (workflowStep === 1) return 'Our automated classification models evaluate risk categorization and assign priority thresholds.';
-                    if (workflowStep === 2) return 'The ticket is automatically routed to engineers matching specialization credentials.';
-                    if (workflowStep === 3) return 'Logged estimates or resource allocations require operations manager review.';
-                    if (workflowStep === 4) return 'Remediation procedures are executed and change orders log successfully.';
-                    if (workflowStep === 5) return 'Feedback queries request user satisfaction ratings, updating historical statistics.';
-                    return 'Aggregated performance metrics bind directly to executive reporting command consoles.';
-                  })()}
-                </p>
-              </div>
-            </div>
-
-            {/* Visual Timeline Nodes */}
-            <div className="lg:col-span-8 p-6 bg-[#FAFAFA] border border-[#E5E7EB] rounded relative">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4 relative z-10">
-                {[
-                  'Issue Created',
-                  'AI Classification',
-                  'Assignment',
-                  'Approval',
-                  'Resolution',
-                  'Feedback',
-                  'Analytics'
-                ].map((node, index) => (
-                  <div key={index} className="flex flex-row md:flex-col items-center gap-3 md:gap-2 w-full md:w-auto">
-                    <div className={`w-8 h-8 rounded-full border-2 font-mono font-bold text-xs flex items-center justify-center transition duration-300 ${
-                      workflowStep === index
-                        ? 'bg-[#111117] border-[#111117] text-white scale-110 shadow-md'
-                        : workflowStep > index
-                        ? 'bg-[#10B981]/10 border-[#10B981] text-[#10B981]'
-                        : 'bg-white border-[#E5E7EB] text-[#6B7280]'
-                    }`}>
-                      {index + 1}
-                    </div>
-                    <span className={`text-[10px] font-mono uppercase tracking-wider font-bold ${
-                      workflowStep === index ? 'text-[#111827]' : 'text-[#6B7280]'
-                    }`}>
-                      {node}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 8: ENTERPRISE SECURITY ── */}
-      <section className="py-24 bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
-              Information Security
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Built For Enterprise Security</h2>
-            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
-              Maintain regulatory posture standards with robust security protocols, access structures, and encryption schemes.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { title: 'SSO Integration', desc: 'Secure enterprise logins using federated directory configurations (SAML 2.0).' },
-              { title: 'Multi-Factor Auth', desc: 'Mandatory security prompts (MFA) enforce credential verification.' },
-              { title: 'Role-Based Access', desc: 'Fine-grained permissions (RBAC) restrict catalog and module visibility.' },
-              { title: 'Audit Logs Ledger', desc: 'Log every ledger modification and access unlock request in real-time postgres audit trails.' },
-              { title: 'AES-256 Encryption', desc: 'Enforces encryption at rest and in transit (SSL/TLS) for database schemas.' },
-              { title: 'SOC2 Compliance', desc: 'System conforms to Service Organization Control 2 reporting standards.' },
-              { title: 'Activity Monitoring', desc: 'Log every transaction override, password resetting trigger, and effort logging modification.' },
-              { title: 'Data Governance', desc: 'Enforce audit trails, field validation permissions, and automated ticket closure checks.' }
-            ].map((sec, idx) => (
-              <Card key={idx} className="bg-white border-[#E5E7EB] p-6 space-y-3 hover:border-[#6B7280] hover:shadow-md transition duration-300">
-                <span className="text-xs font-bold text-[#111827] font-mono uppercase block">{sec.title}</span>
-                <p className="text-xs text-[#6B7280] leading-relaxed">{sec.desc}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 9: CUSTOMER STORIES ── */}
-      <section className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-white rounded">
-              Customer Success
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Enterprise Customer Stories</h2>
-            <div className="flex justify-center items-center gap-1 text-[#F59E0B] pt-1">
-              {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#F59E0B" className="stroke-none" />)}
-              <span className="text-xs font-mono text-[#111827] ml-2 font-bold">4.9/5 Customer Rating</span>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[
-              { quote: '"Assist360 completely transformed how our teams manage service delivery."', author: 'Emma Richardson', role: 'VP Operations' },
-              { quote: '"The analytics and visibility are beyond anything we\'ve used before."', author: 'Daniel Foster', role: 'Chief Information Officer' },
-              { quote: '"The platform became the operational backbone of our service organization."', author: 'Sophia Bennett', role: 'Director of Service Delivery' },
-              { quote: '"One platform replaced six disconnected systems."', author: 'Michael Carter', role: 'Head of Enterprise Support' }
-            ].map((test, idx) => (
-              <Card key={idx} className="bg-white border-[#E5E7EB] p-6 flex flex-col justify-between hover:border-[#6B7280] hover:shadow-md transition duration-300">
-                <p className="text-xs text-[#6B7280] italic leading-relaxed">{test.quote}</p>
-                <div className="pt-6 font-mono text-xs border-t border-[#E5E7EB] mt-4">
-                  <span className="font-bold text-[#111827] block">{test.author}</span>
-                  <span className="text-[9px] text-[#6B7280] block mt-0.5">{test.role}</span>
-                </div>
-              </Card>
-            ))}
+              { icon: Layers, title: 'Assignment Boards', desc: 'Manage tickets and requests using visual Kanban layouts categorized by queue statuses.' },
+              { icon: Cpu, title: 'Ticket Workbench', desc: 'Consolidate communications history, attachment files, and systems diagnostic parameters inside a single console.' },
+              { icon: Clock, title: 'Actual Hours Log', desc: 'Track effort spent on tasks down to the minute. Log actual hours directly to system records.' },
+              { icon: TrendingUp, title: 'Estimated Hours', desc: 'Compare real effort logs against original estimates. Identify workload slippage warning thresholds.' },
+              { icon: MessageSquare, title: 'Collaboration Window', desc: 'Discuss incident cases directly with team members and customers. Log threads on records.' },
+              { icon: CheckSquare, title: 'System Approvals', desc: 'Approve transport orders or release changes in system environments securely.' },
+              { icon: BookOpen, title: 'Knowledge Base', desc: 'Integrated documentation repository: Find standard operating manuals and troubleshooting articles.' },
+              { icon: Lock, title: 'Secure Audits', desc: 'Each modification is cataloged inside postgres audit ledger tables for governance verification.' }
+            ].map((card, idx) => {
+              const IconComponent = card.icon;
+              return (
+                <Card key={idx} className="bg-white border-zinc-200 p-5 space-y-3.5 hover:border-zinc-400 hover:shadow-md transition-all rounded-lg flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="w-8 h-8 bg-zinc-50 rounded border border-zinc-200 flex items-center justify-center text-zinc-900">
+                      <IconComponent size={14} />
+                    </div>
+                    <h4 className="text-xs font-bold text-zinc-900 uppercase font-mono tracking-wider">{card.title}</h4>
+                    <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">{card.desc}</p>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 10: G2 RECOGNITION ── */}
-      <section className="py-14 bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 flex flex-col lg:flex-row justify-between items-center gap-8">
-          <div className="space-y-2 text-center lg:text-left">
-            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#6B7280]">Gartner and G2 Ecosystem recognition</span>
-            <h3 className="text-xl font-bold text-[#111827] uppercase font-mono">Market Leadership Badges</h3>
+      {/* ── EXECUTIVE INSIGHTS SECTION ── */}
+      <section className="py-24 bg-white border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-zinc-50 rounded-full">
+              Executive Dashboard
+            </Badge>
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">Executive KPI Board</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Consolidate operations performance indexes, resource capacities, SLA breaches, and contract financials inside an elegant executive-ready summary layout.
+            </p>
           </div>
-          
-          <div className="flex flex-wrap justify-center gap-4">
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto font-mono text-xs">
+            
             {[
-              'G2 High Performer',
-              'Customer Choice Award',
-              'Top Rated ITSM Platform',
-              'Enterprise Leader',
-              '98% Retention',
-              '4.9/5 Customer Rating'
-            ].map((badge, idx) => (
-              <Badge key={idx} variant="outline" className="text-[9px] font-mono font-bold border-[#E5E7EB] bg-[#FAFAFA] text-[#111827] px-3.5 py-1.5 uppercase rounded">
-                {badge}
-              </Badge>
+              { title: 'Portfolio SLA Compliance', value: '99.42%', change: '+0.15% vs last week', color: 'text-emerald-600', sparkline: [98, 98.5, 99.1, 99.42] },
+              { title: 'Open Service Tickets', value: '142 Cases', change: '-12% backlog reduction', color: 'text-zinc-900', sparkline: [170, 162, 150, 142] },
+              { title: 'Critical P1 Escalations', value: '2 Active', change: 'All auto-assigned to desks', color: 'text-zinc-900', sparkline: [4, 1, 3, 2] },
+              { title: 'Avg Resolution Time', value: '19.4 min', change: '-4m efficiency gain', color: 'text-zinc-900', sparkline: [28, 24, 21, 19.4] },
+              { title: 'Resource Utilization Rate', value: '84% Load', change: 'Within optimal threshold', color: 'text-zinc-900', sparkline: [80, 85, 82, 84] },
+              { title: 'Customer Health Score', value: '98.5 / 100', change: '+1.2 points satisfaction', color: 'text-emerald-600', sparkline: [95, 96.2, 97.8, 98.5] },
+              { title: 'Contract Utilization Burn', value: '62.8%', change: 'Averages 120h remaining', color: 'text-zinc-900', sparkline: [50, 54, 58, 62.8] },
+              { title: 'Active Risk Indicators', value: '0.12 Index', change: 'Minimal warnings reported', color: 'text-emerald-600', sparkline: [0.25, 0.18, 0.15, 0.12] }
+            ].map((item, idx) => (
+              <Card key={idx} className="bg-zinc-50 border-zinc-200 p-5 space-y-3 rounded-lg hover:border-zinc-400 transition-all flex flex-col justify-between">
+                <div className="space-y-1">
+                  <span className="text-[8px] text-zinc-400 uppercase font-bold block">{item.title}</span>
+                  <div className={`text-xl font-extrabold ${item.color}`}>{item.value}</div>
+                  <span className="text-[7px] text-zinc-400 block">{item.change}</span>
+                </div>
+                
+                {/* Micro sparkline visualization */}
+                <div className="h-6 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={item.sparkline.map((val, i) => ({ val, i }))}>
+                      <Line type="monotone" dataKey="val" stroke="#09090b" strokeWidth={1} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            ))}
+
+          </div>
+        </div>
+      </section>
+
+      {/* ── CUSTOMER TESTIMONIALS ── */}
+      <section className="py-24 bg-zinc-50 border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-white rounded-full">
+              Testimonials
+            </Badge>
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">Enterprise Customer Stories</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Discover how modern organizations rely on Assist360 to scale support operations and protect service availability metrics.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[
+              { name: 'Sarah Jenkins', role: 'CIO', company: 'Global Group Inc.', rating: 5, quote: 'Assist360 completely transformed how our teams manage service delivery. Outages are resolved 65% faster.' },
+              { name: 'Marcus Vance', role: 'Head of IT', company: 'Apex Systems', rating: 5, quote: 'The SLA auditing and real-time dashboard are beyond anything we have used before. Perfect transparency.' },
+              { name: 'Elena Rostova', role: 'Service Delivery Director', company: 'Vektor Logistics', rating: 5, quote: 'Our support teams transitioned from spreadsheets to Assist360 in days. Ticketing overhead fell by 40%.' },
+              { name: 'David Kim', role: 'Operations Manager', company: 'Nexus Retail', rating: 5, quote: 'The AI incident routing deflection automated half of our baseline incidents, letting engineers focus on complex issues.' },
+              { name: 'Patricia Brooks', role: 'VP of Infrastructure', company: 'Summit Solutions', rating: 5, quote: 'Audit trails and Row Level Security make Assist360 a highly trusted enterprise tool. Solid architecture.' },
+              { name: 'Hiroshi Tanaka', role: 'IT Ops Director', company: 'Shinsei Heavy Ind.', rating: 5, quote: 'SLA risk forecasting alerts our managers 30 minutes before breaches happen. It completely saved our compliance score.' },
+              { name: 'Clara Dupont', role: 'Head of Global Support', company: 'Avenir Telecom', rating: 5, quote: 'Our customers love the client portal. They log in, audit actual hours spent on requests, and download reports.' },
+              { name: 'Liam O Connor', role: 'IT Service Manager', company: 'Horizon Energy', rating: 5, quote: 'The platform is extremely clean and fast. Type safety guarantees error-free logs and reliable scheduling.' }
+            ].map((test, idx) => (
+              <Card key={idx} className="bg-white border-zinc-200 p-5 rounded-lg flex flex-col justify-between hover:border-zinc-400 hover:shadow-md transition-all">
+                <div className="space-y-4">
+                  <div className="flex gap-0.5 text-zinc-900">
+                    {[...Array(test.rating)].map((_, i) => (
+                      <Star key={i} size={12} fill="#09090b" className="stroke-none" />
+                    ))}
+                  </div>
+                  <p className="text-xs text-zinc-500 leading-relaxed font-sans italic">"{test.quote}"</p>
+                </div>
+                
+                <div className="pt-4 border-t border-zinc-100 mt-4 flex items-center gap-3">
+                  {/* Photo Placeholder */}
+                  <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center font-mono font-bold text-[10px]">
+                    {test.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div className="font-mono text-[10px]">
+                    <span className="font-extrabold text-zinc-900 block">{test.name}</span>
+                    <span className="text-zinc-400 block mt-0.5">{test.role} · {test.company}</span>
+                  </div>
+                </div>
+              </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 11: PRODUCT COMPARISON ── */}
-      <section id="compare" className="py-24 bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] rounded">
-              Feature Auditing
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Product Comparison</h2>
-            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
-              Compare the product capabilities of Assist360 against traditional ticketing helpdesks.
-            </p>
-          </div>
-
-          <div className="border border-[#E5E7EB] rounded overflow-hidden max-w-4xl mx-auto shadow-sm bg-white">
-            <Table>
-              <TableHeader className="bg-[#FAFAFA] font-mono text-[9px]">
-                <TableRow className="border-b border-[#E5E7EB] hover:bg-transparent">
-                  <TableHead className="py-3 px-6 text-[#6B7280]">Feature Matrix</TableHead>
-                  <TableHead className="py-3 px-6 text-center text-[#6B7280]">Traditional Helpdesk</TableHead>
-                  <TableHead className="py-3 px-6 text-center text-[#111827] bg-[#FAFAFA]">ASSIST360 Platform</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs font-mono">
-                {filteredComparisonRows.map((row, index) => (
-                  <TableRow key={index} className="border-b border-[#E5E7EB] hover:bg-[#FAFAFA] transition duration-150">
-                    <TableCell className="py-3.5 px-6 font-bold text-[#111827]">{row.feature}</TableCell>
-                    <TableCell className="py-3.5 px-6 text-center text-[#6B7280]">{row.traditional}</TableCell>
-                    <TableCell className="py-3.5 px-6 text-center font-bold text-[#10B981] bg-[#FAFAFA]/40">{row.assist}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 12: EXECUTIVE ANALYTICS COCKPIT ── */}
-      <section className="py-24 bg-[#FAFAFA] border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <Badge variant="outline" className="text-[10px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-white rounded">
-              Command Deck
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] uppercase font-mono">Executive Intelligence Cockpit</h2>
-            <p className="text-xs text-[#6B7280] font-medium leading-relaxed font-sans">
-              Interact with the active operational war room console to audit severity levels, resource queues, and trigger automated AI recommendations.
-            </p>
-          </div>
-
-          <div className="border border-[#E5E7EB] rounded bg-white p-6 shadow-sm relative max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-4 font-mono text-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] block"></span>
-                <span className="font-bold text-[#111827] uppercase tracking-wider">Active Command Center Cockpit</span>
+      {/* ── G2 STYLE REVIEW SECTION ── */}
+      <section className="py-24 bg-white border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            {/* G2 Rating Summary */}
+            <div className="lg:col-span-5 text-center lg:text-left space-y-4 font-mono">
+              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Operational Trust</span>
+              <div className="text-6xl font-extrabold text-zinc-900 tracking-tight">4.9 / 5</div>
+              <div className="flex justify-center lg:justify-start gap-1 text-zinc-900 pt-1">
+                {[...Array(5)].map((_, i) => <Star key={i} size={18} fill="#09090b" className="stroke-none" />)}
               </div>
-              <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[9px] font-bold font-mono rounded uppercase">
-                Real-time Data Binding
-              </Badge>
+              <p className="text-xs text-zinc-500 font-sans max-w-sm">
+                Based on 2,500+ reviews from IT leaders, enterprise administrators, and service managers on G2, Gartner, and Capterra.
+              </p>
             </div>
 
-            {/* Dashboard Mockup Grid Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
-              <Card className="p-4 bg-[#FAFAFA] border-[#E5E7EB] space-y-3">
-                <span className="text-[9px] font-bold text-[#6B7280] uppercase">Active Alerts Level</span>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Critical alerts pending:</span>
-                    <span className="font-bold text-[#EF4444]">{controlTowerCriticalAlerts}</span>
+            {/* Progress metrics */}
+            <div className="lg:col-span-7 space-y-4 font-mono text-xs">
+              {[
+                { title: 'Ease of Use', score: 98, scoreText: '9.8 / 10' },
+                { title: 'Quality of Support', score: 99, scoreText: '9.9 / 10' },
+                { title: 'Platform Reliability', score: 99.9, scoreText: '9.99 / 10' },
+                { title: 'Feature Depth', score: 95, scoreText: '9.5 / 10' },
+                { title: 'Rate of Innovation', score: 96, scoreText: '9.6 / 10' }
+              ].map((item) => (
+                <div key={item.title} className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold">
+                    <span className="text-zinc-500 uppercase">{item.title}</span>
+                    <span className="text-zinc-900">{item.scoreText}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Warning state metrics:</span>
-                    <span className="font-bold text-[#F59E0B]">4</span>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-4 bg-[#FAFAFA] border-[#E5E7EB] space-y-3">
-                <span className="text-[9px] font-bold text-[#6B7280] uppercase">SLA Breaches Risk Index</span>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>SST-MM-1024:</span>
-                    <span className="text-[#EF4444] font-bold">12m to breach</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>SST-FI-1032:</span>
-                    <span className="text-[#F59E0B] font-bold">34m warning</span>
+                  <div className="w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="bg-zinc-900 h-1.5 rounded-full"
+                      initial={{ width: 0 }}
+                      whileInView={{ width: `${item.score}` }}
+                      transition={{ duration: 1 }}
+                      viewport={{ once: true }}
+                    />
                   </div>
                 </div>
-              </Card>
-
-              <Card className="p-4 bg-[#FAFAFA] border-[#E5E7EB] space-y-3">
-                <span className="text-[9px] font-bold text-[#6B7280] uppercase">AI Action Center</span>
-                <div className="space-y-2">
-                  <p className="text-[9px] text-[#6B7280]">Process pending critical alerts using autonomous classification agent:</p>
-                  <Button 
-                    onClick={triggerControlTowerAiAction}
-                    className="w-full h-8 text-[9px] font-mono uppercase font-bold bg-[#111827] hover:bg-[#6B7280] text-white rounded"
-                  >
-                    Execute AI Auto-Fix
-                  </Button>
-                </div>
-              </Card>
-            </div>
-
-            {/* Live audit trails console */}
-            <div className="p-4 bg-[#FAFAFA] border border-[#E5E7EB] rounded font-mono text-xs">
-              <span className="text-[9px] text-[#6B7280] block uppercase tracking-wider mb-2">Operations Log Trails stream</span>
-              <div className="space-y-1 text-[#6B7280] select-none text-[10px]">
-                {controlTowerLog.map((log, index) => (
-                  <p key={index}><span className="text-[#2563EB] font-bold">&gt;</span> {log}</p>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-[#E5E7EB] pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 font-mono text-center text-xs">
-              <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                <span className="text-[9px] text-[#6B7280] uppercase block">Global SLA Metric</span>
-                <span className="text-md font-bold text-[#10B981] mt-1 block">98.7% Met</span>
-              </div>
-              <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                <span className="text-[9px] text-[#6B7280] uppercase block">Asset Health Index</span>
-                <span className="text-md font-bold text-[#111827] mt-1 block">99.98%</span>
-              </div>
-              <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                <span className="text-[9px] text-[#6B7280] uppercase block">Pending Approvals</span>
-                <span className="text-md font-bold text-[#111827] mt-1 block">8</span>
-              </div>
-              <div className="p-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                <span className="text-[9px] text-[#6B7280] uppercase block">Autopilot Status</span>
-                <span className="text-md font-bold text-[#10B981] mt-1 block">Online</span>
-              </div>
+              ))}
             </div>
 
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 13: FINAL CALL TO ACTION ── */}
-      <section className="py-24 md:py-28 relative bg-[#FFFFFF] border-b border-[#E5E7EB]">
-        <div className="max-w-4xl mx-auto px-6 text-center space-y-6">
-          <Badge variant="outline" className="text-[9px] font-bold border-[#E5E7EB] font-mono tracking-widest text-[#6B7280] bg-[#FAFAFA] py-1 px-3 uppercase rounded">
-            Enterprise Consolidation
+      {/* ── SECURITY SECTION ── */}
+      <section id="security" className="py-24 bg-zinc-50 border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-white rounded-full">
+              Information Security
+            </Badge>
+            <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono">Enterprise Security By Design</h2>
+            <p className="text-xs text-zinc-500 font-medium font-sans">
+              Assist360 is built on next-generation security architectures to protect tenant databases, enforce RLS policies, and track operations.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-left font-mono text-xs">
+            {[
+              { icon: Key, title: 'SSO Ready', desc: 'Secure federated logins (SAML 2.0 / OIDC) bind directly to your existing directory provider.' },
+              { icon: UserCheck, title: 'Role-Based Access', desc: 'Enforce granular capabilities permissions (RBAC) across departments and queues.' },
+              { icon: Shield, title: 'Audit Trails Ledger', desc: 'Every transaction modification, hours log, and approval is logged in secure postgres audit ledgers.' },
+              { icon: Lock, title: 'E2E Encryption', desc: 'Enforces AES-256 encryption at rest and TLS 1.3 in transit across database schemas.' },
+              { icon: Building2, title: 'SOC Ready Architecture', desc: 'Architected to comply with SOC 2 Type II audit, ISO 27001, and HIPAA compliance policies.' },
+              { icon: Server, title: 'Secure File Storage', desc: 'Tenant attachments are stored in isolated file buckets under strict RLS access policies.' },
+              { icon: Sliders, title: 'Session Governance', desc: 'Enforce session timeouts, concurrency limitations, and automated lock schedules.' },
+              { icon: CheckSquare, title: 'Authentication Controls', desc: 'Verify device footprints, track login IP logs, and mandate MFA challenge prompts.' }
+            ].map((item, idx) => {
+              const IconComponent = item.icon || Shield;
+              return (
+                <Card key={idx} className="bg-white border-zinc-200 p-5 rounded-lg space-y-3 hover:border-zinc-400 transition-all flex flex-col justify-between">
+                  <div className="space-y-2.5">
+                    <div className="w-8 h-8 rounded border border-zinc-200 bg-zinc-50 flex items-center justify-center text-zinc-900">
+                      <IconComponent size={14} />
+                    </div>
+                    <span className="font-extrabold uppercase block text-zinc-900 tracking-wider">{item.title}</span>
+                    <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">{item.desc}</p>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FINAL CTA SECTION ── */}
+      <section className="py-28 relative bg-white border-b border-zinc-200">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#f5f5f7_1px,transparent_1px),linear-gradient(to_bottom,#f5f5f7_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30"></div>
+        
+        <div className="max-w-4xl mx-auto px-6 text-center space-y-8 relative z-10">
+          <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 font-mono tracking-widest text-zinc-500 bg-zinc-50 rounded-full px-3 py-1 uppercase">
+            Start Scaling Operations
           </Badge>
-          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-[#111827] uppercase font-mono leading-tight">
-            Run Every Service Operation From One Intelligent Platform
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-zinc-900 uppercase font-mono leading-tight">
+            Transform Service Operations Into A Competitive Advantage
           </h2>
-          <p className="text-sm text-[#6B7280] font-medium leading-relaxed max-w-xl mx-auto font-sans">
-            Enterprise-grade service management powered by automation, intelligence, analytics, and operational excellence.
+          <p className="text-sm text-zinc-500 font-medium leading-relaxed max-w-xl mx-auto font-sans">
+            Join modern organizations using Assist360 to manage service delivery, incident workloads, and customer SLAs at scale.
           </p>
           
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
@@ -1374,117 +1761,100 @@ export default function LandingPage() {
                 setDemoType('Standard Platform Demo');
                 setDemoModalOpen(true);
               }}
-              className="h-11 px-6 bg-[#2563EB] hover:bg-blue-700 text-white font-mono text-xs font-bold uppercase tracking-wider rounded"
+              className="h-11 px-8 bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs font-bold uppercase tracking-widest rounded shadow-md active:scale-[0.98] transition-all"
             >
-              Start Enterprise Demo
+              Book Enterprise Demo
             </Button>
             
-            <Button 
-              onClick={() => {
-                setDemoType('Request Executive Briefing');
-                setDemoModalOpen(true);
-              }}
-              variant="outline"
-              className="h-11 px-6 border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#FAFAFA] hover:border-[#6B7280] font-mono text-xs font-bold uppercase tracking-wider rounded"
-            >
-              Talk To Sales
+            <Button asChild variant="outline" className="h-11 px-8 border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 hover:border-zinc-400 font-mono text-xs font-bold uppercase tracking-widest rounded active:scale-[0.98] transition-all">
+              <Link href="/login">Sign In</Link>
             </Button>
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 14: FOOTER ── */}
-      <footer className="bg-white text-[#6B7280] py-16 text-xs border-t border-[#E5E7EB] font-mono">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+      {/* ── FOOTER ── */}
+      <footer className="bg-white text-zinc-500 py-16 text-xs border-t border-zinc-200 font-mono">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-2 md:grid-cols-6 gap-8 mb-12">
           
+          <div className="col-span-2 space-y-4">
+            <Link href="/" className="flex items-center gap-3 group">
+              <BrandedLogo width={24} height={24} />
+              <span className="font-bold text-xs tracking-wider text-zinc-900 font-mono uppercase">ASSIST360</span>
+            </Link>
+            <p className="text-[11px] font-sans text-zinc-400 leading-relaxed max-w-xs">
+              The Enterprise Service Management Platform built for global operations. Real-time data-binding under strict tenant isolation.
+            </p>
+          </div>
+
           <div className="space-y-4">
-            <span className="font-extrabold text-[#111827] tracking-wider uppercase text-[10px] block">Platform</span>
-            <ul className="space-y-2">
-              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Incident Management</a></li>
-              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Request Management</a></li>
-              <li><a href="#itsm-suite" className="hover:text-[#111827] transition">Asset Management</a></li>
-              <li><a href="#analytics-section" className="hover:text-[#111827] transition">Analytics</a></li>
-              <li><a href="#ai-ops" className="hover:text-[#111827] transition">AI Operations</a></li>
+            <span className="font-extrabold text-zinc-900 tracking-wider uppercase text-[10px] block">Platform</span>
+            <ul className="space-y-2 text-[11px]">
+              <li><a href="#overview" className="hover:text-zinc-900 transition-colors">Incident Desk</a></li>
+              <li><a href="#overview" className="hover:text-zinc-900 transition-colors">Request Catalog</a></li>
+              <li><a href="#overview" className="hover:text-zinc-900 transition-colors">Kanban Board</a></li>
+              <li><a href="#overview" className="hover:text-zinc-900 transition-colors">Audit Logging</a></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <span className="font-extrabold text-[#111827] tracking-wider uppercase text-[10px] block">Company</span>
-            <ul className="space-y-2">
-              <li><a href="#" className="hover:text-[#111827] transition">About</a></li>
-              <li><a href="#" className="hover:text-[#111827] transition">Careers</a></li>
-              <li><a href="#" className="hover:text-[#111827] transition">Contact</a></li>
+            <span className="font-extrabold text-zinc-900 tracking-wider uppercase text-[10px] block">Resources</span>
+            <ul className="space-y-2 text-[11px]">
+              <li><a href="#ai-intelligence" className="hover:text-zinc-900 transition-colors">AI Intelligence</a></li>
+              <li><a href="#analytics-section" className="hover:text-zinc-900 transition-colors">Live Analytics</a></li>
+              <li><a href="#command-center" className="hover:text-zinc-900 transition-colors">Manager Dashboard</a></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <span className="font-extrabold text-[#111827] tracking-wider uppercase text-[10px] block">Resources</span>
-            <ul className="space-y-2">
-              <li><a href="#" className="hover:text-[#111827] transition">Documentation</a></li>
-              <li><a href="#" className="hover:text-[#111827] transition">Security</a></li>
-              <li><a href="#" className="hover:text-[#111827] transition">Support</a></li>
+            <span className="font-extrabold text-zinc-900 tracking-wider uppercase text-[10px] block">Security</span>
+            <ul className="space-y-2 text-[11px]">
+              <li><a href="#security" className="hover:text-zinc-900 transition-colors">Single Sign-On</a></li>
+              <li><a href="#security" className="hover:text-zinc-900 transition-colors">Access Controls</a></li>
+              <li><a href="#security" className="hover:text-zinc-900 transition-colors">Ledger Audit Logs</a></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <span className="font-extrabold text-[#111827] tracking-wider uppercase text-[10px] block">Legal</span>
-            <ul className="space-y-2">
-              <li><a href="#" className="hover:text-[#111827] transition">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-[#111827] transition">Terms of Service</a></li>
+            <span className="font-extrabold text-zinc-900 tracking-wider uppercase text-[10px] block">Company</span>
+            <ul className="space-y-2 text-[11px]">
+              <li><a href="#" className="hover:text-zinc-900 transition-colors">About Us</a></li>
+              <li><a href="#" className="hover:text-zinc-900 transition-colors">Terms of Service</a></li>
+              <li><a href="#" className="hover:text-zinc-900 transition-colors">Privacy Policy</a></li>
             </ul>
           </div>
 
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 md:px-8 border-t border-[#E5E7EB] pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px]">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 border-t border-zinc-100 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-zinc-400">
           <span>Copyright © Support Studio Technologies. All Rights Reserved.</span>
-          <span>Powered by Assist360.</span>
+          <div className="flex gap-4">
+            <span>Powered by Assist360.</span>
+            <span>Security audit: SOC 2 compliant</span>
+          </div>
         </div>
       </footer>
 
-      {/* ITSM Suite Details Dialog */}
-      <Dialog open={selectedSuiteItem !== null} onOpenChange={(open) => !open && setSelectedSuiteItem(null)}>
-        <DialogContent className="bg-white border border-[#E5E7EB] rounded max-w-md p-6 text-[#111827] shadow-lg">
-          {selectedSuiteItem && ITSM_SUITE_METADATA[selectedSuiteItem] && (
-            <>
-              <DialogHeader className="space-y-3">
-                <div className="w-10 h-10 rounded bg-[#FAFAFA] border border-[#E5E7EB] flex items-center justify-center text-[#2563EB]">
-                  {React.createElement(ITSM_SUITE_METADATA[selectedSuiteItem].icon, { size: 20 })}
-                </div>
-                <DialogTitle className="text-md font-bold uppercase tracking-wider text-[#111827]">
-                  {selectedSuiteItem}
-                </DialogTitle>
-                <DialogDescription className="text-xs text-[#6B7280] font-sans">
-                  {ITSM_SUITE_METADATA[selectedSuiteItem].description}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-4 pt-4 border-t border-[#E5E7EB] font-mono text-[10px] space-y-2 text-[#6B7280]">
-                <div className="flex justify-between">
-                  <span>DEPLOYMENT STATUS:</span>
-                  <span className="font-bold text-[#10B981]">ACTIVE</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>RLS PROTECTION:</span>
-                  <span className="font-bold text-[#111827]">ENABLED</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>TELEMETRY FEED:</span>
-                  <span className="font-bold text-[#2563EB]">LIVE BINDING</span>
-                </div>
-              </div>
-              <DialogFooter className="pt-4">
-                <Button 
-                  onClick={() => setSelectedSuiteItem(null)}
-                  className="w-full bg-[#111827] hover:bg-[#6B7280] text-white font-bold uppercase tracking-wider text-[10px] py-2.5 rounded font-mono"
-                >
-                  Close Catalog View
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
     </div>
+  );
+}
+
+// Stub key icon for security section fallback
+function Key(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 1.5 1.5M15.5 7.5 14 6" />
+    </svg>
   );
 }
