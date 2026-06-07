@@ -376,6 +376,74 @@ export default function ManagerDashboardPage() {
 
   const filteredDashboardTickets = filteredTickets;
 
+  // Lists of actual workflow logs for Action lists
+  const pendingEffortLogs = useMemo(() => {
+    const list: { ticketId: string; logId: string; consultantName: string; hours: number; description: string; activityType: string; billable: boolean }[] = [];
+    filteredDashboardTickets.forEach(t => {
+      (t.efforts || []).forEach(e => {
+        if (e.status === 'Pending' || e.status === 'Pending Approval') {
+          list.push({
+            ticketId: t.id,
+            logId: e.id,
+            consultantName: e.consultantName,
+            hours: e.hoursLogged || e.hoursWorked || 0,
+            description: e.description,
+            activityType: e.activityType,
+            billable: e.billable
+          });
+        }
+      });
+    });
+    return list;
+  }, [filteredDashboardTickets]);
+
+  const pendingClosureRequests = useMemo(() => {
+    const list: { ticketId: string; ticketTitle: string; customerName: string; requestId: string; requestedBy: string; funcHours: number; techHours: number; rootCause: string; resolutionSummary: string; summary: string; submittedAt: string }[] = [];
+    filteredDashboardTickets.forEach(t => {
+      (t.closureRequests || []).forEach(r => {
+        if (r.status === 'Pending Manager Approval') {
+          list.push({
+            ticketId: t.id,
+            ticketTitle: t.title,
+            customerName: t.organization,
+            requestId: r.id,
+            requestedBy: r.requestedBy,
+            funcHours: r.functionalActualHours,
+            techHours: r.technicalActualHours,
+            rootCause: r.rootCause,
+            resolutionSummary: r.resolutionSummary,
+            summary: r.workCompletedSummary,
+            submittedAt: r.createdAt
+          });
+        }
+      });
+    });
+    return list;
+  }, [filteredDashboardTickets]);
+
+  const pendingUnlockRequests = useMemo(() => {
+    const list: { ticketId: string; ticketTitle: string; requestId: string; requestedBy: string; reason: string; change: string }[] = [];
+    filteredDashboardTickets.forEach(t => {
+      (t.unlockRequests || []).forEach(u => {
+        if (u.status === 'Pending') {
+          list.push({
+            ticketId: t.id,
+            ticketTitle: t.title,
+            requestId: u.id,
+            requestedBy: u.requestedBy,
+            reason: u.reason,
+            change: u.requestedChange
+          });
+        }
+      });
+    });
+    return list;
+  }, [filteredDashboardTickets]);
+
+  const pendingApprovalsCount = useMemo(() => {
+    return pendingEffortLogs.length + pendingClosureRequests.length + pendingUnlockRequests.length;
+  }, [pendingEffortLogs, pendingClosureRequests, pendingUnlockRequests]);
+
   const waitingAssignmentTickets = useMemo(() => {
     return filteredTickets.filter(t => 
       t.status !== 'Closed' && 
@@ -386,54 +454,48 @@ export default function ManagerDashboardPage() {
 
   const approvalsQueueList = useMemo(() => {
     const list: any[] = [];
-    filteredTickets.forEach(t => {
-      // Hours effort logs
-      (t.actualHoursLogs || []).forEach(log => {
-        if (log.approvalStatus?.toLowerCase() === 'pending') {
-          list.push({
-            type: 'Hours Approval',
-            id: log.id,
-            ticketId: t.id,
-            ticketNumber: t.ticketNumber || t.id.slice(0, 8),
-            title: t.title,
-            detail: `${log.actualHours}h by ${log.consultantId || 'Consultant'}`,
-            actionTab: 'approvals'
-          });
-        }
-      });
-
-      // Closure requests
-      (t.closureRequests || []).forEach(r => {
-        if (r.status === 'Pending Manager Approval' || r.managerApprovalStatus === 'Pending') {
-          list.push({
-            type: 'Closure Approval',
-            id: r.id,
-            ticketId: t.id,
-            ticketNumber: t.ticketNumber || t.id.slice(0, 8),
-            title: t.title,
-            detail: `Actual hours: ${r.totalActualHours}h - ${r.workCompletedSummary?.slice(0, 40)}...`,
-            actionTab: 'approvals'
-          });
-        }
-      });
-
-      // Unlock requests
-      (t.unlockRequests || []).forEach(u => {
-        if (u.status === 'Pending') {
-          list.push({
-            type: 'Unlock Request',
-            id: u.id,
-            ticketId: t.id,
-            ticketNumber: t.ticketNumber || t.id.slice(0, 8),
-            title: t.title,
-            detail: `Reason: ${u.reason?.slice(0, 40)}...`,
-            actionTab: 'approvals'
-          });
-        }
+    
+    pendingEffortLogs.forEach(log => {
+      const t = filteredTickets.find(x => x.id === log.ticketId);
+      list.push({
+        type: 'Timesheet Approval',
+        id: log.logId,
+        ticketId: log.ticketId,
+        ticketNumber: t?.ticketNumber || log.ticketId.slice(0, 8),
+        title: t?.title || 'Unknown Ticket',
+        detail: `${log.hours}h by ${log.consultantName}`,
+        actionTab: 'approvals'
       });
     });
+
+    pendingClosureRequests.forEach(r => {
+      const t = filteredTickets.find(x => x.id === r.ticketId);
+      list.push({
+        type: 'Closure Approval',
+        id: r.requestId,
+        ticketId: r.ticketId,
+        ticketNumber: t?.ticketNumber || r.ticketId.slice(0, 8),
+        title: t?.title || 'Unknown Ticket',
+        detail: `Actual hours: ${r.funcHours + r.techHours}h - ${r.summary?.slice(0, 40)}...`,
+        actionTab: 'approvals'
+      });
+    });
+
+    pendingUnlockRequests.forEach(u => {
+      const t = filteredTickets.find(x => x.id === u.ticketId);
+      list.push({
+        type: 'Unlock Request',
+        id: u.requestId,
+        ticketId: u.ticketId,
+        ticketNumber: t?.ticketNumber || u.ticketId.slice(0, 8),
+        title: t?.title || 'Unknown Ticket',
+        detail: `Reason: ${u.reason?.slice(0, 40)}...`,
+        actionTab: 'approvals'
+      });
+    });
+
     return list;
-  }, [filteredTickets]);
+  }, [filteredTickets, pendingEffortLogs, pendingClosureRequests, pendingUnlockRequests]);
 
   const escalationsAndBreachesList = useMemo(() => {
     const now = SYSTEM_NOW;
@@ -597,61 +659,52 @@ export default function ManagerDashboardPage() {
 
     const totalCustomersCount = managerCore.totalClients;
     const activeCustomersCount = managerCore.totalClients;
-    const customersWithOpenTickets = new Set(ticketsList.filter(t => t.status !== 'Closed').map(t => t.organization)).size;
-    const customersWithCriticalTickets = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.priority === 'Critical').map(t => t.organization)).size;
-    const customersWithSlaBreaches = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime).map(t => t.organization)).size;
-    const customersAwaitingClosure = new Set(ticketsList.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').map(t => t.organization)).size;
+    const customersWithOpenTickets = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').map(t => t.organization)).size;
+    const customersWithCriticalTickets = new Set(ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.priority === 'Critical').map(t => t.organization)).size;
+    const customersWithSlaBreaches = new Set(ticketsList.filter(t => getSlaStatus(t, nowTime) === 'Breached').map(t => t.organization)).size;
+    const customersAwaitingClosure = new Set(ticketsList.filter(t => ['Request for Closure', 'Awaiting Manager Approval', 'Waiting for Hours Approval'].includes(t.status)).map(t => t.organization)).size;
 
     const openCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
-    const unassignedCount = managerCore.unassignedTickets;
+    const unassignedCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && !t.assignedConsultant).length;
     const reqGatheringCount = ticketsList.filter(t => t.status === 'Requirement Gathering').length;
-    const ipFuncCount = managerCore.inProgressFunctional;
-    const ipTechCount = managerCore.inProgressTechnical;
-    const custActionCount = managerCore.customerAction;
-    const onHoldCount = ticketsList.filter(t => t.status === 'Waiting for Internal Team' || (t.status as string) === 'On Hold').length;
-    const raisedToSapCount = managerCore.raisedToSap;
-    const requestClosureCount = managerCore.requestClosure;
-    const closedCount = managerCore.closed;
-    const reopenedCount = managerCore.reopened;
+    const ipFuncCount = ticketsList.filter(t => ['In Progress - Functional', 'Awaiting Functional Submission', 'In Progress'].includes(t.status)).length;
+    const ipTechCount = ticketsList.filter(t => ['In Progress - Technical', 'Awaiting Technical Submission'].includes(t.status)).length;
+    const custActionCount = ticketsList.filter(t => ['Customer Action', 'Waiting for Customer'].includes(t.status)).length;
+    const onHoldCount = ticketsList.filter(t => ['Waiting for Internal Team', 'On Hold'].includes(t.status)).length;
+    const raisedToSapCount = ticketsList.filter(t => t.status === 'Raised to SAP').length;
+    const requestClosureCount = ticketsList.filter(t => ['Request for Closure', 'Awaiting Manager Approval', 'Waiting for Hours Approval'].includes(t.status)).length;
+    const closedCount = ticketsList.filter(t => t.status === 'Closed' || t.status === 'Resolved').length;
+    const reopenedCount = ticketsList.filter(t => t.status === 'Reopened' || t.status === 'Reopen Requested').length;
 
     const functionalConsultantsCount = consultantsDbList.filter(c => managedConsultantsList.includes(c.name) && c.type === 'Functional').length;
     const technicalConsultantsCount = consultantsDbList.filter(c => managedConsultantsList.includes(c.name) && c.type === 'Technical').length;
     const totalConsultantsCount = managerCore.totalConsultants;
 
     const estPendingApproval = ticketsList.flatMap(t => t.hourEstimates || []).filter(e => e.status === 'Submitted').length;
-    const actPendingApproval = managerCore.pendingEfforts;
-    const closurePendingApproval = managerCore.pendingClosure;
+    const actPendingApproval = pendingEffortLogs.length;
+    const closurePendingApproval = pendingClosureRequests.length;
     const reopenPendingApproval = ticketsList.filter(t => t.status === 'Reopen Requested').length;
-    const resourceChangePending = managerCore.pendingUnlocks;
+    const resourceChangePending = pendingUnlockRequests.length;
 
-    const slaHealthy = ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() >= nowTime).length;
-    const slaWarning = ticketsList.filter(t => {
-      if (t.status === 'Closed' || t.slaDueAt === 'SLA Not Applicable') return false;
-      const due = new Date(t.slaDueAt).getTime();
-      const hrsLeft = (due - nowTime) / (1000 * 60 * 60);
-      return hrsLeft > 0 && hrsLeft < 24;
-    }).length;
-    const slaBreached = ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime).length;
-    const slaCompliance = ticketsList.length > 0 ? Math.round(((ticketsList.length - slaBreached) / ticketsList.length) * 100) : 100;
+    const incidentTickets = ticketsList.filter(t => t.ticketType === 'Incident' || !t.ticketType);
+    const slaHealthy = incidentTickets.filter(t => getSlaStatus(t, nowTime) === 'Healthy').length;
+    const slaWarning = incidentTickets.filter(t => getSlaStatus(t, nowTime) === 'Warning').length;
+    const slaBreached = incidentTickets.filter(t => getSlaStatus(t, nowTime) === 'Breached').length;
+    const slaCompliance = incidentTickets.length > 0 ? Math.round(((incidentTickets.length - slaBreached) / incidentTickets.length) * 100) : 100;
 
     // --- 2. TODAY'S ACTION ITEMS & COUNTERS ---
-    const ticketsAwaitingAssign = ticketsList.filter(t => t.status !== 'Closed' && !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0));
-    const criticalTicketsToReview = ticketsList.filter(t => t.status !== 'Closed' && t.priority === 'Critical');
-    const slaBreachTickets = ticketsList.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime);
-    const slaDueToday = ticketsList.filter(t => {
-      if (t.status === 'Closed' || t.slaDueAt === 'SLA Not Applicable') return false;
-      const due = new Date(t.slaDueAt).getTime();
-      const daysLeft = (due - nowTime) / (1000 * 60 * 60 * 24);
-      return daysLeft >= 0 && daysLeft <= 1;
-    });
+    const ticketsAwaitingAssign = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0));
+    const criticalTicketsToReview = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.priority === 'Critical');
+    const slaBreachTickets = ticketsList.filter(t => getSlaStatus(t, nowTime) === 'Breached');
+    const slaDueToday = ticketsList.filter(t => getSlaStatus(t, nowTime) === 'Warning');
     const ticketsNoUpdate3Days = ticketsList.filter(t => {
-      if (t.status === 'Closed') return false;
+      if (t.status === 'Closed' || t.status === 'Resolved') return false;
       const ageDays = (nowTime - new Date(t.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
       return ageDays >= 3;
     });
-    const ticketsAging7Days = ticketsList.filter(t => t.status !== 'Closed' && (nowTime - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24) >= 7);
-    const ticketsAging15Days = ticketsList.filter(t => t.status !== 'Closed' && (nowTime - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24) >= 15);
-    const ticketsAging30Days = ticketsList.filter(t => t.status !== 'Closed' && (nowTime - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24) >= 30);
+    const ticketsAging7Days = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && (nowTime - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24) >= 7);
+    const ticketsAging15Days = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && (nowTime - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24) >= 15);
+    const ticketsAging30Days = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && (nowTime - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24) >= 30);
 
     // --- 3. CUSTOMER RISK AND HEALTH INDEX ---
     // Health and risk calculated dynamically per organization
@@ -677,12 +730,12 @@ export default function ManagerDashboardPage() {
     }>();
     customersList.forEach(org => {
       const orgTickets = ticketsList.filter(t => t.organization === org);
-      const crit = orgTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed').length;
-      const breached = orgTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < nowTime).length;
+      const crit = orgTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed' && t.status !== 'Resolved').length;
+      const breached = orgTickets.filter(t => getSlaStatus(t, nowTime) === 'Breached').length;
       const reop = orgTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length;
       const lowC = orgTickets.filter(t => t.rating && t.rating.score <= 2).length;
       const openTick = orgTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
-      const closedTick = orgTickets.filter(t => t.status === 'Closed').length;
+      const closedTick = orgTickets.filter(t => t.status === 'Closed' || t.status === 'Resolved').length;
       const esc = orgTickets.filter(t => t.escalationFlag).length;
 
       const ratings = orgTickets.filter(t => t.rating).map(t => t.rating!.score);
@@ -860,74 +913,6 @@ export default function ManagerDashboardPage() {
       }
     };
   }, [filteredDashboardTickets, customersList, consultantsLoad]);
-
-  // Lists of actual workflow logs for Action lists
-  const pendingEffortLogs = useMemo(() => {
-    const list: { ticketId: string; logId: string; consultantName: string; hours: number; description: string; activityType: string; billable: boolean }[] = [];
-    filteredDashboardTickets.forEach(t => {
-      (t.efforts || []).forEach(e => {
-        if (e.status === 'Pending' || e.status === 'Pending Approval') {
-          list.push({
-            ticketId: t.id,
-            logId: e.id,
-            consultantName: e.consultantName,
-            hours: e.hoursLogged || e.hoursWorked || 0,
-            description: e.description,
-            activityType: e.activityType,
-            billable: e.billable
-          });
-        }
-      });
-    });
-    return list;
-  }, [filteredDashboardTickets]);
-
-  const pendingClosureRequests = useMemo(() => {
-    const list: { ticketId: string; ticketTitle: string; customerName: string; requestId: string; requestedBy: string; funcHours: number; techHours: number; rootCause: string; resolutionSummary: string; summary: string; submittedAt: string }[] = [];
-    filteredDashboardTickets.forEach(t => {
-      (t.closureRequests || []).forEach(r => {
-        if (r.status === 'Pending Manager Approval') {
-          list.push({
-            ticketId: t.id,
-            ticketTitle: t.title,
-            customerName: t.organization,
-            requestId: r.id,
-            requestedBy: r.requestedBy,
-            funcHours: r.functionalActualHours,
-            techHours: r.technicalActualHours,
-            rootCause: r.rootCause,
-            resolutionSummary: r.resolutionSummary,
-            summary: r.workCompletedSummary,
-            submittedAt: r.createdAt
-          });
-        }
-      });
-    });
-    return list;
-  }, [filteredDashboardTickets]);
-
-  const pendingUnlockRequests = useMemo(() => {
-    const list: { ticketId: string; ticketTitle: string; requestId: string; requestedBy: string; reason: string; change: string }[] = [];
-    filteredDashboardTickets.forEach(t => {
-      (t.unlockRequests || []).forEach(u => {
-        if (u.status === 'Pending') {
-          list.push({
-            ticketId: t.id,
-            ticketTitle: t.title,
-            requestId: u.id,
-            requestedBy: u.requestedBy,
-            reason: u.reason,
-            change: u.requestedChange
-          });
-        }
-      });
-    });
-    return list;
-  }, [filteredDashboardTickets]);
-
-  const pendingApprovalsCount = useMemo(() => {
-    return pendingEffortLogs.length + pendingClosureRequests.length + pendingUnlockRequests.length;
-  }, [pendingEffortLogs, pendingClosureRequests, pendingUnlockRequests]);
 
   // Recharts chart calculations
   const chartsData = useMemo(() => {
