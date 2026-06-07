@@ -688,12 +688,14 @@ export default function CustomerDashboardPage() {
               </Card>
 
               <Card className="border-zinc-200 bg-white p-3 flex flex-col justify-between shadow-sm h-24">
-                <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">20. Consumed Efforts</div>
+                <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">20. Efforts (Logged/Approved)</div>
                 <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold font-mono text-zinc-950">{totalConsumedHours.toFixed(1)}h</span>
+                  <span className="text-2xl font-bold font-mono text-zinc-950">
+                    {dashboardData.totalLoggedHoursUsed.toFixed(1)}h / {totalConsumedHours.toFixed(1)}h
+                  </span>
                   <Award size={14} className="text-zinc-550" />
                 </div>
-                <span className="text-[8px] text-zinc-400 block font-mono">Accumulated approved logs</span>
+                <span className="text-[8px] text-zinc-400 block font-mono">Total logged vs verified approved logs</span>
               </Card>
             </div>
           </div>
@@ -1167,9 +1169,11 @@ export default function CustomerDashboardPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Approved Consumed Hours</span>
-                  <div className="text-2xl font-black text-emerald-700">{totalConsumedHours.toFixed(1)}h</div>
-                  <span className="text-[10px] text-zinc-400 block leading-tight">Timesheet hours verified and approved</span>
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Logged / Approved Consumed Hours</span>
+                  <div className="text-2xl font-black text-emerald-700">
+                    {dashboardData.totalLoggedHoursUsed.toFixed(1)}h / {totalConsumedHours.toFixed(1)}h
+                  </div>
+                  <span className="text-[10px] text-zinc-400 block leading-tight">Total logged vs verified and approved hours</span>
                 </div>
 
                 <div className="space-y-1">

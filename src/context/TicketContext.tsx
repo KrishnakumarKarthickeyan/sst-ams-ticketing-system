@@ -760,7 +760,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         billable: ah.billable !== false,
         approvalStatus: ah.approval_status || 'pending',
         approvedBy: ah.approved_by,
-        approvedAt: ah.approved_at
+        approvedAt: ah.approved_at,
+        createdAt: ah.created_at
       })) : [],
 
       consultantEfforts: (() => {

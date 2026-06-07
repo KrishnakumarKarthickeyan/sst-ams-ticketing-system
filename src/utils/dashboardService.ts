@@ -81,6 +81,15 @@ export const getApprovedActualHours = (tickets: Ticket[], scope: DashboardScope)
   }, 0);
 };
 
+// 3b. Centralized Logged Actual Hours helper (all logs regardless of approval)
+export const getLoggedActualHours = (tickets: Ticket[], scope: DashboardScope): number => {
+  const scoped = filterTicketsByScope(tickets, scope);
+  return scoped.reduce((sum, t) => {
+    const logs = (t.actualHoursLogs || []);
+    return sum + logs.reduce((s, ah) => s + ah.actualHours, 0);
+  }, 0);
+};
+
 // 4. Centralized Ticket Assignments Helper
 export const getTicketAssignmentsCount = (tickets: Ticket[], scope: DashboardScope): number => {
   const scoped = filterTicketsByScope(tickets, scope);
@@ -146,6 +155,7 @@ export const getCustomerDashboardData = (
 
   const activeContract = contracts.find(c => c.organizationName === organizationName && c.isActive);
   const totalApprovedHours = getApprovedActualHours(tickets, scope);
+  const totalLoggedHours = getLoggedActualHours(tickets, scope);
 
   let monthlyBudgetHours = 0;
   let contractPeriod = 'No Active Contract';
@@ -172,9 +182,24 @@ export const getCustomerDashboardData = (
     return sum + approvedLogs.reduce((s, ah) => s + ah.actualHours, 0);
   }, 0);
 
+  // Calculate current month logged hours
+  const currentMonthLoggedHours = companyTickets.reduce((sum, t) => {
+    const logs = (t.actualHoursLogs || []).filter(ah => {
+      if (!ah.createdAt) return false;
+      const createdDate = new Date(ah.createdAt);
+      const currentDate = new Date();
+      return createdDate.getMonth() === currentDate.getMonth() &&
+             createdDate.getFullYear() === currentDate.getFullYear();
+    });
+    return sum + logs.reduce((s, ah) => s + ah.actualHours, 0);
+  }, 0);
+
   const remainingHours = Math.max(0, totalContractHours - totalApprovedHours);
+  const remainingLoggedHours = Math.max(0, totalContractHours - totalLoggedHours);
   const monthlyRemainingHours = Math.max(0, monthlyBudgetHours - currentMonthApprovedHours);
+  const monthlyRemainingLoggedHours = Math.max(0, monthlyBudgetHours - currentMonthLoggedHours);
   const usagePercentage = totalContractHours > 0 ? (totalApprovedHours / totalContractHours) * 100 : 0;
+  const loggedUsagePercentage = totalContractHours > 0 ? (totalLoggedHours / totalContractHours) * 100 : 0;
 
   // Tickets by Priority
   const priorityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
@@ -203,10 +228,14 @@ export const getCustomerDashboardData = (
     monthlyAllocatedHours: monthlyBudgetHours,
     monthlyApprovedActualHoursUsed: currentMonthApprovedHours,
     remainingHours,
+    remainingLoggedHours,
     monthlyRemainingHours,
+    monthlyRemainingLoggedHours,
     totalContractedHours: totalContractHours,
     totalApprovedHoursUsed: totalApprovedHours,
+    totalLoggedHoursUsed: totalLoggedHours,
     usagePercentage,
+    loggedUsagePercentage,
     openTickets: statusCounts.Open,
     closedTickets: statusCounts.Closed,
     reopenedTickets: companyTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length,
@@ -248,6 +277,14 @@ export const getConsultantDashboardData = (consultantId: string, tickets: Ticket
     return sum + myActuals.reduce((s, ah) => s + ah.actualHours, 0);
   }, 0);
 
+  const loggedActualHours = myTickets.reduce((sum, t) => {
+    // Sum all logged actual hours for this consultant
+    const myActuals = (t.actualHoursLogs || []).filter(
+      ah => ah.consultantId === consultantId
+    );
+    return sum + myActuals.reduce((s, ah) => s + ah.actualHours, 0);
+  }, 0);
+
   const pendingClosureRequests = myTickets.filter(t => 
     t.closureStatus === 'Awaiting Manager Approval' || 
     t.closureRequests?.some(r => r.status === 'Pending Manager Approval')
@@ -274,6 +311,7 @@ export const getConsultantDashboardData = (consultantId: string, tickets: Ticket
     escalatedTickets: myTickets.filter(t => t.escalationFlag).length,
     estimatedHours,
     approvedActualHours,
+    loggedActualHours,
     pendingClosureRequests,
     ticketsByStatus: statusCounts,
     ticketsByPriority: priorityCounts,

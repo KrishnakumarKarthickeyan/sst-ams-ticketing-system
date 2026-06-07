@@ -307,6 +307,7 @@ export interface TicketActualHours {
   approvalStatus?: string;
   approvedBy?: string;
   approvedAt?: string;
+  createdAt?: string;
 }
 
 export interface TicketUnlockRequest {

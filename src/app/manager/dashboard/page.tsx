@@ -685,10 +685,13 @@ export default function ManagerDashboardPage() {
     // --- 4. HOURS & BILLING INSIGHTS ---
     let totalEstHrs = 0;
     let totalActHrs = 0;
+    let approvedActHrs = 0;
     let funcEstHrs = 0;
     let funcActHrs = 0;
+    let approvedFuncActHrs = 0;
     let techEstHrs = 0;
     let techActHrs = 0;
+    let approvedTechActHrs = 0;
     let billableHrs = 0;
     let nonBillableHrs = 0;
 
@@ -702,17 +705,24 @@ export default function ManagerDashboardPage() {
         }
       });
       (t.actualHoursLogs || []).forEach(ah => {
+        totalActHrs += ah.actualHours;
+        if (ah.consultantType === 'Functional') {
+          funcActHrs += ah.actualHours;
+        } else {
+          techActHrs += ah.actualHours;
+        }
+        if (ah.billable) {
+          billableHrs += ah.actualHours;
+        } else {
+          nonBillableHrs += ah.actualHours;
+        }
+
         if (ah.approvalStatus?.toLowerCase() === 'approved') {
-          totalActHrs += ah.actualHours;
+          approvedActHrs += ah.actualHours;
           if (ah.consultantType === 'Functional') {
-            funcActHrs += ah.actualHours;
+            approvedFuncActHrs += ah.actualHours;
           } else {
-            techActHrs += ah.actualHours;
-          }
-          if (ah.billable) {
-            billableHrs += ah.actualHours;
-          } else {
-            nonBillableHrs += ah.actualHours;
+            approvedTechActHrs += ah.actualHours;
           }
         }
       });
@@ -790,10 +800,13 @@ export default function ManagerDashboardPage() {
       financials: {
         totalEstHrs,
         totalActHrs,
+        approvedActHrs,
         funcEstHrs,
         funcActHrs,
+        approvedFuncActHrs,
         techEstHrs,
         techActHrs,
+        approvedTechActHrs,
         billableHrs,
         nonBillableHrs,
         variance: totalActHrs - totalEstHrs
@@ -1782,9 +1795,9 @@ export default function ManagerDashboardPage() {
                       {contracts.filter(c => c.endDate && c.isActive && (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30).length}
                     </span></div>
                     <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
-                      <span>Mthly Hours (Used/Rem):</span>
+                      <span>Mthly Hours (Logged/Approved):</span>
                       <span className="font-bold text-zinc-900">
-                        {filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved' && new Date(ah.approvedAt || '').getMonth() === new Date(SYSTEM_NOW).getMonth()).reduce((sum, ah) => sum + ah.actualHours, 0).toFixed(0)}h / {Math.max(0, contracts.filter(c => c.isActive).reduce((sum, c) => sum + (c.monthlyBudgetHours || 0), 0) - filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved' && new Date(ah.approvedAt || '').getMonth() === new Date(SYSTEM_NOW).getMonth()).reduce((sum, ah) => sum + ah.actualHours, 0)).toFixed(0)}h
+                        {filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => new Date(ah.createdAt || '').getMonth() === new Date(SYSTEM_NOW).getMonth()).reduce((sum, ah) => sum + ah.actualHours, 0).toFixed(0)}h / {filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved' && new Date(ah.approvedAt || '').getMonth() === new Date(SYSTEM_NOW).getMonth()).reduce((sum, ah) => sum + ah.actualHours, 0).toFixed(0)}h
                       </span>
                     </div>
                   </div>
@@ -2816,10 +2829,13 @@ export default function ManagerDashboardPage() {
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={consultantsLoad.map(c => {
-                      const logged = filteredDashboardTickets.flatMap(t => t.actualHoursLogs || [])
+                      const loggedAll = filteredDashboardTickets.flatMap(t => t.actualHoursLogs || [])
+                        .filter(ah => (ah.consultantId === c.id || ah.approvedBy === c.name))
+                        .reduce((sum, ah) => sum + ah.actualHours, 0);
+                      const approvedOnly = filteredDashboardTickets.flatMap(t => t.actualHoursLogs || [])
                         .filter(ah => (ah.consultantId === c.id || ah.approvedBy === c.name) && ah.approvalStatus?.toLowerCase() === 'approved')
                         .reduce((sum, ah) => sum + ah.actualHours, 0);
-                      return { name: c.name, Expected: workingDaysInMonth * 8, Logged: logged || 0 };
+                      return { name: c.name, Expected: workingDaysInMonth * 8, Logged: loggedAll || 0, Approved: approvedOnly || 0 };
                     })} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
                       <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
@@ -2827,7 +2843,8 @@ export default function ManagerDashboardPage() {
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Legend wrapperStyle={{ fontSize: 8 }} />
                       <Bar dataKey="Expected" fill={COLORS.gray} />
-                      <Bar dataKey="Logged" fill={COLORS.green} />
+                      <Bar dataKey="Logged" fill={COLORS.blue} />
+                      <Bar dataKey="Approved" fill={COLORS.green} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -3066,7 +3083,7 @@ export default function ManagerDashboardPage() {
           <div className="space-y-4">
             <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">2. Hours, Effort & Billing Insight Center</span>
             
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
                 <span className="font-bold text-zinc-450 uppercase text-[8px] block">Total Estimated Hours</span>
@@ -3074,8 +3091,13 @@ export default function ManagerDashboardPage() {
               </Card>
               
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Total Actual Hours</span>
+                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Logged Hours (Total)</span>
                 <span className="text-lg font-bold text-zinc-900 block mt-1">{dashboardData.financials.totalActHrs}h</span>
+              </Card>
+
+              <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
+                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Approved Hours</span>
+                <span className="text-lg font-bold text-zinc-900 block mt-1">{dashboardData.financials.approvedActHrs}h</span>
               </Card>
               
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
@@ -3104,7 +3126,8 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={[
                       { name: 'Estimated', Hours: dashboardData.financials.totalEstHrs },
-                      { name: 'Actual Logged', Hours: dashboardData.financials.totalActHrs }
+                      { name: 'Logged (Total)', Hours: dashboardData.financials.totalActHrs },
+                      { name: 'Approved', Hours: dashboardData.financials.approvedActHrs }
                     ]} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
                       <XAxis dataKey="name" stroke="#71717a" fontSize={8} />

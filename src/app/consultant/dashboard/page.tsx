@@ -241,8 +241,11 @@ export default function ConsultantDashboardPage() {
     const dbMonthCustomerAction = dbMonthTickets.filter(t => t.status === 'Customer Action' || t.customerActionRequired).length;
     
     let dbActualHours = 0;
+    let dbApprovedHours = 0;
     let dbBillableHours = 0;
+    let dbApprovedBillableHours = 0;
     let dbNonBillableHours = 0;
+    let dbApprovedNonBillableHours = 0;
     let dbPlannedHours = 0;
     let dbClosureRequests = 0;
 
@@ -250,17 +253,25 @@ export default function ConsultantDashboardPage() {
       const myEst = (t.estimates || []).find(e => e.consultantId === user?.id || e.consultantId === consultantEmail);
       dbPlannedHours += myEst ? myEst.estimatedHours : 0;
 
-      const myApprovedActualLogs = (t.actualHoursLogs || []).filter(ah => 
-        (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
-        ah.approvalStatus?.toLowerCase() === 'approved'
+      const myActualLogs = (t.actualHoursLogs || []).filter(ah => 
+        (ah.consultantId === user?.id || ah.consultantId === consultantEmail)
       );
 
-      myApprovedActualLogs.forEach(ah => {
+      myActualLogs.forEach(ah => {
         dbActualHours += ah.actualHours;
         if (ah.billable) {
           dbBillableHours += ah.actualHours;
         } else {
           dbNonBillableHours += ah.actualHours;
+        }
+
+        if (ah.approvalStatus?.toLowerCase() === 'approved') {
+          dbApprovedHours += ah.actualHours;
+          if (ah.billable) {
+            dbApprovedBillableHours += ah.actualHours;
+          } else {
+            dbApprovedNonBillableHours += ah.actualHours;
+          }
         }
       });
 
@@ -268,6 +279,7 @@ export default function ConsultantDashboardPage() {
     });
 
     const actualHours = dbActualHours;
+    const approvedHours = dbApprovedHours;
     const billableHours = dbBillableHours;
     const nonBillableHours = dbNonBillableHours;
     const plannedHours = dbPlannedHours;
@@ -298,11 +310,10 @@ export default function ConsultantDashboardPage() {
       
       let clientHours = 0;
       clientTickets.forEach(t => {
-        const approvedLogs = (t.actualHoursLogs || []).filter(ah => 
-          (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
-          ah.approvalStatus?.toLowerCase() === 'approved'
+        const logs = (t.actualHoursLogs || []).filter(ah => 
+          (ah.consultantId === user?.id || ah.consultantId === consultantEmail)
         );
-        clientHours += approvedLogs.reduce((sum, ah) => sum + ah.actualHours, 0);
+        clientHours += logs.reduce((sum, ah) => sum + ah.actualHours, 0);
       });
       return { name: client, hours: clientHours, volume: vol, open: op };
     }).sort((a, b) => b.hours - a.hours);
@@ -316,11 +327,10 @@ export default function ConsultantDashboardPage() {
       
       let modHours = 0;
       modTickets.forEach(t => {
-        const approvedLogs = (t.actualHoursLogs || []).filter(ah => 
-          (ah.consultantId === user?.id || ah.consultantId === consultantEmail) && 
-          ah.approvalStatus?.toLowerCase() === 'approved'
+        const logs = (t.actualHoursLogs || []).filter(ah => 
+          (ah.consultantId === user?.id || ah.consultantId === consultantEmail)
         );
-        modHours += approvedLogs.reduce((sum, ah) => sum + ah.actualHours, 0);
+        modHours += logs.reduce((sum, ah) => sum + ah.actualHours, 0);
       });
       return { name: mod, hours: modHours, count, open };
     }).sort((a, b) => b.hours - a.hours);
@@ -362,6 +372,7 @@ export default function ConsultantDashboardPage() {
       workingDays,
       expectedHours,
       actualHours,
+      approvedHours,
       billableHours,
       nonBillableHours,
       plannedHours,
@@ -444,9 +455,9 @@ export default function ConsultantDashboardPage() {
 
       roleTickets.forEach(t => {
         (t.actualHoursLogs || []).forEach(ah => {
-          if ((ah.consultantId === user?.id || ah.consultantId === consultantEmail) && ah.approvalStatus?.toLowerCase() === 'approved' && ah.approvedAt) {
-            const approvedDate = new Date(ah.approvedAt);
-            if (approvedDate.getFullYear() === d.getFullYear() && approvedDate.getMonth() === d.getMonth()) {
+          if ((ah.consultantId === user?.id || ah.consultantId === consultantEmail) && ah.createdAt) {
+            const logDate = new Date(ah.createdAt);
+            if (logDate.getFullYear() === d.getFullYear() && logDate.getMonth() === d.getMonth()) {
               actual += ah.actualHours;
               if (ah.billable) {
                 billable += ah.actualHours;
