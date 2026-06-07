@@ -589,118 +589,61 @@ export default function CustomerDashboardPage() {
       </div>
 
       {/* ── CUSTOMER DYNAMIC FILTER BAR ── */}
-      <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden p-4 font-mono text-xs">
-        <div className="flex flex-row items-center gap-3">
-          {/* 1. Time Period */}
-          <div className="flex flex-col gap-1 min-w-[120px]">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Period</span>
-            <Select 
-              value={filters.period} 
-              onValueChange={(val) => setFilters(prev => ({ ...prev, period: val }))}
-            >
-              <SelectTrigger className="h-9 text-[10px] text-zinc-700 bg-white border-zinc-200">
-                <SelectValue placeholder="Period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Time</SelectItem>
-                <SelectItem value="This Month">This Month</SelectItem>
-                <SelectItem value="This Quarter">This Quarter</SelectItem>
-                <SelectItem value="This Year">This Year</SelectItem>
-                <SelectItem value="Custom">Custom Range</SelectItem>
-              </SelectContent>
-            </Select>
+      <Card className="border border-zinc-200 bg-white p-4 shadow-sm mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Period */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Period</span>
+            <div className="flex border border-zinc-200 rounded-md overflow-hidden h-9 bg-zinc-50">
+              {(['This Month', 'This Quarter', 'This Year', 'Custom'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setFilters(prev => ({ ...prev, period: p }))}
+                  className={`px-3 text-[10px] font-mono uppercase font-bold transition-all ${
+                    filters.period === p
+                      ? 'bg-zinc-900 text-white'
+                      : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                >
+                  {p.replace('This ', '')}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* 2. Priority */}
-          <div className="flex flex-col gap-1 min-w-[120px]">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Priority</span>
-            <Select 
-              value={filters.priority} 
-              onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
+          {/* Module */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">SAP Module</span>
+            <select
+              value={filters.module}
+              onChange={(e) => setFilters(prev => ({ ...prev, module: e.target.value }))}
+              className="h-9 min-w-[130px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
             >
-              <SelectTrigger className="h-9 text-[10px] text-zinc-700 bg-white border-zinc-200">
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Priorities</SelectItem>
-                <SelectItem value="Critical">Critical</SelectItem>
-                <SelectItem value="High">High</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-                <SelectItem value="Low">Low</SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="All">ALL MODULES</option>
+              {distinctModules.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
           </div>
 
-          {/* 3. SAP Module */}
-          <div className="flex flex-col gap-1 min-w-[120px]">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">SAP Module</span>
-            <Select 
-              value={filters.module} 
-              onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
+          {/* Priority */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Priority</span>
+            <select
+              value={filters.priority}
+              onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+              className="h-9 min-w-[130px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
             >
-              <SelectTrigger className="h-9 text-[10px] text-zinc-700 bg-white border-zinc-200">
-                <SelectValue placeholder="Module" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Modules</SelectItem>
-                {distinctModules.map(m => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="All">ALL PRIORITIES</option>
+              <option value="Critical">CRITICAL</option>
+              <option value="High">HIGH</option>
+              <option value="Medium">MEDIUM</option>
+              <option value="Low">LOW</option>
+            </select>
           </div>
 
-          {/* 4. Multi-select Status Dropdown */}
-          <div className="flex flex-col gap-1 min-w-[150px] relative" ref={statusDropdownRef}>
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Status Class</span>
-            <button
-              type="button"
-              onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-              className="h-9 w-full flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-[10px] text-zinc-700 focus:outline-none"
-            >
-              <span className="truncate">
-                {filters.statuses.includes('All') ? 'All Statuses' : filters.statuses.join(', ')}
-              </span>
-              <span className="text-zinc-400">▼</span>
-            </button>
-            
-            {showStatusDropdown && (
-              <div className="absolute top-full left-0 z-50 mt-1 w-full rounded-md border border-zinc-200 bg-white p-2 shadow-md">
-                <div className="space-y-1">
-                  {['All', 'New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Reopened', 'Escalated'].map((st) => {
-                    const checked = filters.statuses.includes(st);
-                    return (
-                      <label key={st} className="flex items-center gap-2 px-2 py-1 hover:bg-zinc-50 rounded cursor-pointer text-[10px]">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
-                            if (st === 'All') {
-                              setFilters(prev => ({ ...prev, statuses: ['All'] }));
-                            } else {
-                              let next = [...filters.statuses].filter(x => x !== 'All');
-                              if (checked) {
-                                next = next.filter(x => x !== st);
-                                if (next.length === 0) next = ['All'];
-                              } else {
-                                next.push(st);
-                              }
-                              setFilters(prev => ({ ...prev, statuses: next }));
-                            }
-                          }}
-                          className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
-                        />
-                        <span>{st}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Reset Button */}
-          <div className="ml-auto flex items-end h-full mt-4">
+          {/* Reset Filters */}
+          <div className="flex items-end h-14 ml-auto">
             <Button
               variant="outline"
               onClick={() => setFilters({
@@ -711,33 +654,61 @@ export default function CustomerDashboardPage() {
                 priority: 'All',
                 module: 'All'
               })}
-              className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold flex items-center gap-2 rounded-lg"
+              className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold rounded"
             >
-              <RotateCcw size={12} />
-              Reset Filters
+              Reset
             </Button>
           </div>
         </div>
 
-        {/* ROW 2: Custom Date Picker */}
+        {/* Dynamic Status Badges row */}
+        <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-2">
+          <span className="text-[9px] font-mono uppercase font-bold text-zinc-400 mr-2">Status Scope</span>
+          {(['New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Reopened', 'Escalated'] as const).map(group => {
+            const isSelected = filters.statuses.includes(group);
+            return (
+              <button
+                key={group}
+                onClick={() => {
+                  setFilters(prev => {
+                    const current = prev.statuses.filter(x => x !== 'All');
+                    const next = current.includes(group)
+                      ? current.filter(x => x !== group)
+                      : [...current, group];
+                    return { ...prev, statuses: next.length === 0 ? ['All'] : next };
+                  });
+                }}
+                className={`h-7 px-2.5 rounded-full text-[10px] font-mono uppercase font-semibold transition-all border ${
+                  isSelected
+                    ? 'bg-zinc-950 border-zinc-950 text-white shadow-sm'
+                    : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                {group}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Row 2: Custom Date Picker Inputs */}
         {filters.period === 'Custom' && (
-          <div className="mt-3 pt-3 border-t border-zinc-150 flex flex-row items-center gap-3">
-            <div className="flex flex-col gap-1 min-w-[140px]">
-              <span className="text-[9px] font-bold text-zinc-400 uppercase">From Date</span>
+          <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-4 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date From</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="h-9 border border-zinc-200 rounded px-3 text-[10px] text-zinc-700 outline-none bg-white focus:border-zinc-400"
+                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
               />
             </div>
-            <div className="flex flex-col gap-1 min-w-[140px]">
-              <span className="text-[9px] font-bold text-zinc-400 uppercase">To Date</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date To</span>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="h-9 border border-zinc-200 rounded px-3 text-[10px] text-zinc-700 outline-none bg-white focus:border-zinc-400"
+                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
               />
             </div>
           </div>
