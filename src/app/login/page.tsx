@@ -43,29 +43,19 @@ export default function LoginPage() {
 
   const redirectToDashboard = (sessionUser: any) => {
     const isForce = sessionUser.forcePasswordChange === true || sessionUser.firstLoginCompleted === false;
+    let target = '/dashboard';
     if (isForce) {
-      router.push('/first-login-reset');
-      router.refresh();
-      return;
+      target = '/first-login-reset';
+    } else {
+      switch (sessionUser.role) {
+        case 'SuperAdmin': target = '/admin/dashboard'; break;
+        case 'Manager':    target = '/manager/dashboard'; break;
+        case 'Consultant': target = '/consultant/dashboard'; break;
+        case 'Customer':   target = '/customer/dashboard'; break;
+      }
     }
-
-    switch (sessionUser.role) {
-      case 'SuperAdmin':
-        router.push('/admin/dashboard');
-        break;
-      case 'Manager':
-        router.push('/manager/dashboard');
-        break;
-      case 'Consultant':
-        router.push('/consultant/dashboard');
-        break;
-      case 'Customer':
-        router.push('/customer/dashboard');
-        break;
-      default:
-        router.push('/dashboard');
-    }
-    router.refresh();
+    // Hard navigation ensures cookies are committed and avoids router.push+refresh race
+    window.location.href = target;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
