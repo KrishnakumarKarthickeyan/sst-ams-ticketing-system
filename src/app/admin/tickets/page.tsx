@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import Link from 'next/link';
+import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import { 
   Search, Filter, Layers, Plus, AlertTriangle, Clock, 
@@ -189,100 +190,41 @@ export default function AdminTicketsPage() {
       </div>
 
       {/* Advanced Filter controls */}
-      <div className="bg-white border border-zinc-200 rounded p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
-        <div className="relative w-full sm:max-w-xs">
+      <div className="space-y-4">
+        <div className="relative w-full">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search Ticket ID, title, owner..."
-            className="w-full bg-white border border-zinc-200 rounded pl-9 pr-4 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+            className="w-full bg-white border border-zinc-200 rounded pl-9 pr-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
           />
         </div>
 
-        <div className="flex flex-wrap gap-2.5">
-          {/* Priority */}
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
-            <Filter size={11} className="text-zinc-400" />
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="bg-transparent text-[11px] font-semibold text-zinc-800 focus:outline-none cursor-pointer"
-            >
-              <option value="All">All Priorities</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-
-          {/* Module */}
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
-            <Filter size={11} className="text-zinc-400" />
-            <select
-              value={moduleFilter}
-              onChange={(e) => setModuleFilter(e.target.value)}
-              className="bg-transparent text-[11px] font-semibold text-zinc-800 focus:outline-none cursor-pointer"
-            >
-              <option value="All">All Modules</option>
-              {modulesList.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-
-          {/* Customer */}
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
-            <Filter size={11} className="text-zinc-400" />
-            <select
-              value={customerFilter}
-              onChange={(e) => setCustomerFilter(e.target.value)}
-              className="bg-transparent text-[11px] font-semibold text-zinc-800 focus:outline-none cursor-pointer"
-            >
-              <option value="All">All Customers</option>
-              {customersList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          {/* Date Range */}
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
-            <Filter size={11} className="text-zinc-400" />
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="bg-transparent text-[11px] font-semibold text-zinc-800 focus:outline-none cursor-pointer"
-            >
-              <option value="All">All History</option>
-              <option value="current-month">This Month</option>
-              <option value="current-quarter">This Quarter</option>
-              <option value="current-year">This Year</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
-
-          {dateFilter === 'custom' && (
-            <>
-              <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
-                <span className="text-[11px] font-mono">Start:</span>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="bg-transparent text-[11px] text-zinc-800 focus:outline-none cursor-pointer font-mono"
-                />
-              </div>
-              <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded px-2 py-1 text-zinc-500">
-                <span className="text-[11px] font-mono">End:</span>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="bg-transparent text-[11px] text-zinc-800 focus:outline-none cursor-pointer font-mono"
-                />
-              </div>
-            </>
-          )}
-        </div>
+        <TicketFilterPanel
+          enabledFilters={['priority', 'module', 'customer', 'dateSelect']}
+          priorityFilter={priorityFilter}
+          setPriorityFilter={setPriorityFilter}
+          moduleFilter={moduleFilter}
+          setModuleFilter={setModuleFilter}
+          customerFilter={customerFilter}
+          setCustomerFilter={setCustomerFilter}
+          dateFilter={dateFilter}
+          setDateFilter={setDateFilter}
+          startDateFilter={customStartDate}
+          setStartDateFilter={setCustomStartDate}
+          endDateFilter={customEndDate}
+          setEndDateFilter={setCustomEndDate}
+          onResetFilters={() => {
+            setPriorityFilter('All');
+            setModuleFilter('All');
+            setCustomerFilter('All');
+            setDateFilter('All');
+            setCustomStartDate('');
+            setCustomEndDate('');
+          }}
+        />
       </div>
 
       {/* The 13 Status Tabs View */}

@@ -32,6 +32,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { TicketStatus } from '../../../types/ticket';
+import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
@@ -1117,76 +1118,38 @@ export default function ConsultantMyTicketsPage() {
           </TabsList>
 
           {/* Search + Filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <div className="space-y-4 mt-4 w-full">
+            <div className="relative w-full">
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 placeholder="Search tickets..."
-                className="bg-white border border-zinc-200 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition w-48"
+                className="bg-white border border-zinc-200 rounded-md pl-9 pr-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition w-full font-mono"
               />
             </div>
-            <select value={priorityFilter} onChange={e => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
-              className="bg-white border border-zinc-200 rounded-md p-1.5 text-xs text-zinc-700 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition">
-              <option value="All">All Priorities</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="bg-white border border-zinc-200 rounded-md p-1.5 text-xs text-zinc-700 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition">
-              <option value="All">All Statuses</option>
-              <option value="Requirement Gathering">Req. Gathering</option>
-              {/* <option value="Waiting for Hours Approval">Hrs Approval</option> */}
-              {consultantType === 'Functional' ? (
-                <option value="In Progress - Functional">IP Functional</option>
-              ) : (
-                <option value="In Progress - Technical">IP Technical</option>
-              )}
-              <option value="Raised to SAP">Raised to SAP</option>
-              <option value="Customer Action">Customer Action</option>
-              <option value="Request for Closure">Req. Closure</option>
-              <option value="Closed">Closed</option>
-              <option value="Reopened">Reopened</option>
-            </select>
-
-            <select value={dateFilter} onChange={e => { setDateFilter(e.target.value); setCurrentPage(1); }}
-              className="bg-white border border-zinc-200 rounded-md p-1.5 text-xs text-zinc-700 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition">
-              <option value="All">All History</option>
-              <option value="current-month">This Month</option>
-              <option value="current-quarter">This Quarter</option>
-              <option value="current-year">This Year</option>
-              <option value="custom">Custom Range</option>
-              <option value="24h">Last 24 Hours</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-            </select>
-
-            {dateFilter === 'custom' && (
-              <>
-                <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-md p-1 px-2 text-zinc-700">
-                  <span className="text-[10px] font-mono">Start:</span>
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => { setCustomStartDate(e.target.value); setCurrentPage(1); }}
-                    className="bg-transparent text-xs focus:outline-none cursor-pointer font-mono"
-                  />
-                </div>
-                <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-md p-1 px-2 text-zinc-700">
-                  <span className="text-[10px] font-mono">End:</span>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => { setCustomEndDate(e.target.value); setCurrentPage(1); }}
-                    className="bg-transparent text-xs focus:outline-none cursor-pointer font-mono"
-                  />
-                </div>
-              </>
-            )}
+            <TicketFilterPanel
+              enabledFilters={['priority', 'status', 'dateSelect']}
+              priorityFilter={priorityFilter}
+              setPriorityFilter={(val) => { setPriorityFilter(val); setCurrentPage(1); }}
+              statusFilter={statusFilter}
+              setStatusFilter={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+              dateFilter={dateFilter}
+              setDateFilter={(val) => { setDateFilter(val); setCurrentPage(1); }}
+              startDateFilter={customStartDate}
+              setStartDateFilter={(val) => { setCustomStartDate(val); setCurrentPage(1); }}
+              endDateFilter={customEndDate}
+              setEndDateFilter={(val) => { setCustomEndDate(val); setCurrentPage(1); }}
+              onResetFilters={() => {
+                setPriorityFilter('All');
+                setStatusFilter('All');
+                setDateFilter('All');
+                setCustomStartDate('');
+                setCustomEndDate('');
+                setCurrentPage(1);
+              }}
+            />
           </div>
         </div>
 

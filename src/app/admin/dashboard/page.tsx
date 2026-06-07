@@ -29,6 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Skeleton } from '../../../components/ui/skeleton';
 import { Progress } from '../../../components/ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs';
+import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import {
   Dialog,
   DialogContent,
@@ -1409,194 +1410,55 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── GLOBAL FILTERS COCKPIT ── */}
-      <Card className="bg-zinc-50 border border-zinc-200 shadow-sm rounded-xl p-4 font-mono text-xs">
-        <div className="flex items-center justify-between border-b border-zinc-200 pb-2.5 mb-4">
-          <div className="flex items-center gap-2">
-            <Filter size={13} className="text-zinc-500" />
-            <span className="font-bold text-zinc-900 uppercase">Global Analytics & Data Filters</span>
-          </div>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setStartDateFilter('');
-              setEndDateFilter('');
-              setMonthFilter('All');
-              setQuarterFilter('All');
-              setYearFilter('All');
-              setCustomerFilter('All');
-              setConsultantFilter('All');
-              setManagerFilter('All');
-              setModuleFilter('All');
-              setStatusFilter('All');
-              setPriorityFilter('All');
-            }}
-            className="h-6 text-[9px] uppercase font-bold text-zinc-500 hover:text-zinc-900"
-          >
-            Reset Filters
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-          {/* 1. Date Range: Start */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Start Date</span>
-            <input
-              type="date"
-              value={startDateFilter}
-              onChange={(e) => setStartDateFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 rounded px-2 text-[10px] bg-white text-zinc-700 outline-none focus:border-zinc-400"
-            />
-          </div>
-
-          {/* 2. Date Range: End */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">End Date</span>
-            <input
-              type="date"
-              value={endDateFilter}
-              onChange={(e) => setEndDateFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 rounded px-2 text-[10px] bg-white text-zinc-700 outline-none focus:border-zinc-400"
-            />
-          </div>
-
-          {/* 3. Year */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Year</span>
-            <select
-              value={yearFilter}
-              onChange={(e) => setYearFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Years</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
-            </select>
-          </div>
-
-          {/* 4. Month */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Month</span>
-            <select
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Months</option>
-              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 5. Quarter */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Quarter</span>
-            <select
-              value={quarterFilter}
-              onChange={(e) => setQuarterFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Quarters</option>
-              <option value="Q1">Q1 (Jan-Mar)</option>
-              <option value="Q2">Q2 (Apr-Jun)</option>
-              <option value="Q3">Q3 (Jul-Sep)</option>
-              <option value="Q4">Q4 (Oct-Dec)</option>
-            </select>
-          </div>
-
-          {/* 6. Customer */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Customer</span>
-            <select
-              value={customerFilter}
-              onChange={(e) => setCustomerFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Customers</option>
-              {customerOrgsList.map(org => (
-                <option key={org} value={org}>{org}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 7. Consultant */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Consultant</span>
-            <select
-              value={consultantFilter}
-              onChange={(e) => setConsultantFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Consultants</option>
-              {consultantsProfilesList.map(cons => (
-                <option key={cons} value={cons}>{cons}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 8. Manager */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Manager</span>
-            <select
-              value={managerFilter}
-              onChange={(e) => setManagerFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Managers</option>
-              {managersProfilesList.map(mgr => (
-                <option key={mgr} value={mgr}>{mgr}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 9. Module */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">SAP Module</span>
-            <select
-              value={moduleFilter}
-              onChange={(e) => setModuleFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Modules</option>
-              {modulesList.map(mod => (
-                <option key={mod} value={mod}>{mod}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 10. Status */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Status</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Statuses</option>
-              {statusList.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 11. Priority */}
-          <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Priority</span>
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
-            >
-              <option value="All">All Priorities</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-        </div>
-      </Card>
+      <TicketFilterPanel
+        enabledFilters={[
+          'dateRange',
+          'year',
+          'month',
+          'quarter',
+          'customer',
+          'consultant',
+          'manager',
+          'module',
+          'status',
+          'priority'
+        ]}
+        startDateFilter={startDateFilter}
+        setStartDateFilter={setStartDateFilter}
+        endDateFilter={endDateFilter}
+        setEndDateFilter={setEndDateFilter}
+        yearFilter={yearFilter}
+        setYearFilter={setYearFilter}
+        monthFilter={monthFilter}
+        setMonthFilter={setMonthFilter}
+        quarterFilter={quarterFilter}
+        setQuarterFilter={setQuarterFilter}
+        customerFilter={customerFilter}
+        setCustomerFilter={setCustomerFilter}
+        consultantFilter={consultantFilter}
+        setConsultantFilter={setConsultantFilter}
+        managerFilter={managerFilter}
+        setManagerFilter={setManagerFilter}
+        moduleFilter={moduleFilter}
+        setModuleFilter={setModuleFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        priorityFilter={priorityFilter}
+        setPriorityFilter={setPriorityFilter}
+        onResetFilters={() => {
+          setStartDateFilter('');
+          setEndDateFilter('');
+          setMonthFilter('All');
+          setQuarterFilter('All');
+          setYearFilter('All');
+          setCustomerFilter('All');
+          setConsultantFilter('All');
+          setManagerFilter('All');
+          setModuleFilter('All');
+          setStatusFilter('All');
+          setPriorityFilter('All');
+        }}
+      />
 
       {/* ── NAVIGATION TABS ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

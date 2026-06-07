@@ -26,6 +26,7 @@ import {
   X
 } from 'lucide-react';
 import { Card, CardContent } from '../../../components/ui/card';
+import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { Badge } from '../../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { Skeleton } from '../../../components/ui/skeleton';
@@ -626,170 +627,76 @@ ${ticket.description}
         </div>
 
         {/* Filtering Panel */}
-        <Card className="border-zinc-200 shadow-sm bg-white">
-          <CardContent className="p-4 space-y-4">
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              {/* Search */}
-              <div className="relative w-full md:max-w-md">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                  placeholder="Search by Ticket ID / Subject..."
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-9 pr-4 py-1.5 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
-                />
-              </div>
-
-              {/* Column visibility checkbox menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-8.5 text-[10px] font-mono font-bold uppercase tracking-wider border-zinc-200 flex items-center gap-1 text-zinc-700">
-                    <SlidersHorizontal size={13} />
-                    <span>Toggle Fields</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 font-mono text-[10px] bg-white border border-zinc-200 rounded-lg shadow-md max-h-64 overflow-y-auto">
-                  <DropdownMenuLabel>Visible Table Columns</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {columnsList.map((col) => (
-                    <DropdownMenuCheckboxItem
-                      key={col.key}
-                      checked={visibleColumns[col.key]}
-                      onCheckedChange={() => toggleColumn(col.key)}
-                      className="cursor-pointer hover:bg-zinc-50 py-1"
-                    >
-                      {col.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white border border-zinc-200 rounded-lg p-3 shadow-sm">
+            {/* Search */}
+            <div className="relative w-full md:max-w-md">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                placeholder="Search by Ticket ID / Subject..."
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-9 pr-4 py-1.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+              />
             </div>
 
-            {/* Filters Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 border-t border-zinc-100 pt-4">
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Status</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none focus:border-zinc-950"
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="New">New</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Waiting for Customer">Awaiting Customer</option>
-                  <option value="Waiting for Internal Team">Awaiting Internal</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                  <option value="Reopened">Reopened</option>
-                </select>
-              </div>
+            {/* Column visibility checkbox menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-8.5 text-[10px] font-mono font-bold uppercase tracking-wider border-zinc-200 flex items-center gap-1 text-zinc-700">
+                  <SlidersHorizontal size={13} />
+                  <span>Toggle Fields</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 font-mono text-[10px] bg-white border border-zinc-200 rounded-lg shadow-md max-h-64 overflow-y-auto">
+                <DropdownMenuLabel>Visible Table Columns</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {columnsList.map((col) => (
+                  <DropdownMenuCheckboxItem
+                    key={col.key}
+                    checked={visibleColumns[col.key]}
+                    onCheckedChange={() => toggleColumn(col.key)}
+                    className="cursor-pointer hover:bg-zinc-50 py-1"
+                  >
+                    {col.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">SAP Module</label>
-                <select
-                  value={moduleFilter}
-                  onChange={(e) => { setModuleFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All Modules</option>
-                  <option value="FICO">FICO</option>
-                  <option value="MM">MM</option>
-                  <option value="SD">SD</option>
-                  <option value="PP">PP</option>
-                  <option value="BASIS">BASIS</option>
-                  <option value="ABAP">ABAP</option>
-                  <option value="SuccessFactors">SuccessFactors</option>
-                  <option value="Security/GRC">Security/GRC</option>
-                  <option value="CPI/Integration">CPI/Integration</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Priority</label>
-                <select
-                  value={priorityFilter}
-                  onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All Priorities</option>
-                  <option value="Critical">Critical</option>
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Ticket Type</label>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All Types</option>
-                  <option value="Incident">Incident</option>
-                  <option value="Service Request">Service Request</option>
-                  <option value="Enhancement Request">Enhancement Request</option>
-                  <option value="Change Request">Change Request</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Classification</label>
-                <select
-                  value={scopeFilter}
-                  onChange={(e) => { setScopeFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All Scope</option>
-                  <option value="Functional">Functional</option>
-                  <option value="Technical">Technical</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Date Range</label>
-                <select
-                  value={dateFilter}
-                  onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All History</option>
-                  <option value="current-month">This Month</option>
-                  <option value="current-quarter">This Quarter</option>
-                  <option value="current-year">This Year</option>
-                  <option value="custom">Custom Range</option>
-                </select>
-              </div>
-            </div>
-
-            {dateFilter === 'custom' && (
-              <div className="flex gap-3 border-t border-zinc-100 pt-3 max-w-md animate-in fade-in duration-100">
-                <div className="space-y-1 flex-1">
-                  <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Start Date</label>
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => { setCustomStartDate(e.target.value); setCurrentPage(1); }}
-                    className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-xs focus:outline-none font-mono"
-                  />
-                </div>
-                <div className="space-y-1 flex-1">
-                  <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">End Date</label>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => { setCustomEndDate(e.target.value); setCurrentPage(1); }}
-                    className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-xs focus:outline-none font-mono"
-                  />
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          <TicketFilterPanel
+            enabledFilters={['status', 'module', 'priority', 'type', 'scope', 'dateSelect']}
+            statusFilter={statusFilter}
+            setStatusFilter={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+            moduleFilter={moduleFilter}
+            setModuleFilter={(val) => { setModuleFilter(val); setCurrentPage(1); }}
+            priorityFilter={priorityFilter}
+            setPriorityFilter={(val) => { setPriorityFilter(val); setCurrentPage(1); }}
+            typeFilter={typeFilter}
+            setTypeFilter={(val) => { setTypeFilter(val); setCurrentPage(1); }}
+            scopeFilter={scopeFilter}
+            setScopeFilter={(val) => { setScopeFilter(val); setCurrentPage(1); }}
+            dateFilter={dateFilter}
+            setDateFilter={(val) => { setDateFilter(val); setCurrentPage(1); }}
+            startDateFilter={customStartDate}
+            setStartDateFilter={(val) => { setCustomStartDate(val); setCurrentPage(1); }}
+            endDateFilter={customEndDate}
+            setEndDateFilter={(val) => { setCustomEndDate(val); setCurrentPage(1); }}
+            onResetFilters={() => {
+              setStatusFilter('All');
+              setModuleFilter('All');
+              setPriorityFilter('All');
+              setTypeFilter('All');
+              setScopeFilter('All');
+              setDateFilter('All');
+              setCustomStartDate('');
+              setCustomEndDate('');
+              setCurrentPage(1);
+            }}
+          />
+        </div>
 
         {/* Data Table Workspace */}
         <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">

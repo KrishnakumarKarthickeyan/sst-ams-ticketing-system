@@ -5,6 +5,7 @@ import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { toast } from 'sonner';
 import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import {
@@ -496,204 +497,85 @@ export default function ManagerTicketsPage() {
         ))}
       </div>
 
-      {/* ── 12 FILTERS PANEL ── */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3 shadow-sm">
-        <div className="flex items-center justify-between border-b border-zinc-150 pb-2">
-          <div className="flex items-center gap-1.5 font-bold uppercase text-[9px] text-zinc-850">
-            <Filter size={11} />
-            <span>Operational Filter Console</span>
-          </div>
-          <button onClick={resetAllFilters} className="text-[9px] font-bold text-red-600 hover:underline uppercase flex items-center gap-1">
-            <X size={10} /> Reset Filters
+      {/* Search & View Toggles Row */}
+      <div className="bg-white border border-zinc-200 rounded-lg p-3 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Search bar */}
+        <div className="relative w-full md:max-w-md">
+          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search Subject, Ticket ID, Description, Consultants..."
+            className="w-full bg-white border border-zinc-200 rounded pl-9 pr-4 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono placeholder:text-zinc-400"
+          />
+        </div>
+
+        {/* View Toggles */}
+        <div className="flex bg-zinc-150/70 p-0.5 rounded border border-zinc-250 shrink-0">
+          <button
+            onClick={() => setViewMode('card')}
+            className={`p-1.5 rounded transition ${viewMode === 'card' ? 'bg-white shadow-sm text-zinc-900 font-bold' : 'text-zinc-500 hover:text-zinc-850'}`}
+            title="Card Workspace"
+          >
+            <LayoutGrid size={13} />
+          </button>
+          <button
+            onClick={() => setViewMode('compact')}
+            className={`p-1.5 rounded transition ${viewMode === 'compact' ? 'bg-white shadow-sm text-zinc-900 font-bold' : 'text-zinc-500 hover:text-zinc-855'}`}
+            title="Compact Service Desk"
+          >
+            <List size={13} />
           </button>
         </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {/* Customer */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Customer</label>
-            <select value={custFilter} onChange={e => setCustFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Customers</option>
-              {customersList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          {/* Consultant */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Any Consultant</label>
-            <select value={consFilter} onChange={e => setConsFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Allocated</option>
-              {consultantsList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          {/* Functional Consultant */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Func Consultant</label>
-            <select value={funcConsFilter} onChange={e => setFuncConsFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Functional</option>
-              {functionalConsultantsList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          {/* Technical Consultant */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Tech Consultant</label>
-            <select value={techConsFilter} onChange={e => setTechConsFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Technical</option>
-              {technicalConsultantsList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          {/* SAP Module */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">SAP Module</label>
-            <select value={moduleFilter} onChange={e => setModuleFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Modules</option>
-              <option value="FICO">FICO</option>
-              <option value="MM">MM</option>
-              <option value="SD">SD</option>
-              <option value="PP">PP</option>
-              <option value="BASIS">BASIS</option>
-              <option value="ABAP">ABAP</option>
-            </select>
-          </div>
-
-          {/* Priority */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Priority</label>
-            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Priorities</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-
-          {/* Status */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Status</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Statuses</option>
-              {Object.keys(statusConfig).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          {/* Ticket Type */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Ticket Type</label>
-            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Types</option>
-              <option value="Incident">Incident</option>
-              <option value="Service Request">Service Request</option>
-              <option value="Change Request">Change Request</option>
-            </select>
-          </div>
-
-          {/* SLA Status */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">SLA Status</label>
-            <select value={slaFilter} onChange={e => setSlaFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All SLA States</option>
-              <option value="Met">SLA Met</option>
-              <option value="Warning">SLA Warning</option>
-              <option value="Breached">SLA Breached</option>
-            </select>
-          </div>
-
-          {/* Date Range */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Date Range</label>
-            <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All History</option>
-              <option value="current-month">This Month</option>
-              <option value="current-quarter">This Quarter</option>
-              <option value="current-year">This Year</option>
-              <option value="custom">Custom Range</option>
-              <option value="24h">Last 24 Hours</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-            </select>
-          </div>
-
-          {dateFilter === 'custom' && (
-            <>
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold uppercase text-zinc-450 block">Start Date</label>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={e => setCustomStartDate(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none font-mono"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold uppercase text-zinc-450 block">End Date</label>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={e => setCustomEndDate(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none font-mono"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Assigned / Unassigned */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Allocation State</label>
-            <select value={assignStateFilter} onChange={e => setAssignStateFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Allocations</option>
-              <option value="Assigned">Assigned</option>
-              <option value="Unassigned">Unassigned</option>
-            </select>
-          </div>
-
-          {/* Closure Status */}
-          <div className="space-y-1">
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block">Closure State</label>
-            <select value={closureStateFilter} onChange={e => setClosureStateFilter(e.target.value)} className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none">
-              <option value="All">All Closure States</option>
-              <option value="Open">Active / Open</option>
-              <option value="RequestForClosure">Request for Closure</option>
-              <option value="Closed">Closed</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-zinc-100">
-          {/* Search bar */}
-          <div className="relative w-full md:max-w-md">
-            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search Subject, Ticket ID, Description, Consultants..."
-              className="w-full bg-white border border-zinc-200 rounded pl-9 pr-4 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono placeholder:text-zinc-400"
-            />
-          </div>
-
-          {/* View Toggles */}
-          <div className="flex bg-zinc-150/70 p-0.5 rounded border border-zinc-250 shrink-0">
-            <button
-              onClick={() => setViewMode('card')}
-              className={`p-1.5 rounded transition ${viewMode === 'card' ? 'bg-white shadow-sm text-zinc-900 font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
-              title="Card Workspace"
-            >
-              <LayoutGrid size={13} />
-            </button>
-            <button
-              onClick={() => setViewMode('compact')}
-              className={`p-1.5 rounded transition ${viewMode === 'compact' ? 'bg-white shadow-sm text-zinc-900 font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
-              title="Compact Service Desk"
-            >
-              <List size={13} />
-            </button>
-          </div>
-        </div>
       </div>
+
+      {/* ── 12 FILTERS PANEL ── */}
+      <TicketFilterPanel
+        enabledFilters={[
+          'customer',
+          'consultant',
+          'functionalConsultant',
+          'technicalConsultant',
+          'module',
+          'priority',
+          'status',
+          'type',
+          'sla',
+          'dateSelect',
+          'assignState',
+          'closureState'
+        ]}
+        customerFilter={custFilter}
+        setCustomerFilter={setCustFilter}
+        consultantFilter={consFilter}
+        setConsultantFilter={setConsFilter}
+        functionalConsultantFilter={funcConsFilter}
+        setFunctionalConsultantFilter={setFuncConsFilter}
+        technicalConsultantFilter={techConsFilter}
+        setTechnicalConsultantFilter={setTechConsFilter}
+        moduleFilter={moduleFilter}
+        setModuleFilter={setModuleFilter}
+        priorityFilter={priorityFilter}
+        setPriorityFilter={setPriorityFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+        slaFilter={slaFilter}
+        setSlaFilter={setSlaFilter}
+        dateFilter={dateFilter}
+        setDateFilter={setDateFilter}
+        startDateFilter={customStartDate}
+        setStartDateFilter={setCustomStartDate}
+        endDateFilter={customEndDate}
+        setEndDateFilter={setCustomEndDate}
+        assignStateFilter={assignStateFilter}
+        setAssignStateFilter={setAssignStateFilter}
+        closureStateFilter={closureStateFilter}
+        setClosureStateFilter={setClosureStateFilter}
+        onResetFilters={resetAllFilters}
+      />
 
       {/* ── BULK ACTION CONSOLE ── */}
       {selectedTicketIds.length > 0 && (
