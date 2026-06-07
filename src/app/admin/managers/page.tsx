@@ -47,8 +47,8 @@ export default function AdminManagersPage() {
         setManagers(JSON.parse(stored));
       } else {
         const fallbackList: ManagerProfile[] = [
-          { id: 'mgr-1', name: 'Alexander Sterling', email: 'sterling@supportstudio.com', active: true, phoneNumber: '+1 (555) 0192', ticketCount: 3, criticalCount: 1 },
-          { id: 'mgr-2', name: 'Keerthana Rajan', email: 'keerthana@supportstudio.com', active: true, phoneNumber: '+91 98765 43210', ticketCount: 5, criticalCount: 0 }
+          { id: 'mgr-1', name: 'Alexander Sterling', email: 'sterling@assist360.com', active: true, phoneNumber: '+1 (555) 0192', ticketCount: 3, criticalCount: 1 },
+          { id: 'mgr-2', name: 'Keerthana Rajan', email: 'keerthana@assist360.com', active: true, phoneNumber: '+91 98765 43210', ticketCount: 5, criticalCount: 0 }
         ];
         setManagers(fallbackList);
         localStorage.setItem('sst_admin_managers', JSON.stringify(fallbackList));
@@ -279,8 +279,8 @@ export default function AdminManagersPage() {
       // Mock tickets
       setTimeout(() => {
         setManagerTickets([
-          { id: 'SST-FI-1001', title: 'Asset Depreciation Run Failure', status: 'In Progress', priority: 'High', sap_module: 'FICO', created_at: new Date().toISOString() },
-          { id: 'SST-MM-1004', title: 'Purchase Order Release Strategy Block', status: 'New', priority: 'Critical', sap_module: 'MM', created_at: new Date().toISOString() }
+          { id: 'AS360-FI-1001', title: 'Asset Depreciation Run Failure', status: 'In Progress', priority: 'High', sap_module: 'FICO', created_at: new Date().toISOString() },
+          { id: 'AS360-MM-1004', title: 'Purchase Order Release Strategy Block', status: 'New', priority: 'Critical', sap_module: 'MM', created_at: new Date().toISOString() }
         ]);
         setLoadingTickets(false);
       }, 500);
@@ -339,7 +339,7 @@ export default function AdminManagersPage() {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. keerthana@supportstudio.com"
+                    placeholder="e.g. keerthana@assist360.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"

@@ -48,7 +48,7 @@ export default function AdminConsultantsPage() {
           {
             id: 'cons-1',
             name: 'Priya Raman',
-            email: 'priya@supportstudio.com',
+            email: 'priya@assist360.com',
             consultantType: 'Functional',
             roleTitle: 'Senior FICO Consultant',
             sapModules: ['FICO', 'TRM'],
@@ -59,15 +59,15 @@ export default function AdminConsultantsPage() {
             totalHoursLogged: 120,
             billableHours: 95,
             assignedTickets: [
-              { id: 'SST-FI-1001', title: 'Asset Depreciation Run Failure', priority: 'High', status: 'In Progress', sapModule: 'FICO' },
-              { id: 'SST-FI-1002', title: 'Bank Reconciliation Match Error', priority: 'Medium', status: 'In Progress', sapModule: 'FICO' },
-              { id: 'SST-TR-1001', title: 'Treasury Post-processing Failure', priority: 'Critical', status: 'Request for Closure', sapModule: 'FICO' }
+              { id: 'AS360-FI-1001', title: 'Asset Depreciation Run Failure', priority: 'High', status: 'In Progress', sapModule: 'FICO' },
+              { id: 'AS360-FI-1002', title: 'Bank Reconciliation Match Error', priority: 'Medium', status: 'In Progress', sapModule: 'FICO' },
+              { id: 'AS360-TR-1001', title: 'Treasury Post-processing Failure', priority: 'Critical', status: 'Request for Closure', sapModule: 'FICO' }
             ]
           },
           {
             id: 'cons-2',
             name: 'Arjun Mehta',
-            email: 'arjun@supportstudio.com',
+            email: 'arjun@assist360.com',
             consultantType: 'Technical',
             roleTitle: 'Lead ABAP Architect',
             sapModules: ['ABAP', 'BASIS'],
@@ -78,13 +78,13 @@ export default function AdminConsultantsPage() {
             totalHoursLogged: 45,
             billableHours: 40,
             assignedTickets: [
-              { id: 'SST-ABAP-1001', title: 'Optimize Custom Sales Report', priority: 'Low', status: 'In Progress', sapModule: 'ABAP' }
+              { id: 'AS360-ABAP-1001', title: 'Optimize Custom Sales Report', priority: 'Low', status: 'In Progress', sapModule: 'ABAP' }
             ]
           },
           {
             id: 'cons-3',
             name: 'Rajesh Kumar',
-            email: 'rajesh@supportstudio.com',
+            email: 'rajesh@assist360.com',
             consultantType: 'Functional',
             roleTitle: 'SAP Logistics Specialist',
             sapModules: ['MM', 'SD'],
@@ -95,8 +95,8 @@ export default function AdminConsultantsPage() {
             totalHoursLogged: 165,
             billableHours: 150,
             assignedTickets: [
-              { id: 'SST-MM-1001', title: 'PO Output Type Trigger Error', priority: 'High', status: 'In Progress', sapModule: 'MM' },
-              { id: 'SST-SD-1002', title: 'Billing Document Posting Block', priority: 'Critical', status: 'In Progress', sapModule: 'SD' }
+              { id: 'AS360-MM-1001', title: 'PO Output Type Trigger Error', priority: 'High', status: 'In Progress', sapModule: 'MM' },
+              { id: 'AS360-SD-1002', title: 'Billing Document Posting Block', priority: 'Critical', status: 'In Progress', sapModule: 'SD' }
             ]
           }
         ];

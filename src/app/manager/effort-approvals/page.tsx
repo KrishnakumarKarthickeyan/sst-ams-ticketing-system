@@ -73,7 +73,7 @@ export default function ManagerEffortApprovalsPage() {
     );
     list.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
     return list.filter(r => {
-      if (user?.company && user.company !== 'SST SAP Operations') {
+      if (user?.company && user.company !== 'Assist360 Operations') {
         return r.organization === user.company;
       }
       return true;
@@ -97,7 +97,7 @@ export default function ManagerEffortApprovalsPage() {
     logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     
     return logs.filter(log => {
-      if (user?.company && user.company !== 'SST SAP Operations') {
+      if (user?.company && user.company !== 'Assist360 Operations') {
         return log.organization === user.company;
       }
       return true;
@@ -141,7 +141,7 @@ export default function ManagerEffortApprovalsPage() {
     );
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list.filter(r => {
-      if (user?.company && user.company !== 'SST SAP Operations') {
+      if (user?.company && user.company !== 'Assist360 Operations') {
         return r.organization === user.company;
       }
       return true;
@@ -188,7 +188,7 @@ export default function ManagerEffortApprovalsPage() {
         status: ticket.status
       };
     }).filter(r => {
-      if (user?.company && user.company !== 'SST SAP Operations') {
+      if (user?.company && user.company !== 'Assist360 Operations') {
         return r.organization === user.company;
       }
       return true;
@@ -211,7 +211,7 @@ export default function ManagerEffortApprovalsPage() {
     );
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list.filter(r => {
-      if (user?.company && user.company !== 'SST SAP Operations') {
+      if (user?.company && user.company !== 'Assist360 Operations') {
         return r.organization === user.company;
       }
       return true;
@@ -234,7 +234,7 @@ export default function ManagerEffortApprovalsPage() {
     );
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list.filter(r => {
-      if (user?.company && user.company !== 'SST SAP Operations') {
+      if (user?.company && user.company !== 'Assist360 Operations') {
         return r.organization === user.company;
       }
       return true;
@@ -361,7 +361,7 @@ export default function ManagerEffortApprovalsPage() {
       <div className="border-b border-zinc-200 pb-4">
         <h1 className="text-lg font-bold uppercase tracking-wider text-zinc-950">Manager Approvals Workspace</h1>
         <p className="text-zinc-500 mt-1">Audit, approve, or reject effort allocations, timesheets, ticket closures, and reopen requests.</p>
-        {user?.company && user.company !== 'SST SAP Operations' && (
+        {user?.company && user.company !== 'Assist360 Operations' && (
           <span className="inline-block mt-2 px-2.5 py-0.5 bg-zinc-100 text-zinc-700 border border-zinc-200 rounded font-bold uppercase text-[9px]">
             Enterprise Scope: {user.company}
           </span>

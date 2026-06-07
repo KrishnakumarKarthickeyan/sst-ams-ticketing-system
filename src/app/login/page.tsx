@@ -343,7 +343,7 @@ export default function LoginPage() {
 
         {/* Footer Secure Badge */}
         <div className="text-center text-[10px] text-[#6B7280] font-mono flex items-center justify-center gap-1.5">
-          <span>Copyright © Support Studio Technologies. All Rights Reserved.</span>
+          <span>Copyright &copy; {new Date().getFullYear()} Assist360. All Rights Reserved.</span>
         </div>
 
       </div>

@@ -113,7 +113,7 @@ export default function ManagerTicketsPage() {
   // Base Scoped Tickets for the Manager
   const scopedTickets = useMemo(() => {
     return tickets.filter(t => {
-      if (user?.company && user.company !== 'SST SAP Operations') {
+      if (user?.company && user.company !== 'Assist360 Operations') {
         return t.organization === user.company;
       }
       return true;

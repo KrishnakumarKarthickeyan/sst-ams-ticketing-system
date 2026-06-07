@@ -710,7 +710,7 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer className="py-10 bg-white border-t border-zinc-200 text-center text-[10px] font-mono text-zinc-400 uppercase tracking-widest">
-        <span>Copyright © Support Studio Technologies. All Rights Reserved.</span>
+        <span>Copyright &copy; {new Date().getFullYear()} Assist360. All Rights Reserved.</span>
       </footer>
 
       {/* ── DEMO BOOKING DIALOG ── */}

@@ -47,7 +47,7 @@ export default function AdminSettingsPage() {
           <div className="space-y-1">
             <span className="text-[10px] text-zinc-400 font-bold uppercase block">API Endpoints URL:</span>
             <span className="font-mono text-zinc-700 block select-all">
-              {isSupabaseConfigured ? process.env.NEXT_PUBLIC_SUPABASE_URL : 'https://localfallback.sst.internal'}
+              {isSupabaseConfigured ? process.env.NEXT_PUBLIC_SUPABASE_URL : 'https://localfallback.assist360.internal'}
             </span>
           </div>
 

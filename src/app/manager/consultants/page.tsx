@@ -811,7 +811,7 @@ export default function ManagerConsultantsPage() {
     const mockEvents = [
       [`AUD-${type.toUpperCase()}-101`, '2026-05-24 10:14:02', type, 'Marcus Vance (Manager)', 'Apex Global', 'Contract expected capacity adjusted from 160h to 200h.'],
       [`AUD-${type.toUpperCase()}-102`, '2026-05-24 11:22:45', type, 'Marcus Vance (Manager)', 'Priya Raman', 'Resource expertise MM profile tags updated.'],
-      [`AUD-${type.toUpperCase()}-103`, '2026-05-24 14:05:11', type, 'Marcus Vance (Manager)', 'Arjun Mehta', 'Unlock request approved for ticket SST-BASIS-1034.'],
+      [`AUD-${type.toUpperCase()}-103`, '2026-05-24 14:05:11', type, 'Marcus Vance (Manager)', 'Arjun Mehta', 'Unlock request approved for ticket AS360-BASIS-1034.'],
       [`AUD-${type.toUpperCase()}-104`, '2026-05-25 09:30:00', type, 'Marcus Vance (Manager)', 'Titan Energy', 'Customer credentials reset initiated by operational Lead.'],
       [`AUD-${type.toUpperCase()}-105`, '2026-05-25 15:10:48', type, 'Marcus Vance (Manager)', 'Rajesh Kumar', 'Workload routing balanced (ticket reassignment override).']
     ];
@@ -820,7 +820,7 @@ export default function ManagerConsultantsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `SST_Governance_Audit_${type}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Assist360_Governance_Audit_${type}_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

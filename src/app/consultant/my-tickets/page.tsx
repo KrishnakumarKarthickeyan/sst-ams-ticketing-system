@@ -869,7 +869,7 @@ export default function ConsultantMyTicketsPage() {
               <form onSubmit={handleAttachmentSubmit} className="space-y-4">
                 <div className="space-y-1">
                   <label className="font-bold text-zinc-500 uppercase text-[9px] block">File Name</label>
-                  <input type="text" placeholder="e.g. transport_log_SST102.txt" value={uploadFileName}
+                  <input type="text" placeholder="e.g. transport_log_AS360_102.txt" value={uploadFileName}
                     onChange={e => setUploadFileName(e.target.value)}
                     className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition" required />
                 </div>

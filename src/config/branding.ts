@@ -4,14 +4,14 @@
  */
 
 export const BRAND_CONFIG = {
-  name: 'SST SAP Support Desk',
-  shortName: 'SAP Desk',
-  tagline: 'Enterprise-grade SAP AMS SLA Management & Support Portal',
+  name: 'Assist360',
+  shortName: 'Assist360',
+  tagline: 'Enterprise IT Service Management Platform',
   
   logo: {
     // Primary brand logo (PNG generated via sips)
     src: '/logo.png',
-    alt: 'SST SAP Support Desk Logo',
+    alt: 'Assist360 Logo',
     // Fallback/icon version
     iconSrc: '/favicon-32x32.png',
   },
@@ -22,7 +22,7 @@ export const BRAND_CONFIG = {
   },
   
   meta: {
-    title: 'SAP Service Desk & Support Portal',
-    description: 'Enterprise SAP SaaS ticketing, incident management, and Transport Request tracking system.',
+    title: 'Assist360',
+    description: 'AI-Powered Enterprise IT Service Management Platform',
   }
 };

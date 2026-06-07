@@ -180,7 +180,7 @@ export default function AdminUsersPage() {
         name: u.full_name,
         email: u.email,
         role: u.role,
-        organization: u.organization || (u.organizations as any)?.name || 'Support Studio',
+        organization: u.organization || (u.organizations as any)?.name || 'Assist360 Operations',
         active: u.is_active,
         is_locked: u.is_locked || false,
         first_login_completed: u.first_login_completed || false,
@@ -237,7 +237,7 @@ export default function AdminUsersPage() {
         }
       } else {
         const defaultUsers: UserProfile[] = [
-          { id: 'usr-manager-default', name: 'SAP Manager', email: 'manager@supportstudio.com', role: 'Manager', organization: 'Support Studio', active: true }
+          { id: 'usr-manager-default', name: 'SAP Manager', email: 'manager@assist360.com', role: 'Manager', organization: 'Assist360 Operations', active: true }
         ];
         localStorage.setItem('sst_admin_users', JSON.stringify(defaultUsers));
         setLocalUsersList(defaultUsers);
@@ -448,12 +448,12 @@ export default function AdminUsersPage() {
       // Local fallback
       const updated = usersList.map(u => {
         if (u.id === targetUserId) {
-          const selectedOrgName = organizationsList.find(o => o.id === modalFormOrgId)?.name || 'Support Studio';
+          const selectedOrgName = organizationsList.find(o => o.id === modalFormOrgId)?.name || 'Assist360 Operations';
           return {
             ...u,
             name: modalFormName,
             role: modalFormRole,
-            organization: modalFormRole === 'Customer' ? selectedOrgName : 'Support Studio'
+            organization: modalFormRole === 'Customer' ? selectedOrgName : 'Assist360 Operations'
           };
         }
         return u;
@@ -745,7 +745,7 @@ export default function AdminUsersPage() {
                   const val = e.target.value;
                   setNewRole(val);
                   if (val !== 'Customer') {
-                    setNewOrg('SST SAP Operations');
+                    setNewOrg('Assist360 Operations');
                   }
                 }}
                 className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
@@ -764,7 +764,7 @@ export default function AdminUsersPage() {
                 disabled={newRole !== 'Customer'}
                 className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono disabled:opacity-50"
               >
-                <option value="SST SAP Operations">SST SAP Operations</option>
+                <option value="Assist360 Operations">Assist360 Operations</option>
                 <option value="Apex Global Industries">Apex Global Industries</option>
                 <option value="Titan Energy Corp">Titan Energy Corp</option>
                 <option value="Nexa Manufacturing">Nexa Manufacturing</option>
