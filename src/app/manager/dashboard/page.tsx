@@ -1637,14 +1637,35 @@ export default function ManagerDashboardPage() {
 
       {/* ── CORE WORKSPACE TABS INTERFACE ── */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="flex bg-zinc-100 p-1 border border-zinc-200 rounded-lg max-w-4xl overflow-x-auto whitespace-nowrap">
-          <TabsTrigger value="analytics" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Analytics Command Center</TabsTrigger>
-          <TabsTrigger value="health" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Executive Operations</TabsTrigger>
-          <TabsTrigger value="tickets" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Ticket Control Center</TabsTrigger>
-          <TabsTrigger value="resources" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Consultant load & Capacity</TabsTrigger>
-          <TabsTrigger value="customers" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Customer Risk map</TabsTrigger>
-          <TabsTrigger value="approvals" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Governance & Financials</TabsTrigger>
-          <TabsTrigger value="timeline" className="flex-1 py-1.5 text-center font-bold uppercase text-[9px]">Activity & Audit Feed</TabsTrigger>
+        <TabsList className="w-full flex h-auto items-center justify-start gap-1 bg-zinc-100/80 p-1 border border-zinc-200/60 rounded-xl overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <TabsTrigger value="analytics" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
+            <TrendingUp size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            Analytics Command Center
+          </TabsTrigger>
+          <TabsTrigger value="health" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
+            <CheckSquare size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            Executive Operations
+          </TabsTrigger>
+          <TabsTrigger value="tickets" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
+            <Timer size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            Ticket Control Center
+          </TabsTrigger>
+          <TabsTrigger value="resources" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
+            <Users size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            Consultant load & Capacity
+          </TabsTrigger>
+          <TabsTrigger value="customers" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
+            <ShieldAlert size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            Customer Risk map
+          </TabsTrigger>
+          <TabsTrigger value="approvals" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
+            <Lock size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            Governance & Financials
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
+            <Calendar size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            Activity & Audit Feed
+          </TabsTrigger>
         </TabsList>
 
         {/* ── TAB CONTENT: ANALYTICS COMMAND CENTER ── */}
