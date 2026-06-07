@@ -297,7 +297,22 @@ export default function CustomerTicketDetailPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const selected = Array.from(e.target.files);
-    const newFiles = selected.map(file => {
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    
+    const validFiles: PendingAttachment[] = [];
+    for (const file of selected) {
+      if (file.size > 10 * 1024 * 1024) {
+        showBannerMessage(`Error: File size exceeds 10MB limit: ${file.name}`);
+        continue;
+      }
+      
+      const lastDotIdx = file.name.lastIndexOf('.');
+      const fileExtension = lastDotIdx !== -1 ? file.name.slice(lastDotIdx).toLowerCase() : '';
+      if (blockedExtensions.includes(fileExtension)) {
+        showBannerMessage(`Error: Forbidden file extension: ${file.name}. Executable and script files are blocked.`);
+        continue;
+      }
+
       const id = `${Date.now()}-${file.name}`;
       const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
       const pendingFile: PendingAttachment = { id, file, progress: 0, previewUrl };
@@ -307,9 +322,12 @@ export default function CustomerTicketDetailPage() {
         setCommentFiles(prev => prev.map(f => f.id === id ? { ...f, progress: currentProgress } : f));
         if (currentProgress >= 100) clearInterval(interval);
       }, 50);
-      return pendingFile;
-    });
-    setCommentFiles(prev => [...prev, ...newFiles]);
+      validFiles.push(pendingFile);
+    }
+    
+    if (validFiles.length > 0) {
+      setCommentFiles(prev => [...prev, ...validFiles]);
+    }
   };
 
   const removePendingFile = (id: string) => {
@@ -323,7 +341,22 @@ export default function CustomerTicketDetailPage() {
   const handleEscalateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const selected = Array.from(e.target.files);
-    const newFiles = selected.map(file => {
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    
+    const validFiles: PendingAttachment[] = [];
+    for (const file of selected) {
+      if (file.size > 10 * 1024 * 1024) {
+        showBannerMessage(`Error: File size exceeds 10MB limit: ${file.name}`);
+        continue;
+      }
+      
+      const lastDotIdx = file.name.lastIndexOf('.');
+      const fileExtension = lastDotIdx !== -1 ? file.name.slice(lastDotIdx).toLowerCase() : '';
+      if (blockedExtensions.includes(fileExtension)) {
+        showBannerMessage(`Error: Forbidden file extension: ${file.name}. Executable and script files are blocked.`);
+        continue;
+      }
+
       const id = `${Date.now()}-${file.name}`;
       const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
       const pendingFile: PendingAttachment = { id, file, progress: 0, previewUrl };
@@ -333,9 +366,12 @@ export default function CustomerTicketDetailPage() {
         setEscalateFiles(prev => prev.map(f => f.id === id ? { ...f, progress: currentProgress } : f));
         if (currentProgress >= 100) clearInterval(interval);
       }, 50);
-      return pendingFile;
-    });
-    setEscalateFiles(prev => [...prev, ...newFiles]);
+      validFiles.push(pendingFile);
+    }
+    
+    if (validFiles.length > 0) {
+      setEscalateFiles(prev => [...prev, ...validFiles]);
+    }
   };
 
   const removeEscalateFile = (id: string) => {
@@ -344,6 +380,49 @@ export default function CustomerTicketDetailPage() {
       if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
       return prev.filter(f => f.id !== id);
     });
+  };
+
+  const handleDownloadFile = async (fileName: string, path: string) => {
+    const { isSupabaseConfigured, supabase } = await import('../../../../lib/supabase/client');
+    if (isSupabaseConfigured && supabase && path) {
+      try {
+        let relativePath = path;
+        if (path.includes('/sap-tickets/')) {
+          const parts = path.split('/sap-tickets/');
+          relativePath = parts[parts.length - 1];
+        }
+        
+        console.log(`[STORAGE] Generating signed URL for path: ${relativePath}`);
+        const { data, error } = await supabase.storage
+          .from('sap-tickets')
+          .createSignedUrl(relativePath, 60);
+
+        if (error) {
+          console.error('[STORAGE] Error generating signed URL:', error);
+          if (path.startsWith('http://') || path.startsWith('https://')) {
+            window.open(path, '_blank');
+          } else {
+            showBannerMessage(`Failed to generate signed URL: ${error.message}`);
+          }
+          return;
+        }
+
+        if (data?.signedUrl) {
+          window.open(data.signedUrl, '_blank');
+        } else {
+          window.open(path, '_blank');
+        }
+      } catch (err: any) {
+        console.error('[STORAGE] Error generating signed URL:', err);
+        window.open(path, '_blank');
+      }
+    } else {
+      if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+        window.open(path, '_blank');
+      } else {
+        showBannerMessage(`Simulated download: Fetching file "${fileName}" from secure path: ${path}`);
+      }
+    }
   };
 
   // Handlers
@@ -891,9 +970,8 @@ export default function CustomerTicketDetailPage() {
                       {visibleAttachments.map(att => (
                         <a
                           key={att.id}
-                          href={att.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); handleDownloadFile(att.fileName, att.fileUrl || att.filePath); }}
                           className="flex items-center gap-3 px-4 py-3 border border-zinc-200 hover:border-indigo-300 rounded-xl bg-zinc-50 hover:bg-indigo-50/50 transition-all group"
                         >
                           <div className="w-10 h-10 rounded-lg bg-white border border-zinc-200 flex items-center justify-center group-hover:border-indigo-200 transition">
@@ -1015,9 +1093,8 @@ export default function CustomerTicketDetailPage() {
                                 {evt.attachments.map((att: any) => (
                                   <a
                                     key={att.id}
-                                    href={att.fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    href="#"
+                                    onClick={(e) => { e.preventDefault(); handleDownloadFile(att.fileName, att.fileUrl || att.filePath); }}
                                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-[12px] text-zinc-600 hover:border-indigo-300 hover:text-indigo-600 transition font-medium"
                                   >
                                     <FileCode size={12} className="text-indigo-400" />

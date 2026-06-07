@@ -424,6 +424,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     setIsUploadingClosure(true);
     const filesList = Array.from(files);
 
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+
     for (const file of filesList) {
       const fileId = `file-cls-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       
@@ -440,8 +442,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
       setClosureFiles(prev => [...prev, newAttachment]);
 
+      const lastDotIdx = file.name.lastIndexOf('.');
+      const fileExtension = lastDotIdx !== -1 ? file.name.slice(lastDotIdx).toLowerCase() : '';
+      const isExtensionBlocked = blockedExtensions.includes(fileExtension);
+
       if (file.size > 10 * 1024 * 1024) {
         setClosureFiles(prev => prev.map(a => a.id === fileId ? { ...a, progress: 0, isUploading: false, fileName: `${a.fileName} (Exceeds 10MB limit)` } : a));
+        continue;
+      }
+
+      if (isExtensionBlocked) {
+        setClosureFiles(prev => prev.map(a => a.id === fileId ? { ...a, progress: 0, isUploading: false, fileName: `${a.fileName} (Blocked file type)` } : a));
         continue;
       }
 
@@ -504,6 +515,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     setIsUploading(true);
     const filesList = Array.from(files);
 
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+
     for (const file of filesList) {
       const fileId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       
@@ -519,8 +532,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
       setCommentFiles(prev => [...prev, newAttachment]);
 
+      const lastDotIdx = file.name.lastIndexOf('.');
+      const fileExtension = lastDotIdx !== -1 ? file.name.slice(lastDotIdx).toLowerCase() : '';
+      const isExtensionBlocked = blockedExtensions.includes(fileExtension);
+
       if (file.size > 10 * 1024 * 1024) {
         setCommentFiles(prev => prev.map(a => a.id === fileId ? { ...a, progress: 0, isUploading: false, fileName: `${a.fileName} (Exceeds 10MB limit)` } : a));
+        continue;
+      }
+
+      if (isExtensionBlocked) {
+        setCommentFiles(prev => prev.map(a => a.id === fileId ? { ...a, progress: 0, isUploading: false, fileName: `${a.fileName} (Blocked file type)` } : a));
         continue;
       }
 

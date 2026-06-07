@@ -63,6 +63,48 @@ export default function AdminOrganizationsPage() {
     }
   };
 
+  const handleDownloadFile = async (fileName: string, path: string) => {
+    if (isSupabaseConfigured && supabase && path) {
+      try {
+        let relativePath = path;
+        if (path.includes('/sap-tickets/')) {
+          const parts = path.split('/sap-tickets/');
+          relativePath = parts[parts.length - 1];
+        }
+        
+        console.log(`[STORAGE] Generating signed URL for path: ${relativePath}`);
+        const { data, error } = await supabase.storage
+          .from('sap-tickets')
+          .createSignedUrl(relativePath, 60);
+
+        if (error) {
+          console.error('[STORAGE] Error generating signed URL:', error);
+          if (path.startsWith('http://') || path.startsWith('https://')) {
+            window.open(path, '_blank');
+          } else {
+            toast.error(`Failed to generate signed URL: ${error.message}`);
+          }
+          return;
+        }
+
+        if (data?.signedUrl) {
+          window.open(data.signedUrl, '_blank');
+        } else {
+          window.open(path, '_blank');
+        }
+      } catch (err: any) {
+        console.error('[STORAGE] Error generating signed URL:', err);
+        window.open(path, '_blank');
+      }
+    } else {
+      if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+        window.open(path, '_blank');
+      } else {
+        toast.info(`Simulated download: Fetching file "${fileName}" from secure path: ${path}`);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchOrgsAndProfiles();
   }, []);
@@ -496,9 +538,8 @@ export default function AdminOrganizationsPage() {
                     {org360Data.attachments.map(att => (
                       <a
                         key={att.id}
-                        href={att.fileUrl || att.filePath}
-                        target="_blank"
-                        rel="noreferrer"
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); handleDownloadFile(att.fileName, att.fileUrl || att.filePath); }}
                         className="p-2 border border-zinc-150 rounded bg-zinc-50 hover:bg-zinc-100 transition flex items-center justify-between gap-2 text-zinc-750"
                       >
                         <span className="font-semibold truncate max-w-[120px]">{att.fileName}</span>

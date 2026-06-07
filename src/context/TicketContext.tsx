@@ -139,7 +139,7 @@ interface TicketContextType {
     isInternal: boolean,
     attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string; fileObj?: File }[],
     mentions?: string[]
-  ) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
   logEffort: (data: {
     ticketId: string;
     hours: number;
@@ -914,14 +914,29 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     fileObj?: File,
     fileUrlOrData?: string
   ): Promise<string> => {
-    if (fileUrlOrData && fileUrlOrData.includes('supabase.co/storage/v1/object/public/sap-tickets/')) {
+    // 1. File size limit validation (10MB)
+    if (fileSize > 10 * 1024 * 1024) {
+      throw new Error(`File size exceeds 10MB limit: ${fileName}`);
+    }
+
+    // 2. File extension validation (block executables and script files)
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    const lastDotIdx = fileName.lastIndexOf('.');
+    if (lastDotIdx !== -1) {
+      const fileExtension = fileName.slice(lastDotIdx).toLowerCase();
+      if (blockedExtensions.includes(fileExtension)) {
+        throw new Error(`Forbidden file extension: ${fileName}. Executable and script files are blocked for security.`);
+      }
+    }
+
+    if (fileUrlOrData && (fileUrlOrData.includes('supabase.co/storage/v1/object/public/sap-tickets/') || fileUrlOrData.includes('supabase.co/storage/v1/object/sign/sap-tickets/'))) {
       return fileUrlOrData;
     }
     if (isSupabaseConfigured && supabase) {
       try {
         try {
           await supabase.storage.createBucket('sap-tickets', {
-            public: true,
+            public: false, // Make the storage bucket private/secure
             fileSizeLimit: 10485760
           });
         } catch (e) {
@@ -947,13 +962,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         if (uploadErr) {
           console.error('Supabase storage upload error:', uploadErr);
-          return fileUrlOrData || `/files/${fileName}`;
+          throw uploadErr;
         }
 
         const { data } = supabase.storage.from('sap-tickets').getPublicUrl(storagePath);
-        return data?.publicUrl || fileUrlOrData || `/files/${fileName}`;
-      } catch (err) {
+        return data?.publicUrl || storagePath;
+      } catch (err: any) {
         console.error('Error in uploadAttachmentToSupabase:', err);
+        throw err;
       }
     }
     return fileUrlOrData || `/files/${fileName}`;
@@ -1018,23 +1034,28 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return v.toString(16);
         });
 
-    // Map Attachments local objects (will link to public bucket files on upload)
+    // Map Attachments local objects (will link to secure bucket files on upload)
     const newAttachments: Attachment[] = [];
-    for (let idx = 0; idx < (data.attachments || []).length; idx++) {
-      const att = data.attachments![idx];
-      const fileUrl = await uploadAttachmentToSupabase(ticketId, att.fileName, att.fileSize, att.fileType, att.fileObj);
-      newAttachments.push({
-        id: `a-${Date.now()}-${idx}`,
-        ticketId,
-        fileName: att.fileName,
-        filePath: fileUrl,
-        fileUrl: fileUrl,
-        fileType: att.fileType,
-        fileSize: att.fileSize,
-        uploadedBy: data.requestedBy,
-        visibility: 'public',
-        createdAt: new Date().toISOString()
-      });
+    try {
+      for (let idx = 0; idx < (data.attachments || []).length; idx++) {
+        const att = data.attachments![idx];
+        const fileUrl = await uploadAttachmentToSupabase(ticketId, att.fileName, att.fileSize, att.fileType, att.fileObj);
+        newAttachments.push({
+          id: `a-${Date.now()}-${idx}`,
+          ticketId,
+          fileName: att.fileName,
+          filePath: fileUrl,
+          fileUrl: fileUrl,
+          fileType: att.fileType,
+          fileSize: att.fileSize,
+          uploadedBy: data.requestedBy,
+          visibility: 'public',
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (err: any) {
+      console.error('Attachment upload failed during ticket creation:', err);
+      return { success: false, error: err.message };
     }
 
     const ticketSource = data.source || 'Created by Client';
@@ -1749,27 +1770,32 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     isInternal: boolean,
     attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string; fileObj?: File }[],
     mentions?: string[]
-  ) => {
+  ): Promise<{ success: boolean; error?: string }> => {
     const commentId = `c-${Date.now()}`;
     
     // Build attachments
     const newAttachments: Attachment[] = [];
-    for (let idx = 0; idx < (attachments || []).length; idx++) {
-      const att = attachments![idx];
-      const fileUrl = await uploadAttachmentToSupabase(ticketId, att.fileName, att.fileSize, att.fileType, att.fileObj, att.fileUrl);
-      newAttachments.push({
-        id: `a-comment-${Date.now()}-${idx}`,
-        ticketId,
-        commentId,
-        fileName: att.fileName,
-        filePath: fileUrl,
-        fileUrl: fileUrl,
-        fileType: att.fileType,
-        fileSize: att.fileSize,
-        uploadedBy: authorName,
-        visibility: isInternal ? 'internal' : 'public',
-        createdAt: new Date().toISOString()
-      });
+    try {
+      for (let idx = 0; idx < (attachments || []).length; idx++) {
+        const att = attachments![idx];
+        const fileUrl = await uploadAttachmentToSupabase(ticketId, att.fileName, att.fileSize, att.fileType, att.fileObj, att.fileUrl);
+        newAttachments.push({
+          id: `a-comment-${Date.now()}-${idx}`,
+          ticketId,
+          commentId,
+          fileName: att.fileName,
+          filePath: fileUrl,
+          fileUrl: fileUrl,
+          fileType: att.fileType,
+          fileSize: att.fileSize,
+          uploadedBy: authorName,
+          visibility: isInternal ? 'internal' : 'public',
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (err: any) {
+      console.error('Attachment upload failed during addComment:', err);
+      return { success: false, error: err.message };
     }
 
     const commentAttachments: TicketCommentAttachment[] = newAttachments.map(att => ({
@@ -1875,8 +1901,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             new_value: `${isInternal ? 'Internal note' : 'Public comment'} added by ${authorName}`
           });
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error in addComment Supabase update:', err);
+        return { success: false, error: err.message || 'Database error adding comment.' };
       }
     }
 
@@ -1956,6 +1983,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ticketId
       );
     });
+
+    return { success: true };
   };
 
   const logEffort = async (data: {

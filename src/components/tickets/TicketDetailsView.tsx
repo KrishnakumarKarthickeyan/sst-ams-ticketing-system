@@ -445,6 +445,21 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     const file = e.target.files[0];
     
     const sizeBytes = file.size;
+    if (sizeBytes > 10 * 1024 * 1024) {
+      showBannerMessage(`Error: File size exceeds 10MB limit: ${file.name}`);
+      return;
+    }
+
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    const lastDotIdx = file.name.lastIndexOf('.');
+    if (lastDotIdx !== -1) {
+      const fileExtension = file.name.slice(lastDotIdx).toLowerCase();
+      if (blockedExtensions.includes(fileExtension)) {
+        showBannerMessage(`Error: Forbidden file extension: ${file.name}. Executable and script files are blocked.`);
+        return;
+      }
+    }
+
     const newFile = {
       id: `sim-file-${Date.now()}`,
       fileName: file.name,

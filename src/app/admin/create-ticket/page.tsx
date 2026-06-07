@@ -70,7 +70,7 @@ export default function AdminCreateTicketPage() {
   }, [dbOrganizations, organization]);
 
   // Attachment states
-  const [attachments, setAttachments] = useState<{ fileName: string; fileSize: number; fileType: string }[]>([]);
+  const [attachments, setAttachments] = useState<{ fileName: string; fileSize: number; fileType: string; fileObj?: File }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -80,21 +80,45 @@ export default function AdminCreateTicketPage() {
     setCustomerIndex(0); // Reset customer index when organization changes
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     setIsUploading(true);
     
-    // Simulate short upload latency
-    setTimeout(() => {
-      const files = Array.from(e.target.files || []);
-      const newAtts = files.map(file => ({
+    const { toast } = await import('sonner');
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    
+    const files = Array.from(e.target.files || []);
+    const validAtts: typeof attachments = [];
+
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File size exceeds 10MB limit: ${file.name}`);
+        continue;
+      }
+      
+      const lastDotIdx = file.name.lastIndexOf('.');
+      const fileExtension = lastDotIdx !== -1 ? file.name.slice(lastDotIdx).toLowerCase() : '';
+      if (blockedExtensions.includes(fileExtension)) {
+        toast.error(`Forbidden file extension: ${file.name}. Executable and script files are blocked.`);
+        continue;
+      }
+      
+      validAtts.push({
         fileName: file.name,
         fileSize: file.size,
-        fileType: file.type
-      }));
-      setAttachments(prev => [...prev, ...newAtts]);
+        fileType: file.type,
+        fileObj: file
+      });
+    }
+
+    if (validAtts.length > 0) {
+      setTimeout(() => {
+        setAttachments(prev => [...prev, ...validAtts]);
+        setIsUploading(false);
+      }, 600);
+    } else {
       setIsUploading(false);
-    }, 600);
+    }
   };
 
   const removeAttachment = (index: number) => {
