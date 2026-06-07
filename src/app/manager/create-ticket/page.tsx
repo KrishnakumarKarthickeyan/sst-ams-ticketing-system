@@ -175,8 +175,7 @@ export default function ManagerCreateTicketPage() {
         const { data, error } = await supabase
           .from('profiles')
           .select('id, full_name, email, is_active, organization_id, organizations(id, name, customer_code)')
-          .eq('role', 'Customer')
-          .eq('is_active', true);
+          .eq('role', 'Customer');
         
         if (error) throw error;
         
@@ -187,35 +186,19 @@ export default function ManagerCreateTicketPage() {
             email: item.email,
             companyName: item.organizations?.name || 'Unknown Organization',
             customerCode: item.organizations?.customer_code || 'N/A',
-            isActive: item.is_active
+            isActive: item.is_active !== false
           }));
           setCustomersList(list);
-          return;
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching customers from Supabase:', err);
+        toast.error(`Database query failed: ${err.message || err}`);
+      } finally {
+        setLoadingCustomers(false);
       }
+    } else {
+      setLoadingCustomers(false);
     }
-    
-    // LocalStorage Fallback if Supabase is offline or returns empty
-    const storedCustomers = localStorage.getItem('sst_stakeholder_customers');
-    if (storedCustomers) {
-      try {
-        const parsed = JSON.parse(storedCustomers);
-        const list = parsed.map((c: any) => ({
-          id: c.id,
-          fullName: c.contact || c.name || 'Contact Person',
-          email: c.email || 'customer@sap.com',
-          companyName: c.company || c.organizationName || 'Company Name',
-          customerCode: c.customerCode || 'CUST-' + c.id.slice(0, 4).toUpperCase(),
-          isActive: c.active !== false
-        }));
-        setCustomersList(list);
-      } catch (e) {
-        console.error('Failed to parse fallback customers:', e);
-      }
-    }
-    setLoadingCustomers(false);
   };
 
   useEffect(() => {
@@ -893,29 +876,39 @@ export default function ManagerCreateTicketPage() {
                           ) : filteredCustomers.length === 0 ? (
                             <div className="text-[10px] text-zinc-400 text-center py-4">No active customers found.</div>
                           ) : (
-                            filteredCustomers.map(cust => (
-                              <div 
-                                key={cust.id}
-                                onClick={() => {
-                                  setSelectedCustomer(cust);
-                                  setShowCustDropdown(false);
-                                }}
-                                className={`p-2.5 rounded-lg text-left cursor-pointer transition space-y-0.5 ${
-                                  selectedCustomer?.id === cust.id 
-                                    ? 'bg-zinc-950 text-white' 
-                                    : 'hover:bg-zinc-50 text-zinc-800'
-                                }`}
-                              >
-                                <div className="flex justify-between items-center gap-2">
-                                  <span className="font-bold text-xs font-sans truncate">{cust.companyName}</span>
-                                  <Badge className="bg-emerald-50 hover:bg-emerald-50 text-emerald-800 text-[8px] font-bold border-emerald-100 rounded px-1.5 py-0">Active</Badge>
+                            filteredCustomers.map(cust => {
+                              const isInactive = !cust.isActive;
+                              return (
+                                <div 
+                                  key={cust.id}
+                                  onClick={() => {
+                                    if (isInactive) return;
+                                    setSelectedCustomer(cust);
+                                    setShowCustDropdown(false);
+                                  }}
+                                  className={`p-2.5 rounded-lg text-left transition space-y-0.5 ${
+                                    isInactive 
+                                      ? 'opacity-50 cursor-not-allowed bg-zinc-50 text-zinc-400' 
+                                      : selectedCustomer?.id === cust.id 
+                                        ? 'bg-zinc-950 text-white cursor-pointer' 
+                                        : 'hover:bg-zinc-50 text-zinc-800 cursor-pointer'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-center gap-2">
+                                    <span className="font-bold text-xs font-sans truncate">{cust.companyName}</span>
+                                    {isInactive ? (
+                                      <Badge className="bg-red-50 hover:bg-red-50 text-red-800 text-[8px] font-bold border-red-100 rounded px-1.5 py-0 shrink-0">Inactive</Badge>
+                                    ) : (
+                                      <Badge className="bg-emerald-50 hover:bg-emerald-50 text-emerald-800 text-[8px] font-bold border-emerald-100 rounded px-1.5 py-0 shrink-0">Active</Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] opacity-75 truncate font-mono">
+                                    <span>{cust.fullName}</span>
+                                    {cust.customerCode !== 'N/A' && <span className="ml-1 text-zinc-400">[{cust.customerCode}]</span>}
+                                  </div>
                                 </div>
-                                <div className="text-[10px] opacity-75 truncate font-mono">
-                                  <span>{cust.fullName}</span>
-                                  {cust.customerCode !== 'N/A' && <span className="ml-1 text-zinc-400">[{cust.customerCode}]</span>}
-                                </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
                         </div>
 
