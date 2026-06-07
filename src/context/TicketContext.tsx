@@ -2331,14 +2331,16 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             id: `h-closure-approval-${Date.now()}`,
             ticketId,
             changedBy: actorName,
-            fieldChanged: 'Closure Approved',
-            oldValue: 'Approval Pending',
-            newValue: 'Approved',
+            fieldChanged: 'Status',
+            oldValue: t.status,
+            newValue: 'Closed',
             createdAt: new Date().toISOString()
           }
         ];
         return {
           ...t,
+          status: 'Closed' as TicketStatus,
+          closureStatus: 'Approved',
           approvalRequiredFlag: false,
           updatedAt: new Date().toISOString(),
           history: hist
@@ -2403,6 +2405,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           old_value: tObj.status,
           new_value: 'Closed'
         });
+
+        await fetchData();
+        return;
       } catch (err) {
         console.error('Error closing ticket in Supabase:', err);
       }
@@ -4683,6 +4688,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           if (ratingErr) throw ratingErr;
           if (insRating) satisfactionRatingId = insRating.id;
         }
+
+        // Force refetch to sync all data across the dashboard
+        await fetchData();
+        return { success: true };
 
       } catch (err: any) {
         console.error('Error approving closure request in Supabase (initiating rollback):', err);
