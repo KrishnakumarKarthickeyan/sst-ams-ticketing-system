@@ -6,6 +6,7 @@ import { useTickets } from '../../context/TicketContext';
 import { useAuth } from '../../context/AuthContext';
 import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
+import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
 import {
   ArrowLeft,
   Clock,
@@ -262,7 +263,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     return {
       func: funcEst,
       tech: techEst,
-      total: funcEst + techEst
+      total: computeTeamEstimate(ticket.estimates)
     };
   }, [ticket]);
 
@@ -282,7 +283,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     return {
       func: funcAct,
       tech: techAct,
-      total: funcAct + techAct
+      total: computeTeamActual(approvedLogs)
     };
   }, [ticket]);
 
@@ -2306,8 +2307,8 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
         const technicalTotalEst = technicalConsultants.reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
         const technicalTotalAct = technicalConsultants.reduce((sum, e) => sum + (e.actualHours || 0), 0);
 
-        const grandTotalEst = functionalTotalEst + technicalTotalEst;
-        const grandTotalAct = functionalTotalAct + technicalTotalAct;
+        const grandTotalEst = computeTeamEstimate(ticket?.consultantEfforts);
+        const grandTotalAct = computeTeamActual(ticket?.consultantEfforts);
 
         const activeRequest = ticket?.closureRequests?.find(c => c.id === pendingClosureId) || ticket?.closureRequests?.[ticket.closureRequests.length - 1];
 

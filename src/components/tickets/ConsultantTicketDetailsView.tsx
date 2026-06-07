@@ -6,6 +6,7 @@ import { useTickets } from '../../context/TicketContext';
 import { useAuth } from '../../context/AuthContext';
 import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
+import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import {
   ArrowLeft,
@@ -744,9 +745,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   const myEstimate = (ticket.estimates || []).find(e => e.consultantId === user?.id);
   const myEstimatedHours = myEstimate ? myEstimate.estimatedHours : 0;
 
-  const teamEstimatedHours = (ticket.estimates || [])
-    .filter(e => e.consultantId !== user?.id)
-    .reduce((sum, e) => sum + e.estimatedHours, 0);
+  const teamEstimatedHours = computeTeamEstimate(ticket.estimates);
 
   const functionalTotalEst = (ticket.estimates || [])
     .filter(e => e.consultantType === 'Functional')
@@ -766,9 +765,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     .filter(log => log.consultantId === user?.id)
     .reduce((sum, log) => sum + log.actualHours, 0);
 
-  const teamActualHours = approvedActualLogs
-    .filter(log => log.consultantId !== user?.id)
-    .reduce((sum, log) => sum + log.actualHours, 0);
+  const teamActualHours = computeTeamActual(approvedActualLogs);
 
   const functionalTotalAct = approvedActualLogs
     .filter(log => log.consultantType === 'Functional')
