@@ -56,6 +56,9 @@ import {
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '../../../components/ui/chart';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { Button } from '../../../components/ui/button';
+import { RotateCcw } from 'lucide-react';
 
 export default function CustomerDashboardPage() {
   const { tickets, contracts, loading } = useTickets();
@@ -128,13 +131,124 @@ export default function CustomerDashboardPage() {
   }
   const customerCompany = user?.company || 'Apex Global Industries';
 
-  const companyTickets = useMemo(() => {
+  // --- FILTERS & STATE ---
+  const [filters, setFilters] = React.useState({
+    period: 'This Year',
+    dateFrom: '',
+    dateTo: '',
+    statuses: ['All'],
+    priority: 'All',
+    module: 'All'
+  });
+  const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
+  const statusDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const baseCompanyTickets = useMemo(() => {
     return filterTicketsByScope(tickets, { type: 'customer', value: customerCompany });
   }, [tickets, customerCompany]);
 
+  const distinctModules = useMemo(() => {
+    const mods = baseCompanyTickets.map(t => t.sapModule).filter(Boolean);
+    return Array.from(new Set(mods)).sort();
+  }, [baseCompanyTickets]);
+
+  const applyFilters = (ticketsList: typeof baseCompanyTickets, f: typeof filters) => {
+    return ticketsList.filter(t => {
+      // Date period filter
+      const ticketDate = new Date(t.createdAt);
+      let passDate = true;
+      const now = new Date();
+
+      if (f.period === 'This Month') {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'This Quarter') {
+        const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+        const start = new Date(now.getFullYear(), quarterStartMonth, 1);
+        const end = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'This Year') {
+        const start = new Date(now.getFullYear(), 0, 1);
+        const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'Custom') {
+        if (f.dateFrom) {
+          const start = new Date(f.dateFrom);
+          start.setHours(0, 0, 0, 0);
+          passDate = passDate && (ticketDate >= start);
+        }
+        if (f.dateTo) {
+          const end = new Date(f.dateTo);
+          end.setHours(23, 59, 59, 999);
+          passDate = passDate && (ticketDate <= end);
+        }
+      }
+
+      if (!passDate) return false;
+
+      // Status filter
+      if (f.statuses && f.statuses.length > 0 && !f.statuses.includes('All')) {
+        let simplifiedStatus = '';
+        if (t.status === 'New') {
+          simplifiedStatus = 'New';
+        } else if (t.status === 'Assigned') {
+          simplifiedStatus = 'Assigned';
+        } else if (
+          ['In Progress', 'In Progress - Functional', 'Awaiting Functional Submission', 'In Progress - Technical', 'Awaiting Technical Submission', 'Requirement Gathering'].includes(t.status)
+        ) {
+          simplifiedStatus = 'In Progress';
+        } else if (
+          ['Awaiting Closure', 'Request for Closure', 'Awaiting Manager Approval', 'Waiting for Hours Approval'].includes(t.status)
+        ) {
+          simplifiedStatus = 'Pending Closure';
+        } else if (t.status === 'Closed' || t.status === 'Resolved') {
+          simplifiedStatus = 'Closed';
+        } else if (t.status === 'Reopened') {
+          simplifiedStatus = 'Reopened';
+        }
+
+        const isEscalatedMatch = f.statuses.includes('Escalated') && (t.escalationFlag || t.status === 'Raised to SAP');
+        const isStatusMatch = f.statuses.includes(simplifiedStatus);
+
+        if (!isStatusMatch && !isEscalatedMatch) {
+          return false;
+        }
+      }
+
+      // Priority filter
+      if (f.priority && f.priority !== 'All') {
+        if (t.priority !== f.priority) return false;
+      }
+
+      // Module filter
+      if (f.module && f.module !== 'All') {
+        if (t.sapModule !== f.module) return false;
+      }
+
+      return true;
+    });
+  };
+
+  const filteredTickets = useMemo(() => {
+    return applyFilters(baseCompanyTickets, filters);
+  }, [baseCompanyTickets, filters]);
+
+  const companyTickets = filteredTickets;
+
   const dashboardData = useMemo(() => {
-    return getCustomerDashboardData(customerCompany, tickets, contracts);
-  }, [customerCompany, tickets, contracts]);
+    return getCustomerDashboardData(customerCompany, filteredTickets, contracts);
+  }, [customerCompany, filteredTickets, contracts]);
 
   const {
     openTickets,
@@ -473,6 +587,162 @@ export default function CustomerDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* ── CUSTOMER DYNAMIC FILTER BAR ── */}
+      <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden p-4 font-mono text-xs">
+        <div className="flex flex-row items-center gap-3">
+          {/* 1. Time Period */}
+          <div className="flex flex-col gap-1 min-w-[120px]">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Period</span>
+            <Select 
+              value={filters.period} 
+              onValueChange={(val) => setFilters(prev => ({ ...prev, period: val }))}
+            >
+              <SelectTrigger className="h-9 text-[10px] text-zinc-700 bg-white border-zinc-200">
+                <SelectValue placeholder="Period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Time</SelectItem>
+                <SelectItem value="This Month">This Month</SelectItem>
+                <SelectItem value="This Quarter">This Quarter</SelectItem>
+                <SelectItem value="This Year">This Year</SelectItem>
+                <SelectItem value="Custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 2. Priority */}
+          <div className="flex flex-col gap-1 min-w-[120px]">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Priority</span>
+            <Select 
+              value={filters.priority} 
+              onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
+            >
+              <SelectTrigger className="h-9 text-[10px] text-zinc-700 bg-white border-zinc-200">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Priorities</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 3. SAP Module */}
+          <div className="flex flex-col gap-1 min-w-[120px]">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">SAP Module</span>
+            <Select 
+              value={filters.module} 
+              onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
+            >
+              <SelectTrigger className="h-9 text-[10px] text-zinc-700 bg-white border-zinc-200">
+                <SelectValue placeholder="Module" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Modules</SelectItem>
+                {distinctModules.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 4. Multi-select Status Dropdown */}
+          <div className="flex flex-col gap-1 min-w-[150px] relative" ref={statusDropdownRef}>
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Status Class</span>
+            <button
+              type="button"
+              onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+              className="h-9 w-full flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-[10px] text-zinc-700 focus:outline-none"
+            >
+              <span className="truncate">
+                {filters.statuses.includes('All') ? 'All Statuses' : filters.statuses.join(', ')}
+              </span>
+              <span className="text-zinc-400">▼</span>
+            </button>
+            
+            {showStatusDropdown && (
+              <div className="absolute top-full left-0 z-50 mt-1 w-full rounded-md border border-zinc-200 bg-white p-2 shadow-md">
+                <div className="space-y-1">
+                  {['All', 'New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Reopened', 'Escalated'].map((st) => {
+                    const checked = filters.statuses.includes(st);
+                    return (
+                      <label key={st} className="flex items-center gap-2 px-2 py-1 hover:bg-zinc-50 rounded cursor-pointer text-[10px]">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            if (st === 'All') {
+                              setFilters(prev => ({ ...prev, statuses: ['All'] }));
+                            } else {
+                              let next = [...filters.statuses].filter(x => x !== 'All');
+                              if (checked) {
+                                next = next.filter(x => x !== st);
+                                if (next.length === 0) next = ['All'];
+                              } else {
+                                next.push(st);
+                              }
+                              setFilters(prev => ({ ...prev, statuses: next }));
+                            }
+                          }}
+                          className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                        />
+                        <span>{st}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Reset Button */}
+          <div className="ml-auto flex items-end h-full mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setFilters({
+                period: 'This Year',
+                dateFrom: '',
+                dateTo: '',
+                statuses: ['All'],
+                priority: 'All',
+                module: 'All'
+              })}
+              className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold flex items-center gap-2 rounded-lg"
+            >
+              <RotateCcw size={12} />
+              Reset Filters
+            </Button>
+          </div>
+        </div>
+
+        {/* ROW 2: Custom Date Picker */}
+        {filters.period === 'Custom' && (
+          <div className="mt-3 pt-3 border-t border-zinc-150 flex flex-row items-center gap-3">
+            <div className="flex flex-col gap-1 min-w-[140px]">
+              <span className="text-[9px] font-bold text-zinc-400 uppercase">From Date</span>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                className="h-9 border border-zinc-200 rounded px-3 text-[10px] text-zinc-700 outline-none bg-white focus:border-zinc-400"
+              />
+            </div>
+            <div className="flex flex-col gap-1 min-w-[140px]">
+              <span className="text-[9px] font-bold text-zinc-400 uppercase">To Date</span>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                className="h-9 border border-zinc-200 rounded px-3 text-[10px] text-zinc-700 outline-none bg-white focus:border-zinc-400"
+              />
+            </div>
+          </div>
+        )}
+      </Card>
 
       {companyTickets.length === 0 ? (
         <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden p-8 flex flex-col items-center justify-center text-center space-y-6 min-h-[400px]">
