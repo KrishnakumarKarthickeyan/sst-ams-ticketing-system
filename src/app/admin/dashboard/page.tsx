@@ -50,6 +50,8 @@ import {
   verifyPasswordPolicy
 } from '../../actions/auth';
 
+const SYSTEM_NOW = new Date('2026-06-07T08:00:00Z').getTime();
+
 export default function AdminDashboardPage() {
   const { user } = useAuth();
   const { tickets, contracts, profiles, loading, refetchData, orgMap } = useTickets();
@@ -58,17 +60,17 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<string>('cockpit');
 
   // Search and filter states (10 Global Filters + Sub-filters)
-  const [startDateFilter, setStartDateFilter] = useState('');
-  const [endDateFilter, setEndDateFilter] = useState('');
-  const [monthFilter, setMonthFilter] = useState('All');
-  const [quarterFilter, setQuarterFilter] = useState('All');
-  const [yearFilter, setYearFilter] = useState('All');
-  const [customerFilter, setCustomerFilter] = useState('All');
-  const [consultantFilter, setConsultantFilter] = useState('All');
-  const [managerFilter, setManagerFilter] = useState('All');
-  const [moduleFilter, setModuleFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [priorityFilter, setPriorityFilter] = useState('All');
+  const [filters, setFilters] = useState({
+    period: 'This Year' as 'This Month' | 'This Quarter' | 'This Year' | 'Custom',
+    dateFrom: '',
+    dateTo: '',
+    statuses: [] as string[],
+    priority: 'All' as string,
+    module: 'All' as string,
+    customer: 'All' as string,
+    consultant: 'All' as string,
+    manager: 'All' as string
+  });
 
   // IAM User management state
   const [userSearchTerm, setUserSearchTerm] = useState('');
@@ -223,79 +225,75 @@ export default function AdminDashboardPage() {
     return Array.from(new Set(tickets.map(t => t.status))).filter(Boolean).sort();
   }, [tickets]);
 
-  // Base tickets selection filter
-  const activeTickets = useMemo(() => {
-    return tickets.filter(t => {
-      // 1. Customer
-      if (customerFilter !== 'All' && t.organization !== customerFilter) return false;
-      // 2. Manager
-      if (managerFilter !== 'All' && t.assignedManager !== managerFilter) return false;
-      // 3. Consultant
-      if (consultantFilter !== 'All' && t.assignedConsultant !== consultantFilter) return false;
-      // 4. Priority
-      if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
-      // 5. Status
-      if (statusFilter !== 'All' && t.status !== statusFilter) return false;
-      // 6. SAP Module
-      if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
-
-      // Date parsing
-      const createdDate = new Date(t.createdAt);
-      
-      // 7. Date Range
-      if (startDateFilter) {
-        const start = new Date(startDateFilter);
-        start.setHours(0, 0, 0, 0);
-        if (createdDate < start) return false;
-      }
-      if (endDateFilter) {
-        const end = new Date(endDateFilter);
-        end.setHours(23, 59, 59, 999);
-        if (createdDate > end) return false;
+  const applyFilters = (rawTickets: any[], filtersState: typeof filters) => {
+    return rawTickets.filter(t => {
+      // 1. Period filter
+      if (filtersState.period !== 'Custom') {
+        const createdDate = new Date(t.createdAt);
+        const now = new Date(SYSTEM_NOW);
+        if (filtersState.period === 'This Month') {
+          if (createdDate.getMonth() !== now.getMonth() || createdDate.getFullYear() !== now.getFullYear()) return false;
+        } else if (filtersState.period === 'This Quarter') {
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          const ticketQuarter = Math.floor(createdDate.getMonth() / 3);
+          if (ticketQuarter !== currentQuarter || createdDate.getFullYear() !== now.getFullYear()) return false;
+        } else if (filtersState.period === 'This Year') {
+          if (createdDate.getFullYear() !== now.getFullYear()) return false;
+        }
+      } else {
+        const createdDate = new Date(t.createdAt);
+        if (filtersState.dateFrom) {
+          const from = new Date(filtersState.dateFrom);
+          from.setHours(0, 0, 0, 0);
+          if (createdDate < from) return false;
+        }
+        if (filtersState.dateTo) {
+          const to = new Date(filtersState.dateTo);
+          to.setHours(23, 59, 59, 999);
+          if (createdDate > to) return false;
+        }
       }
 
-      // 8. Year
-      if (yearFilter !== 'All') {
-        if (createdDate.getFullYear().toString() !== yearFilter) return false;
+      // 2. Statuses filter
+      if (filtersState.statuses.length > 0) {
+        let mappedGroup = 'New';
+        const st = t.status;
+        if (st === 'New') mappedGroup = 'New';
+        else if (st === 'Assigned') mappedGroup = 'Assigned';
+        else if (['In Progress - Functional', 'Awaiting Functional Submission', 'In Progress - Technical', 'Awaiting Technical Submission', 'Requirement Gathering', 'In Progress'].includes(st)) {
+          mappedGroup = 'In Progress';
+        } else if (['Waiting for Hours Approval', 'Request for Closure', 'Awaiting Manager Approval'].includes(st)) {
+          mappedGroup = 'Pending Closure';
+        } else if (st === 'Closed' || st === 'Resolved') mappedGroup = 'Closed';
+        else if (st === 'Reopened') mappedGroup = 'Reopened';
+        else if (st === 'Raised to SAP' || t.escalationFlag) mappedGroup = 'Escalated';
+
+        if (!filtersState.statuses.includes(mappedGroup)) return false;
       }
 
-      // 9. Month
-      if (monthFilter !== 'All') {
-        const monthNames = [
-          'January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'
-        ];
-        const ticketMonthName = monthNames[createdDate.getMonth()];
-        if (ticketMonthName !== monthFilter) return false;
-      }
+      // 3. Priority filter
+      if (filtersState.priority !== 'All' && t.priority !== filtersState.priority) return false;
 
-      // 10. Quarter
-      if (quarterFilter !== 'All') {
-        const month = createdDate.getMonth(); // 0-11
-        let ticketQuarter = 'Q1';
-        if (month >= 3 && month <= 5) ticketQuarter = 'Q2';
-        else if (month >= 6 && month <= 8) ticketQuarter = 'Q3';
-        else if (month >= 9 && month <= 11) ticketQuarter = 'Q4';
-        
-        if (ticketQuarter !== quarterFilter) return false;
-      }
+      // 4. Module filter
+      if (filtersState.module !== 'All' && t.sapModule !== filtersState.module) return false;
+
+      // 5. Customer filter
+      if (filtersState.customer !== 'All' && t.organization !== filtersState.customer) return false;
+
+      // 6. Consultant filter
+      if (filtersState.consultant !== 'All' && t.assignedConsultant !== filtersState.consultant) return false;
+
+      // 7. Manager filter
+      if (filtersState.manager !== 'All' && t.assignedManager !== filtersState.manager) return false;
 
       return true;
     });
-  }, [
-    tickets,
-    customerFilter,
-    managerFilter,
-    consultantFilter,
-    priorityFilter,
-    statusFilter,
-    moduleFilter,
-    startDateFilter,
-    endDateFilter,
-    yearFilter,
-    monthFilter,
-    quarterFilter
-  ]);
+  };
+
+  // Base tickets selection filter
+  const activeTickets = useMemo(() => {
+    return applyFilters(tickets, filters);
+  }, [tickets, filters]);
 
   // color configs
   const THEME_COLORS = ['#09090b', '#18181b', '#27272a', '#3f3f46', '#52525b', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7', '#f4f4f5'];
@@ -385,7 +383,7 @@ export default function AdminDashboardPage() {
   // ── 2. CUSTOMER PORTFOLIO INTELLIGENCE ──
   const customerPortfolio = useMemo(() => {
     return Object.entries(orgMap).map(([id, name]) => {
-      const customerTickets = tickets.filter(t => t.organizationId === id || t.organization === name);
+      const customerTickets = activeTickets.filter(t => t.organizationId === id || t.organization === name);
       const activeContract = contracts.find(c => (c.customerId === id || c.organizationName === name) && c.isActive);
 
       const monthlyHours = activeContract ? activeContract.monthlyBudgetHours : 0;
@@ -451,7 +449,7 @@ export default function AdminDashboardPage() {
         lastActivity
       };
     });
-  }, [tickets, contracts, orgMap]);
+  }, [activeTickets, contracts, orgMap]);
 
   // ── 3. CONSULTANT COMMAND CENTER ──
   const consultantsPortfolio = useMemo(() => {
@@ -459,7 +457,7 @@ export default function AdminDashboardPage() {
       const name = cons.full_name || cons.email;
       const id = cons.id;
 
-      const consTickets = tickets.filter(t => 
+      const consTickets = activeTickets.filter(t => 
         t.assignedConsultant === name || 
         t.assignments?.some(a => a.consultantId === id && a.active)
       );
@@ -470,7 +468,7 @@ export default function AdminDashboardPage() {
 
       // Estimated hours logged
       let estimatedHours = 0;
-      tickets.forEach(t => {
+      activeTickets.forEach(t => {
         (t.estimates || []).forEach(e => {
           if (e.consultantId === id) estimatedHours += e.estimatedHours;
         });
@@ -478,7 +476,7 @@ export default function AdminDashboardPage() {
 
       // Approved actual hours logged
       let approvedHours = 0;
-      tickets.forEach(t => {
+      activeTickets.forEach(t => {
         (t.actualHoursLogs || []).forEach(log => {
           if (log.consultantId === id && log.approvalStatus?.toLowerCase() === 'approved') {
             approvedHours += log.actualHours;
@@ -521,7 +519,7 @@ export default function AdminDashboardPage() {
         lastActivity
       };
     });
-  }, [profiles, tickets]);
+  }, [profiles, activeTickets]);
 
   // Consultant ranking aggregates
   const overloadedConsultants = useMemo(() => {
@@ -540,7 +538,7 @@ export default function AdminDashboardPage() {
       const name = mgr.full_name || mgr.email;
       const id = mgr.id;
 
-      const mgrTickets = tickets.filter(t => t.assignedManager === name);
+      const mgrTickets = activeTickets.filter(t => t.assignedManager === name);
       const ticketsManaged = mgrTickets.length;
       const openCount = mgrTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
       const escalations = mgrTickets.filter(t => t.escalationFlag).length;
@@ -573,7 +571,7 @@ export default function AdminDashboardPage() {
       // Team utilization average
       const teamConsultants = profiles.filter(p => p.role === 'Consultant' && mgrTickets.some(t => t.assignedConsultant === (p.full_name || p.email)));
       const teamHoursSum = teamConsultants.reduce((sum, c) => {
-        const consActual = tickets.reduce((s, t) => {
+        const consActual = activeTickets.reduce((s, t) => {
           const approved = (t.actualHoursLogs || []).filter(log => log.consultantId === c.id && log.approvalStatus?.toLowerCase() === 'approved');
           return s + approved.reduce((acc, curr) => acc + curr.actualHours, 0);
         }, 0);
@@ -613,7 +611,7 @@ export default function AdminDashboardPage() {
         deliveryHealth
       };
     });
-  }, [profiles, tickets, contracts]);
+  }, [profiles, activeTickets, contracts]);
 
   // ── 5. APPROVALS & REOPEN/DELETE QUEUE ──
   const approvalsQueue = useMemo(() => {
@@ -628,7 +626,7 @@ export default function AdminDashboardPage() {
       refObject: any;
     }> = [];
 
-    tickets.forEach(t => {
+    activeTickets.forEach(t => {
       // Pending Timesheet Efforts
       (t.actualHoursLogs || []).forEach(log => {
         if (log.approvalStatus?.toLowerCase() === 'pending') {
@@ -710,7 +708,7 @@ export default function AdminDashboardPage() {
     });
 
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [tickets, profiles]);
+  }, [activeTickets, profiles]);
 
   // Actions execution
   const executeTimesheetApproval = async (ticketId: string, logId: string, action: 'Approved' | 'Rejected') => {
@@ -1410,55 +1408,179 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── GLOBAL FILTERS COCKPIT ── */}
-      <TicketFilterPanel
-        enabledFilters={[
-          'dateRange',
-          'year',
-          'month',
-          'quarter',
-          'customer',
-          'consultant',
-          'manager',
-          'module',
-          'status',
-          'priority'
-        ]}
-        startDateFilter={startDateFilter}
-        setStartDateFilter={setStartDateFilter}
-        endDateFilter={endDateFilter}
-        setEndDateFilter={setEndDateFilter}
-        yearFilter={yearFilter}
-        setYearFilter={setYearFilter}
-        monthFilter={monthFilter}
-        setMonthFilter={setMonthFilter}
-        quarterFilter={quarterFilter}
-        setQuarterFilter={setQuarterFilter}
-        customerFilter={customerFilter}
-        setCustomerFilter={setCustomerFilter}
-        consultantFilter={consultantFilter}
-        setConsultantFilter={setConsultantFilter}
-        managerFilter={managerFilter}
-        setManagerFilter={setManagerFilter}
-        moduleFilter={moduleFilter}
-        setModuleFilter={setModuleFilter}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        priorityFilter={priorityFilter}
-        setPriorityFilter={setPriorityFilter}
-        onResetFilters={() => {
-          setStartDateFilter('');
-          setEndDateFilter('');
-          setMonthFilter('All');
-          setQuarterFilter('All');
-          setYearFilter('All');
-          setCustomerFilter('All');
-          setConsultantFilter('All');
-          setManagerFilter('All');
-          setModuleFilter('All');
-          setStatusFilter('All');
-          setPriorityFilter('All');
-        }}
-      />
+      <Card className="border border-zinc-200 bg-white p-4 shadow-sm mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Period */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Period</span>
+            <div className="flex border border-zinc-200 rounded-md overflow-hidden h-9 bg-zinc-50">
+              {(['This Month', 'This Quarter', 'This Year', 'Custom'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setFilters(prev => ({ ...prev, period: p }))}
+                  className={`px-3 text-[10px] font-mono uppercase font-bold transition-all ${
+                    filters.period === p
+                      ? 'bg-zinc-900 text-white'
+                      : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                >
+                  {p.replace('This ', '')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Customer */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Customer</span>
+            <select
+              value={filters.customer}
+              onChange={(e) => setFilters(prev => ({ ...prev, customer: e.target.value }))}
+              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL CUSTOMERS</option>
+              {customerOrgsList.map(c => (
+                <option key={c} value={c}>{c.toUpperCase()}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Consultant */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Consultant</span>
+            <select
+              value={filters.consultant}
+              onChange={(e) => setFilters(prev => ({ ...prev, consultant: e.target.value }))}
+              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL CONSULTANTS</option>
+              {consultantsProfilesList.map(c => (
+                <option key={c} value={c}>{c.toUpperCase()}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Manager */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Manager</span>
+            <select
+              value={filters.manager}
+              onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
+              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL MANAGERS</option>
+              {managersProfilesList.map(m => (
+                <option key={m} value={m}>{m.toUpperCase()}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Module */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Module</span>
+            <select
+              value={filters.module}
+              onChange={(e) => setFilters(prev => ({ ...prev, module: e.target.value }))}
+              className="h-9 min-w-[110px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL MODULES</option>
+              {modulesList.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Priority */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Priority</span>
+            <select
+              value={filters.priority}
+              onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+              className="h-9 min-w-[110px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL PRIORITIES</option>
+              <option value="Critical">CRITICAL</option>
+              <option value="High">HIGH</option>
+              <option value="Medium">MEDIUM</option>
+              <option value="Low">LOW</option>
+            </select>
+          </div>
+
+          {/* Reset Filters */}
+          <div className="flex items-end h-14 ml-auto">
+            <Button
+              variant="outline"
+              onClick={() => setFilters({
+                period: 'This Year',
+                dateFrom: '',
+                dateTo: '',
+                statuses: [],
+                priority: 'All',
+                module: 'All',
+                customer: 'All',
+                consultant: 'All',
+                manager: 'All'
+              })}
+              className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold rounded"
+            >
+              Reset
+            </Button>
+          </div>
+        </div>
+
+        {/* Dynamic Status Badges row */}
+        <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-2">
+          <span className="text-[9px] font-mono uppercase font-bold text-zinc-400 mr-2">Status Scope</span>
+          {(['New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Reopened', 'Escalated'] as const).map(group => {
+            const isSelected = filters.statuses.includes(group);
+            return (
+              <button
+                key={group}
+                onClick={() => {
+                  setFilters(prev => {
+                    const current = prev.statuses;
+                    const next = current.includes(group)
+                      ? current.filter(x => x !== group)
+                      : [...current, group];
+                    return { ...prev, statuses: next };
+                  });
+                }}
+                className={`h-7 px-2.5 rounded-full text-[10px] font-mono uppercase font-semibold transition-all border ${
+                  isSelected
+                    ? 'bg-zinc-950 border-zinc-950 text-white shadow-sm'
+                    : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                {group}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Row 2: Custom Date Picker Inputs */}
+        {filters.period === 'Custom' && (
+          <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-4 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date From</span>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date To</span>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              />
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* ── NAVIGATION TABS ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
