@@ -3010,8 +3010,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           id: newEstimate.id.startsWith('est-') && newEstimate.id.length < 25 ? undefined : newEstimate.id,
           ticket_id: ticketId,
           consultant_id: consultantUUID,
-          functional_estimated_hours: data.functionalEstimatedHours,
-          technical_estimated_hours: data.technicalEstimatedHours,
+          functional_estimated_hours: consultantType === 'Functional' ? data.functionalEstimatedHours : null,
+          technical_estimated_hours: consultantType === 'Technical' ? data.technicalEstimatedHours : null,
           total_estimated_hours: total,
           remarks: data.remarks,
           status: 'Revision Approved',
@@ -3233,8 +3233,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           id: newEstimate.id.startsWith('est-') && newEstimate.id.length < 25 ? undefined : newEstimate.id,
           ticket_id: ticketId,
           consultant_id: consultantUUID,
-          functional_estimated_hours: data.functionalEstimatedHours,
-          technical_estimated_hours: data.technicalEstimatedHours,
+          functional_estimated_hours: consultantType === 'Functional' ? data.functionalEstimatedHours : null,
+          technical_estimated_hours: consultantType === 'Technical' ? data.technicalEstimatedHours : null,
           total_estimated_hours: total,
           remarks: data.remarks,
           status: 'Revision Approved',
@@ -3769,13 +3769,23 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         previousTicketState = oldTicket;
         console.log('[CLOSURE WORKFLOW] Previous ticket state saved for rollback safety:', previousTicketState);
 
+        let consultantType: 'Functional' | 'Technical' = 'Functional';
+        try {
+          const { data: prof } = await supabase.from('profiles').select('consultant_type').eq('id', consultantId).maybeSingle();
+          if (prof && prof.consultant_type) {
+            consultantType = prof.consultant_type as 'Functional' | 'Technical';
+          }
+        } catch (e) {
+          console.error('Error fetching consultant type for closure request:', e);
+        }
+
         // 1. Insert closure request
         console.log('[CLOSURE WORKFLOW] Step 1: Inserting ticket_closure_requests record...');
         const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
           ticket_id: ticketId,
           requested_by: consultantId,
-          functional_actual_hours: totalFuncActual,
-          technical_actual_hours: totalTechActual,
+          functional_actual_hours: consultantType === 'Functional' ? totalFuncActual : null,
+          technical_actual_hours: consultantType === 'Technical' ? totalTechActual : null,
           total_actual_hours: grandTotal,
           work_completed_summary: data.workCompletedSummary,
           root_cause: data.rootCause || 'SAP Configuration/Process Alignment',
@@ -4185,13 +4195,23 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         }).eq('id', requestId);
         if (oldReqUpdErr) throw oldReqUpdErr;
 
+        let consultantType: 'Functional' | 'Technical' = 'Functional';
+        try {
+          const { data: prof } = await supabase.from('profiles').select('consultant_type').eq('id', consultantId).maybeSingle();
+          if (prof && prof.consultant_type) {
+            consultantType = prof.consultant_type as 'Functional' | 'Technical';
+          }
+        } catch (e) {
+          console.error('Error fetching consultant type for resubmit closure request:', e);
+        }
+
         // 2. Insert resubmitted request
         console.log('[CLOSURE WORKFLOW] Step 2: Inserting resubmitted ticket_closure_requests record...');
         const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
           ticket_id: ticketId,
           requested_by: consultantId,
-          functional_actual_hours: totalFuncActual,
-          technical_actual_hours: totalTechActual,
+          functional_actual_hours: consultantType === 'Functional' ? totalFuncActual : null,
+          technical_actual_hours: consultantType === 'Technical' ? totalTechActual : null,
           total_actual_hours: grandTotal,
           work_completed_summary: data.workCompletedSummary,
           root_cause: data.rootCause || 'SAP Configuration/Process Alignment',

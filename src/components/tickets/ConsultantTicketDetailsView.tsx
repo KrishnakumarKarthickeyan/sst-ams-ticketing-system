@@ -617,27 +617,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       return;
     }
 
-    const activeAllocations = ticket?.consultantEfforts || [];
-    const actualHoursPayload: { consultantId: string; hours: number }[] = [];
-
-    // Verify all active allocations have a valid hours value
-    let hasZeroOrEmpty = false;
-    for (const alloc of activeAllocations) {
-      const val = resourceActualHours[alloc.consultantId];
-      const hours = Number(val) || 0;
-      if (!val || hours <= 0) {
-        hasZeroOrEmpty = true;
-      }
-      actualHoursPayload.push({
-        consultantId: alloc.consultantId,
-        hours
-      });
-    }
-
-    if (hasZeroOrEmpty) {
-      setValidationError('Actual hours must be greater than 0 for all assigned consultants.');
+    const val = resourceActualHours[user?.id || ''];
+    const hours = Number(val) || 0;
+    if (!val || hours <= 0) {
+      setValidationError('Actual hours must be greater than 0.');
       return;
     }
+
+    const actualHoursPayload = [{
+      consultantId: user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5',
+      hours
+    }];
 
     const filesPayload = closureFiles
       .filter(f => !f.isUploading && f.progress >= 100)
@@ -682,27 +672,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       return;
     }
 
-    const activeAllocations = ticket?.consultantEfforts || [];
-    const actualHoursPayload: { consultantId: string; hours: number }[] = [];
-
-    // Verify all active allocations have a valid hours value
-    let hasZeroOrEmpty = false;
-    for (const alloc of activeAllocations) {
-      const val = resourceActualHours[alloc.consultantId];
-      const hours = Number(val) || 0;
-      if (!val || hours <= 0) {
-        hasZeroOrEmpty = true;
-      }
-      actualHoursPayload.push({
-        consultantId: alloc.consultantId,
-        hours
-      });
-    }
-
-    if (hasZeroOrEmpty) {
-      setValidationError('Actual hours must be greater than 0 for all assigned consultants.');
+    const val = resourceActualHours[user?.id || ''];
+    const hours = Number(val) || 0;
+    if (!val || hours <= 0) {
+      setValidationError('Actual hours must be greater than 0.');
       return;
     }
+
+    const actualHoursPayload = [{
+      consultantId: user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5',
+      hours
+    }];
 
     const latestCls = ticket.closureRequests?.[ticket.closureRequests.length - 1];
     if (!latestCls) return;
@@ -1862,35 +1842,37 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {/* QUOTE HOURS */}
               {activeModal === 'quote' && (
                 <form onSubmit={handleQuoteHours} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Functional Estimated Hours</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="e.g. 12.0"
-                        value={estFuncHours}
-                        onChange={(e) => setEstFuncHours(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
-                        min="0"
-                        required={consultantType === 'Functional'}
-                        disabled={consultantType !== 'Functional'}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Technical Estimated Hours</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="e.g. 15.0"
-                        value={estTechHours}
-                        onChange={(e) => setEstTechHours(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
-                        min="0"
-                        required={consultantType === 'Technical'}
-                        disabled={consultantType !== 'Technical'}
-                      />
-                    </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {consultantType === 'Functional' && (
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Functional Estimated Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          placeholder="e.g. 12.0"
+                          value={estFuncHours}
+                          onChange={(e) => setEstFuncHours(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
+                          min="0"
+                          required
+                        />
+                      </div>
+                    )}
+                    {consultantType === 'Technical' && (
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Technical Estimated Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          placeholder="e.g. 15.0"
+                          value={estTechHours}
+                          onChange={(e) => setEstTechHours(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
+                          min="0"
+                          required
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -1917,35 +1899,37 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {/* REVISION REQUEST */}
               {activeModal === 'revision' && (
                 <form onSubmit={handleRevisionRequest} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">New Functional Hours</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="e.g. 15.0"
-                        value={estFuncHours}
-                        onChange={(e) => setEstFuncHours(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
-                        min="0"
-                        required={consultantType === 'Functional'}
-                        disabled={consultantType !== 'Functional'}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">New Technical Hours</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="e.g. 20.0"
-                        value={estTechHours}
-                        onChange={(e) => setEstTechHours(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
-                        min="0"
-                        required={consultantType === 'Technical'}
-                        disabled={consultantType !== 'Technical'}
-                      />
-                    </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {consultantType === 'Functional' && (
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">New Functional Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          placeholder="e.g. 15.0"
+                          value={estFuncHours}
+                          onChange={(e) => setEstFuncHours(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
+                          min="0"
+                          required
+                        />
+                      </div>
+                    )}
+                    {consultantType === 'Technical' && (
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">New Technical Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          placeholder="e.g. 20.0"
+                          value={estTechHours}
+                          onChange={(e) => setEstTechHours(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 disabled:opacity-50"
+                          min="0"
+                          required
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -1976,7 +1960,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   {/* Dynamic Actual Hours inputs for all assigned team members */}
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded border border-slate-200">
                     <span className="font-bold text-slate-500 uppercase text-[9px] font-mono block mb-1">Assigned Team Actual Hours</span>
-                    {(ticket?.consultantEfforts || []).map((eff) => (
+                    {(ticket?.consultantEfforts || []).filter(eff => eff.consultantId === user?.id).map((eff) => (
                       <div key={eff.consultantId} className="flex items-center justify-between gap-3 text-xs">
                         <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
                           {eff.consultantName}
@@ -2115,7 +2099,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   {/* Dynamic Actual Hours inputs for all assigned team members */}
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded border border-slate-200">
                     <span className="font-bold text-slate-500 uppercase text-[9px] font-mono block mb-1">Revised Team Actual Hours</span>
-                    {(ticket?.consultantEfforts || []).map((eff) => (
+                    {(ticket?.consultantEfforts || []).filter(eff => eff.consultantId === user?.id).map((eff) => (
                       <div key={eff.consultantId} className="flex items-center justify-between gap-3 text-xs">
                         <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
                           {eff.consultantName}
