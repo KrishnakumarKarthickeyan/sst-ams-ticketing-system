@@ -34,9 +34,12 @@ export default function LoginPage() {
   const [authenticating, setAuthenticating] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
+  const redirectIssuedRef = React.useRef(false);
+
   // Auto redirect to correct dashboard if already logged in
   useEffect(() => {
-    if (!loading && user && !authenticating) {
+    if (!loading && user && !authenticating && !redirectIssuedRef.current) {
+      redirectIssuedRef.current = true;
       redirectToDashboard(user);
     }
   }, [user, loading, authenticating]);

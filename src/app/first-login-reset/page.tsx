@@ -28,13 +28,18 @@ export default function FirstLoginResetPage() {
   
   const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 
+  const redirectIssuedRef = React.useRef(false);
+
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/login');
-      } else if (user.firstLoginCompleted === true && user.forcePasswordChange !== true) {
-        redirectToDashboard(user.role);
-      }
+    if (loading || redirectIssuedRef.current) return;
+    if (!user) {
+      redirectIssuedRef.current = true;
+      router.replace('/login');
+      return;
+    }
+    if (user.firstLoginCompleted === true && user.forcePasswordChange !== true) {
+      redirectIssuedRef.current = true;
+      redirectToDashboard(user.role);
     }
   }, [user, loading]);
 
