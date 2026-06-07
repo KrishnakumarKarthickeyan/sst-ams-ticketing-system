@@ -12,6 +12,7 @@ export interface UserSession {
   email: string;
   role: UserRole;
   company?: string;
+  organizationId?: string;
   id?: string;
   consultantType?: 'Functional' | 'Technical';
   modules?: string[];
@@ -79,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: profile.full_name,
           role: profile.role as UserRole,
           company: userOrg ? userOrg.name : undefined,
+          organizationId: profile.organization_id,
           consultantType: profile.consultant_type as any,
           modules: profile.sap_modules || [],
           phoneNumber: profile.phone_number,
@@ -223,6 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: profile.full_name,
               role: profile.role as UserRole,
               company: userOrg ? userOrg.name : undefined,
+              organizationId: profile.organization_id,
               consultantType: profile.consultant_type as any,
               modules: profile.sap_modules || [],
               phoneNumber: profile.phone_number,

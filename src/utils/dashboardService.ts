@@ -153,7 +153,10 @@ export const getCustomerDashboardData = (
       }, 0) / resolvedClosedList.length
     : 0;
 
-  const activeContract = contracts.find(c => c.organizationName === organizationName && c.isActive);
+  const activeContract = contracts.find(c => 
+    (c.organizationName === organizationName && c.isActive) ||
+    (companyTickets.length > 0 && c.customerId === companyTickets[0].organizationId && c.isActive)
+  );
   const totalApprovedHours = getApprovedActualHours(tickets, scope);
   const totalLoggedHours = getLoggedActualHours(tickets, scope);
 

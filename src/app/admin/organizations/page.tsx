@@ -225,7 +225,17 @@ export default function AdminOrganizationsPage() {
     const attachments = orgTickets.flatMap(t => t.attachments || []);
 
     // Contract info
-    const contract = contracts.find(c => c.organizationName === selectedOrg.name);
+    const contract = contracts.find(c => c.customerId === selectedOrg.id || c.organizationName === selectedOrg.name);
+
+    let contractRemaining = 0;
+    let contractUtilizationPct = 0;
+    let contractUsed = 0;
+
+    if (contract) {
+      contractUsed = contract.usedHours || 0;
+      contractRemaining = Math.max(0, contract.totalHours - contractUsed);
+      contractUtilizationPct = contract.totalHours > 0 ? (contractUsed / contract.totalHours) * 100 : 0;
+    }
 
     return {
       totalTicketsCount: orgTickets.length,
@@ -242,6 +252,9 @@ export default function AdminOrganizationsPage() {
       escalations,
       attachments,
       contract,
+      contractUsed,
+      contractRemaining,
+      contractUtilizationPct,
       tickets: orgTickets
     };
   }, [selectedOrg, tickets, contracts]);
@@ -445,6 +458,42 @@ export default function AdminOrganizationsPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Contract Burn & Utilization Rate */}
+              {org360Data.contract && (
+                <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-3 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
+                    <h3 className="font-bold text-[10px] uppercase tracking-wider text-zinc-500">Active Contract Accounting</h3>
+                    <span className="text-[10px] font-bold text-zinc-950 font-mono">
+                      {org360Data.contract.contractType} ({org360Data.contract.totalHours.toFixed(1)}h Total)
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-zinc-900 font-mono text-[10px]">
+                    <div>
+                      <span className="text-zinc-400 block text-[9px] uppercase font-bold">Allocated</span>
+                      <span className="font-bold text-zinc-900">{org360Data.contract.totalHours.toFixed(1)}h</span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-450 block text-[9px] uppercase font-bold">Utilized</span>
+                      <span className="font-bold text-zinc-900">{org360Data.contractUsed.toFixed(1)}h</span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-450 block text-[9px] uppercase font-bold">Remaining Pool</span>
+                      <span className="font-bold text-emerald-700">{org360Data.contractRemaining.toFixed(1)}h</span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-450 block text-[9px] uppercase font-bold">Utilization Rate</span>
+                      <span className="font-bold text-zinc-900">{org360Data.contractUtilizationPct.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-zinc-200 rounded-full h-2 overflow-hidden p-0.5 border border-zinc-350">
+                    <div
+                      className="bg-zinc-900 h-1 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(100, org360Data.contractUtilizationPct)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
 
               {/* Roster of Active Consultants assigned to this Customer */}
               <div>

@@ -172,8 +172,11 @@ export default function CustomerDashboardPage() {
 
   // Active Contract details for verification
   const activeContract = useMemo(() => {
-    return contracts.find(c => c.organizationName === customerCompany && c.isActive);
-  }, [contracts, customerCompany]);
+    return contracts.find(c => 
+      (user?.organizationId && c.customerId === user.organizationId && c.isActive) ||
+      (c.organizationName === customerCompany && c.isActive)
+    );
+  }, [contracts, customerCompany, user?.organizationId]);
 
   const contractMetrics = useMemo(() => {
     if (!activeContract) return null;

@@ -690,7 +690,7 @@ export async function getUserProfileServer(userId: string) {
   try {
     const { data: profile, error } = await client
       .from('profiles')
-      .select('full_name, role, is_active, is_locked, consultant_type, sap_modules, phone_number, first_login_completed, force_password_change, organizations(name)')
+      .select('full_name, role, is_active, is_locked, consultant_type, sap_modules, phone_number, first_login_completed, force_password_change, organization_id, organizations(name)')
       .eq('id', userId)
       .single();
 
