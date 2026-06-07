@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   Ticket,
@@ -277,6 +278,7 @@ interface TicketContextType {
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
 
 export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [contracts, setContracts] = useState<CustomerContract[]>([]);
@@ -414,6 +416,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       clearTimeout(debounceTimeoutRef.current);
     }
     debounceTimeoutRef.current = setTimeout(() => {
+      try {
+        router.refresh();
+      } catch (e) {
+        console.warn('router.refresh() call warning:', e);
+      }
       fetchDataRef.current();
     }, 200);
   };
@@ -1574,6 +1581,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         await supabase.from('tickets').update(dbData).eq('id', ticketId);
+        try {
+          router.refresh();
+        } catch (e) {
+          console.warn('router.refresh warning:', e);
+        }
         await fetchData();
       } catch (err) {
         console.error('Error in assignTicket Supabase update:', err);

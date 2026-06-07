@@ -117,6 +117,27 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    const channel = supabase
+      .channel('realtime-audit-logs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'audit_logs' },
+        (payload) => {
+          console.log('Realtime audit logs change detected:', payload);
+          fetchAuditLogs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+
   // Run dynamic health checks on Platform Health Tab enter
   const runPlatformHealthChecks = async () => {
     setCheckingHealth(true);
