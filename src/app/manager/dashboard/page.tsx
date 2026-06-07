@@ -1750,7 +1750,7 @@ export default function ManagerDashboardPage() {
               1. Executive Health Overview
             </span>
             
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               
               {/* Card 1: Ticket Operations */}
               <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
@@ -2554,7 +2554,7 @@ export default function ManagerDashboardPage() {
             <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">1. Ticket Operations Command Center</span>
             
             {/* Counters */}
-            <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
               <Card className="p-3 bg-white border border-zinc-200 shadow-sm text-center">
                 <span className="font-bold text-zinc-450 uppercase text-[8px] block">Active Backlog</span>
                 <span className="text-lg font-bold text-zinc-950 block mt-1">{dashboardData.executive.openTickets}</span>
@@ -3120,7 +3120,7 @@ export default function ManagerDashboardPage() {
           <div className="space-y-4">
             <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">2. Hours, Effort & Billing Insight Center</span>
             
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
                 <span className="font-bold text-zinc-450 uppercase text-[8px] block">Total Estimated Hours</span>

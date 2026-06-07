@@ -744,9 +744,8 @@ export default function CustomerDashboardPage() {
             <h2 className="text-xs font-bold font-mono uppercase tracking-wider text-zinc-400">
               Executive Dashboard KPI Console
             </h2>
-
             {/* Group 1: Volume & Status */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
               <Card className="border-zinc-200 bg-white p-3 flex flex-col justify-between shadow-sm relative group h-24">
                 <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">1. Total Tickets</div>
                 <div className="mt-1 flex items-baseline justify-between">
@@ -812,12 +811,12 @@ export default function CustomerDashboardPage() {
             </div>
 
             {/* Group 2: Scope & Actions */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <Card className="border-zinc-200 bg-white p-3 flex flex-col justify-between shadow-sm h-24">
                 <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">8. Technical Scope</div>
                 <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold font-mono text-zinc-950">{technicalTickets}</span>
-                  <Wrench size={14} className="text-zinc-500" />
+                  <span className="text-2xl font-bold font-mono text-zinc-955">{technicalTickets}</span>
+                  <Wrench size={14} className="text-zinc-550" />
                 </div>
                 <span className="text-[8px] text-zinc-400 block font-mono">ABAP / BASIS / CPI</span>
               </Card>
@@ -825,8 +824,8 @@ export default function CustomerDashboardPage() {
               <Card className="border-zinc-200 bg-white p-3 flex flex-col justify-between shadow-sm h-24">
                 <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">9. Functional Scope</div>
                 <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold font-mono text-zinc-950">{functionalTickets}</span>
-                  <FolderDot size={14} className="text-zinc-500" />
+                  <span className="text-2xl font-bold font-mono text-zinc-955">{functionalTickets}</span>
+                  <FolderDot size={14} className="text-zinc-550" />
                 </div>
                 <span className="text-[8px] text-zinc-400 block font-mono">FICO / MM / SD / PP</span>
               </Card>
@@ -834,8 +833,8 @@ export default function CustomerDashboardPage() {
               <Card className="border-zinc-200 bg-white p-3 flex flex-col justify-between shadow-sm border-l-2 border-l-amber-500 h-24">
                 <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">10. On Hold</div>
                 <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold font-mono text-amber-700">{onHoldTickets}</span>
-                  <Clock size={14} className="text-amber-500" />
+                  <span className="text-2xl font-bold font-mono text-amber-750">{onHoldTickets}</span>
+                  <Clock size={14} className="text-amber-550" />
                 </div>
                 <span className="text-[8px] text-zinc-400 block font-mono">Paused waiting updates</span>
               </Card>
@@ -843,8 +842,8 @@ export default function CustomerDashboardPage() {
               <Card className="border-zinc-200 bg-white p-3 flex flex-col justify-between shadow-sm border-l-2 border-l-red-500 h-24">
                 <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">11. Raised to SAP</div>
                 <div className="mt-1 flex items-baseline justify-between">
-                  <span className={`text-2xl font-bold font-mono ${raisedToSapTickets > 0 ? 'text-red-650' : 'text-zinc-900'}`}>{raisedToSapTickets}</span>
-                  <ShieldAlert size={14} className={raisedToSapTickets > 0 ? 'text-red-500' : 'text-zinc-400'} />
+                  <span className={`text-2xl font-bold font-mono ${raisedToSapTickets > 0 ? 'text-red-655' : 'text-zinc-905'}`}>{raisedToSapTickets}</span>
+                  <ShieldAlert size={14} className={raisedToSapTickets > 0 ? 'text-red-550' : 'text-zinc-450'} />
                 </div>
                 <span className="text-[8px] text-zinc-400 block font-mono">Vendor support scope</span>
               </Card>
@@ -852,15 +851,15 @@ export default function CustomerDashboardPage() {
               <Card className="border-zinc-200 bg-white p-3 flex flex-col justify-between shadow-sm border-l-2 border-l-amber-500 h-24">
                 <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">12. Customer Action Pending</div>
                 <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold font-mono text-amber-700">{customerActionPendingTickets}</span>
-                  <UserCheck size={14} className="text-amber-500" />
+                  <span className="text-2xl font-bold font-mono text-amber-750">{customerActionPendingTickets}</span>
+                  <UserCheck size={14} className="text-amber-550" />
                 </div>
                 <span className="text-[8px] text-zinc-400 block font-mono">Awaiting your approval</span>
               </Card>
             </div>
 
             {/* Group 3: Priority, SLA & Performance */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <Card className="border-zinc-200 bg-white p-3 flex flex-col justify-between shadow-sm border-l-2 border-l-red-500 h-24">
                 <div className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">13. Critical P1</div>
                 <div className="mt-1 flex items-baseline justify-between">

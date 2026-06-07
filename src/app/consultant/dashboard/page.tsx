@@ -965,7 +965,7 @@ export default function ConsultantDashboardPage() {
           <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">My Ticket Status Summary</h2>
           <span className="text-[10px] text-zinc-500 font-mono">Real-time Ticket counts across 11 phases</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
           {[
             { label: 'All Tickets', count: ticketStatusCounts.all, value: 'all', icon: Layers, color: 'bg-zinc-800', textColor: 'text-zinc-800' },
             { label: 'Requirement Gathering', count: ticketStatusCounts.requirementGathering, value: 'requirementGathering', icon: FileText, color: 'bg-blue-500', textColor: 'text-blue-600' },
@@ -1011,7 +1011,7 @@ export default function ConsultantDashboardPage() {
       {/* --- SECTION 6: MY PERFORMANCE COMMAND CENTER --- */}
       <div className="space-y-4">
         <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">My Performance Command Center</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           
           {/* 1. Utilization */}
           <Card className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition">

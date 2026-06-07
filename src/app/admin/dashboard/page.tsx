@@ -1352,7 +1352,7 @@ export default function AdminDashboardPage() {
           <Skeleton className="h-8 w-64 bg-zinc-200" />
           <Skeleton className="h-6 w-36 bg-zinc-250" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 w-full bg-zinc-200 rounded-xl" />
           ))}
@@ -1612,7 +1612,7 @@ export default function AdminDashboardPage() {
 
         {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
         <TabsContent value="cockpit" className="space-y-6 outline-none">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 font-mono">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 font-mono">
             {[
               { label: 'Total Customers', value: globalStats.totalCustomers, icon: Building2, desc: 'Registered Organizations' },
               { label: 'Active Customers', value: globalStats.activeCustomers, icon: UserCheck, desc: 'With Active Contracts' },
@@ -1715,7 +1715,7 @@ export default function AdminDashboardPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               
               {/* Chart 1: Ticket Volume Trend */}
               <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
