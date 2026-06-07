@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { getConsultantDashboardData, filterTicketsByScope } from '../../../utils/dashboardService';
@@ -63,32 +63,23 @@ import { Badge } from '../../../components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
 import { Skeleton } from '../../../components/ui/skeleton';
 
-// Helper: Calculate Sunday through Thursday working days count in a month (excluding Friday/Saturday)
-function getWorkingDaysCount(year: number, monthIndex: number) {
+// Helper: Calculate Sunday through Thursday working days count in a date range (excluding Friday/Saturday)
+function getWorkingDaysInRange(start: Date, end: Date) {
   let count = 0;
-  const date = new Date(year, monthIndex, 1);
-  while (date.getMonth() === monthIndex) {
-    const day = date.getDay();
+  const current = new Date(start.getTime());
+  current.setHours(0, 0, 0, 0);
+  const endNormalized = new Date(end.getTime());
+  endNormalized.setHours(0, 0, 0, 0);
+
+  while (current <= endNormalized) {
+    const day = current.getDay();
     if (day !== 5 && day !== 6) { // 5 = Friday, 6 = Saturday
       count++;
     }
-    date.setDate(date.getDate() + 1);
+    current.setDate(current.getDate() + 1);
   }
   return count;
 }
-
-const MONTH_OPTIONS = [
-  { value: 'All', label: 'All Months' },
-  { value: '2025-11', label: 'December 2025' },
-  { value: '2026-00', label: 'January 2026' },
-  { value: '2026-01', label: 'February 2026' },
-  { value: '2026-02', label: 'March 2026' },
-  { value: '2026-03', label: 'April 2026' },
-  { value: '2026-04', label: 'May 2026' }, // May is index 4
-  { value: '2026-05', label: 'June 2026' },
-  { value: '2026-06', label: 'July 2026' },
-  { value: '2026-07', label: 'August 2026' },
-];
 
 export default function ConsultantDashboardPage() {
   const { tickets, loading } = useTickets();
@@ -176,16 +167,29 @@ export default function ConsultantDashboardPage() {
   const consultantPhone = user?.phoneNumber || 'N/A';
   const isTechnical = consultantType === 'Technical';
 
-  // --- Dynamic Month Selector State ---
-  const [selectedMonthStr, setSelectedMonthStr] = useState('2026-04'); // Default to May 2026
-  const [selectedYear, selectedMonth] = useMemo(() => {
-    if (selectedMonthStr === 'All') {
-      const now = new Date();
-      return [now.getFullYear(), now.getMonth()];
+  // --- Dynamic Period & Operations Filter States & Refs ---
+  const [filters, setFilters] = useState({
+    period: 'This Month',
+    dateFrom: '',
+    dateTo: '',
+    statuses: ['All'],
+    priority: 'All',
+    module: 'All',
+    customer: 'All'
+  });
+
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(false);
+      }
     }
-    const [y, m] = selectedMonthStr.split('-');
-    return [parseInt(y, 10), parseInt(m, 10)];
-  }, [selectedMonthStr]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [activeChartTab, setActiveChartTab] = useState<'volume' | 'effort' | 'portfolio'>('volume');
 
@@ -202,38 +206,148 @@ export default function ConsultantDashboardPage() {
     );
   }, [myTickets, consultantType]);
 
+  // Derived options for selectors based on this consultant's assigned tickets
+  const distinctModules = useMemo(() => {
+    const mods = roleTickets.map(t => t.sapModule).filter(Boolean);
+    return Array.from(new Set(mods)).sort();
+  }, [roleTickets]);
+
+  const distinctCustomers = useMemo(() => {
+    const orgs = roleTickets.map(t => t.organization).filter(Boolean);
+    return Array.from(new Set(orgs)).sort();
+  }, [roleTickets]);
+
+  // Helper function: apply filter criteria
+  const applyFilters = (ticketsList: typeof roleTickets, f: typeof filters) => {
+    return ticketsList.filter(t => {
+      // Date period filter
+      const ticketDate = new Date(t.createdAt);
+      let passDate = true;
+      const now = new Date();
+
+      if (f.period === 'This Month') {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'This Quarter') {
+        const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+        const start = new Date(now.getFullYear(), quarterStartMonth, 1);
+        const end = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'This Year') {
+        const start = new Date(now.getFullYear(), 0, 1);
+        const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'Custom') {
+        if (f.dateFrom) {
+          const start = new Date(f.dateFrom);
+          start.setHours(0, 0, 0, 0);
+          passDate = passDate && (ticketDate >= start);
+        }
+        if (f.dateTo) {
+          const end = new Date(f.dateTo);
+          end.setHours(23, 59, 59, 999);
+          passDate = passDate && (ticketDate <= end);
+        }
+      }
+
+      if (!passDate) return false;
+
+      // Status filter matching UI simplified statuses
+      if (f.statuses && f.statuses.length > 0 && !f.statuses.includes('All')) {
+        let simplifiedStatus = '';
+        if (t.status === 'New') {
+          simplifiedStatus = 'New';
+        } else if (t.status === 'Assigned') {
+          simplifiedStatus = 'Assigned';
+        } else if (
+          ['In Progress', 'In Progress - Functional', 'Awaiting Functional Submission', 'In Progress - Technical', 'Awaiting Technical Submission', 'Requirement Gathering'].includes(t.status)
+        ) {
+          simplifiedStatus = 'In Progress';
+        } else if (
+          ['Awaiting Closure', 'Request for Closure', 'Awaiting Manager Approval', 'Waiting for Hours Approval'].includes(t.status)
+        ) {
+          simplifiedStatus = 'Pending Closure';
+        } else if (t.status === 'Closed' || t.status === 'Resolved') {
+          simplifiedStatus = 'Closed';
+        } else if (t.status === 'Reopened') {
+          simplifiedStatus = 'Reopened';
+        }
+
+        const isEscalatedMatch = f.statuses.includes('Escalated') && (t.escalationFlag || t.status === 'Raised to SAP');
+        const isStatusMatch = f.statuses.includes(simplifiedStatus);
+
+        if (!isStatusMatch && !isEscalatedMatch) {
+          return false;
+        }
+      }
+
+      // Priority filter
+      if (f.priority && f.priority !== 'All') {
+        if (t.priority !== f.priority) return false;
+      }
+
+      // Module filter
+      if (f.module && f.module !== 'All') {
+        if (t.sapModule !== f.module) return false;
+      }
+
+      // Customer filter
+      if (f.customer && f.customer !== 'All') {
+        if (t.organization !== f.customer) return false;
+      }
+
+      return true;
+    });
+  };
+
+  // Derive filtered tickets
+  const filteredTickets = useMemo(() => {
+    return applyFilters(roleTickets, filters);
+  }, [roleTickets, filters]);
+
   // Status counts for the status summary widget
   const ticketStatusCounts = useMemo(() => {
     return {
-      all: myTickets.length,
-      requirementGathering: myTickets.filter(t => t.status === 'Requirement Gathering').length,
-      waitingHours: myTickets.filter(t => t.status === 'Waiting for Hours Approval').length,
-      inProgressFunctional: myTickets.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length,
-      inProgressTechnical: myTickets.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length,
-      customerAction: myTickets.filter(t => t.status === 'Customer Action').length,
-      onHold: myTickets.filter(t => t.status === 'On Hold').length,
-      raisedSap: myTickets.filter(t => t.status === 'Raised to SAP').length,
-      requestClosure: myTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
-      closed: myTickets.filter(t => t.status === 'Closed').length,
-      reopened: myTickets.filter(t => t.status === 'Reopened').length,
+      all: filteredTickets.length,
+      requirementGathering: filteredTickets.filter(t => t.status === 'Requirement Gathering').length,
+      waitingHours: filteredTickets.filter(t => t.status === 'Waiting for Hours Approval').length,
+      inProgressFunctional: filteredTickets.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length,
+      inProgressTechnical: filteredTickets.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length,
+      customerAction: filteredTickets.filter(t => t.status === 'Customer Action').length,
+      onHold: filteredTickets.filter(t => t.status === 'On Hold').length,
+      raisedSap: filteredTickets.filter(t => t.status === 'Raised to SAP').length,
+      requestClosure: filteredTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
+      closed: filteredTickets.filter(t => t.status === 'Closed').length,
+      reopened: filteredTickets.filter(t => t.status === 'Reopened').length,
     };
-  }, [myTickets]);
+  }, [filteredTickets]);
 
   // --- Dynamic Operations Calculator ---
   const monthlyStats = useMemo(() => {
     const now = new Date();
-    const isCurrentMonth = selectedMonthStr === 'All' ? false : selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
-    
-    // 1. Working days & Expected Hours
-    const workingDays = selectedMonthStr === 'All' ? 66 : getWorkingDaysCount(selectedYear, selectedMonth);
+    let start = new Date();
+    let end = new Date();
+
+    if (filters.period === 'This Month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else if (filters.period === 'This Quarter') {
+      const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+      start = new Date(now.getFullYear(), quarterStartMonth, 1);
+      end = new Date(now.getFullYear(), quarterStartMonth + 3, 0);
+    } else if (filters.period === 'This Year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31);
+    } else if (filters.period === 'Custom') {
+      start = filters.dateFrom ? new Date(filters.dateFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
+      end = filters.dateTo ? new Date(filters.dateTo) : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+
+    const workingDays = getWorkingDaysInRange(start, end);
     const expectedHours = workingDays * 8;
 
-    // Filter database tickets for selected month
-    const dbMonthTickets = roleTickets.filter(t => {
-      if (selectedMonthStr === 'All') return true;
-      const d = new Date(t.createdAt);
-      return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
-    });
+    const dbMonthTickets = filteredTickets;
 
     const dbMonthClosed = dbMonthTickets.filter(t => t.status === 'Closed' || t.status === 'Resolved').length;
     const dbMonthReopened = dbMonthTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length;
@@ -403,49 +517,45 @@ export default function ConsultantDashboardPage() {
       workloadScore,
       billableEfficiencyScore
     };
-  }, [selectedYear, selectedMonth, consultantName, consultantType, roleTickets]);
+  }, [filters, filteredTickets, consultantName, consultantType, user?.id, consultantEmail]);
 
   // --- Dynamic Trends Data ---
   const monthlyTicketTrend = useMemo(() => {
     const data: any[] = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(selectedYear, selectedMonth - i, 1);
+      const d = new Date(currentYear, currentMonth - i, 1);
       const mName = monthNames[d.getMonth()];
       const yr = d.getFullYear() === 2026 ? '' : ` '${String(d.getFullYear()).substring(2)}`;
       
-      const createdCount = roleTickets.filter(t => {
+      const monthTickets = filteredTickets.filter(t => {
         const date = new Date(t.createdAt);
         return date.getFullYear() === d.getFullYear() && date.getMonth() === d.getMonth();
-      }).length;
+      });
 
-      const closedCount = roleTickets.filter(t => {
-        if (!t.closedAt) return false;
-        const date = new Date(t.closedAt);
-        return date.getFullYear() === d.getFullYear() && date.getMonth() === d.getMonth();
-      }).length;
-
-      const reopenedCount = roleTickets.filter(t => {
-        const isReopened = t.status === 'Reopened';
-        const date = new Date(t.updatedAt);
-        return isReopened && date.getFullYear() === d.getFullYear() && date.getMonth() === d.getMonth();
-      }).length;
+      const createdCount = monthTickets.length;
+      const closedCount = monthTickets.filter(t => t.status === 'Closed' || t.status === 'Resolved').length;
 
       data.push({
         month: `${mName}${yr}`,
         Created: createdCount,
-        Closed: closedCount,
-        Reopened: reopenedCount
+        Closed: closedCount
       });
     }
     return data;
-  }, [selectedYear, selectedMonth, roleTickets]);
+  }, [filteredTickets]);
 
   const monthlyHoursTrend = useMemo(() => {
     const data: any[] = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(selectedYear, selectedMonth - i, 1);
+      const d = new Date(currentYear, currentMonth - i, 1);
       const mName = monthNames[d.getMonth()];
       const yr = d.getFullYear() === 2026 ? '' : ` '${String(d.getFullYear()).substring(2)}`;
 
@@ -453,10 +563,10 @@ export default function ConsultantDashboardPage() {
       let billable = 0;
       let nonBillable = 0;
 
-      roleTickets.forEach(t => {
+      filteredTickets.forEach(t => {
         (t.actualHoursLogs || []).forEach(ah => {
-          if ((ah.consultantId === user?.id || ah.consultantId === consultantEmail) && ah.createdAt) {
-            const logDate = new Date(ah.createdAt);
+          if (ah.consultantId === user?.id || ah.consultantId === consultantEmail) {
+            const logDate = ah.createdAt ? new Date(ah.createdAt) : new Date(t.createdAt);
             if (logDate.getFullYear() === d.getFullYear() && logDate.getMonth() === d.getMonth()) {
               actual += ah.actualHours;
               if (ah.billable) {
@@ -477,19 +587,22 @@ export default function ConsultantDashboardPage() {
       });
     }
     return data;
-  }, [selectedYear, selectedMonth, roleTickets, user?.id, consultantEmail]);
+  }, [filteredTickets, user?.id, consultantEmail]);
 
   const monthlyProductivityTrend = useMemo(() => {
     const data: any[] = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(selectedYear, selectedMonth - i, 1);
+      const d = new Date(currentYear, currentMonth - i, 1);
       const mName = monthNames[d.getMonth()];
       const yr = d.getFullYear() === 2026 ? '' : ` '${String(d.getFullYear()).substring(2)}`;
 
-      const monthClosedList = roleTickets.filter(t => {
-        if (!t.closedAt) return false;
-        const date = new Date(t.closedAt);
+      const monthClosedList = filteredTickets.filter(t => {
+        if (t.status !== 'Closed' && t.status !== 'Resolved') return false;
+        const date = t.closedAt ? new Date(t.closedAt) : new Date(t.createdAt);
         return date.getFullYear() === d.getFullYear() && date.getMonth() === d.getMonth();
       });
 
@@ -517,7 +630,7 @@ export default function ConsultantDashboardPage() {
       });
     }
     return data;
-  }, [selectedYear, selectedMonth, roleTickets]);
+  }, [filteredTickets]);
 
   // Export CSV Helper
   const triggerCSVDownload = (filename: string, content: string) => {
@@ -533,11 +646,14 @@ export default function ConsultantDashboardPage() {
   };
 
   const handleDownloadPerformanceReport = () => {
+    const targetPeriod = filters.period === 'Custom' 
+      ? `${filters.dateFrom || 'Start'} to ${filters.dateTo || 'End'}`
+      : filters.period;
     const rows = [
       ['Report Parameter', 'Value'],
       ['Consultant Name', consultantName],
       ['Specialization', consultantType],
-      ['Target Month', MONTH_OPTIONS.find(m => m.value === selectedMonthStr)?.label || selectedMonthStr],
+      ['Target Period', targetPeriod],
       ['Productivity Score', `${monthlyStats.productivityScore.toFixed(0)}/100`],
       ['SLA Compliance %', `${monthlyStats.slaCompliancePercent.toFixed(1)}%`],
       ['Average Resolution Time', `${monthlyStats.avgResolutionTime.toFixed(1)} hrs`],
@@ -546,7 +662,7 @@ export default function ConsultantDashboardPage() {
       ['First Response Compliance', `${monthlyStats.firstResponseCompliancePercent.toFixed(1)}%`]
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
-    triggerCSVDownload(`${consultantName}_Performance_Audit_${selectedMonthStr}.csv`, csv);
+    triggerCSVDownload(`${consultantName}_Performance_Audit_${filters.period.replace(/\s+/g, '_')}.csv`, csv);
   };
 
   const handleDownloadUtilizationReport = () => {
@@ -563,7 +679,7 @@ export default function ConsultantDashboardPage() {
       ['Billable Efficiency %', `${monthlyStats.billableEfficiencyScore.toFixed(1)}%`]
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
-    triggerCSVDownload(`${consultantName}_Utilization_Report_${selectedMonthStr}.csv`, csv);
+    triggerCSVDownload(`${consultantName}_Utilization_Report_${filters.period.replace(/\s+/g, '_')}.csv`, csv);
   };
 
   const handleDownloadMonthlyReport = () => {
@@ -572,7 +688,7 @@ export default function ConsultantDashboardPage() {
       ...monthlyStats.customerEffort.map(c => [c.name, `${c.hours}h`, String(c.volume), String(c.open)])
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
-    triggerCSVDownload(`${consultantName}_Monthly_Activity_${selectedMonthStr}.csv`, csv);
+    triggerCSVDownload(`${consultantName}_Monthly_Activity_${filters.period.replace(/\s+/g, '_')}.csv`, csv);
   };
 
   if (myTickets.length === 0) {
@@ -610,23 +726,178 @@ export default function ConsultantDashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <span className="text-[9px] font-bold text-zinc-400 block uppercase tracking-widest font-sans mb-1 text-right">Audit Timeline</span>
-            <select
-              value={selectedMonthStr}
-              onChange={(e) => setSelectedMonthStr(e.target.value)}
-              className="bg-white border border-zinc-200 rounded-md px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-sans w-48 shadow-sm cursor-pointer"
-            >
-              {MONTH_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Badge className="bg-zinc-900 text-white font-mono text-[9px] tracking-wider uppercase px-2.5 py-1 shrink-0 mt-4">
+          <Badge className="bg-zinc-900 text-white font-mono text-[9px] tracking-wider uppercase px-2.5 py-1 shrink-0">
             {consultantType} SECURE
           </Badge>
+        </div>
+      </div>
+
+      {/* Sticky Filter Bar */}
+      <div className="sticky top-0 z-40 bg-zinc-50/90 backdrop-blur-md border-b border-zinc-200 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 mb-6">
+        <div className="max-w-5xl mx-auto flex flex-wrap gap-4 items-end justify-between">
+          <div className="flex flex-wrap gap-4 items-end">
+            
+            {/* 1. PERIOD */}
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-zinc-400 block uppercase tracking-wider mb-1 font-mono">Period</span>
+              <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
+                {['This Month', 'This Quarter', 'This Year', 'Custom'].map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setFilters(prev => ({ ...prev, period: p }))}
+                    className={`px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
+                      filters.period === p
+                        ? 'bg-white text-zinc-950 shadow-sm'
+                        : 'text-zinc-500 hover:text-zinc-800'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom range From/To inputs */}
+            {filters.period === 'Custom' && (
+              <>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold text-zinc-400 block uppercase tracking-wider mb-1 font-mono">From</span>
+                  <input
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                    className="bg-white border border-zinc-200 rounded-lg px-2.5 py-1 text-xs text-zinc-850 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-sans shadow-sm"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold text-zinc-400 block uppercase tracking-wider mb-1 font-mono">To</span>
+                  <input
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                    className="bg-white border border-zinc-200 rounded-lg px-2.5 py-1 text-xs text-zinc-850 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-sans shadow-sm"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* 2. STATUS */}
+            <div className="relative" ref={statusDropdownRef}>
+              <span className="text-[9px] font-bold text-zinc-400 block uppercase tracking-wider mb-1 font-mono">Status</span>
+              <button
+                type="button"
+                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                className="bg-white border border-zinc-200 rounded-lg px-3 py-1.5 text-xs text-zinc-850 transition font-sans w-40 shadow-sm flex items-center justify-between cursor-pointer"
+              >
+                <span className="truncate">
+                  {filters.statuses.includes('All') 
+                    ? 'All Statuses' 
+                    : filters.statuses.join(', ')}
+                </span>
+                <ChevronRight size={12} className="text-zinc-450 shrink-0 rotate-90" />
+              </button>
+              {showStatusDropdown && (
+                <div className="absolute z-50 mt-1 w-44 bg-white border border-zinc-200 rounded-xl shadow-lg p-2 space-y-1">
+                  {['All', 'New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Escalated', 'Reopened'].map(st => {
+                    const isSelected = filters.statuses.includes(st);
+                    return (
+                      <label key={st} className="flex items-center gap-2 p-1.5 hover:bg-zinc-50 rounded-lg cursor-pointer text-xs font-sans text-zinc-700">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            if (st === 'All') {
+                              setFilters(prev => ({ ...prev, statuses: ['All'] }));
+                            } else {
+                              let next = filters.statuses.filter(item => item !== 'All');
+                              if (isSelected) {
+                                next = next.filter(item => item !== st);
+                                if (next.length === 0) next = ['All'];
+                              } else {
+                                next.push(st);
+                              }
+                              setFilters(prev => ({ ...prev, statuses: next }));
+                            }
+                          }}
+                          className="rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950"
+                        />
+                        <span>{st}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 3. PRIORITY */}
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-zinc-400 block uppercase tracking-wider mb-1 font-mono">Priority</span>
+              <select
+                value={filters.priority}
+                onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                className="bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-850 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-sans w-24 shadow-sm cursor-pointer"
+              >
+                <option value="All">All</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+
+            {/* 4. MODULE */}
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-zinc-400 block uppercase tracking-wider mb-1 font-mono">Module</span>
+              <select
+                value={filters.module}
+                onChange={(e) => setFilters(prev => ({ ...prev, module: e.target.value }))}
+                className="bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-850 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-sans w-32 shadow-sm cursor-pointer"
+              >
+                <option value="All">All Modules</option>
+                {distinctModules.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 5. CUSTOMER */}
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-zinc-400 block uppercase tracking-wider mb-1 font-mono">Customer</span>
+              <select
+                value={filters.customer}
+                onChange={(e) => setFilters(prev => ({ ...prev, customer: e.target.value }))}
+                className="bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-850 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-sans w-40 shadow-sm cursor-pointer"
+              >
+                <option value="All">All Customers</option>
+                {distinctCustomers.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+          </div>
+
+          {/* 6. RESET BUTTON */}
+          <div className="flex flex-col justify-end">
+            <button
+              type="button"
+              onClick={() => setFilters({
+                period: 'This Month',
+                dateFrom: '',
+                dateTo: '',
+                statuses: ['All'],
+                priority: 'All',
+                module: 'All',
+                customer: 'All'
+              })}
+              className="border border-zinc-200 hover:bg-zinc-100 hover:border-zinc-350 rounded-lg px-3 py-1.5 text-xs font-bold uppercase transition shadow-sm cursor-pointer flex items-center gap-1 text-zinc-750"
+            >
+              <RotateCcw size={12} />
+              Reset
+            </button>
+          </div>
+
         </div>
       </div>
 
@@ -989,7 +1260,7 @@ export default function ConsultantDashboardPage() {
             <h2 className="text-sm font-bold text-zinc-900 tracking-wide font-sans">Monthly Consultant Scorecard</h2>
           </div>
           <span className="text-[10px] font-mono text-zinc-500 uppercase">
-            Period: {MONTH_OPTIONS.find(m => m.value === selectedMonthStr)?.label}
+            Period: {filters.period === 'Custom' ? `${filters.dateFrom || 'Start'} to ${filters.dateTo || 'End'}` : filters.period}
           </span>
         </div>
 
@@ -1131,19 +1402,19 @@ export default function ConsultantDashboardPage() {
       {(() => {
         const now = Date.now();
         const nextWeek = now + 7 * 24 * 60 * 60 * 1000;
-        const slaDueThisWeek = roleTickets.filter(t => {
+        const slaDueThisWeek = filteredTickets.filter(t => {
           if (t.status === 'Closed' || t.status === 'Resolved' || !t.slaDueAt || t.slaDueAt === 'SLA Not Applicable') return false;
           const dueTime = new Date(t.slaDueAt).getTime();
           return dueTime >= now && dueTime <= nextWeek;
         });
 
-        const customerActionPendingTickets = roleTickets.filter(t => 
+        const customerActionPendingTickets = filteredTickets.filter(t => 
           t.status === 'Customer Action' || 
           t.status === 'Waiting for Customer' || 
           t.customerActionRequired === true
         );
 
-        const closureAwaitingApproval = roleTickets.filter(t => 
+        const closureAwaitingApproval = filteredTickets.filter(t => 
           t.status === 'Request for Closure' || 
           t.status === 'Awaiting Manager Approval'
         );
