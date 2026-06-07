@@ -69,7 +69,8 @@ export default function AdminManagersPage() {
       // Fetch all tickets to aggregate counts
       const { data: tickets, error: ticketErr } = await supabase
         .from('tickets')
-        .select('id, assigned_manager_id, priority, status');
+        .select('id, assigned_manager_id, priority, status')
+        .order('created_at', { ascending: false });
 
       if (ticketErr) throw ticketErr;
 
@@ -266,7 +267,8 @@ export default function AdminManagersPage() {
         const { data, error } = await supabase
           .from('tickets')
           .select('id, title, status, priority, sap_module, created_at')
-          .eq('assigned_manager_id', mgr.id);
+          .eq('assigned_manager_id', mgr.id)
+          .order('created_at', { ascending: false });
         if (error) throw error;
         setManagerTickets(data || []);
       } catch (err: any) {
