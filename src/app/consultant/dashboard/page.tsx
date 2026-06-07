@@ -1137,6 +1137,27 @@ export default function ConsultantDashboardPage() {
           t.status === 'Awaiting Manager Approval'
         );
 
+        const getSlaBreachInfo = (t: any) => {
+          if (t.status === 'Closed' || t.status === 'Resolved') {
+            return null;
+          }
+          if (!t.slaDueAt || t.slaDueAt === 'SLA Not Applicable') {
+            return null;
+          }
+          const dueTime = new Date(t.slaDueAt).getTime();
+          if (isNaN(dueTime)) return null;
+
+          const diffMs = dueTime - Date.now();
+          const breachesInHours = diffMs / (1000 * 60 * 60);
+
+          if (breachesInHours < 0) {
+            return { status: 'breached', label: 'SLA breached' };
+          } else if (breachesInHours <= 2) {
+            return { status: 'imminent', label: `SLA breach in ${Math.ceil(breachesInHours)}h` };
+          }
+          return null;
+        };
+
         const getSlaHoursLeft = (dueAtStr: string) => {
           const diffMs = new Date(dueAtStr).getTime() - Date.now();
           const hrs = Math.max(0, diffMs / (1000 * 60 * 60));
@@ -1157,12 +1178,27 @@ export default function ConsultantDashboardPage() {
                   </Badge>
                 </div>
                 <div className="space-y-2 text-xs">
-                  {slaDueThisWeek.slice(0, 3).map(t => (
-                    <div key={t.id} className="flex justify-between items-center">
-                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.ticketNumber || t.id}</Link>
-                      <span className="text-red-655 font-bold">{getSlaHoursLeft(t.slaDueAt)}</span>
-                    </div>
-                  ))}
+                  {slaDueThisWeek.slice(0, 3).map(t => {
+                    const slaInfo = getSlaBreachInfo(t);
+                    const isEscalated = t.escalationFlag;
+                    const borderClass = isEscalated || (slaInfo?.status === 'breached') 
+                      ? 'border-l-4 border-l-destructive pl-2' 
+                      : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+                    return (
+                      <div key={t.id} className={`flex justify-between items-center py-1.5 ${borderClass}`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
+                          {isEscalated && <Badge variant="destructive" className="text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
+                          {slaInfo && (
+                            <Badge className={`text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
+                              slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                            }`}>{slaInfo.label}</Badge>
+                          )}
+                        </div>
+                        <span className="text-red-655 font-bold shrink-0">{getSlaHoursLeft(t.slaDueAt)}</span>
+                      </div>
+                    );
+                  })}
                   {slaDueThisWeek.length === 0 && (
                     <span className="text-zinc-400 italic">No SLAs due this week</span>
                   )}
@@ -1178,12 +1214,27 @@ export default function ConsultantDashboardPage() {
                   </Badge>
                 </div>
                 <div className="space-y-2 text-xs">
-                  {customerActionPendingTickets.slice(0, 3).map(t => (
-                    <div key={t.id} className="flex justify-between items-center">
-                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.ticketNumber || t.id}</Link>
-                      <span className="text-zinc-550 truncate max-w-[150px]">{t.title}</span>
-                    </div>
-                  ))}
+                  {customerActionPendingTickets.slice(0, 3).map(t => {
+                    const slaInfo = getSlaBreachInfo(t);
+                    const isEscalated = t.escalationFlag;
+                    const borderClass = isEscalated || (slaInfo?.status === 'breached') 
+                      ? 'border-l-4 border-l-destructive pl-2' 
+                      : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+                    return (
+                      <div key={t.id} className={`flex justify-between items-center py-1.5 ${borderClass}`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
+                          {isEscalated && <Badge variant="destructive" className="text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
+                          {slaInfo && (
+                            <Badge className={`text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
+                              slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                            }`}>{slaInfo.label}</Badge>
+                          )}
+                          <span className="text-zinc-550 truncate max-w-[120px]">{t.title}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                   {customerActionPendingTickets.length === 0 && (
                     <span className="text-zinc-400 italic">No actions pending client</span>
                   )}
@@ -1199,12 +1250,27 @@ export default function ConsultantDashboardPage() {
                   </Badge>
                 </div>
                 <div className="space-y-2 text-xs">
-                  {closureAwaitingApproval.slice(0, 3).map(t => (
-                    <div key={t.id} className="flex justify-between items-center">
-                      <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline">{t.ticketNumber || t.id}</Link>
-                      <span className="text-zinc-550 truncate max-w-[150px]">{t.title}</span>
-                    </div>
-                  ))}
+                  {closureAwaitingApproval.slice(0, 3).map(t => {
+                    const slaInfo = getSlaBreachInfo(t);
+                    const isEscalated = t.escalationFlag;
+                    const borderClass = isEscalated || (slaInfo?.status === 'breached') 
+                      ? 'border-l-4 border-l-destructive pl-2' 
+                      : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+                    return (
+                      <div key={t.id} className={`flex justify-between items-center py-1.5 ${borderClass}`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
+                          {isEscalated && <Badge variant="destructive" className="text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
+                          {slaInfo && (
+                            <Badge className={`text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
+                              slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                            }`}>{slaInfo.label}</Badge>
+                          )}
+                          <span className="text-zinc-550 truncate max-w-[120px]">{t.title}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                   {closureAwaitingApproval.length === 0 && (
                     <span className="text-zinc-400 italic">No closures pending approval</span>
                   )}

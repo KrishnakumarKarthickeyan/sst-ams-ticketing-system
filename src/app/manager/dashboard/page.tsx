@@ -150,6 +150,27 @@ export default function ManagerDashboardPage() {
   }
   const managerName = user?.name || 'Marcus Vance';
 
+  const getSlaBreachInfo = (t: any) => {
+    if (t.status === 'Closed' || t.status === 'Resolved') {
+      return null;
+    }
+    if (!t.slaDueAt || t.slaDueAt === 'SLA Not Applicable') {
+      return null;
+    }
+    const dueTime = new Date(t.slaDueAt).getTime();
+    if (isNaN(dueTime)) return null;
+
+    const diffMs = dueTime - Date.now();
+    const breachesInHours = diffMs / (1000 * 60 * 60);
+
+    if (breachesInHours < 0) {
+      return { status: 'breached', label: 'SLA breached' };
+    } else if (breachesInHours <= 2) {
+      return { status: 'imminent', label: `SLA breach in ${Math.ceil(breachesInHours)}h` };
+    }
+    return null;
+  };
+
   // Compute values synchronously from profiles using useMemo
   const consultantsDbList = useMemo(() => {
     return (profiles || [])
@@ -1791,19 +1812,34 @@ export default function ManagerDashboardPage() {
                     <Badge className="bg-zinc-100 text-zinc-800 text-[8px] font-bold">UNASSIGNED</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-                    {filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').slice(0, 5).map(t => (
-                      <div key={t.id} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
-                        <div className="flex justify-between items-center">
-                          <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id.slice(0, 8)}</Link>
-                          <Badge className="bg-zinc-100 text-zinc-800 border-none font-bold text-[7px] py-0 px-1 uppercase">{t.priority}</Badge>
+                    {filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').slice(0, 5).map(t => {
+                      const slaInfo = getSlaBreachInfo(t);
+                      const isEscalated = t.escalationFlag;
+                      const borderClass = isEscalated || (slaInfo?.status === 'breached') 
+                        ? 'border-l-4 border-l-destructive pl-2' 
+                        : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+                      return (
+                        <div key={t.id} className={`p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
+                          <div className="flex justify-between items-center">
+                            <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id.slice(0, 8)}</Link>
+                            <div className="flex gap-1 items-center">
+                              {isEscalated && <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
+                              {slaInfo && (
+                                <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
+                                  slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                                }`}>{slaInfo.label}</Badge>
+                              )}
+                              <Badge className="bg-zinc-100 text-zinc-800 border-none font-bold text-[7px] py-0 px-1 uppercase">{t.priority}</Badge>
+                            </div>
+                          </div>
+                          <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
+                          <div className="flex justify-between items-center text-[8px] text-zinc-400">
+                            <span>Org: {t.organization}</span>
+                            <span>Module: {t.sapModule}</span>
+                          </div>
                         </div>
-                        <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
-                        <div className="flex justify-between items-center text-[8px] text-zinc-400">
-                          <span>Org: {t.organization}</span>
-                          <span>Module: {t.sapModule}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
                         All active workload allocated.
@@ -1877,19 +1913,34 @@ export default function ManagerDashboardPage() {
                     <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">EXPOSURE</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-                    {filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').slice(0, 5).map(t => (
-                      <div key={t.id} className="p-2 bg-red-50/10 border border-red-100 rounded-lg flex flex-col justify-between gap-1">
-                        <div className="flex justify-between items-center">
-                          <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
-                          <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase">{t.priority}</span>
+                    {filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').slice(0, 5).map(t => {
+                      const slaInfo = getSlaBreachInfo(t);
+                      const isEscalated = t.escalationFlag;
+                      const borderClass = isEscalated || (slaInfo?.status === 'breached') 
+                        ? 'border-l-4 border-l-destructive pl-2' 
+                        : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+                      return (
+                        <div key={t.id} className={`p-2 bg-red-50/10 border border-red-100 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
+                          <div className="flex justify-between items-center">
+                            <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                            <div className="flex gap-1 items-center">
+                              {isEscalated && <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
+                              {slaInfo && (
+                                <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
+                                  slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                                }`}>{slaInfo.label}</Badge>
+                              )}
+                              <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase leading-none h-4">{t.priority}</span>
+                            </div>
+                          </div>
+                          <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
+                          <div className="flex justify-between items-center text-[8px] text-zinc-450">
+                            <span>Org: {t.organization}</span>
+                            <span className="font-bold text-red-655">{t.escalationFlag ? 'Escalated Flag Set' : 'Critical P1 Priority'}</span>
+                          </div>
                         </div>
-                        <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
-                        <div className="flex justify-between items-center text-[8px] text-zinc-450">
-                          <span>Org: {t.organization}</span>
-                          <span className="font-bold text-red-650">{t.escalationFlag ? 'Escalated Flag Set' : 'Critical P1 Priority'}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
                         No active escalations.
@@ -1914,19 +1965,34 @@ export default function ManagerDashboardPage() {
                     <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">WARNING</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').slice(0, 5).map(t => (
-                      <div key={t.id} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
-                        <div className="flex justify-between items-center">
-                          <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
-                          <span className={`text-[7px] px-1 py-0.2 rounded font-bold uppercase ${getSlaStatus(t, SYSTEM_NOW) === 'Breached' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{getSlaStatus(t, SYSTEM_NOW)}</span>
+                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').slice(0, 5).map(t => {
+                      const slaInfo = getSlaBreachInfo(t);
+                      const isEscalated = t.escalationFlag;
+                      const borderClass = isEscalated || (slaInfo?.status === 'breached') 
+                        ? 'border-l-4 border-l-destructive pl-2' 
+                        : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+                      return (
+                        <div key={t.id} className={`p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
+                          <div className="flex justify-between items-center">
+                            <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                            <div className="flex gap-1 items-center">
+                              {isEscalated && <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
+                              {slaInfo && (
+                                <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
+                                  slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                                }`}>{slaInfo.label}</Badge>
+                              )}
+                              <span className={`text-[7px] px-1 py-0.2 rounded font-bold uppercase leading-none h-4 ${getSlaStatus(t, SYSTEM_NOW) === 'Breached' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{getSlaStatus(t, SYSTEM_NOW)}</span>
+                            </div>
+                          </div>
+                          <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
+                          <div className="flex justify-between items-center text-[8px] text-zinc-400">
+                            <span>Org: {t.organization}</span>
+                            <span>Due: {t.slaDueAt ? new Date(t.slaDueAt).toLocaleDateString() : 'N/A'}</span>
+                          </div>
                         </div>
-                        <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
-                        <div className="flex justify-between items-center text-[8px] text-zinc-400">
-                          <span>Org: {t.organization}</span>
-                          <span>Due: {t.slaDueAt ? new Date(t.slaDueAt).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
                         All SLAs running in healthy range.
@@ -2596,20 +2662,35 @@ export default function ManagerDashboardPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-150">
-                        {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable').slice(0, 4).map(t => (
-                          <tr key={t.id} className="hover:bg-zinc-50/50">
-                            <td className="py-2 px-3 font-bold text-zinc-950">
-                              <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
-                            </td>
-                            <td className="py-2 px-3 font-semibold text-zinc-650 truncate max-w-[100px]">{t.organization}</td>
-                            <td className="py-2 px-3 text-center font-bold text-red-650">{t.priority}</td>
-                            <td className="py-2 px-3 text-zinc-500 whitespace-nowrap">{new Date(t.slaDueAt).toLocaleString()}</td>
-                            <td className="py-2 px-3 text-zinc-650 font-semibold">{t.assignedConsultant || 'Unassigned'}</td>
-                            <td className="py-2 px-3 text-center">
-                              <span className="px-1.5 py-0.2 rounded font-bold border text-[8px] uppercase text-blue-700 bg-blue-50 border-blue-200">{t.status}</span>
-                            </td>
-                          </tr>
-                        ))}
+                        {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable').slice(0, 4).map(t => {
+                          const slaInfo = getSlaBreachInfo(t);
+                          const isEscalated = t.escalationFlag;
+                          const borderClass = isEscalated || (slaInfo?.status === 'breached') 
+                            ? 'border-l-4 border-l-destructive' 
+                            : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500' : '');
+                          return (
+                            <tr key={t.id} className="hover:bg-zinc-50/50">
+                              <td className={`py-2 px-3 font-bold text-zinc-950 ${borderClass}`}>
+                                <div className="flex items-center gap-1.5">
+                                  <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
+                                  {isEscalated && <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
+                                  {slaInfo && (
+                                    <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
+                                      slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                                    }`}>{slaInfo.label}</Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 font-semibold text-zinc-650 truncate max-w-[100px]">{t.organization}</td>
+                              <td className="py-2 px-3 text-center font-bold text-red-650">{t.priority}</td>
+                              <td className="py-2 px-3 text-zinc-500 whitespace-nowrap">{new Date(t.slaDueAt).toLocaleString()}</td>
+                              <td className="py-2 px-3 text-zinc-650 font-semibold">{t.assignedConsultant || 'Unassigned'}</td>
+                              <td className="py-2 px-3 text-center">
+                                <span className="px-1.5 py-0.2 rounded font-bold border text-[8px] uppercase text-blue-700 bg-blue-50 border-blue-200">{t.status}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                         {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable').length === 0 && (
                           <tr>
                             <td colSpan={6} className="py-8 text-center text-zinc-400 italic">No incident SLA risks found.</td>

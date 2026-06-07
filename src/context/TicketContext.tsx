@@ -1381,7 +1381,15 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
         }
 
-        await supabase.from('tickets').update({ escalation_flag: true, updated_at: new Date().toISOString() }).eq('id', ticketId);
+        const currentTicket = tickets.find(t => t.id === ticketId);
+        const currentPriority = currentTicket?.priority || 'Medium';
+        const nextPriority = (currentPriority === 'High' || currentPriority === 'Critical') ? 'Critical' : 'High';
+
+        await supabase.from('tickets').update({
+          escalation_flag: true,
+          priority: nextPriority,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
         await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: actorId,
@@ -1439,9 +1447,12 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             createdAt: new Date().toISOString()
           }
         ];
+        const currentPriority = t.priority || 'Medium';
+        const nextPriority = (currentPriority === 'High' || currentPriority === 'Critical') ? 'Critical' : 'High';
         return {
           ...t,
           escalationFlag: true,
+          priority: nextPriority as any,
           escalations: [...currentEscalations, newEscalation],
           attachments: localAttachments,
           updatedAt: new Date().toISOString(),
