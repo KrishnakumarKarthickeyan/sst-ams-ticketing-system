@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { getManagerDashboardData, getSlaStatus } from '../../../utils/dashboardService';
@@ -28,8 +28,10 @@ import {
   Play,
   Pause,
   ChevronRight,
-  Star
+  Star,
+  RotateCcw
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import {
   ResponsiveContainer,
   BarChart,
@@ -72,7 +74,25 @@ const SAP_MODULES_LIST: SAPModule[] = [
 
 const CONSULTANTS_DB: any[] = [];
 
-const SYSTEM_NOW = new Date('2026-05-26T11:09:49+05:30').getTime();
+// Helper: Calculate Sunday through Thursday working days count in a date range (excluding Friday/Saturday)
+function getWorkingDaysInRange(start: Date, end: Date) {
+  let count = 0;
+  const current = new Date(start.getTime());
+  current.setHours(0, 0, 0, 0);
+  const endNormalized = new Date(end.getTime());
+  endNormalized.setHours(0, 0, 0, 0);
+
+  while (current <= endNormalized) {
+    const day = current.getDay();
+    if (day !== 5 && day !== 6) { // 5 = Friday, 6 = Saturday
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
+const SYSTEM_NOW = new Date('2026-06-07T08:00:00Z').getTime();
 
 export default function ManagerDashboardPage() {
   const {
@@ -190,17 +210,28 @@ export default function ManagerDashboardPage() {
   }, [profiles]);
 
   // --- FILTERS & INTERACTION STATES ---
-  const [selectedMonthStr, setSelectedMonthStr] = useState('All');
-  const [selectedQuarter, setSelectedQuarter] = useState('All');
-  const [selectedYear, setSelectedYear] = useState('All');
-  const [customerFilter, setCustomerFilter] = useState('All');
-  const [consultantFilter, setConsultantFilter] = useState('All');
-  const [managerFilter, setManagerFilter] = useState('All');
-  const [moduleFilter, setModuleFilter] = useState('All');
-  const [priorityFilter, setPriorityFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [escalatedFilter, setEscalatedFilter] = useState('All');
-  const [slaStatusFilter, setSlaStatusFilter] = useState('All');
+  const [filters, setFilters] = useState({
+    period: 'This Year',
+    dateFrom: '',
+    dateTo: '',
+    statuses: ['All'],
+    priority: 'All',
+    module: 'All',
+    customer: 'All'
+  });
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [selectedTab, setSelectedTab] = useState('analytics');
   const [selectedConsultant, setSelectedConsultant] = useState<string | null>(null);
   const [trendGrouping, setTrendGrouping] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
@@ -244,20 +275,118 @@ export default function ManagerDashboardPage() {
     return activeTicketForClosure.closureRequests?.find(r => r.id === closureDialog.requestId);
   }, [activeTicketForClosure, closureDialog.requestId]);
 
-  // Manager is the single point of contact for the whole operation — see all tickets, like admin
   const scopedTickets = useMemo(() => tickets, [tickets]);
 
+  const distinctModules = useMemo(() => {
+    const mods = scopedTickets.map(t => t.sapModule).filter(Boolean);
+    return Array.from(new Set(mods)).sort();
+  }, [scopedTickets]);
+
+  const distinctCustomers = useMemo(() => {
+    const orgs = scopedTickets.map(t => t.organization).filter(Boolean);
+    return Array.from(new Set(orgs)).sort();
+  }, [scopedTickets]);
+
+  const applyFilters = (ticketsList: typeof scopedTickets, f: typeof filters) => {
+    return ticketsList.filter(t => {
+      // Date period filter
+      const ticketDate = new Date(t.createdAt);
+      let passDate = true;
+      const now = new Date();
+
+      if (f.period === 'This Month') {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'This Quarter') {
+        const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+        const start = new Date(now.getFullYear(), quarterStartMonth, 1);
+        const end = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'This Year') {
+        const start = new Date(now.getFullYear(), 0, 1);
+        const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (f.period === 'Custom') {
+        if (f.dateFrom) {
+          const start = new Date(f.dateFrom);
+          start.setHours(0, 0, 0, 0);
+          passDate = passDate && (ticketDate >= start);
+        }
+        if (f.dateTo) {
+          const end = new Date(f.dateTo);
+          end.setHours(23, 59, 59, 999);
+          passDate = passDate && (ticketDate <= end);
+        }
+      }
+
+      if (!passDate) return false;
+
+      // Status filter matching UI simplified statuses
+      if (f.statuses && f.statuses.length > 0 && !f.statuses.includes('All')) {
+        let simplifiedStatus = '';
+        if (t.status === 'New') {
+          simplifiedStatus = 'New';
+        } else if (t.status === 'Assigned') {
+          simplifiedStatus = 'Assigned';
+        } else if (
+          ['In Progress', 'In Progress - Functional', 'Awaiting Functional Submission', 'In Progress - Technical', 'Awaiting Technical Submission', 'Requirement Gathering'].includes(t.status)
+        ) {
+          simplifiedStatus = 'In Progress';
+        } else if (
+          ['Awaiting Closure', 'Request for Closure', 'Awaiting Manager Approval', 'Waiting for Hours Approval'].includes(t.status)
+        ) {
+          simplifiedStatus = 'Pending Closure';
+        } else if (t.status === 'Closed' || t.status === 'Resolved') {
+          simplifiedStatus = 'Closed';
+        } else if (t.status === 'Reopened') {
+          simplifiedStatus = 'Reopened';
+        }
+
+        const isEscalatedMatch = f.statuses.includes('Escalated') && (t.escalationFlag || t.status === 'Raised to SAP');
+        const isStatusMatch = f.statuses.includes(simplifiedStatus);
+
+        if (!isStatusMatch && !isEscalatedMatch) {
+          return false;
+        }
+      }
+
+      // Priority filter
+      if (f.priority && f.priority !== 'All') {
+        if (t.priority !== f.priority) return false;
+      }
+
+      // Module filter
+      if (f.module && f.module !== 'All') {
+        if (t.sapModule !== f.module) return false;
+      }
+
+      // Customer filter
+      if (f.customer && f.customer !== 'All') {
+        if (t.organization !== f.customer) return false;
+      }
+
+      return true;
+    });
+  };
+
+  const filteredTickets = useMemo(() => {
+    return applyFilters(scopedTickets, filters);
+  }, [scopedTickets, filters]);
+
+  const filteredDashboardTickets = filteredTickets;
+
   const waitingAssignmentTickets = useMemo(() => {
-    return tickets.filter(t => 
+    return filteredTickets.filter(t => 
       t.status !== 'Closed' && 
       t.status !== 'Resolved' && 
       (!t.assignedConsultant || t.status === 'New' || t.status === 'Reopened')
     );
-  }, [tickets]);
+  }, [filteredTickets]);
 
   const approvalsQueueList = useMemo(() => {
     const list: any[] = [];
-    tickets.forEach(t => {
+    filteredTickets.forEach(t => {
       // Hours effort logs
       (t.actualHoursLogs || []).forEach(log => {
         if (log.approvalStatus?.toLowerCase() === 'pending') {
@@ -304,12 +433,12 @@ export default function ManagerDashboardPage() {
       });
     });
     return list;
-  }, [tickets]);
+  }, [filteredTickets]);
 
   const escalationsAndBreachesList = useMemo(() => {
     const now = SYSTEM_NOW;
     const list: any[] = [];
-    tickets.forEach(t => {
+    filteredTickets.forEach(t => {
       if (t.status === 'Closed') return;
       
       const hasSlaBreached = t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < now;
@@ -346,9 +475,8 @@ export default function ManagerDashboardPage() {
       }
     });
     return list;
-  }, [tickets]);
+  }, [filteredTickets]);
 
-  // Unique dropdown options extracted from data
   // Unique dropdown options extracted from contracts and tickets
   const customersList = useMemo(() => {
     const list = new Set<string>();
@@ -386,6 +514,7 @@ export default function ManagerDashboardPage() {
     });
     return Array.from(list).filter(Boolean).sort();
   }, [consultantsDbList, scopedTickets]);
+
   const managedCustomersList = customersList;
   const managedConsultantsList = consultantsList;
   const managedCustomersCount = managedCustomersList.length;
@@ -399,109 +528,27 @@ export default function ManagerDashboardPage() {
       .sort();
   }, [profiles]);
 
-  // Filtered dataset for dashboard metrics
-  const filteredDashboardTickets = useMemo(() => {
-    return scopedTickets.filter(t => {
-      // 1. Month Filter
-      if (selectedMonthStr !== 'All') {
-        const createdDate = new Date(t.createdAt);
-        const [y, m] = selectedMonthStr.split('-');
-        const matchesMonth = createdDate.getFullYear() === parseInt(y, 10) && (createdDate.getMonth() + 1) === parseInt(m, 10);
-        if (!matchesMonth) return false;
-      }
-
-      // 2. Quarter Filter
-      if (selectedQuarter !== 'All') {
-        const createdDate = new Date(t.createdAt);
-        const month = createdDate.getMonth(); // 0-indexed
-        let q = '';
-        if (month >= 0 && month <= 2) q = 'Q1';
-        else if (month >= 3 && month <= 5) q = 'Q2';
-        else if (month >= 6 && month <= 8) q = 'Q3';
-        else if (month >= 9 && month <= 11) q = 'Q4';
-        if (q !== selectedQuarter) return false;
-      }
-
-      // 3. Year Filter
-      if (selectedYear !== 'All') {
-        const createdDate = new Date(t.createdAt);
-        if (createdDate.getFullYear().toString() !== selectedYear) return false;
-      }
-
-      // 4. Customer Filter
-      if (customerFilter !== 'All' && t.organization !== customerFilter) return false;
-
-      // 5. Consultant Filter
-      if (consultantFilter !== 'All') {
-        const allocatedNames = (t.consultantEfforts || []).map(e => e.consultantName);
-        if (t.assignedConsultant) allocatedNames.push(t.assignedConsultant);
-        if (!allocatedNames.includes(consultantFilter)) return false;
-      }
-
-      // 6. Manager Filter
-      if (managerFilter !== 'All') {
-        if (t.assignedManager !== managerFilter) return false;
-      }
-
-      // 7. SAP Module Filter
-      if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
-
-      // 8. Priority Filter
-      if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
-
-      // 9. Status Filter
-      if (statusFilter !== 'All' && t.status !== statusFilter) return false;
-
-      // 10. Escalated Filter
-      if (escalatedFilter !== 'All') {
-        const isEsc = t.escalationFlag === true;
-        if (escalatedFilter === 'Yes' && !isEsc) return false;
-        if (escalatedFilter === 'No' && isEsc) return false;
-      }
-
-      // 11. SLA Status Filter
-      if (slaStatusFilter !== 'All') {
-        const status = getSlaStatus(t, SYSTEM_NOW);
-        if (status !== slaStatusFilter) return false;
-      }
-
-      return true;
-    });
-  }, [
-    scopedTickets,
-    selectedMonthStr,
-    selectedQuarter,
-    selectedYear,
-    customerFilter,
-    consultantFilter,
-    managerFilter,
-    moduleFilter,
-    priorityFilter,
-    statusFilter,
-    escalatedFilter,
-    slaStatusFilter
-  ]);
-
-  // Working days helper Sunday to Thursday
   const workingDaysInMonth = useMemo(() => {
-    if (selectedMonthStr === 'All') {
-      return 66; // Total average working days for April + May + June
+    const now = new Date();
+    let start = new Date(now.getFullYear(), now.getMonth(), 1);
+    let end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    if (filters.period === 'This Month') {
+      // already set
+    } else if (filters.period === 'This Quarter') {
+      const qStart = Math.floor(now.getMonth() / 3) * 3;
+      start = new Date(now.getFullYear(), qStart, 1);
+      end = new Date(now.getFullYear(), qStart + 3, 0);
+    } else if (filters.period === 'This Year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31);
+    } else if (filters.period === 'Custom') {
+      start = filters.dateFrom ? new Date(filters.dateFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
+      end = filters.dateTo ? new Date(filters.dateTo) : new Date(now.getFullYear(), now.getMonth() + 1, 0);
     }
-    const [y, m] = selectedMonthStr.split('-');
-    const year = parseInt(y, 10);
-    const month = parseInt(m, 10);
-    let count = 0;
-    const date = new Date(year, month - 1, 1);
-    while (date.getMonth() === month - 1) {
-      const day = date.getDay();
-      // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday
-      if (day >= 0 && day <= 4) {
-        count++;
-      }
-      date.setDate(date.getDate() + 1);
-    }
-    return count;
-  }, [selectedMonthStr]);
+
+    return getWorkingDaysInRange(start, end);
+  }, [filters.period, filters.dateFrom, filters.dateTo]);
 
   // Capacity & Load dynamic calculations for individual consultants
   const consultantsLoad = useMemo(() => {
@@ -1399,197 +1446,201 @@ export default function ManagerDashboardPage() {
 
   return (
     <div className="space-y-6 font-mono text-xs text-[#09090b]">
-      
-      {/* ── FILTER & CONTEXT PANEL ── */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-4 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-md font-bold uppercase text-zinc-950 tracking-wider">AMS Management Command Center</h1>
-            <p className="text-zinc-500 mt-0.5">Unified operations cockpit for client SLAs, resource capacity, approvals, and performance metrics.</p>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedMonthStr('All');
-                setSelectedQuarter('All');
-                setSelectedYear('All');
-                setCustomerFilter('All');
-                setConsultantFilter('All');
-                setManagerFilter('All');
-                setModuleFilter('All');
-                setPriorityFilter('All');
-                setStatusFilter('All');
-                setEscalatedFilter('All');
-                setSlaStatusFilter('All');
-              }}
-              className="text-[10px] font-bold uppercase tracking-wider font-mono h-8 border-zinc-300 hover:bg-zinc-100 text-zinc-700"
-            >
-              Reset Filters
-            </Button>
-            <Badge className="bg-zinc-950 text-white font-bold text-[9px] uppercase border-none py-1.5 px-3">
-              LIVE COCKPIT
-            </Badge>
-          </div>
+      {/* --- COMMAND CENTER HEADER --- */}
+      <div className="border-b border-zinc-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-950 uppercase font-sans">
+            AMS Management Command Center
+          </h1>
+          <p className="text-zinc-500 text-xs mt-1 font-sans">
+            Unified operations cockpit for client SLAs, resource capacity, approvals, and performance metrics.
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 pt-3 border-t border-zinc-100">
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Customer Account</label>
-            <select
-              value={customerFilter}
-              onChange={(e) => setCustomerFilter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Customers</option>
-              {customersList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Consultant Scope</label>
-            <select
-              value={consultantFilter}
-              onChange={(e) => setConsultantFilter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Consultants</option>
-              {consultantsList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Manager Scope</label>
-            <select
-              value={managerFilter}
-              onChange={(e) => setManagerFilter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Managers</option>
-              {managersList.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">SAP Module</label>
-            <select
-              value={moduleFilter}
-              onChange={(e) => setModuleFilter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Modules</option>
-              {SAP_MODULES_LIST.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Ticket Priority</label>
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Priorities</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Incident Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Statuses</option>
-              <option value="New">New</option>
-              <option value="Assigned">Assigned</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Waiting for Customer">Waiting Client</option>
-              <option value="Raised to SAP">Raised to SAP</option>
-              <option value="Request for Closure">Request Closure</option>
-              <option value="Closed">Closed</option>
-              <option value="Reopened">Reopened</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Month Selector</label>
-            <select
-              value={selectedMonthStr}
-              onChange={(e) => setSelectedMonthStr(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Months</option>
-              <option value="2026-06">June 2026</option>
-              <option value="2026-05">May 2026</option>
-              <option value="2026-04">April 2026</option>
-              <option value="2026-03">March 2026</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Quarter Selector</label>
-            <select
-              value={selectedQuarter}
-              onChange={(e) => setSelectedQuarter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Quarters</option>
-              <option value="Q1">Q1 (Jan-Mar)</option>
-              <option value="Q2">Q2 (Apr-Jun)</option>
-              <option value="Q3">Q3 (Jul-Sep)</option>
-              <option value="Q4">Q4 (Oct-Dec)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Year Selector</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Years</option>
-              <option value="2026">2026</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">Escalated Only</label>
-            <select
-              value={escalatedFilter}
-              onChange={(e) => setEscalatedFilter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[8px] font-bold uppercase text-zinc-450 block mb-1">SLA Status</label>
-            <select
-              value={slaStatusFilter}
-              onChange={(e) => setSlaStatusFilter(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1 text-[10px] focus:outline-none"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Healthy">Healthy</option>
-              <option value="Warning">Warning</option>
-              <option value="Breached">Breached</option>
-            </select>
-          </div>
+        <div className="flex items-center gap-3">
+          <Badge className="bg-zinc-900 text-white font-mono text-[9px] tracking-wider uppercase px-2.5 py-1 shrink-0">
+            LIVE COCKPIT
+          </Badge>
         </div>
       </div>
+
+      {/* Filter Bar */}
+      <Card className="border border-zinc-200 rounded-lg p-4 mb-6 shadow-sm bg-white">
+        {/* ROW 1 */}
+        <div className="flex flex-wrap md:flex-nowrap gap-3 items-end w-full">
+          
+          {/* 1. PERIOD */}
+          <div className="flex flex-col w-full md:w-auto">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
+            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 h-9 items-center min-w-[280px]">
+              {['This Month', 'This Quarter', 'This Year', 'Custom'].map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setFilters(prev => ({ ...prev, period: p }))}
+                  className={`flex-1 h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
+                    filters.period === p
+                      ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200/50'
+                      : 'text-zinc-550 hover:text-zinc-800'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. STATUS */}
+          <div className="relative flex flex-col flex-1 min-w-[140px]" ref={statusDropdownRef}>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
+            <button
+              type="button"
+              onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+              className="bg-white border border-zinc-200 rounded-md px-3 h-9 text-xs text-zinc-950 transition font-sans w-full shadow-sm flex items-center justify-between cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-950"
+            >
+              <span className="truncate">
+                {filters.statuses.includes('All') 
+                  ? 'All Statuses' 
+                  : `${filters.statuses.length} selected`}
+              </span>
+              <ChevronRight size={12} className="text-zinc-455 shrink-0 rotate-90" />
+            </button>
+            {showStatusDropdown && (
+              <div className="absolute z-50 mt-16 w-full min-w-[160px] bg-white border border-zinc-200 rounded-md shadow-lg p-2 space-y-1">
+                {['All', 'New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Escalated', 'Reopened'].map(st => {
+                  const isSelected = filters.statuses.includes(st);
+                  return (
+                    <label key={st} className="flex items-center gap-2 p-1.5 hover:bg-zinc-50 rounded cursor-pointer text-xs font-sans text-zinc-700">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                           if (st === 'All') {
+                             setFilters(prev => ({ ...prev, statuses: ['All'] }));
+                           } else {
+                             let next = filters.statuses.filter(item => item !== 'All');
+                             if (isSelected) {
+                               next = next.filter(item => item !== st);
+                               if (next.length === 0) next = ['All'];
+                             } else {
+                               next.push(st);
+                             }
+                             setFilters(prev => ({ ...prev, statuses: next }));
+                           }
+                        }}
+                        className="rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950"
+                      />
+                      <span>{st}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 3. PRIORITY */}
+          <div className="flex flex-col flex-1 min-w-[140px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
+            <Select
+              value={filters.priority}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
+            >
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Priorities</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 4. MODULE */}
+          <div className="flex flex-col flex-1 min-w-[140px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Module</span>
+            <Select
+              value={filters.module}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
+            >
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+                <SelectValue placeholder="Module" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Modules</SelectItem>
+                {distinctModules.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 5. CUSTOMER */}
+          <div className="flex flex-col flex-1 min-w-[140px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Customer</span>
+            <Select
+              value={filters.customer}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, customer: val }))}
+            >
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+                <SelectValue placeholder="Customer" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Customers</SelectItem>
+                {distinctCustomers.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 6. RESET BUTTON */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFilters({
+              period: 'This Year',
+              dateFrom: '',
+              dateTo: '',
+              statuses: ['All'],
+              priority: 'All',
+              module: 'All',
+              customer: 'All'
+            })}
+            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200 shadow-sm font-sans"
+          >
+            <RotateCcw size={14} />
+            Reset
+          </Button>
+
+        </div>
+
+        {/* ROW 2 - Custom range From/To inputs */}
+        {filters.period === 'Custom' && (
+          <div className="border-t border-zinc-200 mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex flex-col flex-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-950 w-full cursor-pointer font-sans"
+              />
+            </div>
+            <div className="flex flex-col flex-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-950 w-full cursor-pointer font-sans"
+              />
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* ── CLEAN DB EMPTY STATES OVERVIEW ── */}
       {(managedCustomersCount === 0 || managedConsultantsCount === 0 || tickets.length === 0 || pendingApprovalsCount === 0) && (
