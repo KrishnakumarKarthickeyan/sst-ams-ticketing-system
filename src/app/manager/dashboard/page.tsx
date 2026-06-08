@@ -1803,7 +1803,7 @@ export default function ManagerDashboardPage() {
                     <div className="flex justify-between"><span>Pending Approval:</span><span className="font-bold text-zinc-900">{pendingApprovalsCount}</span></div>
                     <div className="flex justify-between"><span>Pending Closure:</span><span className="font-bold text-zinc-900">{pendingClosureRequests.length}</span></div>
                     <div className="flex justify-between"><span>Escalated:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.escalationFlag).length}</span></div>
-                    <div className="flex justify-between"><span>Closed This Month:</span><span className="font-bold text-green-700">{filteredDashboardTickets.filter(t => t.status === 'Closed' && new Date(t.createdAt).getMonth() === new Date(SYSTEM_NOW).getMonth()).length}</span></div>
+                    <div className="flex justify-between"><span>Closed This Month:</span><span className="font-bold text-green-700">{filteredDashboardTickets.filter(t => (t.status === 'Closed' || t.status === 'Resolved') && new Date(t.createdAt).getMonth() === new Date(SYSTEM_NOW).getMonth()).length}</span></div>
                     <div className="flex justify-between"><span>Reopened:</span><span className="font-bold text-red-600">{filteredDashboardTickets.filter(t => t.status === 'Reopened').length}</span></div>
                     <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
                       <span>Avg Resolution Time:</span>
