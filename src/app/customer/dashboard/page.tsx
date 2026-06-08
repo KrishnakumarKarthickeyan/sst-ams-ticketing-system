@@ -60,6 +60,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Button } from '../../../components/ui/button';
 import { RotateCcw } from 'lucide-react';
 
+const SYSTEM_NOW = new Date('2026-06-07T08:00:00Z').getTime();
+
 export default function CustomerDashboardPage() {
   const { tickets, contracts, loading } = useTickets();
   const { user } = useAuth();
@@ -167,7 +169,7 @@ export default function CustomerDashboardPage() {
       // Date period filter
       const ticketDate = new Date(t.createdAt);
       let passDate = true;
-      const now = new Date();
+      const now = new Date(SYSTEM_NOW);
 
       if (f.period === 'This Month') {
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -460,34 +462,106 @@ export default function CustomerDashboardPage() {
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [companyTickets]);
 
-  // 5. Monthly Ticket Trend (Last 6 Months)
-  const monthlyTrendData = useMemo(() => {
-    const monthCounts: Record<string, { total: number; resolved: number }> = {};
-    // Seed last 6 months
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-      monthCounts[key] = { total: 0, resolved: 0 };
+  // ── TREND INTERVALS FOR DYNAMIC PERIODS ──
+  const trendIntervals = useMemo(() => {
+    const now = new Date(SYSTEM_NOW);
+    const monthsNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Determine range start & end based on filters
+    let start = new Date(now.getFullYear(), 0, 1);
+    let end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    if (filters.period === 'This Month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Quarter') {
+      const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+      start = new Date(now.getFullYear(), quarterStartMonth, 1);
+      end = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    } else if (filters.period === 'Custom') {
+      start = filters.dateFrom ? new Date(filters.dateFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
+      end = filters.dateTo ? new Date(filters.dateTo) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     }
 
-    companyTickets.forEach(t => {
-      const date = new Date(t.createdAt);
-      const key = date.toLocaleString('default', { month: 'short', year: '2-digit' });
-      if (monthCounts[key]) {
-        monthCounts[key].total++;
-        if (t.status === 'Resolved' || t.status === 'Closed') {
-          monthCounts[key].resolved++;
-        }
-      }
-    });
+    const durationDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    const intervals: { name: string; start: Date; end: Date }[] = [];
 
-    return Object.entries(monthCounts).map(([month, data]) => ({
-      month,
-      Tickets: data.total,
-      Resolved: data.resolved
-    }));
-  }, [companyTickets]);
+    if (durationDays <= 31) {
+      // Daily intervals
+      const curr = new Date(start);
+      while (curr <= end) {
+        const s = new Date(curr);
+        s.setHours(0,0,0,0);
+        const e = new Date(curr);
+        e.setHours(23,59,59,999);
+        intervals.push({
+          name: curr.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          start: s,
+          end: e
+        });
+        curr.setDate(curr.getDate() + 1);
+      }
+    } else if (durationDays <= 93) {
+      // Weekly intervals
+      const curr = new Date(start);
+      let wkIdx = 1;
+      while (curr <= end) {
+        const s = new Date(curr);
+        s.setHours(0,0,0,0);
+        const e = new Date(curr);
+        e.setDate(e.getDate() + 6);
+        e.setHours(23,59,59,999);
+        intervals.push({
+          name: `Wk ${wkIdx++}`,
+          start: s,
+          end: e
+        });
+        curr.setDate(curr.getDate() + 7);
+      }
+    } else {
+      // Monthly intervals
+      const curr = new Date(start.getFullYear(), start.getMonth(), 1);
+      const last = new Date(end.getFullYear(), end.getMonth(), 1);
+      while (curr <= last) {
+        const s = new Date(curr.getFullYear(), curr.getMonth(), 1, 0, 0, 0, 0);
+        const e = new Date(curr.getFullYear(), curr.getMonth() + 1, 0, 23, 59, 59, 999);
+        intervals.push({
+          name: `${monthsNames[curr.getMonth()]} ${curr.getFullYear().toString().slice(-2)}`,
+          start: s,
+          end: e
+        });
+        curr.setMonth(curr.getMonth() + 1);
+      }
+    }
+    return intervals;
+  }, [filters]);
+
+  // 5. Monthly Ticket Trend (Last 6 Months)
+  const monthlyTrendData = useMemo(() => {
+    return trendIntervals.map(interval => {
+      let ticketsCount = 0;
+      let resolvedCount = 0;
+
+      companyTickets.forEach(t => {
+        const date = new Date(t.createdAt);
+        if (date >= interval.start && date <= interval.end) {
+          ticketsCount++;
+          if (t.status === 'Resolved' || t.status === 'Closed') {
+            resolvedCount++;
+          }
+        }
+      });
+
+      return {
+        month: interval.name,
+        Tickets: ticketsCount,
+        Resolved: resolvedCount
+      };
+    });
+  }, [companyTickets, trendIntervals]);
 
   // 6. SLA Status Chart for Incident tickets only
   const slaChartData = useMemo(() => {
@@ -508,32 +582,28 @@ export default function CustomerDashboardPage() {
 
   // 8. Open vs Closed Trend (Accumulated over time)
   const openClosedTrendData = useMemo(() => {
-    const trend: Record<string, { open: number; closed: number }> = {};
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-      trend[key] = { open: 0, closed: 0 };
-    }
+    return trendIntervals.map(interval => {
+      let openCount = 0;
+      let closedCount = 0;
 
-    companyTickets.forEach(t => {
-      const date = new Date(t.createdAt);
-      const key = date.toLocaleString('default', { month: 'short', year: '2-digit' });
-      if (trend[key]) {
-        if (t.status === 'Closed' || t.status === 'Resolved') {
-          trend[key].closed++;
-        } else {
-          trend[key].open++;
+      companyTickets.forEach(t => {
+        const date = new Date(t.createdAt);
+        if (date >= interval.start && date <= interval.end) {
+          if (t.status === 'Closed' || t.status === 'Resolved') {
+            closedCount++;
+          } else {
+            openCount++;
+          }
         }
-      }
-    });
+      });
 
-    return Object.entries(trend).map(([month, data]) => ({
-      month,
-      Open: data.open,
-      Closed: data.closed
-    }));
-  }, [companyTickets]);
+      return {
+        month: interval.name,
+        Open: openCount,
+        Closed: closedCount
+      };
+    });
+  }, [companyTickets, trendIntervals]);
 
   const COLORS = ['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7'];
   const PRIORITY_COLORS: Record<string, string> = {
@@ -643,7 +713,7 @@ export default function CustomerDashboardPage() {
           </div>
 
           {/* Reset Filters */}
-          <div className="flex items-end h-14 ml-auto">
+          <div className="flex items-end ml-auto self-end pt-5">
             <Button
               variant="outline"
               onClick={() => setFilters({
