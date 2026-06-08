@@ -84,7 +84,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
     { title: 'Timesheet Approvals', href: '/manager/effort-approvals', icon: <CheckSquare size={16} /> },
     { title: 'Consultants Workload', href: '/manager/consultants', icon: <UserCheck size={16} /> },
     { title: 'SLA Monitoring', href: '/manager/sla-monitoring', icon: <Clock size={16} /> },
-    { title: 'Knowledgebase', href: '/manager/knowledgebase', icon: <Bookmark size={16} /> },
     { title: 'Performance Reports', href: '/manager/reports', icon: <FileSpreadsheet size={16} /> },
     { title: 'Profile Settings', href: '/manager/profile', icon: <User size={16} /> }
   ];
