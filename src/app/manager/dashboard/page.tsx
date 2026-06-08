@@ -920,136 +920,193 @@ export default function ManagerDashboardPage() {
     const now = new Date(SYSTEM_NOW);
     const monthsNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+    // Determine range start & end based on filters
+    let start = new Date(now.getFullYear(), 0, 1);
+    let end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    if (filters.period === 'This Month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Quarter') {
+      const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+      start = new Date(now.getFullYear(), quarterStartMonth, 1);
+      end = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    } else if (filters.period === 'Custom') {
+      start = filters.dateFrom ? new Date(filters.dateFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
+      end = filters.dateTo ? new Date(filters.dateTo) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
     // 1. Ticket Trend (Daily, Weekly, Monthly, Yearly)
     let ticketTrendData: { name: string; Tickets: number }[] = [];
     if (trendGrouping === 'daily') {
-      const days: Record<string, number> = {};
-      for (let i = 29; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        days[key] = 0;
+      const curr = new Date(start);
+      while (curr <= end) {
+        const dStr = curr.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const yr = curr.getFullYear();
+        const mo = curr.getMonth();
+        const dy = curr.getDate();
+        const count = filteredDashboardTickets.filter(t => {
+          const dt = new Date(t.createdAt);
+          return dt.getFullYear() === yr && dt.getMonth() === mo && dt.getDate() === dy;
+        }).length;
+        ticketTrendData.push({ name: dStr, Tickets: count });
+        curr.setDate(curr.getDate() + 1);
       }
-      filteredDashboardTickets.forEach(t => {
-        const key = new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        if (key in days) days[key]++;
-      });
-      ticketTrendData = Object.entries(days).map(([name, count]) => ({ name, Tickets: count }));
     } else if (trendGrouping === 'weekly') {
-      const weeks: Record<string, number> = {};
-      for (let i = 7; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i * 7);
-        const key = `Wk -${i}`;
-        weeks[key] = 0;
+      const curr = new Date(start);
+      let wkIdx = 1;
+      while (curr <= end) {
+        const wkStart = new Date(curr);
+        const wkEnd = new Date(curr);
+        wkEnd.setDate(wkEnd.getDate() + 6);
+        const count = filteredDashboardTickets.filter(t => {
+          const dt = new Date(t.createdAt);
+          return dt >= wkStart && dt <= wkEnd;
+        }).length;
+        ticketTrendData.push({ name: `Wk ${wkIdx++}`, Tickets: count });
+        curr.setDate(curr.getDate() + 7);
       }
-      filteredDashboardTickets.forEach(t => {
-        const diffMs = now.getTime() - new Date(t.createdAt).getTime();
-        const weekIdx = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7));
-        if (weekIdx >= 0 && weekIdx < 8) {
-          weeks[`Wk -${weekIdx}`]++;
-        }
-      });
-      ticketTrendData = Object.entries(weeks).reverse().map(([name, count]) => ({ name, Tickets: count }));
     } else if (trendGrouping === 'yearly') {
-      const years: Record<string, number> = {};
-      for (let i = 4; i >= 0; i--) {
-        const key = (now.getFullYear() - i).toString();
-        years[key] = 0;
+      const startYr = start.getFullYear();
+      const endYr = end.getFullYear();
+      for (let yr = startYr; yr <= endYr; yr++) {
+        const count = filteredDashboardTickets.filter(t => new Date(t.createdAt).getFullYear() === yr).length;
+        ticketTrendData.push({ name: String(yr), Tickets: count });
       }
-      filteredDashboardTickets.forEach(t => {
-        const yr = new Date(t.createdAt).getFullYear().toString();
-        if (yr in years) years[yr]++;
-      });
-      ticketTrendData = Object.entries(years).map(([name, count]) => ({ name, Tickets: count }));
     } else {
-      // monthly (default)
-      const monthsData: Record<string, number> = {};
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now);
-        d.setMonth(d.getMonth() - i);
-        const key = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
-        monthsData[key] = 0;
+      // monthly
+      const curr = new Date(start.getFullYear(), start.getMonth(), 1);
+      const last = new Date(end.getFullYear(), end.getMonth(), 1);
+      while (curr <= last) {
+        const mLabel = `${monthsNames[curr.getMonth()]} ${curr.getFullYear().toString().slice(-2)}`;
+        const yr = curr.getFullYear();
+        const mo = curr.getMonth();
+        const count = filteredDashboardTickets.filter(t => {
+          const dt = new Date(t.createdAt);
+          return dt.getFullYear() === yr && dt.getMonth() === mo;
+        }).length;
+        ticketTrendData.push({ name: mLabel, Tickets: count });
+        curr.setMonth(curr.getMonth() + 1);
       }
-      filteredDashboardTickets.forEach(t => {
-        const created = new Date(t.createdAt);
-        const key = `${monthsNames[created.getMonth()]} ${created.getFullYear().toString().slice(-2)}`;
-        if (key in monthsData) monthsData[key]++;
-      });
-      ticketTrendData = Object.entries(monthsData).map(([name, count]) => ({ name, Tickets: count }));
+    }
+
+    // Common dynamic intervals for other trends to prevent hardcoded Jan->Jun
+    const durationDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    const trendIntervals: { name: string; start: Date; end: Date; year: number; month: number; type: 'day' | 'week' | 'month' }[] = [];
+
+    if (durationDays <= 31) {
+      // Daily intervals
+      const curr = new Date(start);
+      while (curr <= end) {
+        const s = new Date(curr);
+        s.setHours(0,0,0,0);
+        const e = new Date(curr);
+        e.setHours(23,59,59,999);
+        trendIntervals.push({
+          name: curr.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'day'
+        });
+        curr.setDate(curr.getDate() + 1);
+      }
+    } else if (durationDays <= 93) {
+      // Weekly intervals
+      const curr = new Date(start);
+      let wkIdx = 1;
+      while (curr <= end) {
+        const s = new Date(curr);
+        s.setHours(0,0,0,0);
+        const e = new Date(curr);
+        e.setDate(e.getDate() + 6);
+        e.setHours(23,59,59,999);
+        trendIntervals.push({
+          name: `Wk ${wkIdx++}`,
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'week'
+        });
+        curr.setDate(curr.getDate() + 7);
+      }
+    } else {
+      // Monthly intervals
+      const curr = new Date(start.getFullYear(), start.getMonth(), 1);
+      const last = new Date(end.getFullYear(), end.getMonth(), 1);
+      while (curr <= last) {
+        const s = new Date(curr.getFullYear(), curr.getMonth(), 1, 0, 0, 0, 0);
+        const e = new Date(curr.getFullYear(), curr.getMonth() + 1, 0, 23, 59, 59, 999);
+        trendIntervals.push({
+          name: `${monthsNames[curr.getMonth()]} ${curr.getFullYear().toString().slice(-2)}`,
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'month'
+        });
+        curr.setMonth(curr.getMonth() + 1);
+      }
     }
 
     // 2. Open vs Closed (Bar Chart)
-    const openVsClosedTrendData = Array.from({ length: 6 }).map((_, i) => {
-      const d = new Date(now);
-      d.setMonth(d.getMonth() - (5 - i));
-      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
-      const year = d.getFullYear();
-      const monthIdx = d.getMonth();
-
+    const openVsClosedTrendData = trendIntervals.map(interval => {
       const raised = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx;
+        return created >= interval.start && created <= interval.end;
       }).length;
 
       const closed = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx && (t.status === 'Closed' || t.status === 'Resolved');
+        return created >= interval.start && created <= interval.end && (t.status === 'Closed' || t.status === 'Resolved');
       }).length;
 
       return {
-        name: monthLabel,
-        Open: raised - closed,
+        name: interval.name,
+        Open: Math.max(0, raised - closed),
         Closed: closed
       };
     });
 
     // 3. SLA Compliance (Area Chart)
-    const slaComplianceTrendData = Array.from({ length: 6 }).map((_, i) => {
-      const d = new Date(now);
-      d.setMonth(d.getMonth() - (5 - i));
-      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
-      const year = d.getFullYear();
-      const monthIdx = d.getMonth();
-
-      const monthTickets = filteredDashboardTickets.filter(t => {
+    const slaComplianceTrendData = trendIntervals.map(interval => {
+      const intervalTickets = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable';
+        return created >= interval.start && created <= interval.end && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable';
       });
 
-      const breached = monthTickets.filter(t => {
+      const breached = intervalTickets.filter(t => {
         const due = new Date(t.slaDueAt!).getTime();
-        const end = t.status === 'Resolved' || t.status === 'Closed'
+        const endT = t.status === 'Resolved' || t.status === 'Closed'
           ? new Date(t.resolvedAt || t.closedAt || due).getTime()
           : SYSTEM_NOW;
-        return end > due;
+        return endT > due;
       }).length;
 
-      const compliance = monthTickets.length > 0
-        ? Math.round(((monthTickets.length - breached) / monthTickets.length) * 100)
+      const compliance = intervalTickets.length > 0
+        ? Math.round(((intervalTickets.length - breached) / intervalTickets.length) * 100)
         : 100;
 
       return {
-        name: monthLabel,
+        name: interval.name,
         'SLA Compliance %': compliance
       };
     });
 
     // 4. Escalation Trend (Line Chart)
-    const escalationTrendData = Array.from({ length: 6 }).map((_, i) => {
-      const d = new Date(now);
-      d.setMonth(d.getMonth() - (5 - i));
-      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
-      const year = d.getFullYear();
-      const monthIdx = d.getMonth();
-
+    const escalationTrendData = trendIntervals.map(interval => {
       const count = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx && t.escalationFlag;
+        return created >= interval.start && created <= interval.end && t.escalationFlag;
       }).length;
 
       return {
-        name: monthLabel,
+        name: interval.name,
         Escalations: count
       };
     });
@@ -1085,65 +1142,53 @@ export default function ManagerDashboardPage() {
     })).sort((a, b) => b['Utilization %'] - a['Utilization %']);
 
     // 8. Resolution Time Trend (Area Chart)
-    const resolutionTimeTrendData = Array.from({ length: 6 }).map((_, i) => {
-      const d = new Date(now);
-      d.setMonth(d.getMonth() - (5 - i));
-      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
-      const year = d.getFullYear();
-      const monthIdx = d.getMonth();
-
-      const resolvedInMonth = filteredDashboardTickets.filter(t => {
+    const resolutionTimeTrendData = trendIntervals.map(interval => {
+      const resolvedInInterval = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx && (t.status === 'Closed' || t.status === 'Resolved') && (t.resolvedAt || t.closedAt);
+        return created >= interval.start && created <= interval.end && (t.status === 'Closed' || t.status === 'Resolved') && (t.resolvedAt || t.closedAt);
       });
 
-      const avgHours = resolvedInMonth.length > 0
-        ? resolvedInMonth.reduce((sum, t) => {
-            const start = new Date(t.createdAt).getTime();
-            const end = new Date(t.resolvedAt || t.closedAt || start).getTime();
-            return sum + (end - start) / (1000 * 60 * 60);
-          }, 0) / resolvedInMonth.length
+      const avgHours = resolvedInInterval.length > 0
+        ? resolvedInInterval.reduce((sum, t) => {
+            const startT = new Date(t.createdAt).getTime();
+            const endT = new Date(t.resolvedAt || t.closedAt || startT).getTime();
+            return sum + (endT - startT) / (1000 * 60 * 60);
+          }, 0) / resolvedInInterval.length
         : 0;
 
       return {
-        name: monthLabel,
+        name: interval.name,
         'Resolution Time (Hrs)': parseFloat(avgHours.toFixed(1))
       };
     });
 
     // 9. Approval Volume (Stacked Chart)
-    const approvalVolumeData = Array.from({ length: 6 }).map((_, i) => {
-      const d = new Date(now);
-      d.setMonth(d.getMonth() - (5 - i));
-      const monthLabel = `${monthsNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
-      const year = d.getFullYear();
-      const monthIdx = d.getMonth();
-
-      const monthTickets = filteredDashboardTickets.filter(t => {
+    const approvalVolumeData = trendIntervals.map(interval => {
+      const intervalTickets = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx;
+        return created >= interval.start && created <= interval.end;
       });
 
-      const effortCount = monthTickets.reduce((sum, t) => 
-        sum + (t.efforts || []).filter(e => e.status === 'Approved' && isCreatedInMonth(e.approvedAt, year, monthIdx)).length, 0);
+      const effortCount = intervalTickets.reduce((sum, t) => 
+        sum + (t.efforts || []).filter(e => e.status === 'Approved' && isCreatedInInterval(e.approvedAt, interval)).length, 0);
 
-      const closureCount = monthTickets.reduce((sum, t) => 
-        sum + (t.closureRequests || []).filter(r => r.status === 'Approved' && isCreatedInMonth(r.managerApprovedAt, year, monthIdx)).length, 0);
+      const closureCount = intervalTickets.reduce((sum, t) => 
+        sum + (t.closureRequests || []).filter(r => r.status === 'Approved' && isCreatedInInterval(r.managerApprovedAt, interval)).length, 0);
 
-      const unlockCount = monthTickets.reduce((sum, t) => 
-        sum + (t.unlockRequests || []).filter(u => u.status === 'Approved' && isCreatedInMonth(u.managerApprovedAt, year, monthIdx)).length, 0);
+      const unlockCount = intervalTickets.reduce((sum, t) => 
+        sum + (t.unlockRequests || []).filter(u => u.status === 'Approved' && isCreatedInInterval(u.managerApprovedAt, interval)).length, 0);
 
       return {
-        name: monthLabel,
+        name: interval.name,
         Timesheets: effortCount,
         Closures: closureCount,
         Unlocks: unlockCount
       };
 
-      function isCreatedInMonth(dateStr: string | null | undefined, yr: number, moIdx: number) {
+      function isCreatedInInterval(dateStr: string | null | undefined, iv: typeof interval) {
         if (!dateStr) return false;
         const dt = new Date(dateStr);
-        return dt.getFullYear() === yr && dt.getMonth() === moIdx;
+        return dt >= iv.start && dt <= iv.end;
       }
     });
 
@@ -1217,27 +1262,21 @@ export default function ManagerDashboardPage() {
       { name: '30+ Days', value: bucket5 }
     ];
 
-    const trendData = Array.from({ length: 5 }).map((_, i) => {
-      const d = new Date(SYSTEM_NOW);
-      d.setMonth(d.getMonth() - (4 - i));
-      const monthLabel = monthsNames[d.getMonth()];
-      const year = d.getFullYear();
-      const monthIdx = d.getMonth();
-
-      const raisedInMonth = filteredDashboardTickets.filter(t => {
+    const trendData = trendIntervals.map(interval => {
+      const raisedInInterval = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx;
+        return created >= interval.start && created <= interval.end;
       }).length;
 
-      const closedInMonth = filteredDashboardTickets.filter(t => {
+      const closedInInterval = filteredDashboardTickets.filter(t => {
         const created = new Date(t.createdAt);
-        return created.getFullYear() === year && created.getMonth() === monthIdx && (t.status === 'Closed' || t.status === 'Resolved');
+        return created >= interval.start && created <= interval.end && (t.status === 'Closed' || t.status === 'Resolved');
       }).length;
 
       return {
-        month: monthLabel,
-        Raised: raisedInMonth,
-        Closed: closedInMonth
+        month: interval.name,
+        Raised: raisedInInterval,
+        Closed: closedInInterval
       };
     });
 
@@ -1259,7 +1298,7 @@ export default function ManagerDashboardPage() {
       agingData,
       trendData
     };
-  }, [filteredDashboardTickets, trendGrouping, consultantsLoad, contracts, customersList]);
+  }, [filteredDashboardTickets, filters, trendGrouping, consultantsLoad, contracts, customersList]);
 
   // Live Audit Timeline list
   const auditTimelineFeed = useMemo(() => {
