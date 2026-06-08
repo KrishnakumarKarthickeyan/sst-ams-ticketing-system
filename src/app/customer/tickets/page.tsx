@@ -82,6 +82,18 @@ export default function CustomerTicketsPage() {
 
   const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
 
+  React.useEffect(() => {
+    const saved = localStorage.getItem('customer.ticketView');
+    if (saved === 'card' || saved === 'table') {
+      setViewMode(saved);
+    }
+  }, []);
+
+  const handleViewModeChange = (val: 'table' | 'card') => {
+    setViewMode(val);
+    localStorage.setItem('customer.ticketView', val);
+  };
+
   // Sorting state
   const [sortField, setSortField] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -651,9 +663,9 @@ ${ticket.description}
               />
             </div>
 
-            {/* View Mode & Column visibility checkbox menu */}
+            {/* View Mode */}
             <div className="flex items-center gap-2">
-              <ToggleGroup type="single" value={viewMode} onValueChange={(val) => { if (val) setViewMode(val as 'table' | 'card'); }}>
+              <ToggleGroup type="single" value={viewMode} onValueChange={(val) => { if (val) handleViewModeChange(val as 'table' | 'card'); }}>
                 <ToggleGroupItem value="card" aria-label="Card View" className="h-8 px-2 border border-zinc-200 bg-white text-zinc-700 data-[state=on]:bg-zinc-100 data-[state=on]:text-zinc-900">
                   <LayoutGrid size={14} />
                 </ToggleGroupItem>
@@ -661,29 +673,6 @@ ${ticket.description}
                   <List size={14} />
                 </ToggleGroupItem>
               </ToggleGroup>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-8 text-[10px] font-mono font-bold uppercase tracking-wider border-zinc-200 flex items-center gap-1 text-zinc-700">
-                    <SlidersHorizontal size={13} />
-                    <span>Toggle Fields</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 font-mono text-[10px] bg-white border border-zinc-200 rounded-lg shadow-md max-h-64 overflow-y-auto">
-                  <DropdownMenuLabel>Visible Table Columns</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {columnsList.map((col) => (
-                    <DropdownMenuCheckboxItem
-                      key={col.key}
-                      checked={visibleColumns[col.key]}
-                      onCheckedChange={() => toggleColumn(col.key)}
-                      className="cursor-pointer hover:bg-zinc-50 py-1"
-                    >
-                      {col.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
 
@@ -719,256 +708,6 @@ ${ticket.description}
           />
         </div>
 
-        {/* Data Table Workspace */}
-        <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
-              <Table className="min-w-[1200px]">
-                <TableHeader className="sticky top-0 bg-zinc-50 z-10 border-b border-zinc-200">
-                  <TableRow>
-                    {columnsList.map((col) => {
-                      if (!visibleColumns[col.key]) return null;
-                      const isSortable = ['id', 'createdAt', 'title', 'priority', 'status', 'slaStatus', 'age', 'updatedAt'].includes(col.key);
-                      return (
-                        <TableHead
-                          key={col.key}
-                          onClick={() => isSortable && handleSort(col.key)}
-                          className={`text-[9px] font-bold text-zinc-500 uppercase tracking-wider py-3.5 px-4 cursor-pointer select-none font-mono ${
-                            isSortable ? 'hover:bg-zinc-100 hover:text-zinc-950' : ''
-                          }`}
-                        >
-                          <div className="flex items-center gap-1">
-                            <span>{col.label}</span>
-                            {isSortable && <ArrowUpDown size={10} className="text-zinc-450 shrink-0" />}
-                          </div>
-                        </TableHead>
-                      );
-                    })}
-                    <TableHead className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider py-3.5 px-4 text-right font-mono sticky right-0 bg-zinc-50 z-10 border-l border-zinc-200">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    // Skeleton load placeholders
-                    Array.from({ length: 5 }).map((_, rIdx) => (
-                      <TableRow key={rIdx} className="bg-zinc-50/50">
-                        {columnsList.map((col) => {
-                          if (!visibleColumns[col.key]) return null;
-                          return (
-                            <TableCell key={col.key} className="py-4 px-4">
-                              <Skeleton className="h-3 w-16" />
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="py-4 px-4 sticky right-0 bg-zinc-50/50 border-l border-zinc-200">
-                          <Skeleton className="h-6 w-8 ml-auto" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : companyTickets.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={columnsList.length + 1} className="py-24 text-center">
-                        <div className="flex flex-col items-center justify-center space-y-4">
-                          <BrandedLogo width={36} height={36} iconOnly={true} className="opacity-40" />
-                          <div className="space-y-1">
-                            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
-                            <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Submit a support ticket to get started.</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : currentTickets.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={columnsList.length + 1} className="py-24 text-center text-zinc-400 font-mono italic text-xs">
-                        Zero tickets matched the filtering parameters.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    currentTickets.map((t: any, idx) => {
-                      const serialNumber = indexOfFirstItem + idx + 1;
-                      const ownerName = t.currentOwner || t.assignedConsultant || 'Support Desk';
-                      const isFunc = (t.functionalOrTechnical || 'Functional') === 'Functional';
-                      const isTech = (t.functionalOrTechnical || 'Functional') === 'Technical';
-                      const functionalConsultant = isFunc ? (t.assignedConsultant || 'Unassigned') : '-';
-                      const technicalConsultant = isTech ? (t.assignedConsultant || 'Unassigned') : '-';
-
-                      return (
-                        <TableRow key={t.id} className="hover:bg-zinc-50/50 border-b border-zinc-100 transition-colors">
-                          {columnsList.map((col) => {
-                            if (!visibleColumns[col.key]) return null;
-
-                            if (col.key === 'sno') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono font-bold text-zinc-500 text-[10px]">
-                                  {serialNumber}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'id') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono font-bold text-zinc-950 text-[11px]">
-                                  <Link href={`/customer/tickets/${t.id}`} className="hover:underline hover:text-zinc-600">
-                                    {t.ticketNumber || t.id}
-                                  </Link>
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'createdBy') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 text-zinc-650 truncate max-w-[120px]" title={t.createdByName || t.requestedBy}>
-                                  {t.createdByName || t.requestedBy || '-'}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'createdAt') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-500 whitespace-nowrap">
-                                  {new Date(t.createdAt).toLocaleDateString()}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'title') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="max-w-[200px] truncate font-semibold text-zinc-900 cursor-help">
-                                        {t.title}
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-xs font-sans text-xs bg-zinc-950 text-white rounded p-2">
-                                      {t.title}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'sapModules') {
-                              const mods = t.sapModules && t.sapModules.length > 0 ? t.sapModules : [t.sapModule || 'FICO'];
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 max-w-[150px]">
-                                  <div className="flex flex-wrap gap-1">
-                                    {mods.map((m: string) => (
-                                      <Badge key={m} variant="outline" className="text-[8px] font-mono bg-zinc-50 text-zinc-700 border-zinc-300 rounded px-1 py-0">
-                                        {m}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'ticketType') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-650 text-[10px]">
-                                  {t.ticketType || 'Incident'}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'functionalOrTechnical') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-[9px] uppercase font-bold text-zinc-500">
-                                  {t.functionalOrTechnical || 'Functional'}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'priority') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  {getPriorityBadge(t.priority)}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'status') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  {getStatusBadge(t.status)}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'slaStatus') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  {getSlaBadge(t)}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'age') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  {getAgeBadge(t)}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'currentOwner') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-medium text-zinc-700 truncate max-w-[120px]" title={ownerName}>
-                                  {ownerName}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'functionalConsultant') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-600 truncate max-w-[120px]" title={functionalConsultant}>
-                                  {functionalConsultant}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'technicalConsultant') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-600 truncate max-w-[120px]" title={technicalConsultant}>
-                                  {technicalConsultant}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'quotedHours') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-950 font-bold text-right">
-                                  {(t.quotedHours || 0).toFixed(1)}h
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'consumedHours') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-950 font-bold text-right">
-                                  {getConsumedHours(t).toFixed(1)}h
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'attachments') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-center font-bold text-zinc-600">
-                                  {t.attachments?.length || 0}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'comments') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-center font-bold text-zinc-600">
-                                  {t.comments?.length || 0}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'updatedAt') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-500 whitespace-nowrap">
-                                  {new Date(t.updatedAt).toLocaleDateString()}
-                                </TableCell>
-                              );
-                            }
-
-                            return null;
-                          })}
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Data Table Workspace */}
         {loading ? (

@@ -566,23 +566,40 @@ export default function CustomerTicketDetailPage() {
 
       {/* ── Hero Header Card ── */}
       <div className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
-        {/* Decorative gradient accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500"></div>
         
         <div className="p-6 md:p-8">
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             {/* Left: Title & Meta */}
             <div className="space-y-4 flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
-                <Badge className={`${getStatusStyle(ticket.status)} border text-[11px] font-semibold px-2.5 py-0.5 rounded-full hover:bg-transparent`}>
-                  {ticket.status}
-                </Badge>
-                <Badge className="bg-zinc-100 text-zinc-600 border border-zinc-200 text-[11px] font-medium px-2.5 py-0.5 rounded-full hover:bg-transparent">
-                  {ticket.ticketType || 'Incident'}
-                </Badge>
-                <Badge className={`${getPriorityStyle(ticket.priority)} border text-[11px] font-medium px-2.5 py-0.5 rounded-full hover:bg-transparent`}>
-                  {ticket.priority}
-                </Badge>
+                {/* Status Badge */}
+                {(() => {
+                  const status = ticket.status.toUpperCase();
+                  if (status === 'NEW') {
+                    return <Badge variant="secondary" className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full">{ticket.status}</Badge>;
+                  }
+                  if (status === 'CLOSED' || status === 'RESOLVED') {
+                    return <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600 text-white border-transparent text-[11px] font-semibold px-2.5 py-0.5 rounded-full">{ticket.status}</Badge>;
+                  }
+                  return <Badge variant="outline" className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full">{ticket.status}</Badge>;
+                })()}
+
+                {/* Type Badge */}
+                {ticket.ticketType === 'Incident' || !ticket.ticketType ? (
+                  <Badge variant="outline" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">Incident</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">{ticket.ticketType}</Badge>
+                )}
+
+                {/* Priority Badge */}
+                {(() => {
+                  const priority = ticket.priority.toUpperCase();
+                  if (priority === 'HIGH' || priority === 'CRITICAL') {
+                    return <Badge variant="destructive" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">{ticket.priority}</Badge>;
+                  }
+                  return <Badge variant="secondary" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">{ticket.priority}</Badge>;
+                })()}
+
                 {ticket.softDeleteStatus === 'Pending Delete' && (
                   <Badge className="bg-amber-50 text-amber-600 border border-amber-200 text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse hover:bg-transparent">
                     Pending Deletion
@@ -865,9 +882,9 @@ export default function CustomerTicketDetailPage() {
         <div className="px-6 md:px-8 pb-6 pt-2">
           <div className="flex items-center justify-between relative">
             {/* Connection line */}
-            <div className="absolute top-5 left-[40px] right-[40px] h-[2px] bg-zinc-100">
+            <div className="absolute top-5 left-[40px] right-[40px] h-[2px] bg-muted">
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700 ease-out rounded-full"
+                className="h-full bg-primary transition-all duration-700 ease-out rounded-full"
                 style={{ width: `${Math.max(0, ((currentStepIndex - 1) / 4) * 100)}%` }}
               ></div>
             </div>
@@ -881,15 +898,15 @@ export default function CustomerTicketDetailPage() {
                 <div key={milestone.step} className="flex flex-col items-center text-center relative z-10 w-[80px]">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ${
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 ring-4 ring-indigo-100'
+                      ? 'bg-primary text-primary-foreground'
                       : isCompleted
-                        ? 'bg-emerald-500 text-white shadow-sm'
-                        : 'bg-white border-2 border-zinc-200 text-zinc-300'
+                        ? 'bg-muted text-muted-foreground'
+                        : 'bg-white border-2 border-muted text-muted-foreground/60'
                   }`}>
                     {isCompleted ? <CheckCircle2 size={18} /> : <Icon size={16} />}
                   </div>
                   <span className={`mt-2 text-[11px] font-semibold transition-colors ${
-                    isActive ? 'text-indigo-600' : isCompleted ? 'text-emerald-600' : 'text-zinc-400'
+                    isActive ? 'text-primary font-bold' : 'text-muted-foreground'
                   }`}>
                     {milestone.label}
                   </span>
