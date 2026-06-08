@@ -1453,18 +1453,18 @@ export default function ManagerDashboardPage() {
       {/* Filter Bar */}
       <Card className="border border-zinc-200 rounded-lg p-4 mb-6 shadow-sm bg-white">
         {/* ROW 1 */}
-        <div className="flex flex-wrap md:flex-nowrap gap-3 items-end w-full">
+        <div className="flex flex-wrap gap-3 items-end w-full">
           
           {/* 1. PERIOD */}
           <div className="flex flex-col w-full md:w-auto">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
-            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 h-9 items-center min-w-[280px]">
+            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 h-9 items-center min-w-[320px]">
               {['This Month', 'This Quarter', 'This Year', 'Custom'].map(p => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setFilters(prev => ({ ...prev, period: p }))}
-                  className={`flex-1 h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
+                  className={`flex-1 h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer whitespace-nowrap px-2 ${
                     filters.period === p
                       ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200/50'
                       : 'text-zinc-550 hover:text-zinc-800'
