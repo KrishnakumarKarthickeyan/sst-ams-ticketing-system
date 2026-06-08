@@ -168,9 +168,9 @@ export default function CustomerTicketsPage() {
 
   // Helper: Sum Approved efforts hours logged
   const getConsumedHours = (t: any) => {
-    return (t.efforts || [])
-      .filter((e: any) => e.status === 'Approved')
-      .reduce((sum: number, e: any) => sum + e.hoursLogged, 0);
+    return (t.actualHoursLogs || [])
+      .filter((ah: any) => ah.approvalStatus?.toLowerCase() === 'approved')
+      .reduce((sum: number, ah: any) => sum + (ah.actualHours || 0), 0);
   };
 
   // Column Visibility Config - 20 togglable fields + Actions
