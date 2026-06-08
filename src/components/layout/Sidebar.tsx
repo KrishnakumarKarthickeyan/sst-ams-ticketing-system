@@ -81,6 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
   const managerMenu: MenuItem[] = [
     { title: 'Dashboard', href: '/manager/dashboard', icon: <LayoutDashboard size={16} /> },
     { title: 'Tickets Desk', href: '/manager/tickets', icon: <Ticket size={16} /> },
+    { title: 'All Customer Tickets', href: '/manager/customer-tickets', icon: <Ticket size={16} /> },
     { title: 'Timesheet Approvals', href: '/manager/effort-approvals', icon: <CheckSquare size={16} /> },
     { title: 'Consultants Workload', href: '/manager/consultants', icon: <UserCheck size={16} /> },
     { title: 'SLA Monitoring', href: '/manager/sla-monitoring', icon: <Clock size={16} /> },
