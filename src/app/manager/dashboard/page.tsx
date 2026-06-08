@@ -123,7 +123,9 @@ export default function ManagerDashboardPage() {
     approveUnlockRequest,
     rejectUnlockRequest,
     closeTicket,
-    acknowledgeEscalation
+    acknowledgeEscalation,
+    createDBNotification,
+    refetchData
   } = useTickets();
 
   const { user } = useAuth();
@@ -286,8 +288,49 @@ export default function ManagerDashboardPage() {
 
       if (reqError) throw reqError;
 
+      // 3. Dispatch notifications to customer and consultants
+      const ticketObj = tickets.find(t => t.id === req.ticket_id);
+      if (ticketObj) {
+        const customerProfile = profiles.find(p => p.full_name === ticketObj.requestedBy || p.email === ticketObj.requestedByEmail);
+        const customerUserId = customerProfile?.id || ticketObj.createdByUser;
+        
+        const consultantsToNotify = new Set<string>();
+        if (ticketObj.primaryConsultantId) consultantsToNotify.add(ticketObj.primaryConsultantId);
+        if (ticketObj.leadConsultantId) consultantsToNotify.add(ticketObj.leadConsultantId);
+        (ticketObj.assignments || []).forEach(a => {
+          if (a.active && a.consultantId) {
+            consultantsToNotify.add(a.consultantId);
+          }
+        });
+
+        if (customerUserId) {
+          await createDBNotification({
+            userId: customerUserId,
+            type: 'reopen_approved',
+            title: 'Reopen Request Approved',
+            message: `Your request to reopen ticket ${ticketObj.ticketNumber || ticketObj.id} has been approved by management.`,
+            ticketId: req.ticket_id,
+            linkPath: `/customer/tickets/${req.ticket_id}`
+          });
+        }
+
+        for (const consId of consultantsToNotify) {
+          if (consId !== customerUserId) {
+            await createDBNotification({
+              userId: consId,
+              type: 'reopen_approved',
+              title: `Ticket Reopened: ${ticketObj.ticketNumber || ticketObj.id}`,
+              message: `Ticket ${ticketObj.ticketNumber || ticketObj.id} has been reopened by management. Please resume work.`,
+              ticketId: req.ticket_id,
+              linkPath: `/consultant/tickets/${req.ticket_id}`
+            });
+          }
+        }
+      }
+
       toast.success('Ticket has been successfully reopened.', { id: loadId });
       fetchReopenRequests();
+      if (refetchData) refetchData();
     } catch (err: any) {
       console.error('Error approving reopen:', err);
       toast.error(`Failed to approve: ${err.message}`, { id: loadId });
@@ -315,8 +358,50 @@ export default function ManagerDashboardPage() {
         .eq('id', req.id);
 
       if (error) throw error;
+
+      // 3. Dispatch notifications to customer and consultants
+      const ticketObj = tickets.find(t => t.id === req.ticket_id);
+      if (ticketObj) {
+        const customerProfile = profiles.find(p => p.full_name === ticketObj.requestedBy || p.email === ticketObj.requestedByEmail);
+        const customerUserId = customerProfile?.id || ticketObj.createdByUser;
+        
+        const consultantsToNotify = new Set<string>();
+        if (ticketObj.primaryConsultantId) consultantsToNotify.add(ticketObj.primaryConsultantId);
+        if (ticketObj.leadConsultantId) consultantsToNotify.add(ticketObj.leadConsultantId);
+        (ticketObj.assignments || []).forEach(a => {
+          if (a.active && a.consultantId) {
+            consultantsToNotify.add(a.consultantId);
+          }
+        });
+
+        if (customerUserId) {
+          await createDBNotification({
+            userId: customerUserId,
+            type: 'reopen_rejected',
+            title: 'Reopen Request Rejected',
+            message: `Your request to reopen ticket ${ticketObj.ticketNumber || ticketObj.id} has been rejected. Reason: ${rejectReason.trim()}`,
+            ticketId: req.ticket_id,
+            linkPath: `/customer/tickets/${req.ticket_id}`
+          });
+        }
+
+        for (const consId of consultantsToNotify) {
+          if (consId !== customerUserId) {
+            await createDBNotification({
+              userId: consId,
+              type: 'reopen_rejected',
+              title: `Reopen Rejected: ${ticketObj.ticketNumber || ticketObj.id}`,
+              message: `Reopen request for ticket ${ticketObj.ticketNumber || ticketObj.id} has been rejected by management. Reason: ${rejectReason.trim()}`,
+              ticketId: req.ticket_id,
+              linkPath: `/consultant/tickets/${req.ticket_id}`
+            });
+          }
+        }
+      }
+
       toast.success('Reopen request rejected.', { id: loadId });
       fetchReopenRequests();
+      if (refetchData) refetchData();
     } catch (err: any) {
       console.error('Error rejecting reopen:', err);
       toast.error(`Failed to reject: ${err.message}`, { id: loadId });
