@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import {
   Search,
@@ -23,13 +24,19 @@ import {
   AlertTriangle,
   FolderOpen,
   Upload,
-  X
+  X,
+  LayoutGrid,
+  List,
+  Building2,
+  Layers,
+  Calendar
 } from 'lucide-react';
 import { Card, CardContent } from '../../../components/ui/card';
 import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { Badge } from '../../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { ToggleGroup, ToggleGroupItem } from '../../../components/ui/toggle-group';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -60,6 +67,7 @@ interface PendingAttachment {
 export default function CustomerTicketsPage() {
   const { tickets, loading, requestEscalation, requestDelete, updateTicket, addComment } = useTickets();
   const { user } = useAuth();
+  const router = useRouter();
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,6 +79,8 @@ export default function CustomerTicketsPage() {
   const [dateFilter, setDateFilter] = useState('All');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
 
   // Sorting state
   const [sortField, setSortField] = useState<string>('createdAt');
@@ -641,29 +651,40 @@ ${ticket.description}
               />
             </div>
 
-            {/* Column visibility checkbox menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-8.5 text-[10px] font-mono font-bold uppercase tracking-wider border-zinc-200 flex items-center gap-1 text-zinc-700">
-                  <SlidersHorizontal size={13} />
-                  <span>Toggle Fields</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 font-mono text-[10px] bg-white border border-zinc-200 rounded-lg shadow-md max-h-64 overflow-y-auto">
-                <DropdownMenuLabel>Visible Table Columns</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {columnsList.map((col) => (
-                  <DropdownMenuCheckboxItem
-                    key={col.key}
-                    checked={visibleColumns[col.key]}
-                    onCheckedChange={() => toggleColumn(col.key)}
-                    className="cursor-pointer hover:bg-zinc-50 py-1"
-                  >
-                    {col.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* View Mode & Column visibility checkbox menu */}
+            <div className="flex items-center gap-2">
+              <ToggleGroup type="single" value={viewMode} onValueChange={(val) => { if (val) setViewMode(val as 'table' | 'card'); }}>
+                <ToggleGroupItem value="card" aria-label="Card View" className="h-8 px-2 border border-zinc-200 bg-white text-zinc-700 data-[state=on]:bg-zinc-100 data-[state=on]:text-zinc-900">
+                  <LayoutGrid size={14} />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="table" aria-label="Table View" className="h-8 px-2 border border-zinc-200 bg-white text-zinc-700 data-[state=on]:bg-zinc-100 data-[state=on]:text-zinc-900">
+                  <List size={14} />
+                </ToggleGroupItem>
+              </ToggleGroup>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-8 text-[10px] font-mono font-bold uppercase tracking-wider border-zinc-200 flex items-center gap-1 text-zinc-700">
+                    <SlidersHorizontal size={13} />
+                    <span>Toggle Fields</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 font-mono text-[10px] bg-white border border-zinc-200 rounded-lg shadow-md max-h-64 overflow-y-auto">
+                  <DropdownMenuLabel>Visible Table Columns</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {columnsList.map((col) => (
+                    <DropdownMenuCheckboxItem
+                      key={col.key}
+                      checked={visibleColumns[col.key]}
+                      onCheckedChange={() => toggleColumn(col.key)}
+                      className="cursor-pointer hover:bg-zinc-50 py-1"
+                    >
+                      {col.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           <TicketFilterPanel
@@ -939,95 +960,6 @@ ${ticket.description}
 
                             return null;
                           })}
-
-                          {/* Actions Dropdown sticky right cell */}
-                          <TableCell className="py-2.5 px-4 text-right whitespace-nowrap sticky right-0 bg-white z-10 border-l border-zinc-200">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-7 w-7 p-0 hover:bg-zinc-100 border border-zinc-200">
-                                  <SlidersHorizontal size={12} className="text-zinc-600" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-52 font-mono text-[11px] bg-white border border-zinc-200 shadow-md p-1">
-                                <DropdownMenuLabel>Workspace Options</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                
-                                <DropdownMenuItem asChild className="cursor-pointer hover:bg-zinc-50">
-                                  <Link href={`/customer/tickets/${t.id}`} className="flex items-center gap-2 w-full">
-                                    <Eye size={12} className="text-zinc-500" />
-                                    <span>View Workspace</span>
-                                  </Link>
-                                </DropdownMenuItem>
-
-                                {/* Edit Detail (unassigned ticket only) */}
-                                {!t.assignedConsultant && t.status === 'New' && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleTriggerEdit(t)}
-                                    className="cursor-pointer hover:bg-zinc-50 flex items-center gap-2 w-full"
-                                  >
-                                    <SlidersHorizontal size={12} className="text-zinc-500" />
-                                    <span>Edit Description</span>
-                                  </DropdownMenuItem>
-                                )}
-
-                                {/* Add Comment */}
-                                <DropdownMenuItem
-                                  onClick={() => handleTriggerComment(t)}
-                                  className="cursor-pointer hover:bg-zinc-50 flex items-center gap-2 w-full"
-                                >
-                                  <MessageSquare size={12} className="text-zinc-500" />
-                                  <span>Add Comment</span>
-                                </DropdownMenuItem>
-
-                                {/* Add Attachment */}
-                                <DropdownMenuItem
-                                  onClick={() => handleTriggerAttachment(t)}
-                                  className="cursor-pointer hover:bg-zinc-50 flex items-center gap-2 w-full"
-                                >
-                                  <Paperclip size={12} className="text-zinc-500" />
-                                  <span>Add Attachment</span>
-                                </DropdownMenuItem>
-
-                                {/* Export Ticket text report */}
-                                <DropdownMenuItem
-                                  onClick={() => handleExportTextReport(t)}
-                                  className="cursor-pointer hover:bg-zinc-50 flex items-center gap-2 w-full"
-                                >
-                                  <FileSpreadsheet size={12} className="text-zinc-500" />
-                                  <span>Export Ticket</span>
-                                </DropdownMenuItem>
-
-                                {/* Escalate (if active) */}
-                                {t.status !== 'Closed' && t.status !== 'Resolved' && !t.escalationFlag && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleTriggerEscalate(t)}
-                                      className="cursor-pointer hover:bg-red-50 text-red-600 hover:text-red-700 flex items-center gap-2 w-full"
-                                    >
-                                      <Flame size={12} className="text-red-500" />
-                                      <span>Escalate Ticket</span>
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-
-                                {/* Request Delete (if active) */}
-                                {t.softDeleteStatus === 'Active' && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleTriggerDelete(t)}
-                                      className="cursor-pointer hover:bg-red-50 text-red-650 hover:text-red-750 flex items-center gap-2 w-full"
-                                    >
-                                      <Trash2 size={12} className="text-red-500" />
-                                      <span>Request Deletion</span>
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
                         </TableRow>
                       );
                     })
@@ -1037,6 +969,244 @@ ${ticket.description}
             </div>
           </CardContent>
         </Card>
+
+        {/* Data Table Workspace */}
+        {loading ? (
+          <div className={viewMode === 'card' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "w-full space-y-2"}>
+            {Array.from({ length: 6 }).map((_, idx) => (
+              viewMode === 'card' ? (
+                <Card key={idx} className="border-zinc-200 shadow-sm bg-white overflow-hidden p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-20" />
+                    <div className="flex gap-1.5">
+                      <Skeleton className="h-4 w-12" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-12 w-full" />
+                  <div className="pt-3 border-t border-zinc-100 flex items-center justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                </Card>
+              ) : (
+                <div key={idx} className="flex gap-4 p-3 border-b border-zinc-100 items-center">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              )
+            ))}
+          </div>
+        ) : viewMode === 'card' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentTickets.length === 0 ? (
+              <div className="col-span-full text-center py-12 bg-white border border-zinc-200 rounded-xl space-y-3 shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mx-auto">
+                  <FolderOpen size={20} className="text-zinc-450" />
+                </div>
+                <p className="text-sm font-medium text-zinc-500">No tickets found matching your selection.</p>
+              </div>
+            ) : (
+              currentTickets.map((t: any) => {
+                const actualHours = t.actualHoursLogs ? t.actualHoursLogs.reduce((sum: number, log: any) => sum + (log.actualHours || 0), 0) : 0;
+                const isIncident = t.ticketType === 'Incident' || !t.ticketType;
+                const hasSla = isIncident && t.slaDueAt !== 'SLA Not Applicable';
+                
+                const getSlaStatus = () => {
+                  if (!hasSla) return { label: 'Not Applicable', color: 'bg-zinc-100 text-zinc-500 border-zinc-200', dot: 'bg-zinc-400' };
+                  const nowTime = Date.now();
+                  const due = new Date(t.slaDueAt).getTime();
+                  const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
+                  if (resolved) {
+                    if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-red-650 border-red-200', dot: 'bg-red-500' };
+                    return { label: 'Met', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+                  }
+                  if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-red-650 border-red-200', dot: 'bg-red-500' };
+                  if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-amber-650 border-amber-200', dot: 'bg-amber-500' };
+                  return { label: 'On Track', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+                };
+                const sla = getSlaStatus();
+
+                const createdDate = new Date(t.createdAt);
+                const ageDays = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+                
+                const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
+                                      t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                      t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                      'bg-zinc-100 text-zinc-605 border-zinc-200';
+
+                const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                     (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                     t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                     'bg-indigo-50 text-indigo-700 border-indigo-200';
+
+                return (
+                  <Card key={t.id} className="border-zinc-200 shadow-sm bg-white overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col justify-between">
+                    <div className="p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold text-zinc-400">
+                          {t.ticketNumber || t.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        <div className="flex gap-1.5">
+                          <Badge className={`${priorityColor} border text-[9px] font-bold uppercase`}>{t.priority}</Badge>
+                          <Badge className={`${statusColor} border text-[9px] font-bold uppercase`}>{t.status}</Badge>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Link
+                          href={`/customer/tickets/${t.id}`}
+                          className="text-sm font-bold text-zinc-900 hover:text-zinc-950 hover:underline transition-all line-clamp-1 block leading-snug"
+                        >
+                          {t.title}
+                        </Link>
+                        <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">
+                          {t.description}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-[10px] text-zinc-500 font-mono">
+                        <span className="flex items-center gap-1">
+                          <Layers size={11} className="text-zinc-400" />
+                          {t.sapModule || 'General'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Building2 size={11} className="text-zinc-400" />
+                          {t.ticketType || 'Incident'}
+                        </span>
+                      </div>
+
+                      <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${sla.color}`}>
+                            <span className={`w-1 h-1 rounded-full ${sla.dot}`}></span>
+                            SLA: {sla.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-zinc-500 font-mono">
+                          <Clock size={12} className="text-zinc-400" />
+                          <span>Logged: <strong className="text-zinc-800">{actualHours.toFixed(1)}h</strong></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-5 py-3 bg-zinc-50/50 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={11} />
+                        Age: {ageDays === 0 ? 'Today' : `${ageDays} days`}
+                      </span>
+                      <Link
+                        href={`/customer/tickets/${t.id}`}
+                        className="text-[10px] font-bold uppercase tracking-wider text-zinc-700 hover:text-zinc-950 transition flex items-center gap-1"
+                      >
+                        Manage Ticket
+                        <ChevronRight size={12} />
+                      </Link>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto w-full">
+                <Table className="min-w-[800px]">
+                  <TableHeader className="bg-zinc-50 border-b border-zinc-200">
+                    <TableRow>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Ticket #</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono py-3 px-4">Title</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Module</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[150px] py-3 px-4">Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Priority</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Created</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">SLA</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentTickets.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-zinc-500 font-medium">
+                          No records found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      currentTickets.map((t: any) => {
+                        const isIncident = t.ticketType === 'Incident' || !t.ticketType;
+                        const hasSla = isIncident && t.slaDueAt !== 'SLA Not Applicable';
+                        
+                        const getSlaStatus = () => {
+                          if (!hasSla) return { label: 'N/A', color: 'bg-zinc-100 text-zinc-500 border-zinc-200', dot: 'bg-zinc-400' };
+                          const nowTime = Date.now();
+                          const due = new Date(t.slaDueAt).getTime();
+                          const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
+                          if (resolved) {
+                            if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-red-650 border-red-200', dot: 'bg-red-500' };
+                            return { label: 'Met', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+                          }
+                          if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-red-650 border-red-200', dot: 'bg-red-500' };
+                          if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-amber-650 border-amber-200', dot: 'bg-amber-500' };
+                          return { label: 'On Track', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+                        };
+                        const sla = getSlaStatus();
+
+                        const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
+                                              t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                              t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                              'bg-zinc-100 text-zinc-650 border-zinc-200';
+
+                        const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                             (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                             t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                             'bg-indigo-50 text-indigo-700 border-indigo-200';
+
+                        return (
+                          <TableRow
+                            key={t.id}
+                            onClick={() => router.push(`/customer/tickets/${t.id}`)}
+                            className="cursor-pointer hover:bg-zinc-50 transition-colors"
+                          >
+                            <TableCell className="font-mono font-bold text-xs text-zinc-500 py-3 px-4">
+                              {t.ticketNumber || t.id.slice(0, 8).toUpperCase()}
+                            </TableCell>
+                            <TableCell className="font-semibold text-zinc-900 py-3 px-4">
+                              {t.title}
+                            </TableCell>
+                            <TableCell className="font-medium text-zinc-600 font-mono text-[11px] py-3 px-4">
+                              {t.sapModule || 'General'}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <Badge className={`${statusColor} border text-[9px] font-bold uppercase`}>{t.status}</Badge>
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <Badge className={`${priorityColor} border text-[9px] font-bold uppercase`}>{t.priority}</Badge>
+                            </TableCell>
+                            <TableCell className="text-zinc-500 font-mono text-xs py-3 px-4">
+                              {new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${sla.color}`}>
+                                <span className={`w-1 h-1 rounded-full ${sla.dot}`}></span>
+                                {sla.label}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Footer Pagination console */}
         {totalPages > 1 && (
