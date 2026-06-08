@@ -126,6 +126,20 @@ export default function ManagerDashboardPage() {
   const [passwordRequests, setPasswordRequests] = useState<PasswordChangeRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
 
+  // Ticket Reopen Request States
+  interface TicketReopenRequest {
+    id: string;
+    ticket_id: string;
+    requester_name: string;
+    reason: string;
+    status: string;
+    requested_at: string;
+    ticket_number?: string;
+    ticket_title?: string;
+  }
+  const [reopenRequests, setReopenRequests] = useState<TicketReopenRequest[]>([]);
+  const [loadingReopens, setLoadingReopens] = useState(true);
+
   const fetchPasswordRequests = async () => {
     try {
       const { data, error } = await supabase
@@ -143,8 +157,38 @@ export default function ManagerDashboardPage() {
     }
   };
 
+  const fetchReopenRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ticket_reopen_requests')
+        .select('*, tickets(title, ticket_number)')
+        .eq('status', 'Pending')
+        .order('requested_at', { ascending: false });
+
+      if (error) throw error;
+      
+      const mapped: TicketReopenRequest[] = (data || []).map((r: any) => ({
+        id: r.id,
+        ticket_id: r.ticket_id,
+        requester_name: r.requester_name,
+        reason: r.reason,
+        status: r.status,
+        requested_at: r.requested_at,
+        ticket_number: r.tickets?.ticket_number || r.ticket_id,
+        ticket_title: r.tickets?.title || 'Unknown Ticket'
+      }));
+
+      setReopenRequests(mapped);
+    } catch (err) {
+      console.error('Error fetching reopen requests:', err);
+    } finally {
+      setLoadingReopens(false);
+    }
+  };
+
   useEffect(() => {
     fetchPasswordRequests();
+    fetchReopenRequests();
   }, [user?.id]);
 
   const handleApprovePasswordRequest = async (req: PasswordChangeRequest) => {
@@ -200,6 +244,67 @@ export default function ManagerDashboardPage() {
     } catch (err: any) {
       console.error('Error rejecting request:', err);
       toast.error(`Failed to reject request: ${err.message}`, { id: loadId });
+    }
+  };
+
+  const handleApproveReopenRequest = async (req: TicketReopenRequest) => {
+    if (!confirm(`Are you sure you want to approve the reopen request for ticket ${req.ticket_number}?`)) return;
+    const loadId = toast.loading('Approving reopen request...');
+    try {
+      // 1. Update ticket status to Reopened
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .update({ status: 'Reopened' })
+        .eq('id', req.ticket_id);
+      
+      if (ticketError) throw ticketError;
+
+      // 2. Update reopen request status
+      const { error: reqError } = await supabase
+        .from('ticket_reopen_requests')
+        .update({
+          status: 'Approved',
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.email || 'Manager'
+        })
+        .eq('id', req.id);
+
+      if (reqError) throw reqError;
+
+      toast.success('Ticket has been successfully reopened.', { id: loadId });
+      fetchReopenRequests();
+    } catch (err: any) {
+      console.error('Error approving reopen:', err);
+      toast.error(`Failed to approve: ${err.message}`, { id: loadId });
+    }
+  };
+
+  const handleRejectReopenRequest = async (req: TicketReopenRequest) => {
+    const rejectReason = prompt('Please enter a rejection reason:');
+    if (rejectReason === null) return;
+    if (!rejectReason.trim()) {
+      toast.error('Rejection reason is required.');
+      return;
+    }
+    
+    const loadId = toast.loading('Rejecting reopen request...');
+    try {
+      const { error } = await supabase
+        .from('ticket_reopen_requests')
+        .update({
+          status: 'Rejected',
+          rejection_reason: rejectReason.trim(),
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.email || 'Manager'
+        })
+        .eq('id', req.id);
+
+      if (error) throw error;
+      toast.success('Reopen request rejected.', { id: loadId });
+      fetchReopenRequests();
+    } catch (err: any) {
+      console.error('Error rejecting reopen:', err);
+      toast.error(`Failed to reject: ${err.message}`, { id: loadId });
     }
   };
 
@@ -533,8 +638,8 @@ export default function ManagerDashboardPage() {
   }, [filteredDashboardTickets]);
 
   const pendingApprovalsCount = useMemo(() => {
-    return pendingEffortLogs.length + pendingClosureRequests.length + pendingUnlockRequests.length + passwordRequests.length;
-  }, [pendingEffortLogs, pendingClosureRequests, pendingUnlockRequests, passwordRequests]);
+    return pendingEffortLogs.length + pendingClosureRequests.length + pendingUnlockRequests.length + passwordRequests.length + reopenRequests.length;
+  }, [pendingEffortLogs, pendingClosureRequests, pendingUnlockRequests, passwordRequests, reopenRequests]);
 
   const waitingAssignmentTickets = useMemo(() => {
     return filteredTickets.filter(t => 
@@ -3247,69 +3352,136 @@ export default function ManagerDashboardPage() {
 
             </div>
 
-            {/* Password Reset Requests */}
-            <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96 mt-6">
-              <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
-                <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Password Reset Requests ({passwordRequests.length})</span>
-              </div>
-              <div className="flex-1 overflow-y-auto p-0 font-mono text-[10px]">
-                <table className="w-full border-collapse text-left">
-                  <thead>
-                    <tr className="bg-zinc-50 border-b border-zinc-150 uppercase font-bold text-[8px] tracking-wider text-zinc-500">
-                      <th className="p-2.5">User</th>
-                      <th className="p-2.5">Organization</th>
-                      <th className="p-2.5">Requested At</th>
-                      <th className="p-2.5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {loadingRequests ? (
-                      <tr>
-                        <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-mono">Querying reset requests...</td>
+            {/* Password Reset & Ticket Reopen Requests Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              
+              {/* Password Reset Requests */}
+              <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96">
+                <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
+                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Password Reset Requests ({passwordRequests.length})</span>
+                </div>
+                <div className="flex-1 overflow-y-auto p-0 font-mono text-[10px]">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-150 uppercase font-bold text-[8px] tracking-wider text-zinc-500">
+                        <th className="p-2.5">User</th>
+                        <th className="p-2.5">Organization</th>
+                        <th className="p-2.5">Requested At</th>
+                        <th className="p-2.5 text-right">Actions</th>
                       </tr>
-                    ) : passwordRequests.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-sans">No pending password reset requests.</td>
-                      </tr>
-                    ) : (
-                      passwordRequests.map((req) => (
-                        <tr key={req.id} className="hover:bg-zinc-50/50">
-                          <td className="p-2.5">
-                            <div>
-                              <span className="font-bold text-zinc-800 block text-[10px]">{req.requester_name}</span>
-                              <span className="text-zinc-450 block text-[9px]">{req.requester_email}</span>
-                            </div>
-                          </td>
-                          <td className="p-2.5 text-zinc-650 font-semibold">{req.organization}</td>
-                          <td className="p-2.5 text-zinc-550 font-mono">
-                            {new Date(req.requested_at).toLocaleString()}
-                          </td>
-                          <td className="p-2.5 text-right">
-                            <div className="flex justify-end gap-1.5">
-                              <Button
-                                size="sm"
-                                className="h-6 bg-zinc-950 hover:bg-zinc-800 text-white text-[9px] uppercase font-bold px-2 rounded cursor-pointer font-mono"
-                                onClick={() => handleApprovePasswordRequest(req)}
-                              >
-                                Approve
-                              </Button>
-                              <Button
-                                size="icon"
-                                className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer"
-                                onClick={() => handleRejectPasswordRequest(req)}
-                              >
-                                <X size={11} />
-                              </Button>
-                            </div>
-                          </td>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {loadingRequests ? (
+                        <tr>
+                          <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-mono">Querying reset requests...</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+                      ) : passwordRequests.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-sans">No pending password reset requests.</td>
+                        </tr>
+                      ) : (
+                        passwordRequests.map((req) => (
+                          <tr key={req.id} className="hover:bg-zinc-50/50">
+                            <td className="p-2.5">
+                              <div>
+                                <span className="font-bold text-zinc-800 block text-[10px]">{req.requester_name}</span>
+                                <span className="text-zinc-450 block text-[9px]">{req.requester_email}</span>
+                              </div>
+                            </td>
+                            <td className="p-2.5 text-zinc-650 font-semibold">{req.organization}</td>
+                            <td className="p-2.5 text-zinc-550 font-mono">
+                              {new Date(req.requested_at).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <div className="flex justify-end gap-1.5">
+                                <Button
+                                  size="sm"
+                                  className="h-6 bg-zinc-950 hover:bg-zinc-800 text-white text-[9px] uppercase font-bold px-2 rounded cursor-pointer font-mono"
+                                  onClick={() => handleApprovePasswordRequest(req)}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer"
+                                  onClick={() => handleRejectPasswordRequest(req)}
+                                >
+                                  <X size={11} />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
 
+              {/* Ticket Reopen Requests */}
+              <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96">
+                <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
+                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Ticket Reopen Requests ({reopenRequests.length})</span>
+                </div>
+                <div className="flex-1 overflow-y-auto p-0 font-mono text-[10px]">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-150 uppercase font-bold text-[8px] tracking-wider text-zinc-500">
+                        <th className="p-2.5">Ticket</th>
+                        <th className="p-2.5">Requester</th>
+                        <th className="p-2.5">Reason</th>
+                        <th className="p-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {loadingReopens ? (
+                        <tr>
+                          <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-mono">Querying reopen requests...</td>
+                        </tr>
+                      ) : reopenRequests.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-sans">No pending ticket reopen requests.</td>
+                        </tr>
+                      ) : (
+                        reopenRequests.map((req) => (
+                          <tr key={req.id} className="hover:bg-zinc-50/50">
+                            <td className="p-2.5">
+                              <div>
+                                <span className="font-bold text-zinc-800 block text-[10px]">{req.ticket_number}</span>
+                                <span className="text-zinc-450 block text-[9px] truncate max-w-[120px]" title={req.ticket_title}>{req.ticket_title}</span>
+                              </div>
+                            </td>
+                            <td className="p-2.5 text-zinc-650 font-semibold">{req.requester_name}</td>
+                            <td className="p-2.5 text-zinc-550 font-mono">
+                              <span className="truncate max-w-[120px] block" title={req.reason}>{req.reason}</span>
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <div className="flex justify-end gap-1.5">
+                                <Button
+                                  size="sm"
+                                  className="h-6 bg-zinc-950 hover:bg-zinc-800 text-white text-[9px] uppercase font-bold px-2 rounded cursor-pointer font-mono"
+                                  onClick={() => handleApproveReopenRequest(req)}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer"
+                                  onClick={() => handleRejectReopenRequest(req)}
+                                >
+                                  <X size={11} />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+
+            </div>
           </div>
 
           {/* SECTION 11: HOURS, EFFORT & BILLING INSIGHT CENTER */}

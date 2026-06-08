@@ -190,7 +190,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
     switch (role) {
       case 'Customer': return 'bg-blue-950 text-blue-400 border-blue-900/30';
       case 'Manager': return 'bg-amber-950 text-amber-400 border-amber-900/30';
-      case 'SuperAdmin': return 'bg-purple-950 text-purple-400 border-purple-900/30';
+      case 'SuperAdmin': return 'bg-zinc-900 text-zinc-100 border-zinc-800';
       case 'System': return 'bg-zinc-100 text-zinc-600 border-zinc-300/50';
       default: return 'bg-white text-zinc-700 border-zinc-200';
     }

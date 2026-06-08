@@ -62,6 +62,8 @@ import {
 } from '../../../../components/ui/dialog';
 import { Button } from '../../../../components/ui/button';
 import AttachmentPanel from '../../../../components/tickets/AttachmentPanel';
+import { isSupabaseConfigured, supabase } from '../../../../lib/supabase/client';
+import { toast } from 'sonner';
 
 interface PendingAttachment {
   id: string;
@@ -147,6 +149,32 @@ export default function CustomerTicketDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+
+  const [pendingReopenRequest, setPendingReopenRequest] = useState<any>(null);
+
+  const fetchPendingReopenRequest = async () => {
+    if (!ticketId || !isSupabaseConfigured || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('ticket_reopen_requests')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .eq('status', 'Pending')
+        .maybeSingle();
+
+      if (!error && data) {
+        setPendingReopenRequest(data);
+      } else {
+        setPendingReopenRequest(null);
+      }
+    } catch (err) {
+      console.error('Error fetching reopen request:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingReopenRequest();
+  }, [ticketId]);
 
   const showBannerMessage = (msg: string) => {
     setSuccessBanner(msg);
@@ -288,7 +316,7 @@ export default function CustomerTicketDetailPage() {
 
   const getFileIcon = (fileType: string) => {
     const type = fileType.toLowerCase();
-    if (type.startsWith('image/')) return <FileImage size={16} className="text-violet-500" />;
+    if (type.startsWith('image/')) return <FileImage size={16} className="text-zinc-600" />;
     if (type.includes('pdf')) return <FileText size={16} className="text-red-500" />;
     if (type.includes('sheet') || type.includes('excel')) return <FileText size={16} className="text-emerald-500" />;
     return <File size={16} className="text-zinc-400" />;
@@ -447,13 +475,48 @@ export default function CustomerTicketDetailPage() {
     showBannerMessage('Ticket closed. Thank you for your feedback!');
   };
 
-  const handleReopenSubmit = (e: React.FormEvent) => {
+  const handleReopenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reopenReason.trim()) return;
-    reopenTicket(ticket.id, reopenReason, user?.name || 'Customer User');
-    setShowReopenDialog(false);
-    setReopenReason('');
-    showBannerMessage('Ticket has been reopened for further investigation.');
+
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Submitting reopen request...');
+      try {
+        const { data, error } = await supabase
+          .from('ticket_reopen_requests')
+          .insert({
+            ticket_id: ticket.id,
+            requester_name: user?.name || 'Customer User',
+            reason: reopenReason.trim(),
+            status: 'Pending'
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        setPendingReopenRequest(data);
+        setShowReopenDialog(false);
+        setReopenReason('');
+        toast.success('Ticket reopen request submitted to support managers.', { id: toastId });
+        showBannerMessage('Reopen request has been submitted to support managers.');
+      } catch (err: any) {
+        console.error('Error submitting reopen request:', err);
+        toast.error(`Failed to submit request: ${err.message}`, { id: toastId });
+      }
+    } else {
+      // Local fallback
+      setPendingReopenRequest({
+        id: `rr-${Date.now()}`,
+        ticket_id: ticket.id,
+        requester_name: user?.name || 'Customer User',
+        reason: reopenReason,
+        status: 'Pending',
+        requested_at: new Date().toISOString()
+      });
+      setShowReopenDialog(false);
+      setReopenReason('');
+      showBannerMessage('Reopen request submitted locally.');
+    }
   };
 
   const handleEscalateSubmit = async (e: React.FormEvent) => {
@@ -742,8 +805,12 @@ export default function CustomerTicketDetailPage() {
               {ticket.status === 'Closed' && (
                 <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="h-9 text-[13px] font-medium border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-lg gap-1.5">
-                      Request Reopen
+                    <Button 
+                      variant="outline" 
+                      disabled={!!pendingReopenRequest}
+                      className="h-9 text-[13px] font-medium border-zinc-200 text-zinc-650 hover:text-zinc-900 hover:bg-zinc-50 rounded-lg gap-1.5"
+                    >
+                      {pendingReopenRequest ? 'Reopen Pending Approval' : 'Request Reopen'}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
@@ -1047,7 +1114,7 @@ export default function CustomerTicketDetailPage() {
                             <div className="flex items-start justify-between gap-3 mb-2">
                               <div className="flex items-center gap-2.5">
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 ${
-                                  isEsc ? 'bg-orange-500' : isAudit ? 'bg-zinc-400' : isCustomer ? 'bg-indigo-500' : 'bg-violet-500'
+                                  isEsc ? 'bg-orange-500' : isAudit ? 'bg-zinc-400' : isCustomer ? 'bg-indigo-500' : 'bg-zinc-800'
                                 }`}>
                                   {isEsc ? <Zap size={13} /> : isAudit ? <History size={13} /> : <User size={13} />}
                                 </div>

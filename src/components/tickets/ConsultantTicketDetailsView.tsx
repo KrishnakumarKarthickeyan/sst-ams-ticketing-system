@@ -1132,7 +1132,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {/* Technical Consultants */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
                   Technical Development Team
                 </span>
                 {(() => {
@@ -1243,7 +1243,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">My Estimate</span>
                     <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{myEstimatedHours} h</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-indigo-500">
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-slate-400">
                     <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Team Estimate</span>
                     <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{teamEstimatedHours} h</span>
                   </div>
@@ -1251,7 +1251,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Functional Total</span>
                     <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{functionalTotalEst} h</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-violet-500">
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-slate-600">
                     <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Technical Total</span>
                     <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{technicalTotalEst} h</span>
                   </div>
@@ -1378,7 +1378,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">My Actual</span>
                     <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{myActualHours} h</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-indigo-500">
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-slate-400">
                     <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Team Actual</span>
                     <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{teamActualHours} h</span>
                   </div>
@@ -1386,7 +1386,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Functional Total</span>
                     <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{functionalTotalAct} h</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-violet-500">
+                  <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-slate-600">
                     <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Technical Total</span>
                     <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{technicalTotalAct} h</span>
                   </div>
@@ -1969,7 +1969,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                         <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
                           {eff.consultantName}
                           <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
-                            eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
+                            eff.consultantType === 'Functional' ? 'bg-zinc-100 text-zinc-700 border border-zinc-200' : 'bg-zinc-200 text-zinc-800 border border-zinc-300'
                           }`}>{eff.consultantType}</span>
                         </span>
                         <div className="flex items-center gap-1 font-mono">
@@ -2108,7 +2108,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                         <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
                           {eff.consultantName}
                           <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
-                            eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
+                            eff.consultantType === 'Functional' ? 'bg-zinc-100 text-zinc-700 border border-zinc-200' : 'bg-zinc-200 text-zinc-800 border border-zinc-300'
                           }`}>{eff.consultantType}</span>
                         </span>
                         <div className="flex items-center gap-1 font-mono">

@@ -1191,7 +1191,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                         {/* B. TECHNICAL RESOURCES (Customer View) */}
                         <div className="space-y-2 pt-2 border-t border-zinc-100">
                           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
                             Technical Development Team
                           </span>
                           {(() => {
@@ -1509,7 +1509,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                   <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
                                   <td className="py-2 px-3 text-center">
                                     <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
-                                      eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
+                                      eff.consultantType === 'Functional' ? 'bg-zinc-100 text-zinc-700 border border-zinc-200' : 'bg-zinc-200 text-zinc-800 border border-zinc-300'
                                     }`}>{eff.consultantType}</span>
                                   </td>
                                   <td className="py-2 px-3 text-center font-bold text-zinc-950">{eff.estimatedHours}h</td>
@@ -1607,7 +1607,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                       <td className="py-2 px-3 font-semibold text-zinc-800">{eff.consultantName}</td>
                                       <td className="py-2 px-3 text-center">
                                         <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
-                                          eff.consultantType === 'Functional' ? 'bg-indigo-50 text-indigo-700' : 'bg-violet-50 text-violet-700'
+                                          eff.consultantType === 'Functional' ? 'bg-zinc-100 text-zinc-700 border border-zinc-200' : 'bg-zinc-200 text-zinc-800 border border-zinc-300'
                                         }`}>{eff.consultantType}</span>
                                       </td>
                                       <td className="py-2 px-3 text-center font-semibold text-zinc-600">{eff.estimatedHours}h</td>
