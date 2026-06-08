@@ -138,22 +138,10 @@ export default function CustomerDashboardPage() {
     period: 'This Year',
     dateFrom: '',
     dateTo: '',
-    statuses: ['All'],
+    status: 'All',
     priority: 'All',
     module: 'All'
   });
-  const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
-  const statusDropdownRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
-        setShowStatusDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const baseCompanyTickets = useMemo(() => {
     return filterTicketsByScope(tickets, { type: 'customer', value: customerCompany });
@@ -200,7 +188,7 @@ export default function CustomerDashboardPage() {
       if (!passDate) return false;
 
       // Status filter
-      if (f.statuses && f.statuses.length > 0 && !f.statuses.includes('All')) {
+      if (f.status && f.status !== 'All') {
         let simplifiedStatus = '';
         if (t.status === 'New') {
           simplifiedStatus = 'New';
@@ -220,8 +208,8 @@ export default function CustomerDashboardPage() {
           simplifiedStatus = 'Reopened';
         }
 
-        const isEscalatedMatch = f.statuses.includes('Escalated') && (t.escalationFlag || t.status === 'Raised to SAP');
-        const isStatusMatch = f.statuses.includes(simplifiedStatus);
+        const isEscalatedMatch = f.status === 'Escalated' && (t.escalationFlag || t.status === 'Raised to SAP');
+        const isStatusMatch = f.status === simplifiedStatus;
 
         if (!isStatusMatch && !isEscalatedMatch) {
           return false;
@@ -659,20 +647,21 @@ export default function CustomerDashboardPage() {
       </div>
 
       {/* ── CUSTOMER DYNAMIC FILTER BAR ── */}
-      <Card className="border border-zinc-200 bg-white p-4 shadow-sm mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Period */}
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Period</span>
-            <div className="flex border border-zinc-200 rounded-md overflow-hidden h-9 bg-zinc-50">
+      <Card className="border border-zinc-200 bg-white p-4 shadow-sm mb-6 rounded-lg">
+        <div className="flex flex-wrap items-end gap-3 md:flex-nowrap">
+          {/* 1. PERIOD */}
+          <div className="flex flex-col flex-1 min-w-[260px] max-w-[320px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
+            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 h-9">
               {(['This Month', 'This Quarter', 'This Year', 'Custom'] as const).map((p) => (
                 <button
                   key={p}
+                  type="button"
                   onClick={() => setFilters(prev => ({ ...prev, period: p }))}
-                  className={`px-3 text-[10px] font-mono uppercase font-bold transition-all ${
+                  className={`flex-1 h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
                     filters.period === p
-                      ? 'bg-zinc-900 text-white'
-                      : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                      ? 'bg-white text-zinc-955 shadow-sm border border-zinc-200/50'
+                      : 'text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
                   {p.replace('This ', '')}
@@ -681,104 +670,106 @@ export default function CustomerDashboardPage() {
             </div>
           </div>
 
-          {/* Module */}
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">SAP Module</span>
-            <select
-              value={filters.module}
-              onChange={(e) => setFilters(prev => ({ ...prev, module: e.target.value }))}
-              className="h-9 min-w-[130px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+          {/* 2. STATUS */}
+          <div className="flex flex-col flex-1 min-w-[140px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
+            <Select
+              value={filters.status}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, status: val }))}
             >
-              <option value="All">ALL MODULES</option>
-              {distinctModules.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Statuses</SelectItem>
+                <SelectItem value="New">New</SelectItem>
+                <SelectItem value="Assigned">Assigned</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="Pending Closure">Pending Closure</SelectItem>
+                <SelectItem value="Closed">Closed</SelectItem>
+                <SelectItem value="Reopened">Reopened</SelectItem>
+                <SelectItem value="Escalated">Escalated</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Priority */}
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Priority</span>
-            <select
+          {/* 3. PRIORITY */}
+          <div className="flex flex-col flex-1 min-w-[140px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
+            <Select
               value={filters.priority}
-              onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-              className="h-9 min-w-[130px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
             >
-              <option value="All">ALL PRIORITIES</option>
-              <option value="Critical">CRITICAL</option>
-              <option value="High">HIGH</option>
-              <option value="Medium">MEDIUM</option>
-              <option value="Low">LOW</option>
-            </select>
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Priorities</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Reset Filters */}
-          <div className="flex items-end ml-auto self-end pt-5">
-            <Button
-              variant="outline"
-              onClick={() => setFilters({
-                period: 'This Year',
-                dateFrom: '',
-                dateTo: '',
-                statuses: ['All'],
-                priority: 'All',
-                module: 'All'
-              })}
-              className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold rounded"
+          {/* 4. MODULE */}
+          <div className="flex flex-col flex-1 min-w-[140px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">SAP Module</span>
+            <Select
+              value={filters.module}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
             >
-              Reset
-            </Button>
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+                <SelectValue placeholder="Module" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Modules</SelectItem>
+                {distinctModules.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
 
-        {/* Dynamic Status Badges row */}
-        <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-2">
-          <span className="text-[9px] font-mono uppercase font-bold text-zinc-400 mr-2">Status Scope</span>
-          {(['New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Reopened', 'Escalated'] as const).map(group => {
-            const isSelected = filters.statuses.includes(group);
-            return (
-              <button
-                key={group}
-                onClick={() => {
-                  setFilters(prev => {
-                    const current = prev.statuses.filter(x => x !== 'All');
-                    const next = current.includes(group)
-                      ? current.filter(x => x !== group)
-                      : [...current, group];
-                    return { ...prev, statuses: next.length === 0 ? ['All'] : next };
-                  });
-                }}
-                className={`h-7 px-2.5 rounded-full text-[10px] font-mono uppercase font-semibold transition-all border ${
-                  isSelected
-                    ? 'bg-zinc-950 border-zinc-950 text-white shadow-sm'
-                    : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-                }`}
-              >
-                {group}
-              </button>
-            );
-          })}
+          {/* 5. RESET BUTTON */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFilters({
+              period: 'This Year',
+              dateFrom: '',
+              dateTo: '',
+              status: 'All',
+              priority: 'All',
+              module: 'All'
+            })}
+            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200 shadow-sm"
+          >
+            <RotateCcw size={14} />
+            Reset
+          </Button>
         </div>
 
         {/* Row 2: Custom Date Picker Inputs */}
         {filters.period === 'Custom' && (
-          <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-4 animate-in fade-in duration-200">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date From</span>
+          <div className="border-t border-zinc-200 mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex flex-col flex-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-955 w-full cursor-pointer font-sans"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date To</span>
+            <div className="flex flex-col flex-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-955 w-full cursor-pointer font-sans"
               />
             </div>
           </div>
