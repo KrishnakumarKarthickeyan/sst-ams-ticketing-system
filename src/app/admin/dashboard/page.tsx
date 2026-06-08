@@ -988,63 +988,124 @@ export default function AdminDashboardPage() {
 
   // ── 10. ANALYTICS WALL (20+ UNIQUE VISUALIZATIONS) ──
   const analyticsWallData = useMemo(() => {
+    const now = new Date(SYSTEM_NOW);
+    const monthsNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Determine range start & end based on filters
+    let start = new Date(now.getFullYear(), 0, 1);
+    let end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    if (filters.period === 'This Month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Quarter') {
+      const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+      start = new Date(now.getFullYear(), quarterStartMonth, 1);
+      end = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    } else if (filters.period === 'Custom') {
+      start = filters.dateFrom ? new Date(filters.dateFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
+      end = filters.dateTo ? new Date(filters.dateTo) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
+    const durationDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    const trendIntervals: { name: string; start: Date; end: Date; year: number; month: number; type: 'day' | 'week' | 'month' }[] = [];
+
+    if (durationDays <= 31) {
+      // Daily intervals
+      const curr = new Date(start);
+      while (curr <= end) {
+        const s = new Date(curr);
+        s.setHours(0,0,0,0);
+        const e = new Date(curr);
+        e.setHours(23,59,59,999);
+        trendIntervals.push({
+          name: curr.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'day'
+        });
+        curr.setDate(curr.getDate() + 1);
+      }
+    } else if (durationDays <= 93) {
+      // Weekly intervals
+      const curr = new Date(start);
+      let wkIdx = 1;
+      while (curr <= end) {
+        const s = new Date(curr);
+        s.setHours(0,0,0,0);
+        const e = new Date(curr);
+        e.setDate(e.getDate() + 6);
+        e.setHours(23,59,59,999);
+        trendIntervals.push({
+          name: `Wk ${wkIdx++}`,
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'week'
+        });
+        curr.setDate(curr.getDate() + 7);
+      }
+    } else {
+      // Monthly intervals
+      const curr = new Date(start.getFullYear(), start.getMonth(), 1);
+      const last = new Date(end.getFullYear(), end.getMonth(), 1);
+      while (curr <= last) {
+        const s = new Date(curr.getFullYear(), curr.getMonth(), 1, 0, 0, 0, 0);
+        const e = new Date(curr.getFullYear(), curr.getMonth() + 1, 0, 23, 59, 59, 999);
+        trendIntervals.push({
+          name: `${monthsNames[curr.getMonth()]} ${curr.getFullYear().toString().slice(-2)}`,
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'month'
+        });
+        curr.setMonth(curr.getMonth() + 1);
+      }
+    }
+
     // 1. Ticket Volume Trend
     const getMonthTrend = () => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const trendMap: Record<string, { Incidents: number; Requests: number }> = {};
-      
-      // Initialize last 6 months
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mName = months[d.getMonth()];
-        trendMap[mName] = { Incidents: 0, Requests: 0 };
-      }
+      return trendIntervals.map(interval => {
+        let incidents = 0;
+        let requests = 0;
 
-      activeTickets.forEach(t => {
-        const date = new Date(t.createdAt);
-        const mName = months[date.getMonth()];
-        if (trendMap[mName]) {
-          if (t.ticketType === 'Incident' || !t.ticketType) {
-            trendMap[mName].Incidents++;
-          } else {
-            trendMap[mName].Requests++;
+        activeTickets.forEach(t => {
+          const date = new Date(t.createdAt);
+          if (date >= interval.start && date <= interval.end) {
+            if (t.ticketType === 'Incident' || !t.ticketType) {
+              incidents++;
+            } else {
+              requests++;
+            }
           }
-        }
-      });
+        });
 
-      return Object.entries(trendMap).map(([name, val]) => ({
-        name,
-        Incidents: val.Incidents,
-        Requests: val.Requests
-      }));
+        return {
+          name: interval.name,
+          Incidents: incidents,
+          Requests: requests
+        };
+      });
     };
     const ticketVolumeTrend = getMonthTrend();
 
     // 2. Ticket Growth
     const getTicketGrowthTrend = () => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const countsMap: Record<string, number> = {};
-      
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mName = months[d.getMonth()];
-        countsMap[mName] = 0;
-      }
-
-      activeTickets.forEach(t => {
-        const date = new Date(t.createdAt);
-        const mName = months[date.getMonth()];
-        if (mName in countsMap) {
-          countsMap[mName]++;
-        }
-      });
-
       let cumulative = 0;
-      return Object.entries(countsMap).map(([name, count]) => {
+      return trendIntervals.map(interval => {
+        const count = activeTickets.filter(t => {
+          const date = new Date(t.createdAt);
+          return date >= interval.start && date <= interval.end;
+        }).length;
         cumulative += count;
-        return { name, total: cumulative };
+        return { name: interval.name, total: cumulative };
       });
     };
     const ticketGrowth = getTicketGrowthTrend();
@@ -1073,58 +1134,40 @@ export default function AdminDashboardPage() {
 
     // 4. Escalation Trend
     const getEscalationTrend = () => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const escMap: Record<string, number> = {};
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mName = months[d.getMonth()];
-        escMap[mName] = 0;
-      }
-      activeTickets.forEach(t => {
-        if (t.escalationFlag) {
-          const date = new Date(t.createdAt);
-          const mName = months[date.getMonth()];
-          if (mName in escMap) {
-            escMap[mName]++;
+      return trendIntervals.map(interval => {
+        const count = activeTickets.filter(t => {
+          if (t.escalationFlag) {
+            const date = new Date(t.createdAt);
+            return date >= interval.start && date <= interval.end;
           }
-        }
+          return false;
+        }).length;
+        return { name: interval.name, count };
       });
-      return Object.entries(escMap).map(([name, count]) => ({ name, count }));
     };
     const escalationTrend = getEscalationTrend();
 
     // 5. SLA Trend
     const getSlaTrend = () => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const slaMap: Record<string, { total: number; breached: number }> = {};
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mName = months[d.getMonth()];
-        slaMap[mName] = { total: 0, breached: 0 };
-      }
-
-      activeTickets.forEach(t => {
-        if ((t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable') {
-          const date = new Date(t.createdAt);
-          const mName = months[date.getMonth()];
-          if (mName in slaMap) {
-            slaMap[mName].total++;
-            const due = new Date(t.slaDueAt).getTime();
-            const end = t.status === 'Resolved' || t.status === 'Closed'
-              ? new Date(t.resolvedAt || t.closedAt || Date.now()).getTime()
-              : Date.now();
-            if (end > due) {
-              slaMap[mName].breached++;
-            }
+      return trendIntervals.map(interval => {
+        const intervalIncidents = activeTickets.filter(t => {
+          if ((t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable') {
+            const date = new Date(t.createdAt);
+            return date >= interval.start && date <= interval.end;
           }
-        }
-      });
+          return false;
+        });
 
-      return Object.entries(slaMap).map(([name, val]) => {
-        const compliance = val.total > 0 ? ((val.total - val.breached) / val.total) * 100 : 100;
-        return { name, compliance: Math.round(compliance * 10) / 10 };
+        const breached = intervalIncidents.filter(t => {
+          const due = new Date(t.slaDueAt).getTime();
+          const endT = t.status === 'Resolved' || t.status === 'Closed'
+            ? new Date(t.resolvedAt || t.closedAt || Date.now()).getTime()
+            : Date.now();
+          return endT > due;
+        }).length;
+
+        const compliance = intervalIncidents.length > 0 ? ((intervalIncidents.length - breached) / intervalIncidents.length) * 100 : 100;
+        return { name: interval.name, compliance: Math.round(compliance * 10) / 10 };
       });
     };
     const slaTrend = getSlaTrend();
@@ -1156,95 +1199,76 @@ export default function AdminDashboardPage() {
 
     // 10. Resolution Time Trend
     const getResolutionTimeTrend = () => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const resMap: Record<string, { totalHours: number; count: number }> = {};
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mName = months[d.getMonth()];
-        resMap[mName] = { totalHours: 0, count: 0 };
-      }
+      return trendIntervals.map(interval => {
+        let totalHours = 0;
+        let count = 0;
 
-      activeTickets.forEach(t => {
-        if ((t.status === 'Resolved' || t.status === 'Closed') && t.resolvedAt) {
-          const date = new Date(t.createdAt);
-          const mName = months[date.getMonth()];
-          if (mName in resMap) {
-            const hrs = (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60);
-            resMap[mName].totalHours += hrs;
-            resMap[mName].count++;
+        activeTickets.forEach(t => {
+          if ((t.status === 'Resolved' || t.status === 'Closed') && t.resolvedAt) {
+            const date = new Date(t.createdAt);
+            if (date >= interval.start && date <= interval.end) {
+              const hrs = (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60);
+              totalHours += hrs;
+              count++;
+            }
           }
-        }
-      });
+        });
 
-      return Object.entries(resMap).map(([name, val]) => ({
-        name,
-        hours: val.count > 0 ? Math.round((val.totalHours / val.count) * 10) / 10 : 0
-      }));
+        return {
+          name: interval.name,
+          hours: count > 0 ? Math.round((totalHours / count) * 10) / 10 : 0
+        };
+      });
     };
     const resolutionTimeTrend = getResolutionTimeTrend();
 
     // 11. Approval Response Trend
     const getApprovalResponseTrend = () => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const appMap: Record<string, number> = {};
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mName = months[d.getMonth()];
-        appMap[mName] = 0;
-      }
+      return trendIntervals.map(interval => {
+        let count = 0;
+        activeTickets.forEach(t => {
+          const isPending = t.status === 'Reopen Requested' ||
+            (t.actualHoursLogs || []).some(h => h.approvalStatus?.toLowerCase() === 'pending') ||
+            (t.closureRequests || []).some(r => r.status === 'Pending Manager Approval' || r.managerApprovalStatus === 'Pending') ||
+            (t.unlockRequests || []).some(u => u.status === 'Pending') ||
+            (t.deleteRequests || []).some(r => r.managerApproval === 'Pending' || r.adminApproval === 'Pending');
 
-      activeTickets.forEach(t => {
-        const isPending = t.status === 'Reopen Requested' ||
-          (t.actualHoursLogs || []).some(h => h.approvalStatus?.toLowerCase() === 'pending') ||
-          (t.closureRequests || []).some(r => r.status === 'Pending Manager Approval' || r.managerApprovalStatus === 'Pending') ||
-          (t.unlockRequests || []).some(u => u.status === 'Pending') ||
-          (t.deleteRequests || []).some(r => r.managerApproval === 'Pending' || r.adminApproval === 'Pending');
-
-        if (isPending) {
-          const date = new Date(t.createdAt);
-          const mName = months[date.getMonth()];
-          if (mName in appMap) {
-            appMap[mName]++;
+          if (isPending) {
+            const date = new Date(t.createdAt);
+            if (date >= interval.start && date <= interval.end) {
+              count++;
+            }
           }
-        }
-      });
+        });
 
-      return Object.entries(appMap).map(([name, pendingApprovals]) => ({
-        name,
-        pendingApprovals
-      }));
+        return {
+          name: interval.name,
+          pendingApprovals: count
+        };
+      });
     };
     const approvalResponseTrend = getApprovalResponseTrend();
 
     // 12. Approved Actual Hours
     const getApprovedHoursTrend = () => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const hoursMap: Record<string, number> = {};
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mName = months[d.getMonth()];
-        hoursMap[mName] = 0;
-      }
-
-      activeTickets.forEach(t => {
-        (t.actualHoursLogs || []).forEach(log => {
-          if (log.approvalStatus?.toLowerCase() === 'approved' && log.approvedAt) {
-            const date = new Date(log.approvedAt);
-            const mName = months[date.getMonth()];
-            if (mName in hoursMap) {
-              hoursMap[mName] += log.actualHours;
+      return trendIntervals.map(interval => {
+        let hours = 0;
+        activeTickets.forEach(t => {
+          (t.actualHoursLogs || []).forEach(log => {
+            if (log.approvalStatus?.toLowerCase() === 'approved' && log.approvedAt) {
+              const date = new Date(log.approvedAt);
+              if (date >= interval.start && date <= interval.end) {
+                hours += log.actualHours;
+              }
             }
-          }
+          });
         });
-      });
 
-      return Object.entries(hoursMap).map(([name, hours]) => ({
-        name,
-        hours: Math.round(hours * 10) / 10
-      }));
+        return {
+          name: interval.name,
+          hours: Math.round(hours * 10) / 10
+        };
+      });
     };
     const approvedHoursTrend = getApprovedHoursTrend();
 
@@ -1507,7 +1531,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Reset Filters */}
-          <div className="flex items-end h-14 ml-auto">
+          <div className="flex items-end ml-auto self-end pt-5">
             <Button
               variant="outline"
               onClick={() => setFilters({
