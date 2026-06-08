@@ -502,7 +502,7 @@ export default function ManagerDashboardPage() {
     const now = SYSTEM_NOW;
     const list: any[] = [];
     filteredTickets.forEach(t => {
-      if (t.status === 'Closed') return;
+      if (t.status === 'Closed' || t.status === 'Resolved') return;
       
       const hasSlaBreached = t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < now;
       if (hasSlaBreached) {
@@ -621,6 +621,7 @@ export default function ManagerDashboardPage() {
     return activeConsultantsList.map(consultant => {
       const activeCount = filteredDashboardTickets.filter(t => 
         t.status !== 'Closed' && 
+        t.status !== 'Resolved' && 
         (t.assignedConsultant === consultant.name || t.assignments?.some(a => a.consultantName === consultant.name && a.active))
       ).length;
 
@@ -872,7 +873,7 @@ export default function ManagerDashboardPage() {
         reopenPendingApproval,
         resourceChangePending,
         totalApprovals: estPendingApproval + actPendingApproval + closurePendingApproval + reopenPendingApproval + resourceChangePending,
-        critical: ticketsList.filter(t => t.priority === 'Critical' && t.status !== 'Closed').length,
+        critical: ticketsList.filter(t => t.priority === 'Critical' && t.status !== 'Closed' && t.status !== 'Resolved').length,
         pendingClosures: closurePendingApproval,
 
         slaHealthy,
@@ -1843,9 +1844,9 @@ export default function ManagerDashboardPage() {
                 <div>
                   <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block font-mono">SLA Governance</span>
                   <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
-                    <div className="flex justify-between"><span>SLA Healthy:</span><span className="font-bold text-green-700">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Healthy').length}</span></div>
-                    <div className="flex justify-between"><span>SLA Warning:</span><span className="font-bold text-amber-600">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Warning').length}</span></div>
-                    <div className="flex justify-between"><span>SLA Breached:</span><span className="font-bold text-red-600">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Breached').length}</span></div>
+                    <div className="flex justify-between"><span>SLA Healthy:</span><span className="font-bold text-green-700">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Healthy').length}</span></div>
+                    <div className="flex justify-between"><span>SLA Warning:</span><span className="font-bold text-amber-600">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Warning').length}</span></div>
+                    <div className="flex justify-between"><span>SLA Breached:</span><span className="font-bold text-red-600">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Breached').length}</span></div>
                     <div className="flex justify-between"><span>Total SLA Monitored:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length}</span></div>
                     <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
                       <span>Avg SLA Compliance:</span>
@@ -2049,12 +2050,12 @@ export default function ManagerDashboardPage() {
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
                     <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
-                      SLA Risk Center ({filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length})
+                      SLA Risk Center ({filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length})
                     </span>
                     <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">WARNING</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').slice(0, 5).map(t => {
+                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').slice(0, 5).map(t => {
                       const slaInfo = getSlaBreachInfo(t);
                       const isEscalated = t.escalationFlag;
                       const borderClass = isEscalated || (slaInfo?.status === 'breached') 
@@ -2082,7 +2083,7 @@ export default function ManagerDashboardPage() {
                         </div>
                       );
                     })}
-                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length === 0 && (
+                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
                         All SLAs running in healthy range.
                       </div>
@@ -2751,7 +2752,7 @@ export default function ManagerDashboardPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-150">
-                        {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable').slice(0, 4).map(t => {
+                        {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable').slice(0, 4).map(t => {
                           const slaInfo = getSlaBreachInfo(t);
                           const isEscalated = t.escalationFlag;
                           const borderClass = isEscalated || (slaInfo?.status === 'breached') 
@@ -2780,7 +2781,7 @@ export default function ManagerDashboardPage() {
                             </tr>
                           );
                         })}
-                        {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.slaDueAt !== 'SLA Not Applicable').length === 0 && (
+                        {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable').length === 0 && (
                           <tr>
                             <td colSpan={6} className="py-8 text-center text-zinc-400 italic">No incident SLA risks found.</td>
                           </tr>
@@ -2869,6 +2870,7 @@ export default function ManagerDashboardPage() {
                         <span className="text-[8px] text-zinc-400 uppercase font-black block">Backlog Queue List</span>
                         {filteredDashboardTickets.filter(t => 
                           t.status !== 'Closed' && 
+                          t.status !== 'Resolved' && 
                           (t.assignedConsultant === c.name || t.consultantEfforts?.some(e => e.consultantName === c.name && !e.isDeleted))
                         ).map(t => (
                           <div key={t.id} className="flex justify-between items-center text-[9px] py-1 border-b border-zinc-100 last:border-0 hover:bg-zinc-100/50 px-1 rounded">
@@ -3269,12 +3271,12 @@ export default function ManagerDashboardPage() {
                       {SAP_MODULES_LIST.map(m => {
                         const mTickets = filteredDashboardTickets.filter(t => t.sapModule === m);
                         const mHours = mTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0);
-                        const mCritical = mTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed').length;
+                        const mCritical = mTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed' && t.status !== 'Resolved').length;
 
                         return (
                           <tr key={m} className="hover:bg-zinc-50/50">
                             <td className="py-2.5 px-4 font-bold text-zinc-900">{m}</td>
-                            <td className="py-2.5 px-4 text-center font-semibold">{mTickets.filter(t => t.status !== 'Closed').length}</td>
+                            <td className="py-2.5 px-4 text-center font-semibold">{mTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length}</td>
                             <td className="py-2.5 px-4 text-center font-bold">{mHours}h</td>
                             <td className={`py-2.5 px-4 text-center font-bold ${mCritical > 0 ? 'text-red-650' : 'text-zinc-400'}`}>{mCritical}</td>
                           </tr>
