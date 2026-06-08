@@ -96,7 +96,42 @@ function getWorkingDaysInRange(start: Date, end: Date) {
 const SYSTEM_NOW = new Date('2026-06-07T08:00:00Z').getTime();
 // Verified cockpit metrics against DB ground truth (June 2026 dataset). All counts match exactly.
 
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: any }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-900 font-mono text-xs">
+          <h2 className="text-sm font-bold uppercase mb-2">React Runtime Crash Caught</h2>
+          <pre className="whitespace-pre-wrap">{this.state.error?.stack || String(this.state.error)}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function ManagerDashboardPage() {
+  return (
+    <ErrorBoundary>
+      <ManagerDashboardPageContent />
+    </ErrorBoundary>
+  );
+}
+
+function ManagerDashboardPageContent() {
   const {
     tickets,
     loading,
