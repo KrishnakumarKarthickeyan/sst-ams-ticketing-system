@@ -274,6 +274,9 @@ export interface Ticket {
   actualHoursLogs?: TicketActualHours[];
   organizationId?: string;
   leadConsultantId?: string;
+  escalationAcknowledgedAt?: string | null;
+  escalationAcknowledgedBy?: string | null;
+  escalationAcknowledgedByName?: string | null;
 }
 
 export interface TicketAssignment {
@@ -443,6 +446,9 @@ export interface Notification {
   ticketId?: string;
   isRead: boolean;
   createdAt: string;
+  type?: string;
+  linkPath?: string;
+  readAt?: string | null;
 }
 
 export interface CustomerContract {

@@ -102,16 +102,16 @@ export const Header: React.FC = () => {
                         )}
                       </div>
                       <p className="text-zinc-500 text-[11px] mt-0.5 leading-relaxed">{n.message}</p>
-                      {n.ticketId && (
+                      {(n.linkPath || n.ticketId) && (
                         <Link
-                          href={`/tickets/${n.ticketId}`}
+                          href={n.linkPath || `/tickets/${n.ticketId}`}
                           onClick={() => {
                             setShowNotifications(false);
                             if (!n.isRead) markNotificationRead(n.id);
                           }}
                           className="inline-block text-[10px] font-bold text-zinc-900 hover:underline mt-1 font-mono"
                         >
-                          View {n.ticketId} &rarr;
+                          View Details &rarr;
                         </Link>
                       )}
                     </div>

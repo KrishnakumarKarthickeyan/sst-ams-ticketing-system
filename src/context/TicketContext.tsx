@@ -261,6 +261,19 @@ interface TicketContextType {
   // Notifications
   markNotificationRead: (notificationId: string) => void;
   createSystemNotification: (userId: string, title: string, message: string, ticketId?: string) => void;
+  createDBNotification: (data: {
+    userId: string;
+    type: string;
+    title: string;
+    message: string;
+    ticketId?: string;
+    linkPath?: string;
+  }) => Promise<void>;
+  acknowledgeEscalation: (
+    ticketId: string,
+    actorId: string,
+    actorName: string
+  ) => Promise<{ success: boolean; error?: string }>;
 
   // AI Chatbot Interface
   getChatResponse: (sapModule: SAPModule, userMessage: string) => Promise<{
@@ -399,8 +412,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           title: n.title,
           message: n.message,
           ticketId: n.ticket_id,
-          isRead: n.is_read,
-          createdAt: n.created_at
+          isRead: n.read_at ? true : (n.is_read || false),
+          createdAt: n.created_at,
+          type: n.type || 'system',
+          linkPath: n.link_path || (n.ticket_id ? `/tickets/${n.ticket_id}` : ''),
+          readAt: n.read_at
         })) : []);
 
         setLoading(false);
@@ -664,6 +680,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       createdByName: t.created_by_name || createdProfile?.full_name || reqProfile?.full_name || t.requested_by,
       createdByUser: t.created_by_user,
       softDeleteStatus: (t.soft_delete_status as 'Active' | 'Pending Delete' | 'Archived') || 'Active',
+      escalationAcknowledgedAt: t.escalation_acknowledged_at,
+      escalationAcknowledgedBy: t.escalation_acknowledged_by,
+      escalationAcknowledgedByName: getProfile(t.escalation_acknowledged_by)?.full_name || undefined,
       sapModules: t.ticket_modules && t.ticket_modules.length > 0
         ? t.ticket_modules.map((m: any) => m.module_id as SAPModule)
         : (t.sap_module ? [t.sap_module as SAPModule] : []),
@@ -2650,10 +2669,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // --- SYSTEM NOTIFICATIONS ---
 
   const markNotificationRead = async (notificationId: string) => {
+    const nowStr = new Date().toISOString();
     // Optimistic local state update
     const updated = notifications.map(n => {
       if (n.id === notificationId) {
-        return { ...n, isRead: true };
+        return { ...n, isRead: true, readAt: nowStr };
       }
       return n;
     });
@@ -2661,12 +2681,163 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (isSupabaseConfigured && supabase) {
       try {
-        // In the database, check if id is a uuid or integer. If it's a UUID, we query it directly.
-        // If it was created offline with a format like n-..., we can try to delete or update.
-        await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
+        const { error } = await supabase.from('notifications').update({ read_at: nowStr }).eq('id', notificationId);
+        if (error) {
+          // Fallback if read_at column is not in DB yet
+          await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
+        }
       } catch (err) {
         console.error('Error marking notification read in DB:', err);
       }
+    }
+  };
+
+  const createDBNotification = async (data: {
+    userId: string;
+    type: string;
+    title: string;
+    message: string;
+    ticketId?: string;
+    linkPath?: string;
+  }) => {
+    let resolvedUuid = data.userId;
+    if (data.userId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.userId)) {
+      const match = (profiles || []).find(p => 
+        p.email?.toLowerCase() === data.userId.toLowerCase() || 
+        p.full_name?.toLowerCase() === data.userId.toLowerCase()
+      );
+      if (match) {
+        resolvedUuid = match.id;
+      }
+    }
+
+    const newNotif: Notification = {
+      id: `n-${Date.now()}`,
+      userId: resolvedUuid || data.userId,
+      title: data.title,
+      message: data.message,
+      ticketId: data.ticketId,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      type: data.type,
+      linkPath: data.linkPath,
+    };
+    
+    setNotifications(prev => [newNotif, ...prev]);
+
+    if (isSupabaseConfigured && supabase && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
+      try {
+        const insertData: any = {
+          user_id: resolvedUuid,
+          title: data.title,
+          message: data.message,
+          ticket_id: data.ticketId,
+          type: data.type,
+          link_path: data.linkPath,
+        };
+        const { error } = await supabase.from('notifications').insert(insertData);
+        if (error) {
+          console.warn('New notification columns not found, falling back to basic columns...', error);
+          const fallbackData = {
+            user_id: resolvedUuid,
+            title: data.title,
+            message: data.message,
+            ticket_id: data.ticketId,
+            is_read: false
+          };
+          await supabase.from('notifications').insert(fallbackData);
+        }
+      } catch (err) {
+        console.error('Error creating database notification:', err);
+      }
+    }
+  };
+
+  const acknowledgeEscalation = async (ticketId: string, actorId: string, actorName: string): Promise<{ success: boolean; error?: string }> => {
+    const ticketObj = tickets.find(t => t.id === ticketId);
+    if (!ticketObj) return { success: false, error: 'Ticket not found' };
+
+    const nowStr = new Date().toISOString();
+
+    setTickets(prev => prev.map(t => {
+      if (t.id === ticketId) {
+        return {
+          ...t,
+          escalationAcknowledgedAt: nowStr,
+          escalationAcknowledgedBy: actorId,
+          escalationAcknowledgedByName: actorName,
+          updatedAt: nowStr
+        };
+      }
+      return t;
+    }));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error: ticketError } = await supabase
+          .from('tickets')
+          .update({
+            escalation_acknowledged_at: nowStr,
+            escalation_acknowledged_by: actorId
+          })
+          .eq('id', ticketId);
+          
+        if (ticketError) {
+          console.error('Error updating ticket acknowledgment:', ticketError);
+        }
+
+        const customerProfile = profiles.find(p => p.full_name === ticketObj.requestedBy || p.email === ticketObj.requestedByEmail);
+        const customerUserId = customerProfile?.id || ticketObj.createdByUser;
+        
+        const consultantsToNotify = new Set<string>();
+        if (ticketObj.primaryConsultantId) consultantsToNotify.add(ticketObj.primaryConsultantId);
+        if (ticketObj.leadConsultantId) consultantsToNotify.add(ticketObj.leadConsultantId);
+        (ticketObj.assignments || []).forEach(a => {
+          if (a.active && a.consultantId) {
+            consultantsToNotify.add(a.consultantId);
+          }
+        });
+
+        if (customerUserId) {
+          await createDBNotification({
+            userId: customerUserId,
+            type: 'escalation_ack',
+            title: 'Your ticket is being treated as critical',
+            message: `Ticket ${ticketObj.ticketNumber || ticketObj.id} has been escalated and is receiving priority handling.`,
+            ticketId: ticketId,
+            linkPath: `/customer/tickets/${ticketId}`
+          });
+        }
+
+        for (const consId of consultantsToNotify) {
+          if (consId !== customerUserId) {
+            await createDBNotification({
+              userId: consId,
+              type: 'escalation_ack',
+              title: 'ESCALATED — Top priority',
+              message: `Ticket ${ticketObj.ticketNumber || ticketObj.id} has been escalated by management. Please prioritise.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
+            });
+          }
+        }
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Escalation Acknowledgment',
+          old_value: 'Pending',
+          new_value: 'Acknowledged'
+        });
+
+        await fetchData();
+        return { success: true };
+      } catch (err: any) {
+        console.error('Error in acknowledgeEscalation:', err);
+        return { success: false, error: err.message };
+      }
+    } else {
+      return { success: true };
     }
   };
 
@@ -5688,6 +5859,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         rateKbArticle,
         markNotificationRead,
         createSystemNotification,
+        createDBNotification,
+        acknowledgeEscalation,
         getChatResponse,
         resetMockData,
         fetchTicketById,

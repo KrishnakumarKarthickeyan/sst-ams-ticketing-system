@@ -96,6 +96,20 @@ function getWorkingDaysInRange(start: Date, end: Date) {
 const SYSTEM_NOW = new Date('2026-06-07T08:00:00Z').getTime();
 // Verified cockpit metrics against DB ground truth (June 2026 dataset). All counts match exactly.
 
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
 export default function ManagerDashboardPage() {
   const {
     tickets,
@@ -108,7 +122,8 @@ export default function ManagerDashboardPage() {
     rejectClosureRequest,
     approveUnlockRequest,
     rejectUnlockRequest,
-    closeTicket
+    closeTicket,
+    acknowledgeEscalation
   } = useTickets();
 
   const { user } = useAuth();
@@ -2125,6 +2140,24 @@ export default function ManagerDashboardPage() {
                             <span>Org: {t.organization}</span>
                             <span>Module: {t.sapModule}</span>
                           </div>
+                          {isEscalated && (
+                            t.escalationAcknowledgedAt ? (
+                              <div className="text-[8px] text-zinc-500 font-sans mt-0.5 pt-0.5 border-t border-zinc-100 flex justify-between items-center">
+                                <span>Ack: {t.escalationAcknowledgedByName || 'Manager'}</span>
+                                <span>{formatRelativeTime(t.escalationAcknowledgedAt)}</span>
+                              </div>
+                            ) : (
+                              <div className="mt-1 flex justify-end">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => acknowledgeEscalation(t.id, user?.id || '', user?.name || '')} 
+                                  className="h-5 text-[8px] font-mono font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2"
+                                >
+                                  Acknowledge
+                                </Button>
+                              </div>
+                            )
+                          )}
                         </div>
                       );
                     })}
@@ -2226,6 +2259,24 @@ export default function ManagerDashboardPage() {
                             <span>Org: {t.organization}</span>
                             <span className="font-bold text-red-655">{t.escalationFlag ? 'Escalated Flag Set' : 'Critical P1 Priority'}</span>
                           </div>
+                          {isEscalated && (
+                            t.escalationAcknowledgedAt ? (
+                              <div className="text-[8px] text-zinc-500 font-sans mt-0.5 pt-0.5 border-t border-zinc-100 flex justify-between items-center">
+                                <span>Ack: {t.escalationAcknowledgedByName || 'Manager'}</span>
+                                <span>{formatRelativeTime(t.escalationAcknowledgedAt)}</span>
+                              </div>
+                            ) : (
+                              <div className="mt-1 flex justify-end">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => acknowledgeEscalation(t.id, user?.id || '', user?.name || '')} 
+                                  className="h-5 text-[8px] font-mono font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2"
+                                >
+                                  Acknowledge
+                                </Button>
+                              </div>
+                            )
+                          )}
                         </div>
                       );
                     })}

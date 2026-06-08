@@ -664,9 +664,16 @@ export default function CustomerTicketDetailPage() {
                   return <Badge variant="secondary" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">{ticket.priority}</Badge>;
                 })()}
 
-                {ticket.softDeleteStatus === 'Pending Delete' && (
+                 {ticket.softDeleteStatus === 'Pending Delete' && (
                   <Badge className="bg-amber-50 text-amber-600 border border-amber-200 text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse hover:bg-transparent">
                     Pending Deletion
+                  </Badge>
+                )}
+
+                {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
+                  <Badge variant="secondary" className="bg-zinc-100 text-zinc-800 border-zinc-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <Info size={12} className="text-zinc-500 shrink-0" />
+                    Critical Priority — Being handled
                   </Badge>
                 )}
               </div>

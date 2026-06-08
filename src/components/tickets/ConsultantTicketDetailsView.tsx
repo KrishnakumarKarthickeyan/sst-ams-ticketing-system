@@ -855,6 +855,18 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
         </div>
       )}
 
+      {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
+        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg flex items-start gap-2.5 text-xs font-semibold animate-slide-in">
+          <AlertTriangle size={16} className="text-red-650 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-extrabold uppercase tracking-wider text-[10px] font-mono text-red-900">ESCALATED — Top Priority</p>
+            <p className="mt-1 leading-normal text-red-700 font-mono">
+              This ticket has been escalated and is under critical priority management. Acknowledged by {ticket.escalationAcknowledgedByName || 'Manager'} on {new Date(ticket.escalationAcknowledgedAt).toLocaleString()}. Please prioritize resolving this ticket immediately.
+            </p>
+          </div>
+        </div>
+      )}
+
       {isTicketFullyLocked && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-semibold">
           <div className="flex items-start gap-2.5">
