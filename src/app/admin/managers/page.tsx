@@ -9,6 +9,7 @@ import {
   AlertTriangle, CheckCircle, Clock, ShieldAlert, ArrowRight, Eye 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '../../../components/ui/badge';
 
 interface ManagerProfile {
   id: string;
@@ -47,6 +48,9 @@ export default function AdminManagersPage() {
     organization: string;
     status: string;
     requested_at: string;
+    profiles?: {
+      role: string;
+    } | null;
   }
   const [passwordRequests, setPasswordRequests] = useState<PasswordChangeRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
@@ -64,7 +68,30 @@ export default function AdminManagersPage() {
         .order('requested_at', { ascending: false });
 
       if (error) throw error;
-      setPasswordRequests(data || []);
+
+      const requests = data || [];
+      const userIds = requests.map(r => r.user_id).filter(Boolean);
+
+      let profileMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, role')
+          .in('id', userIds);
+
+        if (!profileError && profileData) {
+          profileData.forEach(p => {
+            profileMap[p.id] = p.role;
+          });
+        }
+      }
+
+      const requestsWithRole = requests.map(r => ({
+        ...r,
+        profiles: profileMap[r.user_id] ? { role: profileMap[r.user_id] } : null
+      }));
+
+      setPasswordRequests(requestsWithRole);
     } catch (err) {
       console.error('Error fetching password requests:', err);
     } finally {
@@ -709,36 +736,44 @@ export default function AdminManagersPage() {
                   </td>
                 </tr>
               ) : (
-                passwordRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-zinc-50/50">
-                    <td className="p-3">
-                      <div>
-                        <span className="font-bold text-zinc-850 text-xs block">{req.requester_name}</span>
-                        <span className="text-[10px] text-zinc-450 font-mono">{req.requester_email}</span>
-                      </div>
-                    </td>
-                    <td className="p-3 font-semibold text-zinc-700">{req.organization}</td>
-                    <td className="p-3 text-zinc-550 font-mono">
-                      {new Date(req.requested_at).toLocaleString()}
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => handleApproveRequest(req)}
-                          className="px-2.5 py-1 bg-zinc-950 text-white hover:bg-zinc-850 rounded text-[9px] font-bold uppercase tracking-wider transition cursor-pointer"
-                        >
-                          Approve & Reset
-                        </button>
-                        <button
-                          onClick={() => handleRejectRequest(req)}
-                          className="px-2.5 py-1 border border-zinc-200 hover:bg-zinc-50 rounded text-[9px] font-bold uppercase tracking-wider text-zinc-600 transition cursor-pointer"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                passwordRequests.map((req) => {
+                  const role = req.profiles?.role || (req.organization === 'Assist360 Operations' ? 'Manager' : 'Customer');
+                  return (
+                    <tr key={req.id} className="hover:bg-zinc-50/50">
+                      <td className="p-3">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-zinc-850 text-xs">{req.requester_name}</span>
+                            <Badge variant={role === 'Manager' ? 'default' : 'secondary'} className="text-[8px] font-bold py-0.5 px-1 uppercase">
+                              {role}
+                            </Badge>
+                          </div>
+                          <span className="text-[10px] text-zinc-450 font-mono block">{req.requester_email}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 font-semibold text-zinc-700">{req.organization}</td>
+                      <td className="p-3 text-zinc-550 font-mono">
+                        {new Date(req.requested_at).toLocaleString()}
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleApproveRequest(req)}
+                            className="px-2.5 py-1 bg-zinc-950 text-white hover:bg-zinc-850 rounded text-[9px] font-bold uppercase tracking-wider transition cursor-pointer"
+                          >
+                            Approve & Reset
+                          </button>
+                          <button
+                            onClick={() => handleRejectRequest(req)}
+                            className="px-2.5 py-1 border border-zinc-200 hover:bg-zinc-50 rounded text-[9px] font-bold uppercase tracking-wider text-zinc-600 transition cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
