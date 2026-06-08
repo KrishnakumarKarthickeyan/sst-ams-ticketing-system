@@ -71,16 +71,53 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
   };
 
   // Compile full list of effort logs across tickets for effort-related reports
-  const allEffortLogs = tickets.flatMap(ticket => 
-    (ticket.efforts || []).map(effort => ({
-      ...effort,
+  const allEffortLogs = tickets.flatMap(ticket => {
+    const fromEfforts = (ticket.efforts || []).map(effort => ({
+      id: effort.id,
+      ticketId: effort.ticketId,
+      consultantId: effort.consultantId,
+      consultantName: effort.consultantName || 'Consultant',
+      hoursLogged: effort.hoursLogged || effort.hoursWorked || 0,
+      activityDate: effort.activityDate || effort.workDate || effort.createdAt || '',
+      startTime: effort.startTime || 'N/A',
+      endTime: effort.endTime || 'N/A',
+      activityType: effort.activityType || 'Analysis',
+      billable: effort.billable !== false,
+      status: effort.status || 'Approved',
+      description: effort.description || ticket.title,
       ticketTitle: ticket.title,
       sapModule: ticket.sapModule,
       organization: ticket.organization,
       priority: ticket.priority,
       category: ticket.category
-    }))
-  );
+    }));
+
+    const fromActualHours = (ticket.actualHoursLogs || []).map(ah => {
+      const consultantProfile = profiles.find(p => p.id === ah.consultantId);
+      const consultantName = consultantProfile?.full_name || ah.consultantId || 'Consultant';
+      return {
+        id: ah.id,
+        ticketId: ah.ticketId,
+        consultantId: ah.consultantId,
+        consultantName: consultantName,
+        hoursLogged: ah.actualHours || 0,
+        activityDate: ah.createdAt ? ah.createdAt.split('T')[0] : '',
+        startTime: 'N/A',
+        endTime: 'N/A',
+        activityType: ah.consultantType || 'Analysis',
+        billable: ah.billable !== false,
+        status: ah.approvalStatus || 'Approved',
+        description: `Closure actual hours log: ${ah.consultantType}`,
+        ticketTitle: ticket.title,
+        sapModule: ticket.sapModule,
+        organization: ticket.organization,
+        priority: ticket.priority,
+        category: ticket.category
+      };
+    });
+
+    return [...fromEfforts, ...fromActualHours];
+  });
 
   // Apply Role-Based Constraints immediately
   const isCustomer = role === 'Customer';
@@ -198,7 +235,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
     if (t.status === 'Closed' || t.status === 'Resolved') return false;
     return new Date(t.slaDueAt).getTime() < nowTime;
   }).length;
-  const compliancePct = totalCount > 0 ? (((totalCount - breachedCount) / totalCount) * 150 - 50).toFixed(0) : '100'; // scaled index representation
+  const compliancePct = totalCount > 0 ? Math.max(0, Math.min(100, Math.round(((totalCount - breachedCount) / totalCount) * 100))).toFixed(0) : '100';
   
   const totalHoursLogged = filteredEfforts.reduce((sum, e) => sum + e.hoursLogged, 0);
   const billableHours = filteredEfforts.filter(e => e.billable).reduce((sum, e) => sum + e.hoursLogged, 0);
@@ -232,6 +269,32 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
   } else if (reportType === 'Effort Hours') {
     filteredEfforts.forEach(e => {
       chartData[e.consultantName] = (chartData[e.consultantName] || 0) + e.hoursLogged;
+    });
+  } else if (reportType === 'Billable vs Non-billable') {
+    chartData['Billable'] = billableHours;
+    chartData['Non-Billable'] = nonBillableHours;
+  } else if (reportType === 'SLA Compliance') {
+    chartData['SLA Compliant'] = totalCount - breachedCount;
+    chartData['SLA Breached'] = breachedCount;
+  } else if (reportType === 'Aging Tickets') {
+    filteredTickets.forEach(t => {
+      const ageDays = Math.floor((Date.now() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      let bracket = '0-5 days';
+      if (ageDays > 15) bracket = '> 15 days';
+      else if (ageDays > 5) bracket = '6-15 days';
+      chartData[bracket] = (chartData[bracket] || 0) + 1;
+    });
+  } else if (reportType === 'Reopened Tickets') {
+    const reopened = filteredTickets.filter(t => t.status === 'Reopened').length;
+    chartData['Reopened'] = reopened;
+    chartData['Standard'] = totalCount - reopened;
+  } else if (reportType === 'Customer Satisfaction') {
+    filteredTickets.forEach(t => {
+      const score = t.rating?.score;
+      if (score) {
+        const key = `${score} Star`;
+        chartData[key] = (chartData[key] || 0) + 1;
+      }
     });
   } else {
     // Default to status breakdown
