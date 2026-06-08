@@ -312,8 +312,10 @@ export default function CustomerDashboardPage() {
       totalHours: dashboardData.totalContractedHours,
       monthlyBudgetHours: dashboardData.monthlyAllocatedHours,
       totalUtilizedHours: dashboardData.totalApprovedHoursUsed,
+      totalLoggedHours: dashboardData.totalLoggedHoursUsed,
       totalRemainingHours: dashboardData.remainingHours,
       currentMonthUtilizedHours: dashboardData.monthlyApprovedActualHoursUsed,
+      currentMonthLoggedHours: dashboardData.monthlyLoggedHoursUsed,
       currentMonthRemainingHours: dashboardData.monthlyRemainingHours,
       usagePercentage: dashboardData.usagePercentage
     };
@@ -1487,25 +1489,99 @@ export default function CustomerDashboardPage() {
                 </div>
               </div>
 
-              {/* Progress bar consumption bar */}
-              <div className="space-y-2 pt-2 border-t border-zinc-100">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="font-bold text-zinc-550">Quota Burn Percentage</span>
-                  <span className="font-black text-zinc-950">{consumptionPercentage.toFixed(1)}% burned</span>
-                </div>
-                <div className="w-full bg-zinc-100 rounded-full h-3.5 border border-zinc-200 overflow-hidden p-0.5">
-                  <div
-                    className={`h-2.5 rounded-full transition-all duration-500 ${
-                      consumptionPercentage >= 90
-                        ? 'bg-red-650 bg-red-600'
-                        : consumptionPercentage >= 75
-                          ? 'bg-amber-500'
-                          : 'bg-zinc-950'
-                    }`}
-                    style={{ width: `${Math.min(100, consumptionPercentage)}%` }}
-                  ></div>
-                </div>
-                <p className="text-[10px] font-mono text-zinc-400">
+              {/* Stacked Progress Bars: Current Month Usage & Total Contract Usage */}
+              <div className="space-y-6 pt-4 border-t border-zinc-100 font-mono">
+                {/* 1. Current Month Usage Progress Bar */}
+                {(() => {
+                  const monthlyAllocated = dashboardData.monthlyAllocatedHours || 1;
+                  const monthlyApproved = dashboardData.monthlyApprovedActualHoursUsed || 0;
+                  const monthlyLogged = dashboardData.monthlyLoggedHoursUsed || 0;
+                  const monthlyPending = Math.max(0, monthlyLogged - monthlyApproved);
+                  const monthlyBurnPct = (monthlyApproved / monthlyAllocated) * 100;
+                  
+                  // Color thresholds: <70% default (zinc-950), 70-90% warning (amber-500), >90% destructive (red-600)
+                  const barColorClass = monthlyBurnPct > 90 
+                    ? 'bg-red-650 bg-red-600' 
+                    : monthlyBurnPct >= 70 
+                      ? 'bg-amber-500' 
+                      : 'bg-zinc-950';
+
+                  const textColorClass = monthlyBurnPct > 90 
+                    ? 'text-red-600' 
+                    : monthlyBurnPct >= 70 
+                      ? 'text-amber-500' 
+                      : 'text-zinc-950';
+
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-zinc-650 uppercase tracking-wider text-[10px]">Current Month Usage</span>
+                        <span className={`font-black ${textColorClass}`}>{monthlyBurnPct.toFixed(1)}% burned</span>
+                      </div>
+                      <div className="w-full bg-zinc-100 rounded-full h-3.5 border border-zinc-200 overflow-hidden p-0.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all duration-500 ${barColorClass}`}
+                          style={{ width: `${Math.min(100, monthlyBurnPct)}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] text-zinc-400">
+                        <span>Allocated: {monthlyAllocated.toFixed(1)}h</span>
+                        <div className="flex gap-3">
+                          <span>Burned: <strong className="text-zinc-700">{monthlyApproved.toFixed(1)}h</strong></span>
+                          <span>Pending Approval: <strong className="text-zinc-700">{monthlyPending.toFixed(1)}h</strong></span>
+                          <span>Remaining: <strong className="text-zinc-700">{dashboardData.monthlyRemainingHours.toFixed(1)}h</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 2. Total Contract Usage Progress Bar */}
+                {(() => {
+                  const totalContractHours = dashboardData.totalContractedHours || 1;
+                  const totalApproved = dashboardData.totalApprovedHoursUsed || 0;
+                  const totalLogged = dashboardData.totalLoggedHoursUsed || 0;
+                  const totalPending = Math.max(0, totalLogged - totalApproved);
+                  const totalBurnPct = (totalApproved / totalContractHours) * 100;
+
+                  // Color thresholds: <70% default (zinc-950), 70-90% warning (amber-500), >90% destructive (red-600)
+                  const barColorClass = totalBurnPct > 90 
+                    ? 'bg-red-650 bg-red-600' 
+                    : totalBurnPct >= 70 
+                      ? 'bg-amber-500' 
+                      : 'bg-zinc-955';
+
+                  const textColorClass = totalBurnPct > 90 
+                    ? 'text-red-600' 
+                    : totalBurnPct >= 70 
+                      ? 'text-amber-500' 
+                      : 'text-zinc-955';
+
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-zinc-650 uppercase tracking-wider text-[10px]">Total Contract Usage</span>
+                        <span className={`font-black ${textColorClass}`}>{totalBurnPct.toFixed(1)}% burned</span>
+                      </div>
+                      <div className="w-full bg-zinc-100 rounded-full h-3.5 border border-zinc-200 overflow-hidden p-0.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all duration-500 ${barColorClass}`}
+                          style={{ width: `${Math.min(100, totalBurnPct)}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] text-zinc-400">
+                        <span>Contract Total: {totalContractHours.toFixed(1)}h</span>
+                        <div className="flex gap-3">
+                          <span>Burned: <strong className="text-zinc-700">{totalApproved.toFixed(1)}h</strong></span>
+                          <span>Pending Approval: <strong className="text-zinc-700">{totalPending.toFixed(1)}h</strong></span>
+                          <span>Remaining Balance: <strong className="text-zinc-700">{remainingHours.toFixed(1)}h</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <p className="text-[9px] font-mono text-zinc-400">
                   * Note: Effort logs are compiled from verified consultant timesheets. Billing and approval processes are handled internally.
                 </p>
               </div>

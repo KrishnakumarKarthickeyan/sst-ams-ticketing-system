@@ -230,6 +230,7 @@ export const getCustomerDashboardData = (
     contractPeriod,
     monthlyAllocatedHours: monthlyBudgetHours,
     monthlyApprovedActualHoursUsed: currentMonthApprovedHours,
+    monthlyLoggedHoursUsed: currentMonthLoggedHours,
     remainingHours,
     remainingLoggedHours,
     monthlyRemainingHours,
