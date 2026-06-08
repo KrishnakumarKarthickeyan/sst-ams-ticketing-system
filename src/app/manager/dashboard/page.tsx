@@ -2163,11 +2163,11 @@ export default function ManagerDashboardPage() {
                 <div>
                   <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block font-mono">Customer Operations</span>
                   <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
-                    <div className="flex justify-between"><span>Total Customers:</span><span className="font-bold text-zinc-900">{customersList.length}</span></div>
+                    <div className="flex justify-between"><span>Total Customers:</span><span className="font-bold text-zinc-900">{filters.customer === 'All' ? customersList.length : customersList.includes(filters.customer) ? 1 : 0}</span></div>
                     <div className="flex justify-between"><span>With Open Tickets:</span><span className="font-bold text-zinc-900">{new Set(filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').map(t => t.organization)).size}</span></div>
                     <div className="flex justify-between"><span>With Escalations:</span><span className="font-bold text-zinc-900">{new Set(filteredDashboardTickets.filter(t => t.escalationFlag).map(t => t.organization)).size}</span></div>
                     <div className="flex justify-between"><span>Contract Expiring &lt;30d:</span><span className="font-bold text-zinc-900">
-                      {contracts.filter(c => c.endDate && c.isActive && (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30).length}
+                      {contracts.filter(c => c.endDate && c.isActive && (filters.customer === 'All' || c.organizationName === filters.customer) && (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30).length}
                     </span></div>
                     <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
                       <span>Mthly Hours (Logged/Approved):</span>
