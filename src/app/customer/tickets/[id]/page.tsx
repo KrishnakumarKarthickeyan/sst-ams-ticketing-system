@@ -61,6 +61,7 @@ import {
   DialogFooter
 } from '../../../../components/ui/dialog';
 import { Button } from '../../../../components/ui/button';
+import AttachmentPanel from '../../../../components/tickets/AttachmentPanel';
 
 interface PendingAttachment {
   id: string;
@@ -976,35 +977,7 @@ export default function CustomerTicketDetailPage() {
               </div>
 
               {/* Attachments */}
-              {visibleAttachments.length > 0 && (
-                <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
-                    <Paperclip size={16} className="text-indigo-500" />
-                    <h3 className="text-sm font-semibold text-zinc-900">Attachments ({visibleAttachments.length})</h3>
-                  </div>
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {visibleAttachments.map(att => (
-                        <a
-                          key={att.id}
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); handleDownloadFile(att.fileName, att.fileUrl || att.filePath); }}
-                          className="flex items-center gap-3 px-4 py-3 border border-zinc-200 hover:border-indigo-300 rounded-xl bg-zinc-50 hover:bg-indigo-50/50 transition-all group"
-                        >
-                          <div className="w-10 h-10 rounded-lg bg-white border border-zinc-200 flex items-center justify-center group-hover:border-indigo-200 transition">
-                            <FileCode size={18} className="text-indigo-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-zinc-900 truncate group-hover:text-indigo-700 transition">{att.fileName}</p>
-                            <p className="text-[11px] text-zinc-400">{(att.fileSize / 1024).toFixed(0)} KB</p>
-                          </div>
-                          <ExternalLink size={14} className="text-zinc-300 group-hover:text-indigo-400 transition shrink-0" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+              <AttachmentPanel ticketId={ticket.id} />
 
               {/* Resolution Summary */}
               {(ticket.status === 'Resolved' || ticket.status === 'Closed') && (

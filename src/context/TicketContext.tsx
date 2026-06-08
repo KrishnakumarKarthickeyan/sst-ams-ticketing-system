@@ -273,6 +273,15 @@ interface TicketContextType {
   resetMockData: () => void;
   fetchTicketById: (ticketId: string) => Promise<Ticket | null>;
   refetchData: () => Promise<void>;
+  addAttachment: (
+    ticketId: string,
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+    fileObj?: File,
+    visibility?: 'public' | 'internal'
+  ) => Promise<{ success: boolean; error?: string; attachment?: Attachment }>;
+  deleteAttachment: (ticketId: string, attachmentId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -5521,6 +5530,118 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     );
   };
 
+  const addAttachment = async (
+    ticketId: string,
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+    fileObj?: File,
+    visibility: 'public' | 'internal' = 'public'
+  ): Promise<{ success: boolean; error?: string; attachment?: Attachment }> => {
+    try {
+      const fileUrl = await uploadAttachmentToSupabase(ticketId, fileName, fileSize, fileType, fileObj);
+
+      const attId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `att-${Date.now()}`;
+      
+      const newAttachment: Attachment = {
+        id: attId,
+        ticketId,
+        fileName,
+        filePath: fileUrl,
+        fileUrl,
+        fileType,
+        fileSize,
+        uploadedBy: user?.name || 'System',
+        visibility: visibility as any,
+        createdAt: new Date().toISOString()
+      };
+
+      if (isSupabaseConfigured && supabase) {
+        const { error: insertErr } = await supabase
+          .from('ticket_attachments')
+          .insert({
+            id: attId,
+            ticket_id: ticketId,
+            uploaded_by: user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5',
+            file_name: fileName,
+            file_path: fileUrl,
+            file_size: fileSize,
+            mime_type: fileType
+          });
+
+        if (insertErr) {
+          console.error('[DATABASE INSERT ERROR] ticket_attachments registration:', insertErr);
+          return { success: false, error: `Database insert error: ${insertErr.message}` };
+        }
+      }
+
+      setTickets(prev => prev.map(t => {
+        if (t.id === ticketId) {
+          return {
+            ...t,
+            attachments: [...(t.attachments || []), newAttachment]
+          };
+        }
+        return t;
+      }));
+
+      debouncedRefetch();
+
+      return { success: true, attachment: newAttachment };
+    } catch (err: any) {
+      console.error('Error in addAttachment:', err);
+      return { success: false, error: err.message || 'Failed to add attachment' };
+    }
+  };
+
+  const deleteAttachment = async (
+    ticketId: string,
+    attachmentId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const currentTicket = tickets.find(t => t.id === ticketId);
+        const att = currentTicket?.attachments?.find(a => a.id === attachmentId);
+
+        if (att && att.filePath) {
+          let relativePath = att.filePath;
+          if (att.filePath.includes('/sap-tickets/')) {
+            const parts = att.filePath.split('/sap-tickets/');
+            relativePath = parts[parts.length - 1];
+          }
+          await supabase.storage.from('sap-tickets').remove([relativePath]);
+        }
+
+        const { error: deleteErr } = await supabase
+          .from('ticket_attachments')
+          .delete()
+          .eq('id', attachmentId);
+
+        if (deleteErr) {
+          console.error('[DATABASE DELETE ERROR] ticket_attachments deletion:', deleteErr);
+          return { success: false, error: `Database delete error: ${deleteErr.message}` };
+        }
+      }
+
+      setTickets(prev => prev.map(t => {
+        if (t.id === ticketId) {
+          return {
+            ...t,
+            attachments: (t.attachments || []).filter(a => a.id !== attachmentId)
+          };
+        }
+        return t;
+      }));
+
+      debouncedRefetch();
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error in deleteAttachment:', err);
+      return { success: false, error: err.message || 'Failed to delete attachment' };
+    }
+  };
+
   return (
     <TicketContext.Provider
       value={{
@@ -5569,7 +5690,9 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         getChatResponse,
         resetMockData,
         fetchTicketById,
-        refetchData: fetchData
+        refetchData: fetchData,
+        addAttachment,
+        deleteAttachment
       }}
     >
       {children}

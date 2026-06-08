@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Ticket, TicketStatus, TicketPriority, SAPModule, IssueCategory, Comment, EffortLog, AuditHistory, EffortActivityType, Attachment, TicketConsultantEffort } from '../../types/ticket';
 import { useTickets } from '../../context/TicketContext';
 import { useAuth } from '../../context/AuthContext';
+import AttachmentPanel from './AttachmentPanel';
 import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
 import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
@@ -851,42 +852,16 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
             
             <h2 className="font-bold text-sm text-zinc-950 leading-snug">{ticket.title}</h2>
             <p className="text-zinc-700 leading-relaxed text-[11px] whitespace-pre-wrap">{ticket.description}</p>
-
             {ticket.businessImpact && (
               <div className="bg-zinc-50 border border-zinc-200 rounded p-3 text-[10px] text-zinc-650 leading-relaxed">
                 <span className="font-bold text-zinc-900 uppercase text-[8px] block mb-1">Business Operational Impact:</span>
                 {ticket.businessImpact}
               </div>
             )}
-
-            {/* Attachments Section */}
-            {visibleAttachments.length > 0 && (
-              <div className="border-t border-zinc-150 pt-3.5 space-y-2">
-                <span className="font-bold text-[9px] uppercase tracking-wider text-zinc-450 flex items-center gap-1">
-                  <Paperclip size={11} /> Secure Registry Attachments ({visibleAttachments.length})
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {visibleAttachments.map(att => (
-                    <a
-                      key={att.id}
-                      href="#"
-                      onClick={(e) => { e.preventDefault(); handleDownloadFile(att.fileName, att.fileUrl); }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 border border-zinc-200 hover:border-zinc-950 rounded bg-zinc-50 font-semibold text-[10px] text-zinc-700 transition"
-                    >
-                      <FileCode size={12} />
-                      <div className="text-left">
-                        <span className="block font-bold">{att.fileName}</span>
-                        <span className="text-[8px] text-zinc-400 block font-mono">{(att.fileSize / 1024).toFixed(0)} KB • Click to download</span>
-                      </div>
-                      {att.visibility === 'internal' && (
-                        <span className="text-[8px] bg-red-100 text-red-800 px-1 rounded font-bold uppercase ml-1">INTERNAL</span>
-                      )}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Attachments */}
+          <AttachmentPanel ticketId={ticket.id} />
 
           {/* ServiceNow Parameters Hub */}
           <div className="bg-white border border-zinc-200 rounded-lg shadow-sm overflow-hidden">

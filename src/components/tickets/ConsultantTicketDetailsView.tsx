@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Ticket, TicketStatus, SAPModule, Comment, Attachment, TicketHourEstimate, TicketClosureRequest, TicketUnlockRequest } from '../../types/ticket';
 import { useTickets } from '../../context/TicketContext';
 import { useAuth } from '../../context/AuthContext';
+import AttachmentPanel from './AttachmentPanel';
 import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
 import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
@@ -1800,30 +1801,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Card>
 
           {/* Attachments */}
-          <Card className="bg-white border border-slate-200 p-4 shadow-sm space-y-3">
-            <span className="font-bold text-[10px] text-slate-500 uppercase tracking-widest block border-b border-slate-150 pb-2 font-mono">Attachments registry</span>
-            <div className="space-y-2 text-[10px] font-mono">
-              {(ticket.attachments || []).map((a, i) => (
-                <div key={i} className="flex justify-between items-center p-2 bg-slate-50 border border-slate-200 rounded hover:border-slate-350 transition">
-                  <div className="flex flex-col min-w-0 pr-2">
-                    <span className="font-bold text-slate-700 truncate max-w-[150px] block">{a.fileName}</span>
-                    <span className="text-[8px] text-slate-405 font-mono block">{a.fileSize ? `${(a.fileSize/1024).toFixed(0)} KB` : '150 KB'}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); handleDownloadFile(a.fileName, a.fileUrl || a.filePath); }}
-                    className="p-1 border border-slate-200 rounded text-slate-600 hover:border-slate-950 transition shrink-0 cursor-pointer"
-                    title="Download attachment"
-                  >
-                    <Download size={11} />
-                  </button>
-                </div>
-              ))}
-              {(ticket.attachments || []).length === 0 && (
-                <span className="text-slate-400 italic text-[10px] block">No attachments.</span>
-              )}
-            </div>
-          </Card>
+          <AttachmentPanel ticketId={ticket.id} />
 
         </div>
 
