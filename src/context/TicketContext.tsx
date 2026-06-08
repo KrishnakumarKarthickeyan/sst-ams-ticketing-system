@@ -118,7 +118,7 @@ interface TicketContextType {
     businessJustification?: string;
     expectedResolutionDate?: string;
     sapModules?: SAPModule[];
-  }) => Promise<{ success: boolean; error?: string; ticketId?: string }>;
+  }) => Promise<{ success: boolean; error?: string; ticketId?: string; ticketNumber?: string }>;
   updateTicket: (ticketId: string, data: Partial<Ticket>) => void;
   requestDelete: (ticketId: string, reason: string, requester: string) => void;
   requestEscalation: (
@@ -1009,7 +1009,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     businessJustification?: string;
     expectedResolutionDate?: string;
     sapModules?: SAPModule[];
-  }): Promise<{ success: boolean; error?: string; ticketId?: string }> => {
+  }): Promise<{ success: boolean; error?: string; ticketId?: string; ticketNumber?: string }> => {
     const tType = data.ticketType || 'Incident';
     const classification = data.classification || data.functionalOrTechnical || 'Functional';
 
@@ -1362,7 +1362,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
 
           debouncedRefetch();
-          return { success: true, ticketId: mappedTicket.id };
+          return { success: true, ticketId: mappedTicket.id, ticketNumber: mappedTicket.ticketNumber };
         }
 
       } catch (err: any) {

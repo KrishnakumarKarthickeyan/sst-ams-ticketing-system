@@ -128,6 +128,10 @@ export default function CustomerTicketsPage() {
     return tickets.filter(t => t.organization === customerCompany && t.softDeleteStatus !== 'Archived');
   }, [tickets, customerCompany]);
 
+  const activeTicket = useMemo(() => {
+    return companyTickets.find(t => t.id === activeTicketId);
+  }, [companyTickets, activeTicketId]);
+
   const now = Date.now();
 
   // Helper: Compute Ticket Age in Days
@@ -987,7 +991,7 @@ ${ticket.description}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Edit Ticket Details: {activeTicketId}</DialogTitle>
+              <DialogTitle>Edit Ticket Details: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
               <DialogDescription>
                 Modify ticket subject or description details before resources are allocated.
               </DialogDescription>
@@ -1031,7 +1035,7 @@ ${ticket.description}
         <Dialog open={isCommentOpen} onOpenChange={setIsCommentOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Add Comment Response: {activeTicketId}</DialogTitle>
+              <DialogTitle>Add Comment Response: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
               <DialogDescription>
                 Post a response, validation check feedback, or info request update directly on this ticket.
               </DialogDescription>
@@ -1064,7 +1068,7 @@ ${ticket.description}
         <Dialog open={isAttachmentOpen} onOpenChange={setIsAttachmentOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Upload Ticket Attachment: {activeTicketId}</DialogTitle>
+              <DialogTitle>Upload Ticket Attachment: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
               <DialogDescription>
                 Attach screenshot files, log dump texts, or custom configuration documents.
               </DialogDescription>
@@ -1108,7 +1112,7 @@ ${ticket.description}
         <Dialog open={isEscalateOpen} onOpenChange={setIsEscalateOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Submit SLA Escalation: {activeTicketId}</DialogTitle>
+              <DialogTitle>Submit SLA Escalation: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
               <DialogDescription>
                 Flag this ticket as an active SLA escalation, alerting SAP Managers immediately.
               </DialogDescription>
@@ -1191,7 +1195,7 @@ ${ticket.description}
         <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Request Soft-Delete: {activeTicketId}</DialogTitle>
+              <DialogTitle>Request Soft-Delete: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
               <DialogDescription>
                 Initiate a soft-deletion request workflow. Requires validation approvals from Managers and Admins.
               </DialogDescription>
