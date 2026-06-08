@@ -70,15 +70,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized session.' }, { status: 401 });
     }
 
-    // 2. Verify requester is a SuperAdmin in profiles table
+    // 2. Verify requester is a SuperAdmin or Manager in profiles table
     const { data: requesterProfile, error: reqProfErr } = await supabase
       .from('profiles')
       .select('role, email')
       .eq('id', requester.id)
       .single();
 
-    if (reqProfErr || requesterProfile?.role !== 'SuperAdmin') {
-      return NextResponse.json({ success: false, error: 'Access denied. Super Admin privileges required.' }, { status: 403 });
+    const allowedRequesterRoles = ['SuperAdmin', 'Manager'];
+    if (reqProfErr || !requesterProfile || !allowedRequesterRoles.includes(requesterProfile.role)) {
+      return NextResponse.json({ success: false, error: 'Access denied. Privileged role required.' }, { status: 403 });
     }
 
     // 3. Parse and validate target user parameters

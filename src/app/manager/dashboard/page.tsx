@@ -4,6 +4,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { getManagerDashboardData, getSlaStatus } from '../../../utils/dashboardService';
+import { supabase } from '../../../lib/supabase/client';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
@@ -111,6 +112,96 @@ export default function ManagerDashboardPage() {
   } = useTickets();
 
   const { user } = useAuth();
+
+  // Password Request States
+  interface PasswordChangeRequest {
+    id: string;
+    user_id: string;
+    requester_email: string;
+    requester_name: string;
+    organization: string;
+    status: string;
+    requested_at: string;
+  }
+  const [passwordRequests, setPasswordRequests] = useState<PasswordChangeRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+
+  const fetchPasswordRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('password_change_requests')
+        .select('*')
+        .eq('status', 'Pending')
+        .order('requested_at', { ascending: false });
+
+      if (error) throw error;
+      setPasswordRequests(data || []);
+    } catch (err) {
+      console.error('Error fetching password requests:', err);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPasswordRequests();
+  }, [user?.id]);
+
+  const handleApprovePasswordRequest = async (req: PasswordChangeRequest) => {
+    if (!confirm(`Are you sure you want to approve the password reset request for ${req.requester_name}?`)) return;
+    const loadId = toast.loading(`Resetting password for ${req.requester_name}...`);
+    try {
+      const apiRes = await fetch('/api/admin/users/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ targetUserId: req.user_id })
+      });
+      const res = await apiRes.json();
+      if (!apiRes.ok || !res.success) throw new Error(res.error || 'Reset API failed');
+
+      // Update password_change_requests status
+      const { error: updateError } = await supabase
+        .from('password_change_requests')
+        .update({
+          status: 'Completed',
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.email || 'Manager'
+        })
+        .eq('id', req.id);
+
+      if (updateError) throw updateError;
+
+      toast.success(`Request approved! Temporary password: ${res.tempPassword}`, { id: loadId, duration: 15000 });
+      fetchPasswordRequests();
+    } catch (err: any) {
+      console.error('Error approving request:', err);
+      toast.error(`Failed to approve request: ${err.message}`, { id: loadId });
+    }
+  };
+
+  const handleRejectPasswordRequest = async (req: PasswordChangeRequest) => {
+    if (!confirm(`Are you sure you want to reject the password reset request for ${req.requester_name}?`)) return;
+    const loadId = toast.loading(`Rejecting request...`);
+    try {
+      const { error } = await supabase
+        .from('password_change_requests')
+        .update({
+          status: 'Rejected',
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.email || 'Manager'
+        })
+        .eq('id', req.id);
+
+      if (error) throw error;
+      toast.success('Request rejected.', { id: loadId });
+      fetchPasswordRequests();
+    } catch (err: any) {
+      console.error('Error rejecting request:', err);
+      toast.error(`Failed to reject request: ${err.message}`, { id: loadId });
+    }
+  };
 
   if (loading) {
     return (
@@ -442,8 +533,8 @@ export default function ManagerDashboardPage() {
   }, [filteredDashboardTickets]);
 
   const pendingApprovalsCount = useMemo(() => {
-    return pendingEffortLogs.length + pendingClosureRequests.length + pendingUnlockRequests.length;
-  }, [pendingEffortLogs, pendingClosureRequests, pendingUnlockRequests]);
+    return pendingEffortLogs.length + pendingClosureRequests.length + pendingUnlockRequests.length + passwordRequests.length;
+  }, [pendingEffortLogs, pendingClosureRequests, pendingUnlockRequests, passwordRequests]);
 
   const waitingAssignmentTickets = useMemo(() => {
     return filteredTickets.filter(t => 
@@ -3155,6 +3246,70 @@ export default function ManagerDashboardPage() {
               </Card>
 
             </div>
+
+            {/* Password Reset Requests */}
+            <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96 mt-6">
+              <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
+                <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Password Reset Requests ({passwordRequests.length})</span>
+              </div>
+              <div className="flex-1 overflow-y-auto p-0 font-mono text-[10px]">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="bg-zinc-50 border-b border-zinc-150 uppercase font-bold text-[8px] tracking-wider text-zinc-500">
+                      <th className="p-2.5">User</th>
+                      <th className="p-2.5">Organization</th>
+                      <th className="p-2.5">Requested At</th>
+                      <th className="p-2.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {loadingRequests ? (
+                      <tr>
+                        <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-mono">Querying reset requests...</td>
+                      </tr>
+                    ) : passwordRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-sans">No pending password reset requests.</td>
+                      </tr>
+                    ) : (
+                      passwordRequests.map((req) => (
+                        <tr key={req.id} className="hover:bg-zinc-50/50">
+                          <td className="p-2.5">
+                            <div>
+                              <span className="font-bold text-zinc-800 block text-[10px]">{req.requester_name}</span>
+                              <span className="text-zinc-450 block text-[9px]">{req.requester_email}</span>
+                            </div>
+                          </td>
+                          <td className="p-2.5 text-zinc-650 font-semibold">{req.organization}</td>
+                          <td className="p-2.5 text-zinc-550 font-mono">
+                            {new Date(req.requested_at).toLocaleString()}
+                          </td>
+                          <td className="p-2.5 text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                className="h-6 bg-zinc-950 hover:bg-zinc-800 text-white text-[9px] uppercase font-bold px-2 rounded cursor-pointer font-mono"
+                                onClick={() => handleApprovePasswordRequest(req)}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="icon"
+                                className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer"
+                                onClick={() => handleRejectPasswordRequest(req)}
+                              >
+                                <X size={11} />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
           </div>
 
           {/* SECTION 11: HOURS, EFFORT & BILLING INSIGHT CENTER */}

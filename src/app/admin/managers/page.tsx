@@ -38,6 +38,96 @@ export default function AdminManagersPage() {
   const [managerTickets, setManagerTickets] = useState<any[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
 
+  // Password Request States
+  interface PasswordChangeRequest {
+    id: string;
+    user_id: string;
+    requester_email: string;
+    requester_name: string;
+    organization: string;
+    status: string;
+    requested_at: string;
+  }
+  const [passwordRequests, setPasswordRequests] = useState<PasswordChangeRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+
+  const fetchPasswordRequests = async () => {
+    if (!isSupabaseConfigured || !supabase) {
+      setLoadingRequests(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('password_change_requests')
+        .select('*')
+        .eq('status', 'Pending')
+        .order('requested_at', { ascending: false });
+
+      if (error) throw error;
+      setPasswordRequests(data || []);
+    } catch (err) {
+      console.error('Error fetching password requests:', err);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const handleApproveRequest = async (req: PasswordChangeRequest) => {
+    if (!confirm(`Are you sure you want to approve the password reset request for ${req.requester_name}?`)) return;
+    const loadId = toast.loading(`Resetting password for ${req.requester_name}...`);
+    try {
+      const apiRes = await fetch('/api/admin/users/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ targetUserId: req.user_id })
+      });
+      const res = await apiRes.json();
+      if (!apiRes.ok || !res.success) throw new Error(res.error || 'Reset API failed');
+
+      // Update password_change_requests status
+      const { error: updateError } = await supabase
+        .from('password_change_requests')
+        .update({
+          status: 'Completed',
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.email || 'Admin/Manager'
+        })
+        .eq('id', req.id);
+
+      if (updateError) throw updateError;
+
+      toast.success(`Request approved! Temporary password: ${res.tempPassword}`, { id: loadId, duration: 15000 });
+      fetchPasswordRequests();
+    } catch (err: any) {
+      console.error('Error approving request:', err);
+      toast.error(`Failed to approve request: ${err.message}`, { id: loadId });
+    }
+  };
+
+  const handleRejectRequest = async (req: PasswordChangeRequest) => {
+    if (!confirm(`Are you sure you want to reject the password reset request for ${req.requester_name}?`)) return;
+    const loadId = toast.loading(`Rejecting request...`);
+    try {
+      const { error } = await supabase
+        .from('password_change_requests')
+        .update({
+          status: 'Rejected',
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.email || 'Admin/Manager'
+        })
+        .eq('id', req.id);
+
+      if (error) throw error;
+      toast.success('Request rejected.', { id: loadId });
+      fetchPasswordRequests();
+    } catch (err: any) {
+      console.error('Error rejecting request:', err);
+      toast.error(`Failed to reject request: ${err.message}`, { id: loadId });
+    }
+  };
+
   const fetchManagersData = async () => {
     setLoading(true);
     if (!isSupabaseConfigured || !supabase) {
@@ -99,6 +189,7 @@ export default function AdminManagersPage() {
 
   useEffect(() => {
     fetchManagersData();
+    fetchPasswordRequests();
   }, []);
 
   const handleAddManager = async (e: React.FormEvent) => {
@@ -578,6 +669,82 @@ export default function AdminManagersPage() {
           )}
         </div>
       </div>
+
+      {/* Password Reset Requests Section */}
+      <div className="bg-white border border-zinc-200 rounded overflow-hidden shadow-sm p-4 space-y-4">
+        <div className="border-b border-zinc-200 pb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-950 font-mono flex items-center gap-1.5">
+              <Key className="text-zinc-500" size={14} />
+              Password Reset Requests
+            </h2>
+            <p className="text-[10px] text-zinc-500 mt-1">Pending password change requests from system users.</p>
+          </div>
+          <span className="px-2 py-0.5 bg-zinc-100 text-zinc-800 rounded-full text-[10px] font-bold font-mono">
+            {passwordRequests.length} Pending
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[9px] tracking-wider text-zinc-500">
+                <th className="p-3">User</th>
+                <th className="p-3">Organization</th>
+                <th className="p-3">Requested At</th>
+                <th className="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200">
+              {loadingRequests ? (
+                <tr>
+                  <td colSpan={4} className="p-6 text-center text-zinc-450 font-mono">
+                    Querying reset requests...
+                  </td>
+                </tr>
+              ) : passwordRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-6 text-center text-zinc-450 font-mono">
+                    No pending password reset requests.
+                  </td>
+                </tr>
+              ) : (
+                passwordRequests.map((req) => (
+                  <tr key={req.id} className="hover:bg-zinc-50/50">
+                    <td className="p-3">
+                      <div>
+                        <span className="font-bold text-zinc-850 text-xs block">{req.requester_name}</span>
+                        <span className="text-[10px] text-zinc-450 font-mono">{req.requester_email}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 font-semibold text-zinc-700">{req.organization}</td>
+                    <td className="p-3 text-zinc-550 font-mono">
+                      {new Date(req.requested_at).toLocaleString()}
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleApproveRequest(req)}
+                          className="px-2.5 py-1 bg-zinc-950 text-white hover:bg-zinc-850 rounded text-[9px] font-bold uppercase tracking-wider transition cursor-pointer"
+                        >
+                          Approve & Reset
+                        </button>
+                        <button
+                          onClick={() => handleRejectRequest(req)}
+                          className="px-2.5 py-1 border border-zinc-200 hover:bg-zinc-50 rounded text-[9px] font-bold uppercase tracking-wider text-zinc-600 transition cursor-pointer"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }
