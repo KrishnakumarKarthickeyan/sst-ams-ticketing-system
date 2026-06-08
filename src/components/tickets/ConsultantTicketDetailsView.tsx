@@ -97,7 +97,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   }, [ticketId, tickets, fetchTicketById]);
   const consultantName = user?.name || 'Unassigned';
   const consultantType = user?.consultantType || 'Functional';
-  const isPrimaryConsultant = ticket?.primaryConsultantId === user?.id || ticket?.assignedConsultant === consultantName || (ticket?.assignments?.find(a => a.consultantId === user?.id || a.consultantName === consultantName)?.isPrimary);
+  const isLead = ticket?.leadConsultantId === user?.id || ticket?.primaryConsultantId === user?.id || ticket?.assignedConsultant === consultantName || (ticket?.assignments?.find(a => a.consultantId === user?.id || a.consultantName === consultantName)?.isPrimary);
+  const isPrimaryConsultant = isLead;
 
   const [dbMentionableUsers, setDbMentionableUsers] = useState<any[]>([]);
   const MOCK_MENTIONABLE_USERS = dbMentionableUsers;
@@ -641,17 +642,20 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       return;
     }
 
-    const val = resourceActualHours[user?.id || ''];
-    const hours = Number(val) || 0;
-    if (!val || hours <= 0) {
-      setValidationError('Actual hours must be greater than 0.');
+    const actualHoursPayload = (ticket.consultantEfforts || []).map(eff => {
+      const hoursVal = resourceActualHours[eff.consultantId];
+      const hours = Number(hoursVal) || 0;
+      return {
+        consultantId: eff.consultantId,
+        hours
+      };
+    });
+
+    const totalHours = actualHoursPayload.reduce((sum, item) => sum + item.hours, 0);
+    if (totalHours <= 0) {
+      setValidationError('Total actual hours across the team must be greater than 0.');
       return;
     }
-
-    const actualHoursPayload = [{
-      consultantId: user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5',
-      hours
-    }];
 
     const filesPayload = closureFiles
       .filter(f => !f.isUploading && f.progress >= 100)
@@ -696,17 +700,20 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       return;
     }
 
-    const val = resourceActualHours[user?.id || ''];
-    const hours = Number(val) || 0;
-    if (!val || hours <= 0) {
-      setValidationError('Actual hours must be greater than 0.');
+    const actualHoursPayload = (ticket.consultantEfforts || []).map(eff => {
+      const hoursVal = resourceActualHours[eff.consultantId];
+      const hours = Number(hoursVal) || 0;
+      return {
+        consultantId: eff.consultantId,
+        hours
+      };
+    });
+
+    const totalHours = actualHoursPayload.reduce((sum, item) => sum + item.hours, 0);
+    if (totalHours <= 0) {
+      setValidationError('Total actual hours across the team must be greater than 0.');
       return;
     }
-
-    const actualHoursPayload = [{
-      consultantId: user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5',
-      hours
-    }];
 
     const latestCls = ticket.closureRequests?.[ticket.closureRequests.length - 1];
     if (!latestCls) return;
@@ -1337,7 +1344,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="bg-slate-900 text-white text-xs font-mono p-2 rounded">
-                        <p>Only the Primary Consultant can raise closure request and enter actual hours.</p>
+                        <p>Only the Lead Consultant can raise closure request and enter actual hours.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1461,7 +1468,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent className="bg-slate-900 text-white text-xs font-mono p-2 rounded">
-                                <p>Only the Primary Consultant can resubmit closure request and enter actual hours.</p>
+                                <p>Only the Lead Consultant can resubmit closure request and enter actual hours.</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -1957,7 +1964,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   {/* Dynamic Actual Hours inputs for all assigned team members */}
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded border border-slate-200">
                     <span className="font-bold text-slate-500 uppercase text-[9px] font-mono block mb-1">Assigned Team Actual Hours</span>
-                    {(ticket?.consultantEfforts || []).filter(eff => eff.consultantId === user?.id).map((eff) => (
+                    {(ticket?.consultantEfforts || []).map((eff) => (
                       <div key={eff.consultantId} className="flex items-center justify-between gap-3 text-xs">
                         <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
                           {eff.consultantName}
@@ -1969,7 +1976,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                           <input
                             type="number"
                             step="0.5"
-                            min="0.5"
+                            min="0"
                             placeholder="Hours"
                             value={resourceActualHours[eff.consultantId] || ''}
                             onChange={(e) => setResourceActualHours(prev => ({
@@ -2096,7 +2103,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   {/* Dynamic Actual Hours inputs for all assigned team members */}
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded border border-slate-200">
                     <span className="font-bold text-slate-500 uppercase text-[9px] font-mono block mb-1">Revised Team Actual Hours</span>
-                    {(ticket?.consultantEfforts || []).filter(eff => eff.consultantId === user?.id).map((eff) => (
+                    {(ticket?.consultantEfforts || []).map((eff) => (
                       <div key={eff.consultantId} className="flex items-center justify-between gap-3 text-xs">
                         <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
                           {eff.consultantName}
@@ -2108,7 +2115,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                           <input
                             type="number"
                             step="0.5"
-                            min="0.5"
+                            min="0"
                             placeholder="Hours"
                             value={resourceActualHours[eff.consultantId] || ''}
                             onChange={(e) => setResourceActualHours(prev => ({

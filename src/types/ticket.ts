@@ -273,6 +273,7 @@ export interface Ticket {
   estimates?: TicketEstimate[];
   actualHoursLogs?: TicketActualHours[];
   organizationId?: string;
+  leadConsultantId?: string;
 }
 
 export interface TicketAssignment {

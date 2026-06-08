@@ -525,6 +525,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       transportRequest: t.transport_request,
       source: t.source || 'Created by Client',
       primaryConsultantId: t.primary_consultant_id,
+      leadConsultantId: t.lead_consultant_id,
       closureStatus: t.closure_status || 'Pending',
       closedBy: t.closed_by,
       
