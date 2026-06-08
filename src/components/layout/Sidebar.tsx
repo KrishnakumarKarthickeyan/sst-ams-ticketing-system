@@ -74,6 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
     { title: 'Global Reports', href: '/admin/reports', icon: <FileSpreadsheet size={16} /> },
     { title: 'Audit Logs', href: '/admin/audit-logs', icon: <History size={16} /> },
     { title: 'Settings', href: '/admin/settings', icon: <Settings size={16} /> },
+    { title: 'Contacts Directory', href: '/admin/contacts', icon: <Users size={16} /> },
     { title: 'Profile Settings', href: '/admin/profile', icon: <User size={16} /> }
   ];
 

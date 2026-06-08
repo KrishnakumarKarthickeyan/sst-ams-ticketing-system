@@ -1,15 +1,79 @@
 'use client';
 
-import React from 'react';
-import { useTickets } from '../../../context/TicketContext';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Mail, Phone, ShieldCheck, UserCheck, Users } from 'lucide-react';
+import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
+import { toast } from 'sonner';
+
+interface ContactItem {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  designation: string;
+  is_primary: boolean;
+  is_secondary: boolean;
+}
 
 export default function CustomerContactsPage() {
   const { user } = useAuth();
-  const { contacts, loading } = useTickets();
+  const [contacts, setContacts] = useState<ContactItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const userOrg = user?.company || 'Apex Global Industries';
+
+  useEffect(() => {
+    const fetchOrgContacts = async () => {
+      setLoading(true);
+      if (isSupabaseConfigured && supabase) {
+        try {
+          // 1. Fetch contact IDs tagged to this organization
+          const { data: tags, error: tagsErr } = await supabase
+            .from('organization_contact_tags')
+            .select('contact_id')
+            .eq('organization_name', userOrg);
+
+          if (tagsErr) throw tagsErr;
+
+          if (tags && tags.length > 0) {
+            const contactIds = tags.map(t => t.contact_id);
+
+            // 2. Fetch contact details
+            const { data: contactsData, error: contactsErr } = await supabase
+              .from('organization_contacts')
+              .select('*')
+              .in('id', contactIds)
+              .order('name');
+
+            if (contactsErr) throw contactsErr;
+
+            setContacts(contactsData || []);
+          } else {
+            setContacts([]);
+          }
+        } catch (err: any) {
+          console.error('Error fetching customer organization contacts:', err);
+          toast.error(`Failed to load directory: ${err.message}`);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Local fallback
+        const mockAll = [
+          { id: 'c-1', name: 'John Miller', email: 'john.miller@apex.com', phone: '+1 (555) 0142', designation: 'IT Manager', is_primary: true, is_secondary: false, organizationName: 'Apex Global Industries' },
+          { id: 'c-2', name: 'Keerthana Rajan', email: 'keerthana@assist360.com', phone: '+91 98765 43210', designation: 'Primary Lead', is_primary: false, is_secondary: true, organizationName: 'Apex Global Industries' }
+        ];
+        const filtered = mockAll.filter(c => c.organizationName.toLowerCase() === userOrg.toLowerCase());
+        setContacts(filtered);
+        setLoading(false);
+      }
+    };
+
+    fetchOrgContacts();
+  }, [userOrg, user?.id]);
 
   if (loading) {
     return (
@@ -18,12 +82,6 @@ export default function CustomerContactsPage() {
       </div>
     );
   }
-
-  // Filter contacts by user's organization
-  const userOrg = user?.company || 'Apex Global Industries';
-  const orgContacts = contacts.filter(
-    (c) => c.organizationName.toLowerCase() === userOrg.toLowerCase()
-  );
 
   return (
     <div className="space-y-6">
@@ -39,15 +97,15 @@ export default function CustomerContactsPage() {
         </div>
         <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 bg-zinc-100 border border-zinc-200 px-3 py-1.5 rounded-lg">
           <Users size={14} className="text-zinc-400" />
-          <span>Total Authorized: {orgContacts.length}</span>
+          <span>Total Authorized: {contacts.length}</span>
         </div>
       </div>
 
       {/* Grid Layout */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {orgContacts.map((contact) => (
+        {contacts.map((contact) => (
           <Card key={contact.id} className="border-zinc-200 hover:border-zinc-400 transition-all duration-200 relative overflow-hidden bg-white shadow-sm flex flex-col justify-between">
-            {contact.isPrimary && (
+            {contact.is_primary && (
               <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden pointer-events-none">
                 <div className="bg-zinc-950 text-white font-mono text-[9px] font-bold py-1 text-center w-[150px] absolute top-4 -right-10 rotate-45 border-b border-zinc-800">
                   PRIMARY
@@ -58,7 +116,7 @@ export default function CustomerContactsPage() {
             <CardHeader className="space-y-1.5 pb-3">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <h3 className="font-bold text-sm tracking-tight text-zinc-950 font-mono">
+                  <h3 className="font-bold text-sm tracking-tight text-zinc-955 font-mono">
                     {contact.name}
                   </h3>
                   <p className="text-[11px] font-semibold text-zinc-500 tracking-wide uppercase">
@@ -70,15 +128,15 @@ export default function CustomerContactsPage() {
 
             <CardContent className="space-y-4 pt-0">
               <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-zinc-600">
-                  <Mail size={13} className="text-zinc-400" />
+                <div className="flex items-center gap-2 text-zinc-650">
+                  <Mail size={13} className="text-zinc-450" />
                   <a href={`mailto:${contact.email}`} className="hover:underline font-medium hover:text-zinc-950 truncate max-w-[200px]">
                     {contact.email}
                   </a>
                 </div>
                 {contact.phone && (
-                  <div className="flex items-center gap-2 text-zinc-600">
-                    <Phone size={13} className="text-zinc-400" />
+                  <div className="flex items-center gap-2 text-zinc-650">
+                    <Phone size={13} className="text-zinc-450" />
                     <a href={`tel:${contact.phone}`} className="hover:underline font-medium hover:text-zinc-950 font-mono">
                       {contact.phone}
                     </a>
@@ -87,18 +145,18 @@ export default function CustomerContactsPage() {
               </div>
 
               <div className="flex flex-wrap gap-1.5 pt-2 border-t border-zinc-100">
-                {contact.isPrimary ? (
-                  <Badge className="bg-zinc-950 text-white text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-900 border-0">
-                    <ShieldCheck size={10} />
+                {contact.is_primary ? (
+                  <Badge className="bg-zinc-950 text-white text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-900 border-0 h-5">
+                    <ShieldCheck size={11} />
                     <span>Primary Support</span>
                   </Badge>
-                ) : contact.isSecondary ? (
-                  <Badge className="bg-zinc-100 text-zinc-800 border-zinc-200 text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-100">
-                    <UserCheck size={10} className="text-zinc-500" />
+                ) : contact.is_secondary ? (
+                  <Badge className="bg-zinc-100 text-zinc-800 border-zinc-200 text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-100 h-5">
+                    <UserCheck size={11} className="text-zinc-500" />
                     <span>Secondary Contact</span>
                   </Badge>
                 ) : (
-                  <Badge className="bg-zinc-50 text-zinc-500 border-zinc-200 text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-50">
+                  <Badge className="bg-zinc-50 text-zinc-500 border-zinc-200 text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-50 h-5">
                     <span>Authorized Requester</span>
                   </Badge>
                 )}
@@ -107,7 +165,7 @@ export default function CustomerContactsPage() {
           </Card>
         ))}
 
-        {orgContacts.length === 0 && (
+        {contacts.length === 0 && (
           <div className="col-span-full border border-dashed border-zinc-300 rounded-xl p-12 text-center bg-zinc-50">
             <Users className="mx-auto h-8 w-8 text-zinc-400" />
             <h3 className="mt-2 text-xs font-bold text-zinc-900 font-mono">No Contacts Found</h3>
