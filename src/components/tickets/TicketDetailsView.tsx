@@ -80,6 +80,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     rejectClosureRequest,
     approveUnlockRequest,
     rejectUnlockRequest,
+    updateTicket,
     updateTicketStatus,
     updateConsultantEfforts,
     fetchTicketById
@@ -1898,11 +1899,93 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                 )}
               </div>
 
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
+                <span>Ticket Type:</span>
+                {role === 'Manager' || role === 'SuperAdmin' ? (
+                  <select
+                    value={ticket.ticketType || 'Incident'}
+                    onChange={(e) => {
+                      updateTicket(ticket.id, { ticketType: e.target.value as any, requestedBy: user?.name || role });
+                      showBannerMessage(`Ticket type updated to ${e.target.value}.`);
+                    }}
+                    className="bg-white border border-zinc-200 rounded p-1 text-[10px] font-bold text-zinc-955 focus:outline-none"
+                  >
+                    <option value="Incident">Incident</option>
+                    <option value="Service Request">Service Request</option>
+                    <option value="Enhancement Request">Enhancement Request</option>
+                    <option value="Change Request">Change Request</option>
+                    <option value="Training Request">Training Request</option>
+                    <option value="Configuration Request">Configuration Request</option>
+                    <option value="Report Request">Report Request</option>
+                  </select>
+                ) : (
+                  <span className="font-semibold text-zinc-900 font-mono text-[10px]">
+                    {ticket.ticketType || 'Incident'}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center">
                 <span>Urgency Priority:</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase font-mono ${getPriorityColor(ticket.priority)}`}>
-                  {ticket.priority}
-                </span>
+                {role === 'Manager' || role === 'SuperAdmin' ? (
+                  <select
+                    value={ticket.priority}
+                    onChange={(e) => {
+                      updateTicket(ticket.id, { priority: e.target.value as any, requestedBy: user?.name || role });
+                      showBannerMessage(`Ticket priority updated to ${e.target.value}.`);
+                    }}
+                    className="bg-white border border-zinc-200 rounded p-1 text-[10px] font-bold text-zinc-955 focus:outline-none uppercase font-mono"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                ) : (
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase font-mono ${getPriorityColor(ticket.priority)}`}>
+                    {ticket.priority}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span>SAP Module:</span>
+                {role === 'Manager' || role === 'SuperAdmin' ? (
+                  <select
+                    value={ticket.sapModule}
+                    onChange={(e) => {
+                      updateTicket(ticket.id, { sapModule: e.target.value as any, requestedBy: user?.name || role });
+                      showBannerMessage(`SAP Module updated to ${e.target.value}.`);
+                    }}
+                    className="bg-white border border-zinc-200 rounded p-1 text-[10px] font-bold text-zinc-955 focus:outline-none font-mono"
+                  >
+                    <option value="FICO">FICO</option>
+                    <option value="MM">MM</option>
+                    <option value="SD">SD</option>
+                    <option value="PP">PP</option>
+                    <option value="PM">PM</option>
+                    <option value="QM">QM</option>
+                    <option value="HCM">HCM</option>
+                    <option value="BASIS">BASIS</option>
+                    <option value="ABAP">ABAP</option>
+                    <option value="SF EC">SF EC</option>
+                    <option value="SF ECP">SF ECP</option>
+                    <option value="SF PMGM">SF PMGM</option>
+                    <option value="SF RCM">SF RCM</option>
+                    <option value="SAC">SAC</option>
+                    <option value="CPI">CPI</option>
+                    <option value="SuccessFactors">SuccessFactors</option>
+                    <option value="Security/GRC">Security/GRC</option>
+                    <option value="CPI/Integration">CPI/Integration</option>
+                    <option value="BW/BI">BW/BI</option>
+                    <option value="Fiori">Fiori</option>
+                    <option value="TRM">TRM</option>
+                  </select>
+                ) : (
+                  <span className="font-semibold text-zinc-900 font-mono text-[10px]">
+                    {ticket.sapModule}
+                  </span>
+                )}
               </div>
               <div className="flex justify-between text-[10px]">
                 <span>Escalation state:</span>

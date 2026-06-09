@@ -46,6 +46,19 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import { useAuth } from './AuthContext';
 import { getOrganizationMap, getOrganizationShortCodeMap } from '../app/actions/auth';
 
+export const addSlaHours = (startDate: Date | string, hours: number): string => {
+  const date = new Date(startDate);
+  let remainingHours = hours;
+  while (remainingHours > 0) {
+    date.setTime(date.getTime() + 60 * 60 * 1000);
+    const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+    if (day !== 5 && day !== 6) {
+      remainingHours--;
+    }
+  }
+  return date.toISOString();
+};
+
 // Query retry and timeout helpers
 const fetchWithRetryAndTimeout = async <T,>(
   queryFn: () => Promise<T>,
@@ -1054,10 +1067,10 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     const isIncident = tType === 'Incident';
-    let slaHours = 48;
-    if (data.priority === 'Critical') slaHours = 4;
-    else if (data.priority === 'High') slaHours = 8;
-    else if (data.priority === 'Low') slaHours = 120;
+    let slaHours = 32;
+    if (data.priority === 'Critical') slaHours = 8;
+    else if (data.priority === 'High') slaHours = 16;
+    else if (data.priority === 'Low') slaHours = 64;
 
     const ticketId = typeof crypto !== 'undefined' && crypto.randomUUID 
       ? crypto.randomUUID() 
@@ -1225,7 +1238,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           status: initialStatus,
           assigned_manager_id: managerId,
           assigned_consultant_id: consultantId,
-          sla_due_at: isIncident ? getFutureDate(slaHours) : '9999-12-31T23:59:59.999Z',
+          sla_due_at: isIncident ? addSlaHours(new Date(), slaHours) : '9999-12-31T23:59:59.999Z',
           description: data.description,
           title: data.title,
           billable: true,
@@ -2992,7 +3005,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         const dbUpdate: any = {};
         if (data.title !== undefined) dbUpdate.title = data.title;
         if (data.description !== undefined) dbUpdate.description = data.description;
-        if (data.priority !== undefined) dbUpdate.priority = data.priority;
         if (data.status !== undefined) dbUpdate.status = data.status;
         if (data.sapModule !== undefined) dbUpdate.sap_module = data.sapModule;
         if (data.category !== undefined) dbUpdate.category = data.category;
@@ -3001,6 +3013,24 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         if (data.businessImpact !== undefined) dbUpdate.business_impact = data.businessImpact;
         if (data.expectedResolutionDate !== undefined) dbUpdate.expected_resolution_date = data.expectedResolutionDate;
         
+        if (data.priority !== undefined) {
+          dbUpdate.priority = data.priority;
+          if (data.priority !== currentTicket?.priority) {
+            let slaHours = 32;
+            if (data.priority === 'Critical') slaHours = 8;
+            else if (data.priority === 'High') slaHours = 16;
+            else if (data.priority === 'Low') slaHours = 64;
+
+            const isIncident = (data.ticketType || currentTicket?.ticketType || 'Incident') === 'Incident';
+            if (isIncident) {
+              const originalCreatedDate = currentTicket?.createdAt || new Date().toISOString();
+              const newSlaDueAt = addSlaHours(originalCreatedDate, slaHours);
+              dbUpdate.sla_due_at = newSlaDueAt;
+              data.slaDueAt = newSlaDueAt;
+            }
+          }
+        }
+
         dbUpdate.updated_at = new Date().toISOString();
 
         await supabase.from('tickets').update(dbUpdate).eq('id', ticketId);
@@ -3030,6 +3060,33 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             field_changed: 'Status',
             old_value: currentTicket?.status || '',
             new_value: data.status
+          });
+        }
+        if (data.priority && data.priority !== currentTicket?.priority) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Priority',
+            old_value: currentTicket?.priority || '',
+            new_value: data.priority
+          });
+        }
+        if (data.sapModule && data.sapModule !== currentTicket?.sapModule) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'SAP Module',
+            old_value: currentTicket?.sapModule || '',
+            new_value: data.sapModule
+          });
+        }
+        if (data.ticketType && data.ticketType !== currentTicket?.ticketType) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Ticket Type',
+            old_value: currentTicket?.ticketType || '',
+            new_value: data.ticketType
           });
         }
       } catch (err) {
@@ -3071,6 +3128,39 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             fieldChanged: 'Status',
             oldValue: t.status,
             newValue: data.status,
+            createdAt: new Date().toISOString()
+          });
+        }
+        if (data.priority && data.priority !== t.priority) {
+          hist.push({
+            id: `h-edit-priority-${Date.now()}`,
+            ticketId,
+            changedBy,
+            fieldChanged: 'Priority',
+            oldValue: t.priority || '',
+            newValue: data.priority || '',
+            createdAt: new Date().toISOString()
+          });
+        }
+        if (data.sapModule && data.sapModule !== t.sapModule) {
+          hist.push({
+            id: `h-edit-sapmodule-${Date.now()}`,
+            ticketId,
+            changedBy,
+            fieldChanged: 'SAP Module',
+            oldValue: t.sapModule || '',
+            newValue: data.sapModule || '',
+            createdAt: new Date().toISOString()
+          });
+        }
+        if (data.ticketType && data.ticketType !== t.ticketType) {
+          hist.push({
+            id: `h-edit-tickettype-${Date.now()}`,
+            ticketId,
+            changedBy,
+            fieldChanged: 'Ticket Type',
+            oldValue: t.ticketType || '',
+            newValue: data.ticketType || '',
             createdAt: new Date().toISOString()
           });
         }
