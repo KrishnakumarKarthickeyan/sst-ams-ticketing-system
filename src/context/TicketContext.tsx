@@ -1364,21 +1364,25 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setTickets(prev => [mappedTicket, ...prev]);
 
           // Send asynchronous background notifications
-          const { data: mgrProfile } = await supabase.from('profiles').select('id').eq('email', 'manager@supportstudio.com').maybeSingle();
-          if (mgrProfile) {
-            await supabase.from('notifications').insert({
-              user_id: mgrProfile.id,
-              title: `New Ticket: ${ticketId}`,
-              message: `Ticket "${data.title}" was submitted. Source: ${ticketSource}`,
-              ticket_id: ticketId
+          const managers = (profiles || []).filter(p => p.role === 'Manager');
+          for (const mgr of managers) {
+            await createDBNotification({
+              userId: mgr.id,
+              type: 'ticket_created',
+              title: `New Ticket Created`,
+              message: `Ticket #${mappedTicket.ticketNumber || ticketId.slice(0, 8)}: "${data.title}" has been created.`,
+              ticketId: ticketId,
+              linkPath: `/manager/tickets/${ticketId}`
             });
           }
           if (consultantId) {
-            await supabase.from('notifications').insert({
-              user_id: consultantId,
+            await createDBNotification({
+              userId: consultantId,
+              type: 'assigned_lead',
               title: 'New Ticket Assigned',
-              message: `You have been assigned to ${ticketId} during creation.`,
-              ticket_id: ticketId
+              message: `You have been assigned to ticket #${mappedTicket.ticketNumber || ticketId.slice(0, 8)} during creation.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
             });
           }
 
@@ -1614,21 +1618,25 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
 
             // Send notification to the new primary consultant
-            await supabase.from('notifications').insert({
-              user_id: consultantId,
+            await createDBNotification({
+              userId: consultantId || '',
+              type: 'assigned_lead',
               title: 'Assigned as Primary Lead',
-              message: `You have been designated as the Primary Lead Consultant for ticket ${ticketId} by ${changeActor}.`,
-              ticket_id: ticketId
+              message: `You have been designated as the Primary Lead Consultant for ticket #${ticketObj?.ticketNumber || ticketId.slice(0, 8)} by ${changeActor}.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
             });
           }
 
           // Send notification to the old primary consultant (if any)
           if (ticketObj?.primaryConsultantId && ticketObj.primaryConsultantId !== consultantId) {
-            await supabase.from('notifications').insert({
-              user_id: ticketObj.primaryConsultantId,
+            await createDBNotification({
+              userId: ticketObj.primaryConsultantId,
+              type: 'lead_changed',
               title: 'Lead Assignment Changed',
-              message: `The Lead Consultant assignment for ticket ${ticketId} has been changed. You are now a secondary resource.`,
-              ticket_id: ticketId
+              message: `The Lead Consultant assignment for ticket #${ticketObj?.ticketNumber || ticketId.slice(0, 8)} has been changed. You are now a secondary resource.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
             });
           }
         }
@@ -4874,6 +4882,42 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         // Force refetch to sync all data across the dashboard
         await fetchData();
+
+        // Notify customer + primary/lead consultant
+        if (currentTicket) {
+          const customerTarget = currentTicket.createdByUser || currentTicket.requestedByEmail;
+          if (customerTarget) {
+            await createDBNotification({
+              userId: customerTarget,
+              type: 'ticket_closed',
+              title: 'Ticket Closed',
+              message: `Ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} has been closed by manager ${managerName}.`,
+              ticketId: ticketId,
+              linkPath: `/customer/tickets/${ticketId}`
+            });
+          }
+          if (currentTicket.assignedConsultantId) {
+            await createDBNotification({
+              userId: currentTicket.assignedConsultantId,
+              type: 'ticket_closed',
+              title: 'Ticket Closed',
+              message: `Ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} has been approved for closure.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
+            });
+          }
+          if (currentTicket.leadConsultantId && currentTicket.leadConsultantId !== currentTicket.assignedConsultantId) {
+            await createDBNotification({
+              userId: currentTicket.leadConsultantId,
+              type: 'ticket_closed',
+              title: 'Ticket Closed',
+              message: `Ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} has been approved for closure.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
+            });
+          }
+        }
+
         return { success: true };
 
       } catch (err: any) {
@@ -5202,6 +5246,30 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     });
 
     syncTickets(updated);
+
+    // Notify primary consultant
+    if (currentTicket) {
+      if (currentTicket.assignedConsultantId) {
+        await createDBNotification({
+          userId: currentTicket.assignedConsultantId,
+          type: 'closure_rejected',
+          title: 'Closure Request Rejected',
+          message: `Closure request for ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} was rejected. Reason: ${rejectionReason}`,
+          ticketId: ticketId,
+          linkPath: `/consultant/tickets/${ticketId}`
+        });
+      }
+      if (currentTicket.leadConsultantId && currentTicket.leadConsultantId !== currentTicket.assignedConsultantId) {
+        await createDBNotification({
+          userId: currentTicket.leadConsultantId,
+          type: 'closure_rejected',
+          title: 'Closure Request Rejected',
+          message: `Closure request for ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} was rejected. Reason: ${rejectionReason}`,
+          ticketId: ticketId,
+          linkPath: `/consultant/tickets/${ticketId}`
+        });
+      }
+    }
 
     createSystemNotification(
       'consultant@supportstudio.com',
