@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import AttachmentPanel from './AttachmentPanel';
 import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
+import { ChatThread } from './ChatThread';
 import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
 import {
   ArrowLeft,
@@ -1682,146 +1683,34 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                   </div>
                 );
               })()}
-
             </div>
           </div>
 
           {/* Timeline and messages flow */}
           <div className="space-y-6">
-            <TicketTimeline ticket={ticket} userRole={role} />
+            <ChatThread
+              ticket={ticket}
+              currentUserEmail={user?.email || ''}
+              role={role}
+              commentText={commentText}
+              setCommentText={setCommentText}
+              isInternalComment={isInternalComment}
+              setIsInternalComment={setIsInternalComment}
+              commentAttachments={commentAttachments}
+              setCommentAttachments={setCommentAttachments}
+              handleCommentSubmit={handleCommentSubmit}
+              handleRealFileChange={handleRealFileChange}
+              simFileName={simFileName}
+              setSimFileName={setSimFileName}
+              simFileSize={simFileSize}
+              setSimFileSize={setSimFileSize}
+              handleAttachSimulatedFile={handleAttachSimulatedFile}
+              handleDownloadFile={handleDownloadFile}
+            />
 
-            {/* Comment Form */}
-            {ticket.status !== 'Closed' && (
-              <form onSubmit={handleCommentSubmit} className="bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-sm">
-                <div className="flex justify-between items-center border-b border-zinc-150 pb-2">
-                  <span className="font-bold text-xs uppercase tracking-wider text-zinc-950">Post Reply Conversation</span>
-                  {isInternal && (
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="checkbox"
-                        id="isInternalComment"
-                        checked={isInternalComment}
-                        onChange={e => setIsInternalComment(e.target.checked)}
-                        className="rounded text-zinc-900 focus:ring-zinc-950"
-                      />
-                      <label htmlFor="isInternalComment" className="text-[9px] font-bold uppercase text-zinc-650 cursor-pointer">
-                        Flag as Internal Note (Customer Restricted)
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                <textarea
-                  required
-                  rows={3}
-                  value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  placeholder={isInternalComment ? "Type internal note visible only to support staff..." : "Type reply message to client..."}
-                  className="w-full bg-white border border-zinc-200 rounded p-2.5 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
-                />
-
-                {/* Upload Attachments Simulator */}
-                <div className="space-y-2 border-t border-zinc-100 pt-3">
-                  <span className="text-[9px] font-bold text-zinc-450 uppercase block">Comment Attachments Registry</span>
-                  <div className="flex flex-col sm:flex-row gap-2 items-center">
-                    <input
-                      type="file"
-                      id="real-file-upload"
-                      onChange={handleRealFileChange}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="real-file-upload"
-                      className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-zinc-200 hover:border-zinc-800 rounded bg-white font-bold uppercase text-[9px] tracking-wider text-zinc-700 transition"
-                    >
-                      <Paperclip size={11} /> Select File
-                    </label>
-                    <span className="text-[9px] text-zinc-400 font-sans">or simulate:</span>
-                    <input
-                      type="text"
-                      placeholder="Simulated name (e.g. dump.txt)..."
-                      value={simFileName}
-                      onChange={e => setSimFileName(e.target.value)}
-                      className="flex-1 bg-white border border-zinc-200 rounded p-1.5 text-[10px] focus:outline-none font-mono"
-                    />
-                    <input
-                      type="number"
-                      placeholder="KB..."
-                      value={simFileSize}
-                      onChange={e => setSimFileSize(e.target.value)}
-                      className="w-16 bg-white border border-zinc-200 rounded p-1.5 text-[10px] focus:outline-none font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAttachSimulatedFile}
-                      disabled={!simFileName.trim()}
-                      className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider disabled:opacity-50 transition cursor-pointer font-mono"
-                    >
-                      Attach
-                    </button>
-                  </div>
-
-                  {commentAttachments.length > 0 && (
-                    <div className="space-y-2 border border-zinc-200 p-2.5 rounded bg-zinc-50/50">
-                      {commentAttachments.map(f => (
-                        <div key={f.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px] bg-white border border-zinc-150 p-2 rounded shadow-sm">
-                          <div className="flex-1 space-y-1">
-                            <div className="flex justify-between items-center font-bold">
-                              <span className="text-zinc-800">{f.fileName}</span>
-                              <span className="text-zinc-450">{(f.fileSize / 1024).toFixed(0)} KB</span>
-                            </div>
-                            <div className="w-full h-1 bg-zinc-100 border rounded overflow-hidden">
-                              <div className="h-full bg-zinc-950 transition-all duration-200" style={{ width: `${f.progress}%` }}></div>
-                            </div>
-                            <div className="flex justify-between text-[8px] font-bold text-zinc-450 uppercase">
-                              <span>Upload: {f.progress < 100 ? `Syncing (${f.progress}%)` : 'Stored'}</span>
-                              <span className={f.isInternal ? 'text-red-700' : 'text-green-700'}>{f.isInternal ? 'Internal' : 'Public'}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCommentAttachments(prev => prev.map(x => x.id === f.id ? { ...x, isInternal: !x.isInternal } : x));
-                              }}
-                              className="px-1.5 py-0.5 border border-zinc-200 hover:border-zinc-950 rounded text-[8px] font-bold uppercase"
-                            >
-                              Toggle Visibility
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadFile(f.fileName, f.storagePath)}
-                              className="p-1 border border-zinc-200 rounded text-zinc-600 hover:border-zinc-950 transition"
-                              title="Download metadata"
-                            >
-                              <Download size={11} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCommentAttachments(prev => prev.filter(x => x.id !== f.id))}
-                              className="p-1 border border-zinc-200 text-zinc-400 hover:text-red-700 hover:border-red-500 rounded transition"
-                              title="Remove"
-                            >
-                              <Trash2 size={11} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-zinc-955 hover:bg-zinc-800 text-white rounded font-bold uppercase tracking-wider text-[10px]"
-                  >
-                    Send Message
-                  </button>
-                </div>
-              </form>
-            )}
-
+            <div className="bg-white border border-zinc-200 rounded-lg p-5 shadow-sm">
+              <TicketTimeline ticket={ticket} userRole={role} />
+            </div>
           </div>
 
         </div>

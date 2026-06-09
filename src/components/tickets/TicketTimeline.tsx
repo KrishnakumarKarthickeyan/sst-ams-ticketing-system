@@ -69,25 +69,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
     const items: TimelineItem[] = [];
     const isCustomer = userRole === 'Customer';
 
-    // 1. Comments
-    (ticket.comments || []).forEach(c => {
-      if (isCustomer && c.isInternal) return;
-
-      const commentAttachments = (c.attachments || []).map(att => ({
-        fileName: att.fileName,
-        fileUrl: att.fileUrl
-      }));
-      items.push({
-        id: c.id,
-        type: 'comment',
-        action: c.isInternal ? 'Internal Note Posted' : 'Comment Added',
-        date: c.createdAt,
-        performer: c.authorName,
-        role: c.authorRole === 'SuperAdmin' ? 'SuperAdmin' : c.authorRole === 'Manager' ? 'Manager' : c.authorRole === 'Customer' ? 'Customer' : 'Consultant',
-        remarks: c.content,
-        attachments: commentAttachments.length > 0 ? commentAttachments : undefined
-      });
-    });
+    // Comments are now handled by the separate ChatThread component.
 
     // 2. Effort Logs (Hidden for Customer)
     if (!isCustomer) {

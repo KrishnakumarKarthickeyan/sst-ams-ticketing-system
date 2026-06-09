@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import AttachmentPanel from './AttachmentPanel';
 import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
+import { ChatThread } from './ChatThread';
 import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import {
@@ -148,6 +149,28 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionIndex, setMentionIndex] = useState(-1);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Simulated upload states for ChatThread compatibility
+  const [simFileName, setSimFileName] = useState('');
+  const [simFileSize, setSimFileSize] = useState('');
+
+  const handleAttachSimulatedFile = () => {
+    if (!simFileName.trim()) return;
+    const size = Number(simFileSize) * 1024 || 12288; // Default to 12KB
+    const fileId = `sim-${Date.now()}`;
+    const newFile = {
+      id: fileId,
+      fileName: simFileName.trim(),
+      fileSize: size,
+      fileType: 'text/plain',
+      fileUrl: '#',
+      progress: 100,
+      isUploading: false
+    };
+    setCommentFiles(prev => [...prev, newFile]);
+    setSimFileName('');
+    setSimFileSize('');
+  };
 
   // Unlock request states
   const [unlockReason, setUnlockReason] = useState('');
@@ -1519,189 +1542,26 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             )}
           </Card>
 
-          {/* Incidents Communication Channel */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 font-mono">
-                Incidents Communication Channel
-              </h3>
-              
-              <div className="flex items-center gap-3">
-                <span className={`text-[10px] font-bold uppercase font-mono ${!isInternalComment ? 'text-slate-900 font-black' : 'text-slate-400'}`}>Public</span>
-                <button
-                  type="button"
-                  disabled={isLockedForMe}
-                  onClick={() => setIsInternalComment(!isInternalComment)}
-                  className="w-8 h-4 rounded-full bg-slate-100 border border-slate-300 relative transition-all cursor-pointer"
-                >
-                  <span className={`w-3.5 h-3.5 rounded-full absolute top-0 transition-all ${isInternalComment ? 'left-4 bg-red-500' : 'left-0 bg-slate-400'}`}></span>
-                </button>
-                <span className={`text-[10px] font-bold uppercase font-mono ${isInternalComment ? 'text-red-500 font-black' : 'text-slate-400'}`}>Internal Note</span>
-              </div>
-            </div>
-
-            {/* Comment Composer */}
-            <form onSubmit={handleAddComment} className="space-y-4 bg-slate-50 p-4 border border-slate-200 rounded-lg relative">
-              <textarea
-                disabled={isLockedForMe}
-                ref={textareaRef}
-                value={commentText}
-                onChange={handleTextareaChange}
-                onKeyDown={handleTextareaKeyDown}
-                placeholder={isLockedForMe ? "This conversation channel is locked." : (isInternalComment ? "Write internal log..." : "Reply to Customer...")}
-                className="w-full bg-white border border-slate-200 rounded p-3 text-xs h-28 focus:outline-none focus:border-slate-350 text-slate-900 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-                required
-              />
-
-              {showMentionDropdown && filteredMentions.length > 0 && !isLockedForMe && (
-                <div className="absolute left-4 bottom-14 z-50 bg-white border border-slate-200 rounded-md shadow-2xl w-60 py-1 text-xs text-slate-700">
-                  <div className="px-3 py-1 text-[9px] uppercase tracking-wider font-bold text-slate-400 border-b border-slate-100">
-                    Mention user
-                  </div>
-                  <div className="max-h-40 overflow-y-auto divide-y divide-slate-100">
-                    {filteredMentions.map((u, i) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => insertMention(u.name)}
-                        className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-slate-50 transition ${
-                          i === mentionIndex ? 'bg-slate-100 text-slate-900' : ''
-                        }`}
-                      >
-                        <span className="font-bold">{u.name}</span>
-                        <span className="text-[9px] text-slate-400">{u.role}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {commentFiles.length > 0 && (
-                <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/50">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Uploaded files ({commentFiles.length})</span>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {commentFiles.map((file, i) => {
-                      const isImage = file.fileType.startsWith('image/');
-                      return (
-                        <div key={file.id || i} className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg p-2.5 shadow-xs relative overflow-hidden">
-                          {/* Thumbnail / Icon Preview */}
-                          <div className="w-10 h-10 bg-slate-50 border border-slate-100 rounded flex items-center justify-center shrink-0 overflow-hidden">
-                            {isImage && file.fileUrl ? (
-                              <img src={file.fileUrl} alt={file.fileName} className="w-full h-full object-cover" />
-                            ) : (
-                              <FileText size={16} className="text-slate-400" />
-                            )}
-                          </div>
-                          
-                          {/* File info and Progress */}
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex justify-between items-baseline">
-                              <span className="text-[10px] font-bold text-slate-800 truncate block pr-2">{file.fileName}</span>
-                              <span className="text-[8px] text-slate-450 font-mono shrink-0">({Math.round(file.fileSize / 1024)} KB)</span>
-                            </div>
-                            
-                            {file.isUploading ? (
-                              <div className="space-y-1">
-                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                  <div className="h-full bg-slate-900 transition-all duration-300" style={{ width: `${file.progress}%` }} />
-                                </div>
-                                <span className="text-[8px] text-slate-400 font-mono block">Uploading... {file.progress}%</span>
-                              </div>
-                            ) : (
-                              <span className="text-[8px] text-emerald-600 font-bold uppercase font-mono block">Ready to send</span>
-                            )}
-                          </div>
-                          
-                          {/* Delete Action */}
-                          <button
-                            type="button"
-                            disabled={isLockedForMe}
-                            onClick={() => removeAttachmentFromComment(i)}
-                            className="text-slate-400 hover:text-red-500 disabled:opacity-30 cursor-pointer p-1 rounded hover:bg-slate-50 shrink-0 transition"
-                            title={file.isUploading ? "Cancel upload" : "Remove file"}
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-3 border-t border-slate-250/50">
-                <div className="flex items-center gap-2">
-                  <label className={`cursor-pointer p-1.5 hover:bg-white border border-slate-200 rounded text-slate-655 transition flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase ${
-                    isLockedForMe || isUploading ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}>
-                    <Paperclip size={12} />
-                    <span>Choose File</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={handleFileChange}
-                      disabled={isLockedForMe || isUploading}
-                    />
-                  </label>
-                  {isUploading && (
-                    <span className="text-[10px] font-mono text-slate-400 animate-pulse">Uploading file...</span>
-                  )}
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isLockedForMe}
-                  className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send size={11} />
-                  Send reply
-                </Button>
-              </div>
-            </form>
-
-            {/* Conversation list */}
-            <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-              {(ticket.comments || []).map(c => (
-                <div
-                  key={c.id}
-                  className={`p-3.5 rounded-lg border text-xs space-y-2 ${
-                    c.isInternal
-                      ? 'bg-red-50/40 border-red-200 border-dashed'
-                      : 'bg-white border-slate-200 shadow-xs'
-                  }`}
-                >
-                  <div className="flex justify-between items-center text-[10px]">
-                    <div className="flex items-center gap-1.5">
-                      <User size={12} className="text-slate-400" />
-                      <span className="font-bold text-slate-900 font-mono">{c.authorName}</span>
-                      <Badge className={`text-[8px] tracking-wider uppercase ${
-                        c.isInternal ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-655'
-                      }`}>{c.isInternal ? 'Internal Note' : c.authorRole}</Badge>
-                    </div>
-                    <span className="text-slate-400 font-mono">{new Date(c.createdAt).toLocaleString()}</span>
-                  </div>
-                  <p className="text-slate-700 leading-relaxed font-mono whitespace-pre-wrap">{renderCommentContent(c.content)}</p>
-
-                  {c.attachments && c.attachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
-                      {c.attachments.map((file, i) => (
-                        <a
-                          key={i}
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); handleDownloadFile(file.fileName, file.fileUrl); }}
-                          className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 border border-slate-200 hover:border-slate-350 rounded text-[9px] text-slate-500 font-mono transition cursor-pointer"
-                        >
-                          <Paperclip size={10} className="text-slate-400" />
-                          <span>{file.fileName}</span>
-                          <span className="text-[8px] text-slate-400">({Math.round(file.fileSize / 1024)} KB)</span>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
+          {/* Incidents Communication Channel - Redesigned Chat UI */}
+          <ChatThread
+            ticket={ticket}
+            currentUserEmail={user?.email || ''}
+            role="Consultant"
+            commentText={commentText}
+            setCommentText={setCommentText}
+            isInternalComment={isInternalComment}
+            setIsInternalComment={setIsInternalComment}
+            commentAttachments={commentFiles}
+            setCommentAttachments={setCommentFiles}
+            handleCommentSubmit={handleAddComment}
+            handleRealFileChange={handleFileChange}
+            simFileName={simFileName}
+            setSimFileName={setSimFileName}
+            simFileSize={simFileSize}
+            setSimFileSize={setSimFileSize}
+            handleAttachSimulatedFile={handleAttachSimulatedFile}
+            handleDownloadFile={handleDownloadFile}
+          />
 
           {/* Audit History */}
           <Card className="bg-white border border-slate-200 p-5 shadow-sm">
