@@ -130,7 +130,7 @@ export default function ManagerSlaMonitoringPage() {
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[9px] tracking-wider text-zinc-550">
-                <th className="py-3 px-4">Ticket ID</th>
+                <th className="py-3 px-4">Ticket Number</th>
                 <th className="py-3 px-4">Subject</th>
                 <th className="py-3 px-4">SAP Module</th>
                 <th className="py-3 px-4">Customer Account</th>
@@ -154,7 +154,7 @@ export default function ManagerSlaMonitoringPage() {
                       
                       {/* Ticket ID */}
                       <td className="py-3 px-4 font-bold text-zinc-900 font-mono">
-                        <Link href={`/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
+                        <Link href={`/tickets/${t.id}`} className="hover:underline">{t.ticketNumber}</Link>
                       </td>
 
                       {/* Ticket Title */}

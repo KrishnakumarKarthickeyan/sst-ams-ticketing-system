@@ -590,7 +590,7 @@ export default function CustomerTicketsPage() {
     const effortsVal = getConsumedHours(ticket).toFixed(1);
     const content = `SAP SUPPORT DESK - TICKET RECORD EXPORT
 ==================================================
-Ticket ID      : ${ticket.ticketNumber || ticket.id}
+Ticket Number  : ${ticket.ticketNumber}
 Created By     : ${ticket.createdByName || ticket.requestedBy}
 Created At     : ${new Date(ticket.createdAt).toLocaleString()}
 Subject        : ${ticket.title}
@@ -794,7 +794,7 @@ ${ticket.description}
                     <div className="p-5 space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-xs font-bold text-zinc-400">
-                          {t.ticketNumber || t.id.slice(0, 8).toUpperCase()}
+                          {t.ticketNumber}
                         </span>
                         <div className="flex gap-1.5">
                           {t.escalationFlag && t.escalationAcknowledgedAt && (
@@ -920,7 +920,7 @@ ${ticket.description}
                             className="cursor-pointer hover:bg-zinc-50 transition-colors"
                           >
                             <TableCell className="font-mono font-bold text-xs text-zinc-500 py-3 px-4">
-                              {t.ticketNumber || t.id.slice(0, 8).toUpperCase()}
+                              {t.ticketNumber}
                             </TableCell>
                             <TableCell className="font-semibold text-zinc-900 py-3 px-4">
                               {t.title}
@@ -999,7 +999,7 @@ ${ticket.description}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Edit Ticket Details: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
+              <DialogTitle>Edit Ticket Details: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Modify ticket subject or description details before resources are allocated.
               </DialogDescription>
@@ -1043,7 +1043,7 @@ ${ticket.description}
         <Dialog open={isCommentOpen} onOpenChange={setIsCommentOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Add Comment Response: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
+              <DialogTitle>Add Comment Response: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Post a response, validation check feedback, or info request update directly on this ticket.
               </DialogDescription>
@@ -1076,7 +1076,7 @@ ${ticket.description}
         <Dialog open={isAttachmentOpen} onOpenChange={setIsAttachmentOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Upload Ticket Attachment: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
+              <DialogTitle>Upload Ticket Attachment: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Attach screenshot files, log dump texts, or custom configuration documents.
               </DialogDescription>
@@ -1120,7 +1120,7 @@ ${ticket.description}
         <Dialog open={isEscalateOpen} onOpenChange={setIsEscalateOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Submit SLA Escalation: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
+              <DialogTitle>Submit SLA Escalation: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Flag this ticket as an active SLA escalation, alerting SAP Managers immediately.
               </DialogDescription>
@@ -1203,7 +1203,7 @@ ${ticket.description}
         <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Request Soft-Delete: {activeTicket?.ticketNumber || activeTicketId}</DialogTitle>
+              <DialogTitle>Request Soft-Delete: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Initiate a soft-deletion request workflow. Requires validation approvals from Managers and Admins.
               </DialogDescription>

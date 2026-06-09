@@ -298,7 +298,7 @@ export default function CustomerReportsPage() {
       const escalationCount = t.escalations ? t.escalations.length : (t.escalationFlag ? 1 : 0);
 
       return [
-        t.id,
+        t.ticketNumber || t.id,
         t.title,
         createdBy,
         t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '',
@@ -806,7 +806,7 @@ export default function CustomerReportsPage() {
 
                   return (
                     <TableRow key={t.id} className="hover:bg-zinc-50/50 border-b border-zinc-100 transition-colors">
-                      <TableCell className="py-2.5 px-4 font-bold text-zinc-950">{t.id}</TableCell>
+                      <TableCell className="py-2.5 px-4 font-bold text-zinc-955">{t.ticketNumber || t.id}</TableCell>
                       <TableCell className="py-2.5 px-4 font-semibold text-zinc-850 max-w-[180px] truncate">{t.title}</TableCell>
                       <TableCell className="py-2.5 px-4 text-zinc-650">{createdBy}</TableCell>
                       <TableCell className="py-2.5 px-4 font-mono text-zinc-650">{ageInDays}d</TableCell>

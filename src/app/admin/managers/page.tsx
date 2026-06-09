@@ -384,7 +384,7 @@ export default function AdminManagersPage() {
       try {
         const { data, error } = await supabase
           .from('tickets')
-          .select('id, title, status, priority, sap_module, created_at')
+          .select('id, ticket_number, title, status, priority, sap_module, created_at')
           .eq('assigned_manager_id', mgr.id)
           .order('created_at', { ascending: false });
         if (error) throw error;
@@ -668,7 +668,7 @@ export default function AdminManagersPage() {
                     {managerTickets.map((t) => (
                       <div key={t.id} className="border border-zinc-150 rounded p-2 hover:bg-zinc-50 transition-colors flex flex-col gap-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-zinc-900 text-[10px] font-mono">{t.id}</span>
+                          <span className="font-bold text-zinc-900 text-[10px] font-mono">{t.ticket_number || t.id}</span>
                           <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
                             t.priority === 'Critical' ? 'bg-red-950 text-white' :
                             t.priority === 'High' ? 'bg-amber-100 text-amber-800' :

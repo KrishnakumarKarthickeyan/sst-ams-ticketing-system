@@ -1283,7 +1283,7 @@ export default function AdminDashboardPage() {
         const totalEst = (t.hourEstimates || []).reduce((sum, h) => sum + (h.totalEstimatedHours || 0), 0);
         const totalAct = (t.actualHoursLogs || []).reduce((sum, a) => sum + (a.actualHours || 0), 0);
         return {
-          name: t.ticketNumber || t.id.slice(0, 8),
+          name: t.ticketNumber || t.id,
           Estimated: totalEst,
           Actual: totalAct
         };

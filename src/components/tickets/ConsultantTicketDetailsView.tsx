@@ -844,7 +844,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Link>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-base font-bold text-slate-950 bg-white px-2 py-0.5 border border-slate-200 rounded">{ticket.ticketNumber || ticket.id}</span>
+              <span className="font-mono text-base font-bold text-slate-955 bg-white px-2 py-0.5 border border-slate-200 rounded">{ticket.ticketNumber}</span>
               <Badge variant="secondary" className="text-[10px] font-mono font-bold uppercase">{ticket.ticketType || 'Incident'}</Badge>
               <SlaBadge ticket={ticket} />
               <Badge variant="outline" className="text-[10px] bg-white border border-slate-200 text-slate-600 font-mono py-0.5">Age: {ageDays} days</Badge>
@@ -981,8 +981,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
               <div className="space-y-2">
                 <div>
-                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Ticket ID</span>
-                  <span className="text-slate-900 font-bold text-sm bg-slate-50 px-2 py-0.5 border border-slate-200 rounded inline-block mt-0.5">{ticket.ticketNumber || ticket.id}</span>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Ticket Number</span>
+                  <span className="text-slate-900 font-bold text-sm bg-slate-50 px-2 py-0.5 border border-slate-200 rounded inline-block mt-0.5">{ticket.ticketNumber}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[9px] uppercase font-bold">Subject / Title</span>

@@ -136,7 +136,7 @@ const QueueTicketRow = ({
     <div className={`p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
       <div className="flex justify-between items-center">
         <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">
-          {ticket.ticketNumber || ticket.id.slice(0, 8)}
+          {ticket.ticketNumber}
         </Link>
         <div className="flex gap-1 items-center">
           {showEscalatedBadge && (
@@ -199,7 +199,7 @@ const EscalationTicketRow = ({
     <div className={`p-2 bg-red-50/10 border border-red-100 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
       <div className="flex justify-between items-center">
         <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">
-          {ticket.ticketNumber || ticket.id.slice(0, 8)}
+          {ticket.ticketNumber}
         </Link>
         <div className="flex gap-1 items-center">
           {isEscalated && (
@@ -884,7 +884,7 @@ export default function ManagerDashboardPage() {
         type: 'Timesheet Approval',
         id: log.logId,
         ticketId: log.ticketId,
-        ticketNumber: t?.ticketNumber || log.ticketId.slice(0, 8),
+        ticketNumber: t?.ticketNumber || log.ticketId,
         title: t?.title || 'Unknown Ticket',
         detail: `${log.hours}h by ${log.consultantName}`,
         actionTab: 'approvals'
@@ -897,7 +897,7 @@ export default function ManagerDashboardPage() {
         type: 'Closure Approval',
         id: r.requestId,
         ticketId: r.ticketId,
-        ticketNumber: t?.ticketNumber || r.ticketId.slice(0, 8),
+        ticketNumber: t?.ticketNumber || r.ticketId,
         title: t?.title || 'Unknown Ticket',
         detail: `Actual hours: ${r.funcHours + r.techHours}h - ${r.summary?.slice(0, 40)}...`,
         actionTab: 'approvals'
@@ -910,7 +910,7 @@ export default function ManagerDashboardPage() {
         type: 'Unlock Request',
         id: u.requestId,
         ticketId: u.ticketId,
-        ticketNumber: t?.ticketNumber || u.ticketId.slice(0, 8),
+        ticketNumber: t?.ticketNumber || u.ticketId,
         title: t?.title || 'Unknown Ticket',
         detail: `Reason: ${u.reason?.slice(0, 40)}...`,
         actionTab: 'approvals'
@@ -931,7 +931,7 @@ export default function ManagerDashboardPage() {
         list.push({
           type: 'SLA Breach',
           ticketId: t.id,
-          ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+          ticketNumber: t.ticketNumber || t.id,
           title: t.title,
           priority: t.priority,
           detail: `Breached on ${new Date(t.slaDueAt).toLocaleDateString()}`,
@@ -941,7 +941,7 @@ export default function ManagerDashboardPage() {
         list.push({
           type: 'Critical Ticket',
           ticketId: t.id,
-          ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+          ticketNumber: t.ticketNumber || t.id,
           title: t.title,
           priority: t.priority,
           detail: `SLA: ${t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' ? new Date(t.slaDueAt).toLocaleString() : 'N/A'}`,
@@ -951,7 +951,7 @@ export default function ManagerDashboardPage() {
         list.push({
           type: 'Escalated',
           ticketId: t.id,
-          ticketNumber: t.ticketNumber || t.id.slice(0, 8),
+          ticketNumber: t.ticketNumber || t.id,
           title: t.title,
           priority: t.priority,
           detail: `Escalated flag set to TRUE`,
@@ -4038,7 +4038,7 @@ export default function ManagerDashboardPage() {
                     <div key={t.id} className="p-2.5 bg-zinc-50 border border-zinc-150 rounded-lg hover:border-zinc-350 transition flex flex-col justify-between gap-1.5">
                       <div className="flex justify-between items-start">
                         <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-extrabold text-zinc-900 hover:underline text-[10px] uppercase">
-                          {t.ticketNumber || t.id.slice(0, 8)}
+                          {t.ticketNumber}
                         </Link>
                         <span className={`text-[8px] font-extrabold uppercase px-1 py-0.5 rounded ${
                           t.priority === 'Critical' ? 'bg-red-50 text-red-700' : 'bg-zinc-100 text-zinc-700'
@@ -4190,8 +4190,8 @@ export default function ManagerDashboardPage() {
                 <div className="bg-zinc-50 border border-zinc-200 rounded p-3.5 space-y-3 font-mono text-[10px]">
                   <div className="grid grid-cols-2 gap-2 border-b border-zinc-200 pb-2">
                     <div>
-                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Ticket ID</span>
-                      <span className="font-bold text-zinc-900">{activeTicketForClosure.id}</span>
+                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Ticket Number</span>
+                      <span className="font-bold text-zinc-900">{activeTicketForClosure.ticketNumber}</span>
                     </div>
                     <div>
                       <span className="text-zinc-450 block uppercase font-bold text-[8px]">Customer Name</span>

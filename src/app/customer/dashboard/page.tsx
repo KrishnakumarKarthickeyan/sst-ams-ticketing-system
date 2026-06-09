@@ -282,7 +282,7 @@ export default function CustomerDashboardPage() {
         id: `create-${t.id}-${t.createdAt}`,
         type: 'create',
         timestamp: t.createdAt,
-        title: `Ticket Created: ${t.ticketNumber || t.id}`,
+        title: `Ticket Created: ${t.ticketNumber}`,
         desc: `"${t.title}" was submitted by ${t.requestedBy || 'Customer'}.`,
         ticketId: t.id
       });
@@ -293,7 +293,7 @@ export default function CustomerDashboardPage() {
           id: `comment-${c.id}`,
           type: 'comment',
           timestamp: c.createdAt,
-          title: `New Comment on ${t.ticketNumber || t.id}`,
+          title: `New Comment on ${t.ticketNumber}`,
           desc: `[${c.authorRole || 'Customer'}] ${c.authorName || 'User'}: "${(c.content || '').slice(0, 80)}${(c.content || '').length > 80 ? '...' : ''}"`,
           ticketId: t.id
         });
@@ -305,7 +305,7 @@ export default function CustomerDashboardPage() {
           id: `attachment-${a.id}`,
           type: 'attachment',
           timestamp: a.createdAt,
-          title: `File Uploaded on ${t.ticketNumber || t.id}`,
+          title: `File Uploaded on ${t.ticketNumber}`,
           desc: `${a.uploadedBy} uploaded "${a.fileName}" (${(a.fileSize / 1024).toFixed(0)} KB)`,
           ticketId: t.id
         });
@@ -319,7 +319,7 @@ export default function CustomerDashboardPage() {
             id: `status-${h.id}`,
             type: 'status',
             timestamp: h.createdAt,
-            title: `State Transition on ${t.ticketNumber || t.id}`,
+            title: `State Transition on ${t.ticketNumber}`,
             desc: `Status mutated from "${h.oldValue || ''}" to "${h.newValue || ''}" by ${h.changedBy || 'System'}`,
             ticketId: t.id
           });
@@ -1275,7 +1275,7 @@ export default function CustomerDashboardPage() {
                         <TableRow key={t.id} className="hover:bg-amber-50/20 bg-amber-50/10 border-b border-zinc-100 transition-colors">
                           <TableCell className="py-2.5 px-4 font-bold text-zinc-950 font-mono">
                             <Link href={`/customer/tickets/${t.id}`} className="hover:underline text-zinc-900">
-                              {t.ticketNumber || t.id}
+                              {t.ticketNumber}
                             </Link>
                           </TableCell>
                           <TableCell className="py-2.5 px-4 font-semibold text-zinc-800 max-w-[220px] truncate">{t.title}</TableCell>
@@ -1333,7 +1333,7 @@ export default function CustomerDashboardPage() {
                 <Table>
                   <TableHeader className="bg-zinc-50 border-b border-zinc-200 font-mono text-[9px]">
                     <TableRow>
-                      <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Ticket ID</TableHead>
+                      <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Ticket Number</TableHead>
                       <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Subject</TableHead>
                       <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Priority</TableHead>
                       <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Status</TableHead>
@@ -1354,7 +1354,7 @@ export default function CustomerDashboardPage() {
                         <TableRow key={t.id} className="hover:bg-red-50/10 border-b border-zinc-100 transition-colors">
                           <TableCell className="py-2.5 px-4 font-bold text-red-700 font-mono">
                             <Link href={`/customer/tickets/${t.id}`} className="hover:underline text-red-650">
-                              {t.ticketNumber || t.id}
+                              {t.ticketNumber}
                             </Link>
                           </TableCell>
                           <TableCell className="py-2.5 px-4 font-semibold text-zinc-800 max-w-[200px] truncate">{t.title}</TableCell>

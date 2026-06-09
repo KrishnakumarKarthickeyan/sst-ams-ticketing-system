@@ -528,7 +528,7 @@ export default function AdminOrganizationsPage() {
                       <div key={esc.id} className="p-2 border border-zinc-150 rounded bg-red-50/20 flex items-center justify-between">
                         <div className="flex items-center gap-2 text-zinc-700">
                           <AlertTriangle size={12} className="text-amber-600" />
-                          <span className="font-semibold">{esc.ticketId} escalated by {esc.escalatedBy}</span>
+                          <span>{(tickets.find(tk => tk.id === esc.ticketId)?.ticketNumber || esc.ticketId)} escalated by {esc.escalatedBy}</span>
                         </div>
                         <span className={`px-1.5 py-0.1 rounded text-[8px] font-bold uppercase ${
                           esc.status === 'Resolved' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
@@ -556,7 +556,7 @@ export default function AdminOrganizationsPage() {
                     {org360Data.tickets.map(t => (
                       <div key={t.id} className="border border-zinc-150 rounded p-2 hover:bg-zinc-50 transition-colors flex flex-col gap-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-zinc-900 text-[10px] font-mono">{t.id}</span>
+                          <span className="font-bold text-zinc-900 text-[10px] font-mono">{t.ticketNumber || t.id}</span>
                           <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
                             t.priority === 'Critical' ? 'bg-red-950 text-white' :
                             t.priority === 'High' ? 'bg-amber-100 text-amber-800' :

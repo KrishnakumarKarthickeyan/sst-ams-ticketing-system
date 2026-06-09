@@ -167,7 +167,7 @@ export default function ConsultantReportsPage() {
       const approvedCls = (t.closureRequests || []).find(c => c.status === 'Approved');
 
       return [
-        t.id,
+        t.ticketNumber || t.id,
         t.organization,
         `"${t.title.replace(/"/g, '""')}"`,
         t.sapModule,
@@ -426,7 +426,7 @@ export default function ConsultantReportsPage() {
 
                     return (
                       <tr key={t.id} className="hover:bg-slate-50/50">
-                        <td className="py-3 px-3 font-bold text-slate-950">{t.id}</td>
+                        <td className="py-3 px-3 font-bold text-slate-955">{t.ticketNumber || t.id}</td>
                         <td className="py-3 px-3 font-semibold text-slate-655">{t.organization}</td>
                         <td className="py-3 px-3 text-slate-900 truncate max-w-[150px]" title={t.title}>{t.title}</td>
                         <td className="py-3 px-3">

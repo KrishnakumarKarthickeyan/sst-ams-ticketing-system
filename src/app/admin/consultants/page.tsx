@@ -22,7 +22,7 @@ interface ConsultantWorkload {
   escalatedTicketsCount: number;
   totalHoursLogged: number;
   billableHours: number;
-  assignedTickets: { id: string; title: string; priority: string; status: string; sapModule: string }[];
+  assignedTickets: { id: string; ticketNumber?: string; title: string; priority: string; status: string; sapModule: string }[];
 }
 
 export default function AdminConsultantsPage() {
@@ -138,6 +138,7 @@ export default function AdminConsultantsPage() {
           const t = asg.tickets;
           return {
             id: t.id,
+            ticketNumber: t.ticket_number || t.id,
             title: t.title,
             priority: t.priority,
             status: t.status,
@@ -496,7 +497,7 @@ export default function AdminConsultantsPage() {
                       .map((t) => (
                         <div key={t.id} className="border border-zinc-150 rounded p-2 hover:bg-zinc-50 transition-colors flex flex-col gap-1">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-zinc-900 text-[10px] font-mono">{t.id}</span>
+                            <span className="font-bold text-zinc-900 text-[10px] font-mono">{t.ticketNumber || t.id}</span>
                             <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
                               t.priority === 'Critical' ? 'bg-red-950 text-white animate-pulse' :
                               t.priority === 'High' ? 'bg-amber-100 text-amber-800' :

@@ -492,7 +492,7 @@ export default function ManagerEffortApprovalsPage() {
                   pendingEstimates.map((est) => (
                     <tr key={est.id} className="hover:bg-zinc-50/50 transition">
                       <td className="py-3 px-4 font-mono">
-                        <Link href={`/manager/tickets/${est.ticketId}`} className="font-bold text-zinc-900 hover:underline">{est.ticketNumber || est.ticketId}</Link>
+                        <Link href={`/manager/tickets/${est.ticketId}`} className="font-bold text-zinc-900 hover:underline">{est.ticketNumber}</Link>
                         <div className="text-[10px] text-zinc-500 truncate max-w-[200px] mt-0.5">{est.ticketTitle}</div>
                         <div className="flex gap-1.5 mt-1">
                           <span className="text-[8px] px-1 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded font-bold uppercase">{est.sapModule}</span>
@@ -592,7 +592,7 @@ export default function ManagerEffortApprovalsPage() {
                     filteredTimesheetLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-zinc-50/50 transition">
                         <td className="py-3 px-4 font-mono">
-                          <Link href={`/manager/tickets/${log.ticketId}`} className="font-bold text-zinc-900 hover:underline">{log.ticketNumber || log.ticketId}</Link>
+                          <Link href={`/manager/tickets/${log.ticketId}`} className="font-bold text-zinc-900 hover:underline">{log.ticketNumber}</Link>
                           <div className="text-[10px] text-zinc-500 truncate max-w-[155px] mt-0.5">{log.ticketTitle}</div>
                           <div className="text-[9px] text-zinc-400 mt-0.5">{log.organization}</div>
                         </td>
@@ -680,7 +680,7 @@ export default function ManagerEffortApprovalsPage() {
                     return (
                       <tr key={req.id} className="hover:bg-zinc-50/50 transition">
                         <td className="py-3 px-4 font-mono align-top">
-                          <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber || req.ticketId}</Link>
+                          <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber}</Link>
                           <div className="text-[10px] text-zinc-500 truncate max-w-[150px] mt-0.5">{req.ticketTitle}</div>
                           <div className="text-[9px] text-zinc-400 mt-0.5">{req.organization}</div>
                           {req.status === 'Resubmitted' && (
@@ -801,7 +801,7 @@ export default function ManagerEffortApprovalsPage() {
                   reopenRequests.map((req) => (
                     <tr key={req.id} className="hover:bg-zinc-50/50 transition">
                       <td className="py-3 px-4 font-mono">
-                        <Link href={`/manager/tickets/${req.id}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber || req.id}</Link>
+                        <Link href={`/manager/tickets/${req.id}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber}</Link>
                         <div className="text-[10px] text-zinc-500 truncate max-w-[200px] mt-0.5">{req.title}</div>
                         <div className="flex gap-1.5 mt-1">
                           <span className="text-[8px] px-1 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded font-bold uppercase">{req.sapModule}</span>
@@ -876,7 +876,7 @@ export default function ManagerEffortApprovalsPage() {
                   unlockRequests.map((req) => (
                     <tr key={req.id} className="hover:bg-zinc-50/50 transition">
                       <td className="py-3 px-4 font-mono">
-                        <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber || req.ticketId}</Link>
+                        <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber}</Link>
                         <div className="text-[10px] text-zinc-500 truncate max-w-[150px] mt-0.5">{req.ticketTitle}</div>
                         <div className="text-[9px] text-zinc-400 mt-0.5">{req.organization}</div>
                       </td>
@@ -939,7 +939,7 @@ export default function ManagerEffortApprovalsPage() {
                   pendingDeletes.map((req) => (
                     <tr key={req.id} className="hover:bg-zinc-50/50 transition">
                       <td className="py-3 px-4 font-mono">
-                        <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber || req.ticketId}</Link>
+                        <Link href={`/manager/tickets/${req.ticketId}`} className="font-bold text-zinc-900 hover:underline">{req.ticketNumber}</Link>
                         <div className="text-[10px] text-zinc-500 truncate max-w-[200px] mt-0.5">{req.ticketTitle}</div>
                         <div className="flex gap-1.5 mt-1">
                           <span className="text-[8px] px-1 bg-zinc-100 border border-zinc-200 text-zinc-650 rounded font-bold uppercase">{req.sapModule}</span>
@@ -988,7 +988,7 @@ export default function ManagerEffortApprovalsPage() {
 
             <div className="space-y-1">
               <p className="text-zinc-600 font-medium">
-                You are rejecting a submission for ticket <strong className="text-zinc-950">{rejectionModal.ticketNumber || rejectionModal.ticketId}</strong>.
+                You are rejecting a submission for ticket <strong className="text-zinc-950">{rejectionModal.ticketNumber}</strong>.
               </p>
               <p className="text-[10px] text-zinc-550">
                  rejections require a mandatory justification. Your reasoning will be logged in the permanent audit history and emailed directly to the consultant.
