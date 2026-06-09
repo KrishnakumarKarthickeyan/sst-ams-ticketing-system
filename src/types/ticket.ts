@@ -64,7 +64,8 @@ export type TicketStatus =
   | 'On Hold'
   | 'Awaiting Functional Submission'
   | 'Awaiting Technical Submission'
-  | 'Awaiting Manager Approval';
+  | 'Awaiting Manager Approval'
+  | 'Escalated';
 
 export interface Comment {
   id: string;
@@ -279,6 +280,9 @@ export interface Ticket {
   escalationAcknowledgedAt?: string | null;
   escalationAcknowledgedBy?: string | null;
   escalationAcknowledgedByName?: string | null;
+  isEscalated: boolean;
+  escalatedAt?: string | null;
+  escalatedBy?: string | null;
 }
 
 export interface TicketAssignment {

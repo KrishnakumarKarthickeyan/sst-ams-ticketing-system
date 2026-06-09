@@ -260,8 +260,8 @@ export default function ConsultantMyTicketsPage() {
 
     // Sort: Escalated + Acknowledged tickets to the top
     return [...result].sort((a, b) => {
-      const aEscAck = (a.escalationFlag && a.escalationAcknowledgedAt) ? 1 : 0;
-      const bEscAck = (b.escalationFlag && b.escalationAcknowledgedAt) ? 1 : 0;
+      const aEscAck = (a.isEscalated && a.escalationAcknowledgedAt) ? 1 : 0;
+      const bEscAck = (b.isEscalated && b.escalationAcknowledgedAt) ? 1 : 0;
       if (aEscAck !== bEscAck) {
         return bEscAck - aEscAck; // 1 (acknowledged) comes before 0
       }
@@ -590,9 +590,9 @@ export default function ConsultantMyTicketsPage() {
         const priCfg = priorityConfig[t.priority] || priorityConfig['Low'];
         const completionPct = estHours > 0 ? Math.min(100, Math.round((actHours / estHours) * 100)) : 0;
         
-        const isEscAck = t.escalationFlag && t.escalationAcknowledgedAt;
+        const isEscAck = t.isEscalated && t.escalationAcknowledgedAt;
         return (
-          <Card key={t.id} className={`bg-white border border-zinc-200/80 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden ${isLocked ? 'border-zinc-300 bg-zinc-50/50 shadow-none' : ''} ${isEscAck ? 'border-l-4 border-l-red-500' : ''}`}>
+          <Card key={t.id} className={`bg-white border border-zinc-200/80 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden ${isLocked ? 'border-zinc-300 bg-zinc-50/50 shadow-none' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
             <div className="p-5 flex flex-col gap-4 flex-1">
               {/* Header row: ID, Priority, Status, Age */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2.5">
@@ -727,12 +727,17 @@ export default function ConsultantMyTicketsPage() {
           <TableBody>
             {paginatedTickets.map(t => {
               const { estHours, actHours, isLocked, age } = getTicketMeta(t);
-              const isEscAck = t.escalationFlag && t.escalationAcknowledgedAt;
+              const isEscAck = t.isEscalated && t.escalationAcknowledgedAt;
               return (
-                <TableRow key={t.id} className={`hover:bg-zinc-50/40 transition-colors ${isLocked ? 'bg-zinc-50/25' : ''} ${isEscAck ? 'border-l-4 border-l-red-500' : ''}`}>
+                <TableRow key={t.id} className={`hover:bg-zinc-50/40 transition-colors ${isLocked ? 'bg-zinc-50/25' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
                   <TableCell className="font-mono font-bold text-zinc-500 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      {t.ticketNumber || t.id}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span>{t.ticketNumber || t.id}</span>
+                      {isEscAck && (
+                        <Badge variant="destructive" className="text-[8px] font-bold py-0.5 px-1.5 uppercase leading-none h-4">
+                          TOP PRIORITY
+                        </Badge>
+                      )}
                       {isLocked && <Lock size={9} className="text-zinc-400" />}
                     </div>
                   </TableCell>
@@ -744,11 +749,6 @@ export default function ConsultantMyTicketsPage() {
                       <Link href={`/consultant/tickets/${t.id}`} className="font-bold text-zinc-950 hover:text-blue-600 transition-colors truncate">
                         {t.title}
                       </Link>
-                      {isEscAck && (
-                        <Badge className="bg-red-150 text-red-700 hover:bg-red-150 border-red-200 text-[7px] font-bold py-0.2 px-1 rounded uppercase font-mono">
-                          TOP PRIORITY
-                        </Badge>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell>

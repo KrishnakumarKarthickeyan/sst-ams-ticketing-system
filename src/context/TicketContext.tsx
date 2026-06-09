@@ -698,6 +698,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       escalationAcknowledgedAt: t.escalation_acknowledged_at,
       escalationAcknowledgedBy: t.escalation_acknowledged_by,
       escalationAcknowledgedByName: getProfile(t.escalation_acknowledged_by)?.full_name || undefined,
+      isEscalated: !!t.is_escalated,
+      escalatedAt: t.escalated_at,
+      escalatedBy: t.escalated_by,
       sapModules: t.ticket_modules && t.ticket_modules.length > 0
         ? t.ticket_modules.map((m: any) => m.module_id as SAPModule)
         : (t.sap_module ? [t.sap_module as SAPModule] : []),
@@ -1446,6 +1449,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[]
   ): Promise<{ success: boolean; error?: string }> => {
     let escalationId = `esc-${Date.now()}`;
+    const nowStr = new Date().toISOString();
+    
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
@@ -1490,9 +1495,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         await supabase.from('tickets').update({
           escalation_flag: true,
+          is_escalated: true,
+          escalated_at: nowStr,
+          escalated_by: actorId,
+          status: 'Escalated',
           priority: nextPriority,
-          updated_at: new Date().toISOString()
+          updated_at: nowStr
         }).eq('id', ticketId);
+
         await supabase.from('ticket_history').insert({
           ticket_id: ticketId,
           changed_by: actorId,
@@ -1500,11 +1510,31 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           old_value: 'None',
           new_value: `${severity} Severity Escalation`
         });
+
+        // Notify all managers and super-admins
+        const managersAndAdmins = (profiles || []).filter(p => p.role === 'Manager' || p.role === 'SuperAdmin');
+        for (const target of managersAndAdmins) {
+          await createDBNotification({
+            userId: target.id,
+            type: 'escalation_raised',
+            title: 'Ticket Escalated by Customer',
+            message: `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}".`,
+            ticketId: ticketId,
+            linkPath: `/manager/tickets/${ticketId}`
+          });
+        }
+
+        await fetchData();
+        return { success: true };
       } catch (err: any) {
         console.error('Error in requestEscalation Supabase update:', err);
         return { success: false, error: err.message || 'Database error occurred' };
       }
     }
+
+    // Local state fallback
+    const currentTicket = tickets.find(t => t.id === ticketId);
+    const actorId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
     const newEscalation: TicketEscalation = {
       id: escalationId,
       ticketId,
@@ -1512,7 +1542,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       reason,
       severity,
       status: 'Pending',
-      createdAt: new Date().toISOString()
+      createdAt: nowStr
     };
 
     const updated = tickets.map(t => {
@@ -1533,7 +1563,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               fileSize: f.fileSize || 0,
               uploadedBy: actorName,
               visibility: 'public',
-              createdAt: new Date().toISOString()
+              createdAt: nowStr
             });
           });
         }
@@ -1547,7 +1577,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             fieldChanged: 'Ticket Escalated',
             oldValue: 'None',
             newValue: `${severity} Severity Escalation`,
-            createdAt: new Date().toISOString()
+            createdAt: nowStr
           }
         ];
         const currentPriority = t.priority || 'Medium';
@@ -1555,10 +1585,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return {
           ...t,
           escalationFlag: true,
+          isEscalated: true,
+          escalatedAt: nowStr,
+          escalatedBy: actorId,
+          status: 'Escalated' as any,
           priority: nextPriority as any,
           escalations: [...currentEscalations, newEscalation],
           attachments: localAttachments,
-          updatedAt: new Date().toISOString(),
+          updatedAt: nowStr,
           history: hist
         };
       }
@@ -1567,12 +1601,15 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     syncTickets(updated);
 
-    createSystemNotification(
-      'manager@supportstudio.com',
-      `Ticket Escalated: ${ticketId}`,
-      `A ${severity} severity escalation was requested by ${actorName}. Reason: ${reason}`,
-      ticketId
-    );
+    const managersAndAdmins = (profiles || []).filter(p => p.role === 'Manager' || p.role === 'SuperAdmin');
+    managersAndAdmins.forEach(target => {
+      createSystemNotification(
+        target.id,
+        `Ticket Escalated: ${currentTicket?.ticketNumber || ticketId}`,
+        `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}".`,
+        ticketId
+      );
+    });
 
     return { success: true };
   };
@@ -2854,9 +2891,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (customerUserId) {
           await createDBNotification({
             userId: customerUserId,
-            type: 'escalation_ack',
-            title: 'Your ticket is being treated as critical',
-            message: `Ticket ${ticketObj.ticketNumber || ticketObj.id} has been escalated and is receiving priority handling.`,
+            type: 'escalation_acknowledged',
+            title: 'Escalation Acknowledged',
+            message: `Your escalation for ticket ${ticketObj.ticketNumber || ticketObj.id} has been acknowledged. Your support team is actively working on this as a top priority.`,
             ticketId: ticketId,
             linkPath: `/customer/tickets/${ticketId}`
           });
@@ -2866,9 +2903,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (consId !== customerUserId) {
             await createDBNotification({
               userId: consId,
-              type: 'escalation_ack',
-              title: 'ESCALATED — Top priority',
-              message: `Ticket ${ticketObj.ticketNumber || ticketObj.id} has been escalated by management. Please prioritise.`,
+              type: 'escalation_acknowledged',
+              title: '🚨 ESCALATED · TOP PRIORITY — Action Required',
+              message: `Ticket ${ticketObj.ticketNumber || ticketObj.id} has been escalated and acknowledged by ${actorName}. Prioritise this immediately.`,
               ticketId: ticketId,
               linkPath: `/consultant/tickets/${ticketId}`
             });

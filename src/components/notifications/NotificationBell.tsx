@@ -9,6 +9,27 @@ import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Notification } from '../../types/ticket';
 
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  
+  if (diffMs < 0) return 'Just now';
+  
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export const NotificationBell: React.FC = () => {
   const { user } = useAuth();
   const { notifications, markNotificationRead, refetchData } = useTickets();
@@ -123,15 +144,18 @@ export const NotificationBell: React.FC = () => {
                     <span className={`font-bold leading-tight ${n.isRead ? 'text-zinc-700' : 'text-zinc-950'}`}>
                       {n.title}
                     </span>
-                    {!n.isRead && (
-                      <button
-                        onClick={() => markNotificationRead(n.id)}
-                        className="text-zinc-400 hover:text-zinc-900 transition mt-0.5 shrink-0"
-                        title="Mark as read"
-                      >
-                        <CheckCheck size={12} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[9px] text-zinc-400 font-sans">{formatRelativeTime(n.createdAt)}</span>
+                      {!n.isRead && (
+                        <button
+                          onClick={() => markNotificationRead(n.id)}
+                          className="text-zinc-400 hover:text-zinc-900 transition"
+                          title="Mark as read"
+                        >
+                          <CheckCheck size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="text-zinc-500 text-[10px] mt-1 leading-relaxed font-sans">{n.message}</p>
                   {(n.linkPath || n.ticketId) && (

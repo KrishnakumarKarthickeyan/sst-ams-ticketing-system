@@ -520,20 +520,26 @@ export default function CustomerTicketDetailPage() {
     }
   };
 
-  const handleEscalateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!escalateReason.trim()) return;
-    const filesToSubmit = escalateFiles.filter(f => f.progress >= 100).map(f => ({
-      fileName: f.file.name,
-      fileSize: f.file.size,
-      fileType: f.file.type || f.file.name.split('.').pop() || 'pdf',
-      fileObj: f.file
-    }));
-    await requestEscalation(ticket.id, escalateReason, escalateSeverity, user?.name || 'Customer User', filesToSubmit.length > 0 ? filesToSubmit : undefined);
-    setShowEscalateDialog(false);
-    setEscalateReason('');
-    setEscalateFiles([]);
-    showBannerMessage('Escalation has been submitted with attachments to the support team.');
+  const handleEscalateConfirm = async () => {
+    const toastId = toast.loading('Submitting escalation...');
+    try {
+      const res = await requestEscalation(
+        ticket.id,
+        "Customer request",
+        "High",
+        user?.name || 'Customer User'
+      );
+      if (res.success) {
+        toast.success("Your ticket has been escalated. A manager will review it shortly.", { id: toastId });
+        router.refresh();
+      } else {
+        toast.error(res.error || "Failed to escalate ticket.", { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An unexpected error occurred.", { id: toastId });
+    } finally {
+      setShowEscalateDialog(false);
+    }
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -834,93 +840,36 @@ export default function CustomerTicketDetailPage() {
                 </Dialog>
               )}
 
-              {ticket.status !== 'Closed' && ticket.status !== 'Resolved' && !ticket.escalationFlag && (
-                <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="h-9 text-[13px] font-medium border-orange-200 text-orange-600 hover:bg-orange-50 rounded-lg gap-1.5">
-                      <Zap size={14} /> Escalate
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
-                    <div className="p-6 space-y-5">
-                      <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-zinc-900">Escalate Ticket</DialogTitle>
+              {ticket.status !== 'Closed' && ticket.status !== 'Resolved' && (
+                ticket.isEscalated ? (
+                  <Badge variant="destructive" className="h-9 text-[13px] font-medium border-red-200 bg-red-100 text-red-800 hover:bg-red-100 rounded-lg">
+                    Escalated — Awaiting Acknowledgment
+                  </Badge>
+                ) : (
+                  <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="h-9 text-[13px] font-medium border-orange-200 text-orange-600 hover:bg-orange-50 rounded-lg gap-1.5">
+                        <Zap size={14} /> Escalate
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-6 max-w-md overflow-hidden font-sans text-sm">
+                      <DialogHeader className="space-y-2">
+                        <DialogTitle className="text-lg font-bold text-zinc-900 normal-case tracking-normal">Escalate Ticket</DialogTitle>
                         <DialogDescription className="text-sm text-zinc-500">
-                          Flag this ticket for urgent attention from the support team.
+                          Escalating will notify your support manager immediately and flag this ticket for priority handling. Are you sure?
                         </DialogDescription>
                       </DialogHeader>
-                      <form onSubmit={handleEscalateSubmit} className="space-y-5">
-                        <div className="space-y-2">
-                          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Severity</label>
-                          <select
-                            value={escalateSeverity}
-                            onChange={(e: any) => setEscalateSeverity(e.target.value)}
-                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition"
-                          >
-                            <option value="Low">Low — Response Delay</option>
-                            <option value="Medium">Medium — Business Disruption</option>
-                            <option value="High">High — Production Blocked</option>
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Justification</label>
-                          <textarea
-                            required
-                            rows={3}
-                            placeholder="Explain the business impact..."
-                            value={escalateReason}
-                            onChange={(e) => setEscalateReason(e.target.value)}
-                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-zinc-400 resize-none"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Escalation Attachments</label>
-                          <div className="relative border-2 border-dashed border-zinc-200 rounded-xl p-4 bg-zinc-50/50 hover:bg-orange-50/30 hover:border-orange-300 transition flex flex-col items-center justify-center gap-1 cursor-pointer group">
-                            <input
-                              type="file"
-                              multiple
-                              onChange={handleEscalateFileChange}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              accept="image/*,application/pdf,application/zip,application/x-zip-compressed"
-                            />
-                            <Upload size={16} className="text-zinc-400 group-hover:text-orange-500 transition" />
-                            <span className="text-xs text-zinc-600 font-medium">Select files to attach</span>
-                            <span className="text-[10px] text-zinc-400">Max 10MB per file</span>
-                          </div>
-
-                          {escalateFiles.length > 0 && (
-                            <div className="grid grid-cols-1 gap-2 mt-2">
-                              {escalateFiles.map((pf) => (
-                                <div key={pf.id} className="relative flex items-center gap-3 p-2 bg-zinc-50 border border-zinc-200 rounded-lg">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium text-zinc-900 truncate pr-6">{pf.file.name}</p>
-                                    <p className="text-[10px] text-zinc-450">{(pf.file.size / 1024).toFixed(0)} KB</p>
-                                    <div className="w-full bg-zinc-200 rounded-full h-1 mt-1 overflow-hidden">
-                                      <div className="bg-orange-500 h-full transition-all duration-300 rounded-full" style={{ width: `${pf.progress}%` }}></div>
-                                    </div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeEscalateFile(pf.id)}
-                                    className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 p-0.5 rounded-full hover:bg-red-50 transition"
-                                  >
-                                    <X size={12} />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <DialogFooter>
-                          <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 rounded-xl">
-                            Submit Escalation
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                      <DialogFooter className="mt-6 flex gap-2">
+                        <Button variant="outline" onClick={() => setShowEscalateDialog(false)}>
+                          Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleEscalateConfirm}>
+                          Escalate
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )
               )}
 
               {ticket.softDeleteStatus === 'Active' && (
@@ -975,13 +924,24 @@ export default function CustomerTicketDetailPage() {
         </div>
       </div>
 
-      {/* Escalation Acknowledged Alert */}
-      {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
-        <Alert className="border-l-4 border-l-emerald-500 bg-white">
-          <ShieldCheck className="h-4 w-4 text-emerald-600" />
-          <AlertTitle className="text-emerald-800">Critical Priority — Active Handling</AlertTitle>
-          <AlertDescription className="text-emerald-705">
-            Your ticket has been escalated and your support team is currently working on it as a top priority.
+      {/* Escalation Banners */}
+      {ticket.isEscalated && !ticket.escalationAcknowledgedAt && (
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Escalation Raised</AlertTitle>
+          <AlertDescription>
+            Your escalation is pending manager acknowledgment.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
+        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
+          <ShieldCheck className="size-4 text-emerald-600" />
+          <AlertTitle>Escalation Acknowledged — Priority Handling Active</AlertTitle>
+          <AlertDescription>
+            Your support team has acknowledged this escalation and is actively working
+            to resolve it as a top priority.
           </AlertDescription>
         </Alert>
       )}

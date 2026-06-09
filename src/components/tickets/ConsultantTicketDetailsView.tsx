@@ -21,6 +21,7 @@ import {
   Plus,
   User,
   ShieldCheck,
+  ShieldAlert,
   CheckCircle,
   Copy,
   ChevronRight,
@@ -873,7 +874,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               <Badge variant="outline" className="text-[10px] bg-white border border-slate-200 text-slate-600 font-mono py-0.5">Age: {ageDays} days</Badge>
             </div>
             <h1 className="text-xl font-bold text-slate-900 mt-1.5">{ticket.title}</h1>
-            {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
+            {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
               <div className="mt-1.5">
                 <Badge className="bg-red-655 hover:bg-red-700 text-white font-mono uppercase text-[9px]">TOP PRIORITY</Badge>
               </div>
@@ -890,23 +891,22 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
         </div>
       )}
 
-      {ticket.escalationFlag && !ticket.escalationAcknowledgedAt && (
-        <Alert variant="destructive" className="border-l-4 border-l-destructive shadow-sm">
-          <AlertTriangle className="h-4 w-4" />
+      {ticket.isEscalated && !ticket.escalationAcknowledgedAt && (
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
           <AlertTitle>ESCALATED — Awaiting Manager Acknowledgment</AlertTitle>
-          <AlertDescription>
-            This ticket has been escalated and is awaiting manager acknowledgment.
-          </AlertDescription>
         </Alert>
       )}
 
-      {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
-        <div className={`bg-emerald-50 border border-emerald-200 border-l-4 border-l-emerald-500 text-emerald-800 p-4 rounded-lg flex items-start gap-2.5 text-xs font-semibold animate-slide-in ${shouldPulse ? 'animate-pulse' : ''}`}>
-          <span className="text-base shrink-0">🚨</span>
+      {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
+        <div className="border-l-4 border-l-emerald-500 bg-emerald-50 p-4 rounded-md flex items-start gap-3 animate-pulse-once">
+          <ShieldAlert className="text-emerald-600 size-5 mt-0.5 shrink-0" />
           <div>
-            <p className="font-extrabold uppercase tracking-wider text-[10px] font-mono text-emerald-950">🚨 ESCALATED · ACKNOWLEDGED — TOP PRIORITY</p>
-            <p className="mt-1 leading-normal text-emerald-700 font-mono">
-              Manager {ticket.escalationAcknowledgedByName || 'Manager'} has marked this as critical on {new Date(ticket.escalationAcknowledgedAt).toLocaleString()}. Focus on this ticket.
+            <p className="font-semibold text-emerald-800">
+              🚨 ESCALATED · TOP PRIORITY — Focus Required
+            </p>
+            <p className="text-sm text-emerald-700 mt-1">
+              Acknowledged by <strong>{ticket.escalationAcknowledgedByName || 'Manager'}</strong> on {new Date(ticket.escalationAcknowledgedAt).toLocaleString()}. This ticket requires your immediate attention.
             </p>
           </div>
         </div>

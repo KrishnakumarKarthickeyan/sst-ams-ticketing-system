@@ -184,42 +184,54 @@ const EscalationTicketRow = ({
   slaInfo,
   acknowledgeEscalation,
   user,
+  profiles,
 }: {
   ticket: Ticket;
   slaInfo: { status: string; label: string } | null;
   acknowledgeEscalation: (id: string, userId: string, userName: string) => void;
   user: any;
+  profiles: any[];
 }) => {
-  const isEscalated = ticket.escalationFlag;
-  const borderClass = isEscalated || (slaInfo?.status === 'breached') 
-    ? 'border-l-4 border-l-destructive pl-2' 
-    : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+  const isEscalated = ticket.isEscalated;
+  const customerName = profiles.find(p => p.id === ticket.escalatedBy)?.full_name || ticket.requestedBy || 'Customer';
 
   return (
-    <div className={`p-2 bg-red-50/10 border border-red-100 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
-      <div className="flex justify-between items-center">
-        <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">
+    <div className="p-3 bg-red-50/10 border border-red-100 border-l-4 border-l-destructive rounded-lg flex flex-col gap-2">
+      {/* Top line with ticket number and inline badges */}
+      <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
+        <span className="text-red-600 shrink-0">🔴</span>
+        <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-semibold text-zinc-900 hover:underline">
           {ticket.ticketNumber}
         </Link>
-        <div className="flex gap-1 items-center">
-          {isEscalated && (
-            <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">
-              Escalated
-            </Badge>
-          )}
-          {slaInfo && (
-            <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
-              slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
-            }`}>{slaInfo.label}</Badge>
-          )}
-          <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase leading-none h-4">{ticket.priority}</span>
+        <div className="flex items-center gap-2">
+          <Badge variant="destructive" className="text-[9px] font-bold py-0.5 px-1.5 uppercase leading-none h-5">
+            ESCALATED
+          </Badge>
+          <Badge variant="outline" className="text-[9px] font-bold py-0.5 px-1.5 uppercase leading-none h-5 border-zinc-300 text-zinc-800">
+            {ticket.priority}
+          </Badge>
         </div>
       </div>
-      <span className="text-zinc-700 truncate block font-sans text-[11px]">{ticket.title}</span>
-      <div className="flex justify-between items-center text-[8px] text-zinc-450">
-        <span>Org: {ticket.organization}</span>
-        <span className="font-bold text-red-655">Escalated Flag Set</span>
+      
+      {/* Title */}
+      <div className="text-sm text-zinc-900 font-sans line-clamp-1">
+        "{ticket.title}"
       </div>
+      
+      {/* Org, Escalated by, Time */}
+      <div className="text-xs text-muted-foreground font-sans">
+        Org: {ticket.organization} · Escalated by: {customerName} · {formatRelativeTime(ticket.escalatedAt || ticket.createdAt)} ago
+      </div>
+      
+      {/* Acknowledge Button */}
+      <Button 
+        variant="default" 
+        size="sm" 
+        className="w-full mt-1 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold rounded-lg text-xs py-1.5"
+        onClick={() => acknowledgeEscalation(ticket.id, user?.id || '', user?.name || '')}
+      >
+        ACKNOWLEDGE
+      </Button>
     </div>
   );
 };
@@ -2481,14 +2493,14 @@ export default function ManagerDashboardPage() {
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
                     <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider font-mono">
-                      Escalation Center ({filteredDashboardTickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt).length})
+                      ESCALATION CENTER ({filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).length})
                     </span>
                     <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">EXPOSURE</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                     {/* Active Escalations List */}
                     <div className="space-y-2">
-                      {filteredDashboardTickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt).slice(0, 5).map(t => {
+                      {filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).slice(0, 5).map(t => {
                         const slaInfo = getSlaBreachInfo(t);
                         return (
                           <EscalationTicketRow
@@ -2497,10 +2509,11 @@ export default function ManagerDashboardPage() {
                             slaInfo={slaInfo}
                             acknowledgeEscalation={acknowledgeEscalation}
                             user={user}
+                            profiles={profiles}
                           />
                         );
                       })}
-                      {filteredDashboardTickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt).length === 0 && (
+                      {filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).length === 0 && (
                         <div className="text-zinc-400 italic text-center py-2 font-sans text-[10px]">
                           No active escalations.
                         </div>
@@ -2508,17 +2521,17 @@ export default function ManagerDashboardPage() {
                     </div>
 
                     {/* Recently Acknowledged Escalations Sub-list */}
-                    {filteredDashboardTickets.filter(t => t.escalationFlag && t.escalationAcknowledgedAt).length > 0 && (
+                    {filteredDashboardTickets.filter(t => t.isEscalated && t.escalationAcknowledgedAt).length > 0 && (
                       <div className="mt-3 pt-2 border-t border-zinc-100 space-y-2">
                         <span className="font-bold text-zinc-600 uppercase text-[8px] tracking-wider font-mono block">
                           Recently Acknowledged
                         </span>
                         {filteredDashboardTickets
-                          .filter(t => t.escalationFlag && t.escalationAcknowledgedAt)
+                          .filter(t => t.isEscalated && t.escalationAcknowledgedAt)
                           .sort((a, b) => new Date(b.escalationAcknowledgedAt || 0).getTime() - new Date(a.escalationAcknowledgedAt || 0).getTime())
-                          .slice(0, 5)
+                          .slice(0, 3)
                           .map(t => (
-                            <div key={t.id} className="p-2 bg-emerald-50/10 border border-emerald-100 border-l-4 border-l-emerald-500 rounded-lg flex flex-col justify-between gap-1">
+                            <div key={t.id} className="p-2 bg-emerald-50/10 border border-emerald-100/50 border-l-4 border-l-emerald-500 rounded-lg flex flex-col justify-between gap-1">
                               <div className="flex justify-between items-center">
                                 <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
                                 <div className="flex gap-1 items-center">
@@ -2535,7 +2548,7 @@ export default function ManagerDashboardPage() {
                               </div>
                             </div>
                           ))}
-                        {filteredDashboardTickets.filter(t => t.escalationFlag && t.escalationAcknowledgedAt).length > 5 && (
+                        {filteredDashboardTickets.filter(t => t.isEscalated && t.escalationAcknowledgedAt).length > 3 && (
                           <div className="text-right">
                             <Link href="/manager/tickets?tab=escalated" className="text-[9px] text-zinc-500 hover:text-zinc-900 font-bold hover:underline">
                               View full history &rarr;
