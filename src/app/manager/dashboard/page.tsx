@@ -218,16 +218,7 @@ const EscalationTicketRow = ({
       <span className="text-zinc-700 truncate block font-sans text-[11px]">{ticket.title}</span>
       <div className="flex justify-between items-center text-[8px] text-zinc-450">
         <span>Org: {ticket.organization}</span>
-        <span className="font-bold text-red-655">{ticket.escalationFlag ? 'Escalated Flag Set' : 'Critical P1 Priority'}</span>
-      </div>
-      <div className="mt-1 flex justify-end">
-        <Button 
-          size="sm" 
-          onClick={() => acknowledgeEscalation(ticket.id, user?.id || '', user?.name || '')} 
-          className="h-5 text-[8px] font-mono font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2"
-        >
-          Acknowledge
-        </Button>
+        <span className="font-bold text-red-655">Escalated Flag Set</span>
       </div>
     </div>
   );
@@ -2481,14 +2472,14 @@ export default function ManagerDashboardPage() {
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
                     <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider font-mono">
-                      Escalation Center ({filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && !t.escalationAcknowledgedAt).length})
+                      Escalation Center ({filteredDashboardTickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt).length})
                     </span>
                     <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">EXPOSURE</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                     {/* Active Escalations List */}
                     <div className="space-y-2">
-                      {filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && !t.escalationAcknowledgedAt).slice(0, 5).map(t => {
+                      {filteredDashboardTickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt).slice(0, 5).map(t => {
                         const slaInfo = getSlaBreachInfo(t);
                         return (
                           <EscalationTicketRow
@@ -2500,7 +2491,7 @@ export default function ManagerDashboardPage() {
                           />
                         );
                       })}
-                      {filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && !t.escalationAcknowledgedAt).length === 0 && (
+                      {filteredDashboardTickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt).length === 0 && (
                         <div className="text-zinc-400 italic text-center py-2 font-sans text-[10px]">
                           No active escalations.
                         </div>
@@ -2508,13 +2499,13 @@ export default function ManagerDashboardPage() {
                     </div>
 
                     {/* Recently Acknowledged Escalations Sub-list */}
-                    {filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && t.escalationAcknowledgedAt).length > 0 && (
+                    {filteredDashboardTickets.filter(t => t.escalationFlag && t.escalationAcknowledgedAt).length > 0 && (
                       <div className="mt-3 pt-2 border-t border-zinc-100 space-y-2">
                         <span className="font-bold text-zinc-600 uppercase text-[8px] tracking-wider font-mono block">
                           Recently Acknowledged
                         </span>
                         {filteredDashboardTickets
-                          .filter(t => (t.escalationFlag || t.priority === 'Critical') && t.escalationAcknowledgedAt)
+                          .filter(t => t.escalationFlag && t.escalationAcknowledgedAt)
                           .sort((a, b) => new Date(b.escalationAcknowledgedAt || 0).getTime() - new Date(a.escalationAcknowledgedAt || 0).getTime())
                           .slice(0, 5)
                           .map(t => (
@@ -2535,7 +2526,7 @@ export default function ManagerDashboardPage() {
                               </div>
                             </div>
                           ))}
-                        {filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && t.escalationAcknowledgedAt).length > 5 && (
+                        {filteredDashboardTickets.filter(t => t.escalationFlag && t.escalationAcknowledgedAt).length > 5 && (
                           <div className="text-right">
                             <Link href="/manager/tickets?tab=escalated" className="text-[9px] text-zinc-500 hover:text-zinc-900 font-bold hover:underline">
                               View full history &rarr;
