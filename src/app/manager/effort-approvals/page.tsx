@@ -135,7 +135,8 @@ export default function ManagerEffortApprovalsPage() {
             ticketNumber: ticket.ticketNumber || ticket.id,
             estimatedFuncHours: latestApprovedEstimate?.functionalEstimatedHours || 0,
             estimatedTechHours: latestApprovedEstimate?.technicalEstimatedHours || 0,
-            estimatedTotalHours: latestApprovedEstimate?.totalEstimatedHours || ticket.quotedHours || 0
+            estimatedTotalHours: latestApprovedEstimate?.totalEstimatedHours || ticket.quotedHours || 0,
+            perConsultantEfforts: (ticket.consultantEfforts || []).filter(e => !e.isDeleted)
           };
         })
     );
@@ -691,6 +692,33 @@ export default function ManagerEffortApprovalsPage() {
                         <td className="py-3 px-4 align-top w-[320px]">
                           <div className="space-y-1.5 border border-zinc-200 rounded p-2 bg-zinc-50/50">
                             
+                            {/* Per-Consultant Breakdown */}
+                            {req.perConsultantEfforts && req.perConsultantEfforts.length > 0 && (
+                              <div className="mb-1.5">
+                                <span className="text-[8px] text-zinc-500 font-bold uppercase block mb-1">Per-Consultant Breakdown</span>
+                                <table className="w-full text-[9px] border-collapse">
+                                  <thead>
+                                    <tr className="text-zinc-500 font-bold uppercase border-b border-zinc-200">
+                                      <th className="py-0.5 text-left">Consultant</th>
+                                      <th className="py-0.5 text-center">Type</th>
+                                      <th className="py-0.5 text-right">Logged</th>
+                                      <th className="py-0.5 text-right">Quoted</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-zinc-100">
+                                    {req.perConsultantEfforts.map((eff: any, idx: number) => (
+                                      <tr key={eff.id || idx}>
+                                        <td className="py-0.5 font-semibold text-zinc-900">{eff.consultantName}</td>
+                                        <td className="py-0.5 text-center text-zinc-500">{eff.consultantType}</td>
+                                        <td className="py-0.5 text-right font-bold text-zinc-900">{eff.actualHours}h</td>
+                                        <td className="py-0.5 text-right text-zinc-600">{eff.estimatedHours}h</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+
                             {/* Functional Hours Comparison */}
                             <div className="flex items-center justify-between text-[10px]">
                               <span className="text-zinc-500 font-bold">Functional:</span>
