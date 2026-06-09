@@ -80,10 +80,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
 
   const managerMenu: MenuItem[] = [
     { title: 'Dashboard', href: '/manager/dashboard', icon: <LayoutDashboard size={16} /> },
-    { title: 'Tickets Desk', href: '/manager/tickets', icon: <Ticket size={16} /> },
-    { title: 'All Customer Tickets', href: '/manager/customer-tickets', icon: <Ticket size={16} /> },
-    { title: 'Timesheet Approvals', href: '/manager/effort-approvals', icon: <CheckSquare size={16} /> },
-    { title: 'Consultants Workload', href: '/manager/consultants', icon: <UserCheck size={16} /> },
+    { title: 'Tickets', href: '/manager/tickets', icon: <Ticket size={16} /> },
+    { title: 'Approvals', href: '/manager/effort-approvals', icon: <CheckSquare size={16} /> },
+    { title: 'Users', href: '/manager/users', icon: <Users size={16} /> },
+    { title: 'Workload Analytics', href: '/manager/workload', icon: <Activity size={16} /> },
     { title: 'SLA Monitoring', href: '/manager/sla-monitoring', icon: <Clock size={16} /> },
     { title: 'Performance Reports', href: '/manager/reports', icon: <FileSpreadsheet size={16} /> },
     { title: 'Profile Settings', href: '/manager/profile', icon: <User size={16} /> }
