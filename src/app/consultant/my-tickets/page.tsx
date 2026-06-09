@@ -203,7 +203,7 @@ export default function ConsultantMyTicketsPage() {
 
   const filteredTickets = useMemo(() => {
     const nowTime = Date.now();
-    return tabFilteredTickets.filter(t => {
+    const result = tabFilteredTickets.filter(t => {
       if (statusFilter !== 'All' && t.status !== statusFilter) return false;
       if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
 
@@ -245,7 +245,7 @@ export default function ConsultantMyTicketsPage() {
         }
       }
 
-        if (searchQuery.trim()) {
+      if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
           t.id.toLowerCase().includes(q) ||
@@ -256,6 +256,17 @@ export default function ConsultantMyTicketsPage() {
         );
       }
       return true;
+    });
+
+    // Sort: Escalated + Acknowledged tickets to the top
+    return [...result].sort((a, b) => {
+      const aEscAck = (a.escalationFlag && a.escalationAcknowledgedAt) ? 1 : 0;
+      const bEscAck = (b.escalationFlag && b.escalationAcknowledgedAt) ? 1 : 0;
+      if (aEscAck !== bEscAck) {
+        return bEscAck - aEscAck; // 1 (acknowledged) comes before 0
+      }
+      // If same, keep default order (e.g. by createdAt desc)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [tabFilteredTickets, statusFilter, priorityFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
 
@@ -579,8 +590,9 @@ export default function ConsultantMyTicketsPage() {
         const priCfg = priorityConfig[t.priority] || priorityConfig['Low'];
         const completionPct = estHours > 0 ? Math.min(100, Math.round((actHours / estHours) * 100)) : 0;
         
+        const isEscAck = t.escalationFlag && t.escalationAcknowledgedAt;
         return (
-          <Card key={t.id} className={`bg-white border border-zinc-200/80 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden ${isLocked ? 'border-zinc-300 bg-zinc-50/50 shadow-none' : ''}`}>
+          <Card key={t.id} className={`bg-white border border-zinc-200/80 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden ${isLocked ? 'border-zinc-300 bg-zinc-50/50 shadow-none' : ''} ${isEscAck ? 'border-l-4 border-l-red-500' : ''}`}>
             <div className="p-5 flex flex-col gap-4 flex-1">
               {/* Header row: ID, Priority, Status, Age */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2.5">
@@ -590,6 +602,9 @@ export default function ConsultantMyTicketsPage() {
                   {isLocked && <Lock size={10} className="text-zinc-400" />}
                 </div>
                 <div className="flex items-center gap-1.5">
+                  {isEscAck && (
+                    <Badge className="bg-red-150 text-red-700 border-red-200 font-bold text-[7px] py-0 px-1 uppercase leading-none h-4">TOP PRIORITY</Badge>
+                  )}
                   <StatusBadge status={t.status} />
                   <PriorityBadge priority={t.priority} />
                 </div>
@@ -712,8 +727,9 @@ export default function ConsultantMyTicketsPage() {
           <TableBody>
             {paginatedTickets.map(t => {
               const { estHours, actHours, isLocked, age } = getTicketMeta(t);
+              const isEscAck = t.escalationFlag && t.escalationAcknowledgedAt;
               return (
-                <TableRow key={t.id} className={`hover:bg-zinc-50/40 transition-colors ${isLocked ? 'bg-zinc-50/25' : ''}`}>
+                <TableRow key={t.id} className={`hover:bg-zinc-50/40 transition-colors ${isLocked ? 'bg-zinc-50/25' : ''} ${isEscAck ? 'border-l-4 border-l-red-500' : ''}`}>
                   <TableCell className="font-mono font-bold text-zinc-500 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                       {t.ticketNumber || t.id}
@@ -724,9 +740,16 @@ export default function ConsultantMyTicketsPage() {
                     {t.organization}
                   </TableCell>
                   <TableCell className="min-w-[200px] max-w-[320px] truncate" title={t.title}>
-                    <Link href={`/consultant/tickets/${t.id}`} className="font-bold text-zinc-950 hover:text-blue-600 transition-colors">
-                      {t.title}
-                    </Link>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Link href={`/consultant/tickets/${t.id}`} className="font-bold text-zinc-950 hover:text-blue-600 transition-colors truncate">
+                        {t.title}
+                      </Link>
+                      {isEscAck && (
+                        <Badge className="bg-red-150 text-red-700 hover:bg-red-150 border-red-200 text-[7px] font-bold py-0.2 px-1 rounded uppercase font-mono">
+                          TOP PRIORITY
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-[8px] font-bold font-mono uppercase bg-zinc-50 text-zinc-500 border-zinc-200 hover:bg-zinc-50">

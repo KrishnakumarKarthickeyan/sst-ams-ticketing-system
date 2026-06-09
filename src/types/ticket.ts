@@ -274,6 +274,8 @@ export interface Ticket {
   actualHoursLogs?: TicketActualHours[];
   organizationId?: string;
   leadConsultantId?: string;
+  assignedConsultantId?: string;
+  assignedManagerId?: string;
   escalationAcknowledgedAt?: string | null;
   escalationAcknowledgedBy?: string | null;
   escalationAcknowledgedByName?: string | null;

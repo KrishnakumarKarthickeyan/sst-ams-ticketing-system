@@ -797,6 +797,9 @@ ${ticket.description}
                           {t.ticketNumber || t.id.slice(0, 8).toUpperCase()}
                         </span>
                         <div className="flex gap-1.5">
+                          {t.escalationFlag && t.escalationAcknowledgedAt && (
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 border text-[9px] font-bold uppercase">Priority Handling</Badge>
+                          )}
                           <Badge className={`${priorityColor} border text-[9px] font-bold uppercase`}>{t.priority}</Badge>
                           <Badge className={`${statusColor} border text-[9px] font-bold uppercase`}>{t.status}</Badge>
                         </div>
@@ -929,7 +932,12 @@ ${ticket.description}
                               <Badge className={`${statusColor} border text-[9px] font-bold uppercase`}>{t.status}</Badge>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <Badge className={`${priorityColor} border text-[9px] font-bold uppercase`}>{t.priority}</Badge>
+                              <div className="flex gap-1.5 items-center">
+                                <Badge className={`${priorityColor} border text-[9px] font-bold uppercase`}>{t.priority}</Badge>
+                                {t.escalationFlag && t.escalationAcknowledgedAt && (
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 border text-[9px] font-bold uppercase">Priority Handling</Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-zinc-500 font-mono text-xs py-3 px-4">
                               {new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

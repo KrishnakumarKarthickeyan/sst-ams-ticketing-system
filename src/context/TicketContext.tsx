@@ -528,6 +528,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       status: t.status as TicketStatus,
       assignedManager: manager?.full_name || undefined,
       assignedConsultant: consultant?.full_name || undefined,
+      assignedConsultantId: t.assigned_consultant_id || undefined,
+      assignedManagerId: t.assigned_manager_id || undefined,
       slaDueAt: (t.sla_due_at === '9999-12-31T23:59:59.999Z' || t.sla_due_at?.startsWith('9999-12-31')) ? 'SLA Not Applicable' : (t.sla_due_at || 'SLA Not Applicable'),
       resolvedAt: t.resolved_at,
       closedAt: t.closed_at,

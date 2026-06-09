@@ -38,6 +38,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '../../components/ui/alert';
 import {
   Tooltip,
   TooltipContent,
@@ -124,6 +125,12 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       }
     };
     fetchDbMentionableUsers();
+  }, []);
+
+  const [shouldPulse, setShouldPulse] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setShouldPulse(false), 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   // UI States
@@ -843,6 +850,11 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               <Badge variant="outline" className="text-[10px] bg-white border border-slate-200 text-slate-600 font-mono py-0.5">Age: {ageDays} days</Badge>
             </div>
             <h1 className="text-xl font-bold text-slate-900 mt-1.5">{ticket.title}</h1>
+            {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
+              <div className="mt-1.5">
+                <Badge className="bg-red-655 hover:bg-red-700 text-white font-mono uppercase text-[9px]">TOP PRIORITY</Badge>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -855,13 +867,23 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
         </div>
       )}
 
+      {ticket.escalationFlag && !ticket.escalationAcknowledgedAt && (
+        <Alert variant="destructive" className="border-l-4 border-l-destructive shadow-sm">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>ESCALATED — Awaiting Manager Acknowledgment</AlertTitle>
+          <AlertDescription>
+            This ticket has been escalated and is awaiting manager acknowledgment.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
-        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg flex items-start gap-2.5 text-xs font-semibold animate-slide-in">
-          <AlertTriangle size={16} className="text-red-650 shrink-0 mt-0.5" />
+        <div className={`bg-emerald-50 border border-emerald-200 border-l-4 border-l-emerald-500 text-emerald-800 p-4 rounded-lg flex items-start gap-2.5 text-xs font-semibold animate-slide-in ${shouldPulse ? 'animate-pulse' : ''}`}>
+          <span className="text-base shrink-0">🚨</span>
           <div>
-            <p className="font-extrabold uppercase tracking-wider text-[10px] font-mono text-red-900">ESCALATED — Top Priority</p>
-            <p className="mt-1 leading-normal text-red-700 font-mono">
-              This ticket has been escalated and is under critical priority management. Acknowledged by {ticket.escalationAcknowledgedByName || 'Manager'} on {new Date(ticket.escalationAcknowledgedAt).toLocaleString()}. Please prioritize resolving this ticket immediately.
+            <p className="font-extrabold uppercase tracking-wider text-[10px] font-mono text-emerald-950">🚨 ESCALATED · ACKNOWLEDGED — TOP PRIORITY</p>
+            <p className="mt-1 leading-normal text-emerald-700 font-mono">
+              Manager {ticket.escalationAcknowledgedByName || 'Manager'} has marked this as critical on {new Date(ticket.escalationAcknowledgedAt).toLocaleString()}. Focus on this ticket.
             </p>
           </div>
         </div>

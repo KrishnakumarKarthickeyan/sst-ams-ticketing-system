@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../../components/ui/card';
 import { Badge } from '../../../../components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '../../../../components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../../components/ui/tabs';
 import {
   Dialog,
@@ -991,6 +992,17 @@ export default function CustomerTicketDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Escalation Acknowledged Alert */}
+      {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
+        <Alert className="border-l-4 border-l-emerald-500 bg-white">
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          <AlertTitle className="text-emerald-800">Critical Priority — Active Handling</AlertTitle>
+          <AlertDescription className="text-emerald-705">
+            Your ticket has been escalated and your support team is currently working on it as a top priority.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* SLA Breach Warning */}
       {ticket.status !== 'Resolved' && ticket.status !== 'Closed' && isSlaApplicable && new Date(ticket.slaDueAt).getTime() < Date.now() && (

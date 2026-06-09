@@ -2313,61 +2313,93 @@ export default function ManagerDashboardPage() {
               <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
-                      Escalation Center ({filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').length})
+                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider font-mono">
+                      Escalation Center ({filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && !t.escalationAcknowledgedAt).length})
                     </span>
                     <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">EXPOSURE</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-                    {filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').slice(0, 5).map(t => {
-                      const slaInfo = getSlaBreachInfo(t);
-                      const isEscalated = t.escalationFlag;
-                      const borderClass = isEscalated || (slaInfo?.status === 'breached') 
-                        ? 'border-l-4 border-l-destructive pl-2' 
-                        : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
-                      return (
-                        <div key={t.id} className={`p-2 bg-red-50/10 border border-red-100 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
-                          <div className="flex justify-between items-center">
-                            <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
-                            <div className="flex gap-1 items-center">
-                              {isEscalated && <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
-                              {slaInfo && (
-                                <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
-                                  slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
-                                }`}>{slaInfo.label}</Badge>
-                              )}
-                              <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase leading-none h-4">{t.priority}</span>
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                    {/* Active Escalations List */}
+                    <div className="space-y-2">
+                      {filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && !t.escalationAcknowledgedAt).slice(0, 5).map(t => {
+                        const slaInfo = getSlaBreachInfo(t);
+                        const isEscalated = t.escalationFlag;
+                        const borderClass = isEscalated || (slaInfo?.status === 'breached') 
+                          ? 'border-l-4 border-l-destructive pl-2' 
+                          : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+                        return (
+                          <div key={t.id} className={`p-2 bg-red-50/10 border border-red-100 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
+                            <div className="flex justify-between items-center">
+                              <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                              <div className="flex gap-1 items-center">
+                                {isEscalated && <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
+                                {slaInfo && (
+                                  <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
+                                    slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                                  }`}>{slaInfo.label}</Badge>
+                                )}
+                                <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase leading-none h-4">{t.priority}</span>
+                              </div>
+                            </div>
+                            <span className="text-zinc-700 truncate block font-sans text-[11px]">{t.title}</span>
+                            <div className="flex justify-between items-center text-[8px] text-zinc-450">
+                              <span>Org: {t.organization}</span>
+                              <span className="font-bold text-red-655">{t.escalationFlag ? 'Escalated Flag Set' : 'Critical P1 Priority'}</span>
+                            </div>
+                            <div className="mt-1 flex justify-end">
+                              <Button 
+                                size="sm" 
+                                onClick={() => acknowledgeEscalation(t.id, user?.id || '', user?.name || '')} 
+                                className="h-5 text-[8px] font-mono font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2"
+                              >
+                                Acknowledge
+                              </Button>
                             </div>
                           </div>
-                          <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
-                          <div className="flex justify-between items-center text-[8px] text-zinc-450">
-                            <span>Org: {t.organization}</span>
-                            <span className="font-bold text-red-655">{t.escalationFlag ? 'Escalated Flag Set' : 'Critical P1 Priority'}</span>
-                          </div>
-                          {isEscalated && (
-                            t.escalationAcknowledgedAt ? (
-                              <div className="text-[8px] text-zinc-500 font-sans mt-0.5 pt-0.5 border-t border-zinc-100 flex justify-between items-center">
+                        );
+                      })}
+                      {filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && !t.escalationAcknowledgedAt).length === 0 && (
+                        <div className="text-zinc-400 italic text-center py-2 font-sans text-[10px]">
+                          No active escalations.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Recently Acknowledged Escalations Sub-list */}
+                    {filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && t.escalationAcknowledgedAt).length > 0 && (
+                      <div className="mt-3 pt-2 border-t border-zinc-100 space-y-2">
+                        <span className="font-bold text-zinc-600 uppercase text-[8px] tracking-wider font-mono block">
+                          Recently Acknowledged
+                        </span>
+                        {filteredDashboardTickets
+                          .filter(t => (t.escalationFlag || t.priority === 'Critical') && t.escalationAcknowledgedAt)
+                          .sort((a, b) => new Date(b.escalationAcknowledgedAt || 0).getTime() - new Date(a.escalationAcknowledgedAt || 0).getTime())
+                          .slice(0, 5)
+                          .map(t => (
+                            <div key={t.id} className="p-2 bg-emerald-50/10 border border-emerald-100 border-l-4 border-l-emerald-500 rounded-lg flex flex-col justify-between gap-1">
+                              <div className="flex justify-between items-center">
+                                <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                                <div className="flex gap-1 items-center">
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">
+                                    ACKNOWLEDGED
+                                  </Badge>
+                                  <span className="text-[7px] bg-zinc-100 text-zinc-800 px-1 py-0.2 rounded font-bold uppercase leading-none h-4">{t.priority}</span>
+                                </div>
+                              </div>
+                              <span className="text-zinc-700 truncate block font-sans text-[11px]">{t.title}</span>
+                              <div className="text-[8px] text-zinc-500 font-mono mt-0.5 pt-0.5 border-t border-zinc-100/50 flex justify-between items-center">
                                 <span>Ack: {t.escalationAcknowledgedByName || 'Manager'}</span>
                                 <span>{formatRelativeTime(t.escalationAcknowledgedAt)}</span>
                               </div>
-                            ) : (
-                              <div className="mt-1 flex justify-end">
-                                <Button 
-                                  size="sm" 
-                                  onClick={() => acknowledgeEscalation(t.id, user?.id || '', user?.name || '')} 
-                                  className="h-5 text-[8px] font-mono font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2"
-                                >
-                                  Acknowledge
-                                </Button>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      );
-                    })}
-                    {filteredDashboardTickets.filter(t => t.escalationFlag || t.priority === 'Critical').length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
-                        No active escalations.
+                            </div>
+                          ))}
+                        {filteredDashboardTickets.filter(t => (t.escalationFlag || t.priority === 'Critical') && t.escalationAcknowledgedAt).length > 5 && (
+                          <div className="text-right">
+                            <Link href="/manager/tickets?tab=escalated" className="text-[9px] text-zinc-500 hover:text-zinc-900 font-bold hover:underline">
+                              View full history &rarr;
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
