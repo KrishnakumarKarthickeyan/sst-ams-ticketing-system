@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
@@ -19,9 +19,17 @@ import {
   Building2,
   Star,
   CheckSquare,
+  Download,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ShieldAlert,
+  Clock,
+  Briefcase,
+  Layers
 } from 'lucide-react';
-import { TicketStatus, TicketPriority } from '../../../types/ticket';
-import { Card } from '../../../components/ui/card';
+import { TicketStatus, TicketPriority, SAPModule, Ticket } from '../../../types/ticket';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import {
@@ -31,32 +39,45 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 
 const priorityConfig: Record<string, { label: string; color: string; dot: string }> = {
   Critical: { label: 'Critical', color: 'text-red-700 bg-red-50 border-red-200', dot: 'bg-red-500' },
   High:     { label: 'High',     color: 'text-orange-700 bg-orange-50 border-orange-200', dot: 'bg-orange-400' },
   Medium:   { label: 'Medium',   color: 'text-blue-700 bg-blue-50 border-blue-200', dot: 'bg-blue-400' },
-  Low:      { label: 'Low',      color: 'text-zinc-600 bg-zinc-50 border-zinc-200', dot: 'bg-zinc-400' },
+  Low:      { label: 'Low',      color: 'text-zinc-650 bg-zinc-50 border-zinc-200', dot: 'bg-zinc-400' },
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
-  'Requirement Gathering':     { label: 'Req. Gathering', color: 'text-slate-600 bg-slate-100 border-slate-200' },
+  'Requirement Gathering':     { label: 'Req. Gathering', color: 'text-slate-650 bg-slate-105 border-slate-200' },
   'Waiting for Hours Approval':{ label: 'Hrs Approval',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
   'In Progress - Technical':   { label: 'IP Technical',   color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  'In Progress - Functional':  { label: 'IP Functional',  color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+  'In Progress - Functional':  { label: 'IP Functional',  color: 'text-zinc-700 bg-zinc-100 border-zinc-200' },
   'In Progress':               { label: 'In Progress',    color: 'text-blue-700 bg-blue-50 border-blue-200' },
   'Raised to SAP':             { label: 'Raised to SAP',  color: 'text-orange-700 bg-orange-50 border-orange-200' },
   'Customer Action':           { label: 'Cust. Action',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  'On Hold':                   { label: 'On Hold',        color: 'text-zinc-600 bg-zinc-100 border-zinc-250' },
+  'On Hold':                   { label: 'On Hold',        color: 'text-zinc-600 bg-zinc-100 border-zinc-200' },
   'Request for Closure':       { label: 'Req. Closure',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
   'Closed':                    { label: 'Closed',         color: 'text-zinc-600 bg-zinc-200 border-zinc-300' },
   'Reopened':                  { label: 'Reopened',       color: 'text-red-700 bg-red-50 border-red-200' },
   'New':                       { label: 'New',            color: 'text-zinc-650 bg-zinc-100 border-zinc-200 font-bold' },
   'Assigned':                  { label: 'Assigned',       color: 'text-blue-650 bg-blue-50 border-blue-150' },
-  'Awaiting Functional Submission': { label: 'Awaiting Func. Sub', color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+  'Awaiting Functional Submission': { label: 'Awaiting Func. Sub', color: 'text-zinc-700 bg-zinc-100 border-zinc-200' },
   'Awaiting Technical Submission':  { label: 'Awaiting Tech. Sub', color: 'text-blue-700 bg-blue-50 border-blue-200' },
   'Awaiting Manager Approval':      { label: 'Awaiting Mgr Appr', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
 };
+
+const ZINC_COLORS = ['#27272a', '#3f3f46', '#52525b', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7', '#f4f4f5'];
 
 export default function AllCustomerTicketsPage() {
   const { tickets, loading, updateTicketStatus, assignTicket, updateTicket, profiles, contracts, orgMap } = useTickets();
@@ -64,9 +85,15 @@ export default function AllCustomerTicketsPage() {
   const managerName = user?.name || 'Marcus Vance';
 
   const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'card' | 'compact'>('card');
+  const [viewMode, setViewMode] = useState<'card' | 'compact'>('compact');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'unassigned' | 'critical' | 'slaBreached' | 'raisedToSap' | 'customerAction' | 'reqClosure' | 'reopened' | 'closed' | 'pendingApprovals'>('all');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortField, setSortField] = useState<'ticketNumber' | 'createdAt' | 'priority' | 'status'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const searchParams = useSearchParams();
   const tabParam = searchParams ? searchParams.get('tab') : null;
@@ -95,7 +122,6 @@ export default function AllCustomerTicketsPage() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [assignStateFilter, setAssignStateFilter] = useState('All');
   const [closureStateFilter, setClosureStateFilter] = useState('All');
-  const [approvalStateFilter, setApprovalStateFilter] = useState('All');
 
   // Base Scoped Tickets for the Manager
   const scopedTickets = useMemo(() => {
@@ -144,7 +170,7 @@ export default function AllCustomerTicketsPage() {
     const nowTime = Date.now();
     switch (activeTab) {
       case 'unassigned':
-        return scopedTickets.filter(t => !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0));
+        return scopedTickets.filter(t => !t.assignedConsultantId && (!t.consultantEfforts || t.consultantEfforts.length === 0));
       case 'critical':
         return scopedTickets.filter(t => t.priority === 'Critical');
       case 'slaBreached':
@@ -258,7 +284,7 @@ export default function AllCustomerTicketsPage() {
       }
 
       // Assigned / Unassigned
-      const isUnassigned = !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0);
+      const isUnassigned = !t.assignedConsultantId && (!t.consultantEfforts || t.consultantEfforts.length === 0);
       if (assignStateFilter === 'Assigned' && isUnassigned) return false;
       if (assignStateFilter === 'Unassigned' && !isUnassigned) return false;
 
@@ -267,17 +293,6 @@ export default function AllCustomerTicketsPage() {
         if (closureStateFilter === 'Closed' && t.status !== 'Closed') return false;
         if (closureStateFilter === 'RequestForClosure' && t.status !== 'Request for Closure' && t.status !== 'Awaiting Manager Approval') return false;
         if (closureStateFilter === 'Open' && t.status === 'Closed') return false;
-      }
-
-      // Approval Status
-      if (approvalStateFilter !== 'All') {
-        const hasEstimatePending = t.hourEstimates?.some(e => e.status === 'Submitted') || false;
-        const hasActualsPending = t.efforts?.some(e => e.status === 'Pending' || e.status === 'Pending Approval') || false;
-        const hasClosurePending = t.closureRequests?.some(c => c.status === 'Pending Manager Approval') || false;
-        if (approvalStateFilter === 'PendingEstimates' && !hasEstimatePending) return false;
-        if (approvalStateFilter === 'PendingActuals' && !hasActualsPending) return false;
-        if (approvalStateFilter === 'PendingClosures' && !hasClosurePending) return false;
-        if (approvalStateFilter === 'None' && (hasEstimatePending || hasActualsPending || hasClosurePending)) return false;
       }
 
       // Search Query
@@ -295,14 +310,19 @@ export default function AllCustomerTicketsPage() {
 
       return true;
     });
-  }, [tabFilteredTickets, custFilter, consFilter, funcConsFilter, techConsFilter, moduleFilter, priorityFilter, statusFilter, typeFilter, slaFilter, dateFilter, customStartDate, customEndDate, assignStateFilter, closureStateFilter, approvalStateFilter, searchQuery]);
+  }, [tabFilteredTickets, custFilter, consFilter, funcConsFilter, techConsFilter, moduleFilter, priorityFilter, statusFilter, typeFilter, slaFilter, dateFilter, customStartDate, customEndDate, assignStateFilter, closureStateFilter, searchQuery]);
+
+  // Reset page when filter volume changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredTickets.length]);
 
   // Tab counters
   const tabCounts = useMemo(() => {
     const nowTime = Date.now();
     return {
       all: scopedTickets.length,
-      unassigned: scopedTickets.filter(t => !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0)).length,
+      unassigned: scopedTickets.filter(t => !t.assignedConsultantId && (!t.consultantEfforts || t.consultantEfforts.length === 0)).length,
       critical: scopedTickets.filter(t => t.priority === 'Critical').length,
       slaBreached: scopedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && new Date(t.slaDueAt).getTime() < nowTime).length,
       raisedToSap: scopedTickets.filter(t => t.status === 'Raised to SAP' || t.raisedToSap).length,
@@ -332,7 +352,6 @@ export default function AllCustomerTicketsPage() {
     setDateFilter('All');
     setAssignStateFilter('All');
     setClosureStateFilter('All');
-    setApprovalStateFilter('All');
     setSearchQuery('');
   };
 
@@ -343,10 +362,10 @@ export default function AllCustomerTicketsPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedTicketIds.length === filteredTickets.length) {
+    if (selectedTicketIds.length === paginatedTickets.length) {
       setSelectedTicketIds([]);
     } else {
-      setSelectedTicketIds(filteredTickets.map(t => t.id));
+      setSelectedTicketIds(paginatedTickets.map(t => t.id));
     }
   };
 
@@ -411,6 +430,122 @@ export default function AllCustomerTicketsPage() {
     return { label: `SLA MET (${new Date(slaDueAt).toLocaleDateString()})`, color: 'text-zinc-650 bg-zinc-50 border-zinc-200' };
   };
 
+  // CSV Export handler
+  const exportToCSV = () => {
+    const headers = ['Ticket Number', 'Organization', 'Title', 'Priority', 'Status', 'SAP Module', 'Quoted Hours', 'Actual Hours', 'SLA Due Date', 'Created At'];
+    const rows = filteredTickets.map(t => {
+      const funcEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
+      const techEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
+      const totalEst = funcEfforts.reduce((sum, e) => sum + e.estimatedHours, 0) + techEfforts.reduce((sum, e) => sum + e.estimatedHours, 0);
+      const totalAct = funcEfforts.reduce((sum, e) => sum + e.actualHours, 0) + techEfforts.reduce((sum, e) => sum + e.actualHours, 0);
+
+      return [
+        t.ticketNumber || t.id,
+        t.organization || '',
+        t.title.replace(/"/g, '""'),
+        t.priority,
+        t.status,
+        t.sapModule,
+        totalEst,
+        totalAct,
+        t.slaDueAt,
+        t.createdAt
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(val => `"${val}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `customer_tickets_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Successfully exported metrics to CSV');
+  };
+
+  // Sort and pagination helper variables
+  const handleSort = (field: 'ticketNumber' | 'createdAt' | 'priority' | 'status') => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const sortedTickets = useMemo(() => {
+    const sorted = [...filteredTickets];
+    sorted.sort((a, b) => {
+      let valA: any = a[sortField] || '';
+      let valB: any = b[sortField] || '';
+
+      if (sortField === 'createdAt') {
+        valA = new Date(a.createdAt).getTime();
+        valB = new Date(b.createdAt).getTime();
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredTickets, sortField, sortOrder]);
+
+  const paginatedTickets = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return sortedTickets.slice(startIndex, startIndex + pageSize);
+  }, [sortedTickets, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(sortedTickets.length / pageSize);
+
+  // SLA Breached Count
+  const slaBreachedOrWarningCount = useMemo(() => {
+    const now = Date.now();
+    return filteredTickets.filter(t => {
+      if (t.status === 'Closed' || t.status === 'Resolved') return false;
+      const due = new Date(t.slaDueAt).getTime();
+      return due < now || (due - now > 0 && due - now < 24 * 60 * 60 * 1000);
+    }).length;
+  }, [filteredTickets]);
+
+  // Hours sums
+  const totalEstimates = useMemo(() => {
+    return filteredTickets.reduce((acc, t) => {
+      const efforts = t.consultantEfforts || [];
+      return acc + efforts.reduce((sum, e) => sum + (e.estimatedHours || 0), 0);
+    }, 0);
+  }, [filteredTickets]);
+
+  const totalActuals = useMemo(() => {
+    return filteredTickets.reduce((acc, t) => {
+      const efforts = t.consultantEfforts || [];
+      return acc + efforts.reduce((sum, e) => sum + (e.actualHours || 0), 0);
+    }, 0);
+  }, [filteredTickets]);
+
+  // Recharts state groups
+  const statusData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredTickets.forEach(t => {
+      const label = statusConfig[t.status]?.label || t.status;
+      counts[label] = (counts[label] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [filteredTickets]);
+
+  const moduleData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredTickets.forEach(t => {
+      counts[t.sapModule] = (counts[t.sapModule] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [filteredTickets]);
+
   return (
     <div className="space-y-6 font-mono text-xs text-[#09090b]">
       
@@ -420,11 +555,157 @@ export default function AllCustomerTicketsPage() {
           <h1 className="text-lg font-bold uppercase text-zinc-950 tracking-wider">All Customer Tickets</h1>
           <p className="text-zinc-500 mt-1">Cross-Customer ticketing dashboard with dynamic status filters, SLAs, and effort aggregation.</p>
         </div>
-        <Link href="/manager/create-ticket" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider transition">
-          <Plus size={12} />
-          <span>Create On Behalf</span>
-        </Link>
+        <div className="flex gap-2">
+          <Button
+            onClick={exportToCSV}
+            variant="outline"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white rounded font-bold uppercase text-[10px] tracking-wider transition h-8"
+          >
+            <Download size={12} />
+            <span>Export CSV</span>
+          </Button>
+          <Link href="/manager/create-ticket" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider transition h-8">
+            <Plus size={12} />
+            <span>Create On Behalf</span>
+          </Link>
+        </div>
       </div>
+
+      {/* ── KPI CARDS ROW ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Total Tickets</span>
+            <Layers size={14} className="text-zinc-400" />
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl font-extrabold text-zinc-950">{filteredTickets.length}</span>
+            <span className="text-[9px] text-zinc-450 block mt-1">Matching current filters</span>
+          </div>
+        </Card>
+
+        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Unassigned</span>
+            <Users size={14} className="text-zinc-400" />
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl font-extrabold text-zinc-950">
+              {filteredTickets.filter(t => !t.assignedConsultantId).length}
+            </span>
+            <span className="text-[9px] text-zinc-450 block mt-1">Pending allocation</span>
+          </div>
+        </Card>
+
+        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Critical P1s</span>
+            <ShieldAlert size={14} className="text-red-500 animate-pulse" />
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl font-extrabold text-red-650">
+              {filteredTickets.filter(t => t.priority === 'Critical').length}
+            </span>
+            <span className="text-[9px] text-red-500 block mt-1 font-bold">Requires Immediate Attention</span>
+          </div>
+        </Card>
+
+        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">SLA Risk/Breach</span>
+            <Clock size={14} className="text-amber-500" />
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl font-extrabold text-amber-700">
+              {slaBreachedOrWarningCount}
+            </span>
+            <span className="text-[9px] text-amber-600 block mt-1">Breached or &lt; 24h remaining</span>
+          </div>
+        </Card>
+
+        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Effort (Quoted/Actual)</span>
+            <Briefcase size={14} className="text-zinc-400" />
+          </div>
+          <div className="mt-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-extrabold text-zinc-900">{totalEstimates}h</span>
+              <span className="text-zinc-400 text-[9px]">/</span>
+              <span className={`text-lg font-extrabold ${totalActuals > totalEstimates ? 'text-red-650' : 'text-emerald-700'}`}>
+                {totalActuals}h
+              </span>
+            </div>
+            <span className="text-[9px] text-zinc-450 block mt-1">Quoted vs Consumed</span>
+          </div>
+        </Card>
+      </div>
+
+      {/* ── CHARTS SECTION ── */}
+      {filteredTickets.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="bg-white border border-zinc-200 shadow-sm p-4 rounded-xl">
+            <CardHeader className="p-0 pb-3">
+              <CardTitle className="text-xs uppercase font-extrabold text-zinc-800 tracking-wider">Tickets by Current Status</CardTitle>
+              <CardDescription className="text-[10px]">Distribution of incidents across active states.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0 h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#888888" fontSize={8} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#888888" fontSize={8} tickLine={false} axisLine={false} />
+                  <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace', borderRadius: 4 }} />
+                  <Bar dataKey="value" fill="#18181b" radius={[4, 4, 0, 0]}>
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={ZINC_COLORS[index % ZINC_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border border-zinc-200 shadow-sm p-4 rounded-xl">
+            <CardHeader className="p-0 pb-3">
+              <CardTitle className="text-xs uppercase font-extrabold text-zinc-800 tracking-wider">Top Modules by Volume</CardTitle>
+              <CardDescription className="text-[10px]">Volume of tickets matching SAP modules.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0 flex items-center justify-between h-[220px]">
+              <div className="w-1/2 h-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={moduleData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={70}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {moduleData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={ZINC_COLORS[index % ZINC_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace', borderRadius: 4 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="w-1/2 space-y-1.5 pl-4 font-mono text-[9px] overflow-y-auto max-h-[200px]">
+                {moduleData.map((entry, index) => (
+                  <div key={entry.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 truncate mr-2">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ZINC_COLORS[index % ZINC_COLORS.length] }} />
+                      <span className="text-zinc-650 truncate">{entry.name}</span>
+                    </div>
+                    <span className="font-bold text-zinc-850 shrink-0">{entry.value}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* ── 10 VIEWS TABS CONSOLE ── */}
       <div className="flex border-b border-zinc-200 overflow-x-auto whitespace-nowrap bg-zinc-50 p-1 rounded-lg border gap-1">
@@ -450,7 +731,7 @@ export default function AllCustomerTicketsPage() {
             }`}
           >
             <span>{tab.label}</span>
-            <Badge className="bg-zinc-100 text-zinc-800 border border-zinc-200 hover:bg-zinc-200 font-bold px-1 py-0 text-[8px]">
+            <Badge className="bg-zinc-105 text-zinc-800 border border-zinc-200 hover:bg-zinc-200 font-bold px-1 py-0 text-[8px] border-none">
               {tab.count}
             </Badge>
           </button>
@@ -598,18 +879,18 @@ export default function AllCustomerTicketsPage() {
       {loading ? (
         <div className="py-20 text-center text-zinc-500 font-bold">Querying tickets registry...</div>
       ) : tickets.length === 0 ? (
-        <Card className="border border-zinc-200 rounded-lg p-20 text-center text-zinc-450 italic space-y-4 bg-white flex flex-col items-center justify-center">
+        <Card className="border border-zinc-200 rounded-xl p-20 text-center text-zinc-450 italic space-y-4 bg-white flex flex-col items-center justify-center">
           <BrandedLogo width={28} height={28} iconOnly={true} className="opacity-45" />
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets created yet.</h3>
+            <h3 className="text-sm font-bold text-zinc-955 uppercase tracking-wider font-mono">No tickets created yet.</h3>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Create an SAP incident to start tracking support and resolutions.</p>
           </div>
         </Card>
-      ) : filteredTickets.length === 0 ? (
-        <Card className="border border-zinc-200 rounded-lg p-20 text-center text-zinc-450 italic space-y-4 bg-white flex flex-col items-center justify-center">
+      ) : sortedTickets.length === 0 ? (
+        <Card className="border border-zinc-200 rounded-xl p-20 text-center text-zinc-455 italic space-y-4 bg-white flex flex-col items-center justify-center">
           <BrandedLogo width={28} height={28} iconOnly={true} className="opacity-45" />
           <div className="space-y-1">
-            <p className="font-bold uppercase text-[10px] text-zinc-950 font-mono tracking-wider">No Incidents Found</p>
+            <p className="font-bold uppercase text-[10px] text-zinc-955 font-mono tracking-wider">No Incidents Found</p>
             <p className="text-[9px] text-zinc-400 font-mono">No tickets match the selected filters or active workspace tab.</p>
           </div>
         </Card>
@@ -617,12 +898,11 @@ export default function AllCustomerTicketsPage() {
         
         // ── CARD WORKSPACE LAYOUT ──
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTickets.map((t) => {
+          {paginatedTickets.map((t) => {
             const priorityCfg = priorityConfig[t.priority] || priorityConfig['Low'];
             const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-zinc-650 bg-zinc-50 border-zinc-200' };
             const slaCfg = getSLAStatus(t.slaDueAt, t.status);
 
-            // Fetch allocations split
             const funcEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
             const techEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
 
@@ -637,7 +917,6 @@ export default function AllCustomerTicketsPage() {
             return (
               <Card key={t.id} className="border border-zinc-200 rounded-xl hover:border-zinc-400 transition flex flex-col justify-between shadow-sm overflow-hidden bg-white">
                 
-                {/* Top Section */}
                 <div className="p-4 space-y-3.5">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
@@ -645,9 +924,9 @@ export default function AllCustomerTicketsPage() {
                         type="checkbox"
                         checked={selectedTicketIds.includes(t.id)}
                         onChange={() => toggleSelectTicket(t.id)}
-                        className="cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950"
+                        className="cursor-pointer rounded border-zinc-300 text-zinc-905 focus:ring-zinc-950"
                       />
-                      <span className="font-bold text-[10px] text-zinc-955 tracking-wider">{t.ticketNumber || t.id}</span>
+                      <span className="font-bold text-[10px] text-zinc-955 tracking-wider">{t.ticketNumber || t.id.slice(0, 8)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`inline-flex items-center px-1.5 py-0.2 rounded border text-[8px] font-bold uppercase font-mono ${statusCfg.color}`}>
@@ -678,17 +957,17 @@ export default function AllCustomerTicketsPage() {
                       <span>{getTicketAgeStr(t.createdAt)}</span>
                     </div>
                     <div className="col-span-2">
-                      <span className="text-[8px] text-zinc-450 uppercase block font-bold">Allocated Resources:</span>
+                      <span className="text-[8px] text-zinc-455 uppercase block font-bold">Allocated Resources:</span>
                       <div className="mt-0.5 space-y-0.5">
                         {funcEfforts.length > 0 && (
                           <div className="text-[9px] text-zinc-700 truncate">
-                            <span className="font-bold text-indigo-700">[F]: </span>
+                            <span className="font-bold text-zinc-700">[F]: </span>
                             {funcEfforts.map(e => e.consultantName).join(', ')}
                           </div>
                         )}
                         {techEfforts.length > 0 && (
                           <div className="text-[9px] text-zinc-700 truncate">
-                            <span className="font-bold text-violet-700">[T]: </span>
+                            <span className="font-bold text-slate-700">[T]: </span>
                             {techEfforts.map(e => e.consultantName).join(', ')}
                           </div>
                         )}
@@ -699,7 +978,6 @@ export default function AllCustomerTicketsPage() {
                     </div>
                   </div>
 
-                  {/* Hours breakdown */}
                   <div className="grid grid-cols-2 gap-2 text-[9px] font-mono">
                     <div className="bg-zinc-50 border border-zinc-200 p-1.5 rounded">
                       <span className="text-[8px] text-zinc-450 font-bold uppercase block">Effort Estimates</span>
@@ -713,7 +991,6 @@ export default function AllCustomerTicketsPage() {
                     </div>
                   </div>
 
-                  {/* Rating & Closure Status */}
                   <div className="flex items-center justify-between text-[9px] pt-1">
                     <span className="text-zinc-450 uppercase font-bold">Closure:</span>
                     {t.status === 'Closed' && t.rating ? (
@@ -731,10 +1008,9 @@ export default function AllCustomerTicketsPage() {
 
                 </div>
 
-                {/* Footer block */}
                 <div className="bg-zinc-50 border-t border-zinc-200 py-2.5 px-4 flex items-center justify-between text-[9px] font-mono text-zinc-500">
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-zinc-950 text-white hover:bg-zinc-900 text-[8px] py-0 px-1 border-none font-bold uppercase">
+                    <Badge className="bg-zinc-955 text-white hover:bg-zinc-900 text-[8px] py-0 px-1 border-none font-bold uppercase">
                       {t.sapModule}
                     </Badge>
                     <span className={`px-1.5 py-0.2 rounded font-bold border text-[8px] uppercase ${slaCfg.color}`}>
@@ -784,7 +1060,7 @@ export default function AllCustomerTicketsPage() {
                           Wait customer
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          className="cursor-pointer font-bold text-red-600 focus:text-red-750"
+                          className="cursor-pointer font-bold text-red-650 focus:text-red-750"
                           onClick={() => { updateTicketStatus(t.id, 'Closed', managerName); }}
                         >
                           Force close
@@ -802,26 +1078,42 @@ export default function AllCustomerTicketsPage() {
       ) : (
         
         // ── COMPACT SERVICE DESK TABLE ──
-        <Card className="border border-zinc-200 shadow-sm overflow-hidden bg-white">
+        <Card className="border border-zinc-200 shadow-sm overflow-hidden bg-white rounded-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse font-mono">
               <thead>
-                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase text-[9px]">
+                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-550 font-bold uppercase text-[9px]">
                   <th className="py-2.5 px-4 font-bold text-center w-8">
                     <input
                       type="checkbox"
-                      checked={selectedTicketIds.length === filteredTickets.length && filteredTickets.length > 0}
+                      checked={selectedTicketIds.length === paginatedTickets.length && paginatedTickets.length > 0}
                       onChange={toggleSelectAll}
                       className="cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950"
                     />
                   </th>
-                  <th className="py-2.5 px-4 font-bold">Ticket ID</th>
+                  <th onClick={() => handleSort('ticketNumber')} className="py-2.5 px-4 font-bold cursor-pointer hover:bg-zinc-100 select-none">
+                    <div className="flex items-center gap-1">
+                      Ticket ID <ArrowUpDown size={10} className="text-zinc-400" />
+                    </div>
+                  </th>
                   <th className="py-2.5 px-4 font-bold">Customer</th>
                   <th className="py-2.5 px-4 font-bold">Subject / Title</th>
                   <th className="py-2.5 px-4 font-bold text-center">Module</th>
-                  <th className="py-2.5 px-4 font-bold text-center">Priority</th>
-                  <th className="py-2.5 px-4 font-bold text-center">Status</th>
-                  <th className="py-2.5 px-4 font-bold text-center">Age</th>
+                  <th onClick={() => handleSort('priority')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-zinc-100 select-none">
+                    <div className="flex items-center justify-center gap-1">
+                      Priority <ArrowUpDown size={10} className="text-zinc-400" />
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('status')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-zinc-100 select-none">
+                    <div className="flex items-center justify-center gap-1">
+                      Status <ArrowUpDown size={10} className="text-zinc-400" />
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('createdAt')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-zinc-100 select-none">
+                    <div className="flex items-center justify-center gap-1">
+                      Age <ArrowUpDown size={10} className="text-zinc-400" />
+                    </div>
+                  </th>
                   <th className="py-2.5 px-4 font-bold">Allocated Resources</th>
                   <th className="py-2.5 px-4 font-bold text-center">Estimates</th>
                   <th className="py-2.5 px-4 font-bold text-center">Actuals</th>
@@ -831,7 +1123,7 @@ export default function AllCustomerTicketsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 text-[11px]">
-                {filteredTickets.map((t) => {
+                {paginatedTickets.map((t) => {
                   const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-zinc-650 bg-zinc-50 border-zinc-200' };
                   const priorityCfg = priorityConfig[t.priority] || priorityConfig['Low'];
                   const slaCfg = getSLAStatus(t.slaDueAt, t.status);
@@ -854,11 +1146,11 @@ export default function AllCustomerTicketsPage() {
                           type="checkbox"
                           checked={selectedTicketIds.includes(t.id)}
                           onChange={() => toggleSelectTicket(t.id)}
-                          className="cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950"
+                          className="cursor-pointer rounded border-zinc-300 text-zinc-905 focus:ring-zinc-950"
                         />
                       </td>
                       <td className="py-2.5 px-4 font-bold text-zinc-955">
-                        <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
+                        <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id.slice(0, 8)}</Link>
                       </td>
                       <td className="py-2.5 px-4 font-semibold text-zinc-650 truncate max-w-[100px]" title={t.organization}>
                         {t.organization}
@@ -887,15 +1179,15 @@ export default function AllCustomerTicketsPage() {
                       </td>
                       <td className="py-2.5 px-4 font-semibold text-zinc-600 text-[10px]">
                         <div className="space-y-0.5 max-w-[150px] truncate">
-                          {funcEfforts.length > 0 && <div className="truncate"><span className="font-bold text-indigo-700">[F] </span>{funcEfforts.map(e => e.consultantName).join(', ')}</div>}
-                          {techEfforts.length > 0 && <div className="truncate"><span className="font-bold text-violet-700">[T] </span>{techEfforts.map(e => e.consultantName).join(', ')}</div>}
+                          {funcEfforts.length > 0 && <div className="truncate"><span className="font-bold text-zinc-700">[F] </span>{funcEfforts.map(e => e.consultantName).join(', ')}</div>}
+                          {techEfforts.length > 0 && <div className="truncate"><span className="font-bold text-slate-700">[T] </span>{techEfforts.map(e => e.consultantName).join(', ')}</div>}
                           {funcEfforts.length === 0 && techEfforts.length === 0 && <span className="text-zinc-400 italic">None</span>}
                         </div>
                       </td>
                       <td className="py-2.5 px-4 text-center text-zinc-650 whitespace-nowrap">
                         {totalEst}h (F:{funcEst}/T:{techEst})
                       </td>
-                      <td className={`py-2.5 px-4 text-center whitespace-nowrap font-bold ${totalAct > totalEst ? 'text-red-655' : 'text-green-700'}`}>
+                      <td className={`py-2.5 px-4 text-center whitespace-nowrap font-bold ${totalAct > totalEst ? 'text-red-650' : 'text-green-700'}`}>
                         {totalAct}h (F:{funcAct}/T:{techAct})
                       </td>
                       <td className="py-2.5 px-4 text-center">
@@ -926,6 +1218,42 @@ export default function AllCustomerTicketsPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {/* Pagination Controls */}
+      {sortedTickets.length > 0 && (
+        <div className="flex items-center justify-between border-t border-zinc-150 pt-3 px-4 pb-1 font-mono text-[10px] text-zinc-500 bg-zinc-50/50">
+          <div>
+            Showing <span className="font-bold text-zinc-800">{Math.min(sortedTickets.length, (currentPage - 1) * pageSize + 1)}</span> to{' '}
+            <span className="font-bold text-zinc-800">{Math.min(sortedTickets.length, currentPage * pageSize)}</span> of{' '}
+            <span className="font-bold text-zinc-800">{sortedTickets.length}</span> tickets
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="h-7 px-2 border-zinc-300 hover:bg-zinc-900 hover:text-white text-[10px]"
+            >
+              <ChevronLeft size={12} className="mr-0.5" /> Previous
+            </Button>
+            <div className="flex items-center gap-1 font-mono">
+              <span className="font-bold text-zinc-800">{currentPage}</span>
+              <span>/</span>
+              <span>{totalPages || 1}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="h-7 px-2 border-zinc-300 hover:bg-zinc-900 hover:text-white text-[10px]"
+            >
+              Next <ChevronRight size={12} className="ml-0.5" />
+            </Button>
+          </div>
+        </div>
       )}
 
     </div>
