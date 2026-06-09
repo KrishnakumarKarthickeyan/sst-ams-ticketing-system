@@ -801,12 +801,13 @@ export default function ManagerDashboardPage() {
 
   // Lists of actual workflow logs for Action lists
   const pendingEffortLogs = useMemo(() => {
-    const list: { ticketId: string; logId: string; consultantName: string; hours: number; description: string; activityType: string; billable: boolean }[] = [];
+    const list: { ticketId: string; ticketNumber: string; logId: string; consultantName: string; hours: number; description: string; activityType: string; billable: boolean }[] = [];
     filteredDashboardTickets.forEach(t => {
       (t.efforts || []).forEach(e => {
         if (e.status === 'Pending' || e.status === 'Pending Approval') {
           list.push({
             ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
             logId: e.id,
             consultantName: e.consultantName,
             hours: e.hoursLogged || e.hoursWorked || 0,
@@ -821,12 +822,13 @@ export default function ManagerDashboardPage() {
   }, [filteredDashboardTickets]);
 
   const pendingClosureRequests = useMemo(() => {
-    const list: { ticketId: string; ticketTitle: string; customerName: string; requestId: string; requestedBy: string; funcHours: number; techHours: number; rootCause: string; resolutionSummary: string; summary: string; submittedAt: string }[] = [];
+    const list: { ticketId: string; ticketNumber: string; ticketTitle: string; customerName: string; requestId: string; requestedBy: string; funcHours: number; techHours: number; rootCause: string; resolutionSummary: string; summary: string; submittedAt: string }[] = [];
     filteredDashboardTickets.forEach(t => {
       (t.closureRequests || []).forEach(r => {
         if (r.status === 'Pending Manager Approval') {
           list.push({
             ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
             ticketTitle: t.title,
             customerName: t.organization,
             requestId: r.id,
@@ -845,12 +847,13 @@ export default function ManagerDashboardPage() {
   }, [filteredDashboardTickets]);
 
   const pendingUnlockRequests = useMemo(() => {
-    const list: { ticketId: string; ticketTitle: string; requestId: string; requestedBy: string; reason: string; change: string }[] = [];
+    const list: { ticketId: string; ticketNumber: string; ticketTitle: string; requestId: string; requestedBy: string; reason: string; change: string }[] = [];
     filteredDashboardTickets.forEach(t => {
       (t.unlockRequests || []).forEach(u => {
         if (u.status === 'Pending') {
           list.push({
             ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
             ticketTitle: t.title,
             requestId: u.id,
             requestedBy: u.requestedBy,
@@ -2438,7 +2441,7 @@ export default function ManagerDashboardPage() {
                     {pendingClosureRequests.slice(0, 3).map(r => (
                       <div key={r.requestId} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-zinc-900">Closure: {r.ticketId}</span>
+                          <span className="font-bold text-zinc-900">Closure: {r.ticketNumber}</span>
                           <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase">Closure Approval</span>
                         </div>
                         <span className="text-zinc-650 truncate block font-sans">Total Hours: {r.funcHours + r.techHours}h</span>
@@ -3553,7 +3556,7 @@ export default function ManagerDashboardPage() {
                     <div key={log.logId} className="p-3 border-b border-zinc-100 flex justify-between items-start hover:bg-zinc-50/50">
                       <div>
                         <span className="font-bold text-zinc-800 block text-[10px]">{log.consultantName} logged {log.hours}h</span>
-                        <span className="text-zinc-450 block text-[8px] font-mono">{log.ticketId} • {log.activityType}</span>
+                        <span className="text-zinc-450 block text-[8px] font-mono">{log.ticketNumber} • {log.activityType}</span>
                         <span className="text-zinc-500 block mt-1 leading-relaxed text-[9px] truncate max-w-[180px]" title={log.description}>{log.description}</span>
                       </div>
                       <div className="flex gap-1">
@@ -3582,7 +3585,7 @@ export default function ManagerDashboardPage() {
                     <div key={r.requestId} className="p-3 border-b border-zinc-100 flex justify-between items-start hover:bg-zinc-50/50">
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-zinc-800 text-[10px]">{r.ticketId}</span>
+                          <span className="font-bold text-zinc-800 text-[10px]">{r.ticketNumber}</span>
                           <span className="text-zinc-400 text-[8px] font-semibold font-mono">({r.customerName})</span>
                         </div>
                         <span className="text-zinc-900 block text-[9px] font-bold truncate max-w-[180px] mt-0.5">{r.ticketTitle}</span>
@@ -3614,7 +3617,7 @@ export default function ManagerDashboardPage() {
                   {pendingUnlockRequests.map(u => (
                     <div key={u.requestId} className="p-3 border-b border-zinc-100 flex justify-between items-start hover:bg-zinc-50/50">
                       <div>
-                        <span className="font-bold text-zinc-800 block text-[10px]">Unlock Log: {u.ticketId}</span>
+                        <span className="font-bold text-zinc-800 block text-[10px]">Unlock Log: {u.ticketNumber}</span>
                         <span className="text-zinc-450 block text-[8px] font-mono">Requester: {u.requestedBy}</span>
                         <span className="text-zinc-550 block mt-1 text-[9px] truncate max-w-[180px]" title={u.reason}>{u.reason}</span>
                       </div>
