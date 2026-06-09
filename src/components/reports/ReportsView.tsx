@@ -38,7 +38,6 @@ type ReportType =
   | 'Priority-wise'
   | 'Aging Tickets'
   | 'Reopened Tickets'
-  | 'Customer Satisfaction'
   | 'Monthly Support';
 
 export default function ReportsView({ role, userScope }: ReportsViewProps) {
@@ -241,10 +240,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
   const billableHours = filteredEfforts.filter(e => e.billable).reduce((sum, e) => sum + e.hoursLogged, 0);
   const nonBillableHours = filteredEfforts.filter(e => !e.billable).reduce((sum, e) => sum + e.hoursLogged, 0);
 
-  const ratedTickets = filteredTickets.filter(t => t.rating);
-  const avgCsat = ratedTickets.length > 0 
-    ? (ratedTickets.reduce((sum, t) => sum + (t.rating?.score || 0), 0) / ratedTickets.length).toFixed(1) 
-    : '4.8';
+
 
   // SVG Chart Aggregators (counts grouped based on selected report type)
   const chartData: Record<string, number> = {};
@@ -288,14 +284,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
     const reopened = filteredTickets.filter(t => t.status === 'Reopened').length;
     chartData['Reopened'] = reopened;
     chartData['Standard'] = totalCount - reopened;
-  } else if (reportType === 'Customer Satisfaction') {
-    filteredTickets.forEach(t => {
-      const score = t.rating?.score;
-      if (score) {
-        const key = `${score} Star`;
-        chartData[key] = (chartData[key] || 0) + 1;
-      }
-    });
+
   } else {
     // Default to status breakdown
     filteredTickets.forEach(t => {
@@ -415,7 +404,6 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
             <option value="Priority-wise">Priority-wise Severity Audit</option>
             <option value="Aging Tickets">Aging Tickets Report (Open Backlog)</option>
             <option value="Reopened Tickets">Reopened Tickets & Validation Loops</option>
-            <option value="Customer Satisfaction">Customer Satisfaction Index (CSAT)</option>
             <option value="Monthly Support">Monthly Support Burn Report</option>
           </select>
         </div>
@@ -635,15 +623,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
             </div>
           </div>
 
-          <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex justify-between items-center">
-            <div>
-              <div className="text-zinc-400 font-bold uppercase text-[9px]">Average CSAT Rating</div>
-              <div className="text-lg font-bold text-zinc-950 mt-1">{avgCsat} / 5.0</div>
-            </div>
-            <div className="bg-zinc-50 text-zinc-800 p-2.5 rounded border border-zinc-150 font-bold text-[10px]">
-              CSAT Index
-            </div>
-          </div>
+
         </div>
 
         {/* Dynamic Chart Preview */}
@@ -744,14 +724,13 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                   <th className="py-2.5 px-3">Category</th>
                   <th className="py-2.5 px-3 text-center">Priority</th>
                   <th className="py-2.5 px-3 text-center">SLA State</th>
-                  <th className="py-2.5 px-3 text-center">Satisfaction</th>
                   <th className="py-2.5 px-3 text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 text-[11px]">
                 {filteredTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-zinc-400 italic">No tickets match active report parameters.</td>
+                    <td colSpan={8} className="py-8 text-center text-zinc-400 italic">No tickets match active report parameters.</td>
                   </tr>
                 ) : (
                   filteredTickets.map(t => {
@@ -783,7 +762,6 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                           }`}>{t.priority}</span>
                         </td>
                         <td className="py-2 px-3 text-center">{slaBadge}</td>
-                        <td className="py-2 px-3 text-center font-bold">{t.rating ? `${t.rating.score}★` : '--'}</td>
                         <td className="py-2 px-3 text-right">
                           <span className="px-1.5 py-0.2 bg-zinc-150 rounded uppercase text-[9px] font-bold">
                             {t.status}

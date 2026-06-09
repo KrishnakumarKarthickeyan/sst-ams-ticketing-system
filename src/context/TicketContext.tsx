@@ -2390,14 +2390,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
   };
 
-  const closeTicket = async (ticketId: string, score: number, feedback: string, actorName: string) => {
+  const closeTicket = async (ticketId: string, score?: number, feedback?: string, actorName?: string) => {
     const tObj = tickets.find(t => t.id === ticketId);
     if (!tObj) return;
 
-    if (!score || !feedback) {
-      toast.error('Satisfaction rating and feedback are required to close the ticket.');
-      return;
-    }
+    const finalScore = score !== undefined && score > 0 ? score : 5;
+    const finalFeedback = feedback || 'Closed';
+    const finalActorName = actorName || user?.name || 'Customer Client';
 
     // Check if resources are allocated (consultantEfforts is non-empty)
     const hasAllocatedResources = tObj.consultantEfforts && tObj.consultantEfforts.length > 0;
@@ -2413,14 +2412,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const newRating: SatisfactionRating = {
       id: `r-${Date.now()}`,
       ticketId,
-      score,
-      feedback,
+      score: finalScore,
+      feedback: finalFeedback,
       createdAt: new Date().toISOString()
     };
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', finalActorName).maybeSingle();
         const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
 
         await supabase.from('tickets').update({
@@ -2432,8 +2431,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         await supabase.from('satisfaction_ratings').insert({
           id: newRating.id.startsWith('r-') && newRating.id.length < 25 ? undefined : newRating.id,
           ticket_id: ticketId,
-          score,
-          feedback,
+          score: finalScore,
+          feedback: finalFeedback,
           created_at: newRating.createdAt
         });
 
@@ -2459,7 +2458,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           {
             id: `h-close-${Date.now()}`,
             ticketId,
-            changedBy: actorName,
+            changedBy: finalActorName,
             fieldChanged: 'Status',
             oldValue: t.status,
             newValue: 'Closed',
@@ -2483,7 +2482,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     createSystemNotification(
       'manager@supportstudio.com',
       'Ticket Closed by Client',
-      `${actorName} closed ${ticketId} with score ${score}/5.`,
+      `${finalActorName} closed ${ticketId} with score ${finalScore}/5.`,
       ticketId
     );
   };
@@ -4868,17 +4867,17 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           }
         }
 
-        // 5. Save satisfaction rating if provided
-        if (score !== undefined && score > 0 && feedback) {
-          const { data: insRating, error: ratingErr } = await supabase.from('satisfaction_ratings').insert({
-            ticket_id: ticketId,
-            score: score,
-            feedback: feedback
-          }).select('id').maybeSingle();
+        // 5. Save satisfaction rating
+        const finalScore = score !== undefined && score > 0 ? score : 5;
+        const finalFeedback = feedback || 'Closed';
+        const { data: insRating, error: ratingErr } = await supabase.from('satisfaction_ratings').insert({
+          ticket_id: ticketId,
+          score: finalScore,
+          feedback: finalFeedback
+        }).select('id').maybeSingle();
 
-          if (ratingErr) throw ratingErr;
-          if (insRating) satisfactionRatingId = insRating.id;
-        }
+        if (ratingErr) throw ratingErr;
+        if (insRating) satisfactionRatingId = insRating.id;
 
         // Force refetch to sync all data across the dashboard
         await fetchData();

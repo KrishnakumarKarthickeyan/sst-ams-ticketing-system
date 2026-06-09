@@ -653,26 +653,23 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
   };
 
   const handleCloseSubmit = async () => {
-    if (closureRating === 0) {
-      showBannerMessage('Error: CSAT Satisfaction Rating is mandatory before closing the ticket.');
-      return;
-    }
     if (!closureFeedback.trim()) {
-      showBannerMessage('Error: Closure Feedback comments are mandatory.');
+      showBannerMessage('Error: Closure comments are mandatory.');
       return;
     }
 
     const actor = user?.name || role;
+    const rating = 5;
     if (pendingClosureId) {
-      const res = await approveClosureRequest(ticket.id, pendingClosureId, actor, closureRating, closureFeedback);
+      const res = await approveClosureRequest(ticket.id, pendingClosureId, actor, rating, closureFeedback);
       if (res.success) {
-        showBannerMessage('Ticket has been successfully resolved and closed with CSAT rating.');
+        showBannerMessage('Ticket has been successfully resolved and closed.');
       } else {
         showBannerMessage(`Error: ${res.error || 'Failed to approve closure request and close ticket.'}`);
       }
     } else {
-      closeTicket(ticket.id, closureRating, closureFeedback, actor);
-      showBannerMessage('Ticket has been successfully resolved and closed with CSAT rating.');
+      closeTicket(ticket.id, rating, closureFeedback, actor);
+      showBannerMessage('Ticket has been successfully resolved and closed.');
     }
     
     setClosureModalOpen(false);
@@ -2425,43 +2422,15 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                 </div>
               </div>
 
-              {/* E. CSAT Evaluation */}
+              {/* E. Closure Evaluation */}
               <div className="space-y-3 pt-2 border-t border-zinc-150">
-                {/* CSAT Stars Selector */}
-                <div className="space-y-1.5">
-                  <label className="block text-[9px] font-bold text-zinc-600 uppercase">CSAT Satisfaction Rating *</label>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setClosureRating(star)}
-                        className="p-1 hover:scale-115 transition cursor-pointer text-zinc-300 hover:text-amber-500"
-                      >
-                        <Star
-                          size={20}
-                          className={star <= closureRating ? 'fill-amber-500 text-amber-500' : 'fill-none text-zinc-300'}
-                        />
-                      </button>
-                    ))}
-                    <span className="font-bold text-[10px] text-zinc-700 ml-2">
-                      {closureRating === 5 ? 'Excellent (5/5)' : 
-                       closureRating === 4 ? 'Good (4/5)' : 
-                       closureRating === 3 ? 'Average (3/5)' : 
-                       closureRating === 2 ? 'Poor (2/5)' : 
-                       closureRating === 1 ? 'Unacceptable (1/5)' :
-                       'Select rating (Mandatory)'}
-                    </span>
-                  </div>
-                </div>
-
                 {/* Feedback Comments */}
                 <div className="space-y-1">
-                  <label className="block text-[9px] font-bold text-zinc-600 uppercase">Closure Feedback Comments *</label>
+                  <label className="block text-[9px] font-bold text-zinc-600 uppercase">Closure Comments *</label>
                   <textarea
                     value={closureFeedback}
                     onChange={(e) => setClosureFeedback(e.target.value)}
-                    placeholder="Provide mandatory closure feedback remarks..."
+                    placeholder="Provide closure remarks..."
                     className="w-full h-16 p-2 bg-white border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-950 font-mono"
                     maxLength={400}
                     required
@@ -2480,9 +2449,9 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                 <button
                   type="button"
                   onClick={handleCloseSubmit}
-                  disabled={closureRating === 0 || !closureFeedback.trim()}
+                  disabled={!closureFeedback.trim()}
                   className={`py-1.5 px-4 rounded font-bold transition uppercase text-[10px] ${
-                    closureRating > 0 && closureFeedback.trim()
+                    closureFeedback.trim()
                       ? 'bg-green-955 hover:bg-green-800 text-white shadow-sm'
                       : 'bg-zinc-150 text-zinc-400 cursor-not-allowed border border-zinc-200'
                   }`}

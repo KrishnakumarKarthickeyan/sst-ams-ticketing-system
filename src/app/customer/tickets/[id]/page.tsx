@@ -730,33 +730,15 @@ export default function CustomerTicketDetailPage() {
                         <DialogHeader>
                           <DialogTitle className="text-lg font-bold text-zinc-900">Close Ticket</DialogTitle>
                           <DialogDescription className="text-sm text-zinc-500">
-                            Rate the resolution quality before closing ticket {ticket.ticketNumber}.
+                            Provide any final remarks or feedback before closing ticket {ticket.ticketNumber}.
                           </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleRatingSubmit} className="space-y-5">
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Satisfaction Rating</label>
-                            <div className="flex gap-1.5 justify-center py-3 bg-zinc-50 rounded-xl border border-zinc-100">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                  key={star}
-                                  type="button"
-                                  onClick={() => setRatingScore(star)}
-                                  className="p-1.5 rounded-lg hover:bg-white hover:shadow-sm transition-all active:scale-90"
-                                >
-                                  <Star
-                                    size={28}
-                                    className={`transition-colors ${star <= ratingScore ? 'fill-amber-400 text-amber-400' : 'text-zinc-200 hover:text-zinc-300'}`}
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Feedback (Optional)</label>
+                            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Closure Comments (Optional)</label>
                             <textarea
                               rows={3}
-                              placeholder="Share your experience with the resolution..."
+                              placeholder="Provide any closure comments or feedback..."
                               value={ratingFeedback}
                               onChange={(e) => setRatingFeedback(e.target.value)}
                               className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-zinc-400 resize-none"

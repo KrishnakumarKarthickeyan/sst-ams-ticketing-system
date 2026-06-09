@@ -1873,19 +1873,16 @@ export default function ManagerDashboardPage() {
   };
 
   const handleConfirmClosure = async () => {
-    const { ticketId, requestId, rating, feedback } = closureDialog;
-    if (rating === 0) {
-      toast.error('Please select a CSAT satisfaction rating.');
-      return;
-    }
+    const { ticketId, requestId, feedback } = closureDialog;
     if (!feedback.trim()) {
       toast.error('Feedback comments are mandatory.');
       return;
     }
 
+    const rating = 5; // Default rating
     const res = await approveClosureRequest(ticketId, requestId, managerName, rating, feedback);
     if (res.success) {
-      toast.success('Ticket closed successfully with CSAT record.');
+      toast.success('Ticket closed successfully.');
       setClosureDialog({ isOpen: false, ticketId: '', requestId: '', rating: 0, feedback: '' });
     } else {
       toast.error(res.error || 'Failed to approve closure request and close ticket.');
@@ -3466,7 +3463,6 @@ export default function ManagerDashboardPage() {
                         <th className="py-2.5 px-4 font-bold text-center">Utilization</th>
                         <th className="py-2.5 px-4 font-bold text-center">Tickets (O/C/R/E)</th>
                         <th className="py-2.5 px-4 font-bold text-center">SLA Breaches</th>
-                        <th className="py-2.5 px-4 font-bold text-center">CSAT Rating</th>
                         <th className="py-2.5 px-4 font-bold text-center">Health Status</th>
                       </tr>
                     </thead>
@@ -3501,11 +3497,6 @@ export default function ManagerDashboardPage() {
                           <td className={`py-2.5 px-4 text-center font-mono font-bold ${c.breached > 0 ? 'text-red-650 font-black animate-pulse' : 'text-zinc-500'}`}>
                             {c.breached}
                           </td>
-                          <td className="py-2.5 px-4 text-center font-mono font-bold">
-                            <span className={c.csat <= 3.0 ? 'text-red-650' : c.csat >= 4.5 ? 'text-green-700' : 'text-zinc-600'}>
-                              {c.csat.toFixed(1)} ★
-                            </span>
-                          </td>
                           <td className="py-2.5 px-4 text-center">
                             <Badge className={`border-none font-bold text-[7px] uppercase tracking-wider ${
                               c.level === 'Critical' ? 'bg-red-605 text-white animate-pulse bg-red-600' :
@@ -3522,7 +3513,7 @@ export default function ManagerDashboardPage() {
               </div>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3">
+            <div className="pt-3">
               <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
                 <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Customer Ticket Volume Share</span>
                 <div className="h-48 mt-1">
@@ -3533,25 +3524,6 @@ export default function ManagerDashboardPage() {
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Customer Satisfaction ratings index</span>
-                <div className="h-48 mt-1">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={customersList.map(org => {
-                      const ratings = scopedTickets.filter(t => t.organization === org && t.rating).map(t => t.rating!.score);
-                      const avg = ratings.length > 0 ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1) : '4.5';
-                      return { name: org, CSAT: parseFloat(avg) };
-                    })} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
-                      <YAxis stroke="#71717a" fontSize={8} domain={[0, 5]} />
-                      <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                      <Bar dataKey="CSAT" fill={COLORS.green} radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -4271,23 +4243,7 @@ export default function ManagerDashboardPage() {
               );
             })()}
 
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-zinc-500">CSAT Customer Satisfaction Rating *</Label>
-              <div className="flex items-center gap-2">
-                {[1, 2, 3, 4, 5].map(num => (
-                  <button
-                    key={num}
-                    onClick={() => setClosureDialog(prev => ({ ...prev, rating: num }))}
-                    className="p-1 cursor-pointer hover:scale-110 transition"
-                  >
-                    <Star
-                      size={24}
-                      className={num <= closureDialog.rating ? 'fill-amber-500 text-amber-500' : 'text-zinc-300'}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
+
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-zinc-500">Closure Audit Comments & Feedback *</Label>
               <Textarea

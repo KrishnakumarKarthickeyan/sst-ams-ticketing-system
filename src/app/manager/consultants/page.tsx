@@ -1170,7 +1170,7 @@ export default function ManagerConsultantsPage() {
                   </div>
 
                   {/* 360 Core Contract Metrics */}
-                  <div className="p-5 bg-zinc-50/30 border-b border-zinc-100 grid grid-cols-4 gap-3 text-center">
+                  <div className="p-5 bg-zinc-50/30 border-b border-zinc-100 grid grid-cols-3 gap-3 text-center">
                     <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
                       <span className="text-[8px] text-zinc-450 uppercase font-mono block">Open Backlog</span>
                       <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{activeTickets.length} active</strong>
@@ -1182,12 +1182,6 @@ export default function ManagerConsultantsPage() {
                     <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
                       <span className="text-[8px] text-zinc-450 uppercase font-mono block">Logged (Approved)</span>
                       <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{approvedHours.toFixed(1)}h</strong>
-                    </div>
-                    <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">CSAT Avg</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">
-                        {avgCsat > 0 ? `${avgCsat.toFixed(1)} / 5.0` : 'N/A'}
-                      </strong>
                     </div>
                   </div>
 

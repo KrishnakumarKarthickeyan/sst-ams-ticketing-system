@@ -428,7 +428,7 @@ export default function AdminOrganizationsPage() {
               </div>
 
               {/* Top Row: Telemetry Gauges */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-zinc-50 rounded border border-zinc-200 p-3 text-center">
                   <span className="text-[8px] font-bold text-zinc-400 uppercase block">SLA Compliance</span>
                   <span className="text-lg font-bold text-zinc-950 mt-1 block flex items-center justify-center gap-1">
@@ -439,22 +439,14 @@ export default function AdminOrganizationsPage() {
 
                 <div className="bg-zinc-50 rounded border border-zinc-200 p-3 text-center">
                   <span className="text-[8px] font-bold text-zinc-400 uppercase block">Hours Logged</span>
-                  <span className="text-lg font-bold text-zinc-950 mt-1 block">{org360Data.totalHours.toFixed(1)}h</span>
+                  <span className="text-lg font-bold text-zinc-955 mt-1 block">{org360Data.totalHours.toFixed(1)}h</span>
                   <span className="text-[8px] text-zinc-400 block mt-0.5">({org360Data.billableHours.toFixed(1)}h billable)</span>
                 </div>
 
                 <div className="bg-zinc-50 rounded border border-zinc-200 p-3 text-center">
                   <span className="text-[8px] font-bold text-zinc-400 uppercase block">Avg Resolution</span>
-                  <span className="text-lg font-bold text-zinc-950 mt-1 block">
+                  <span className="text-lg font-bold text-zinc-955 mt-1 block">
                     {org360Data.avgResolutionHours} {org360Data.avgResolutionHours !== 'N/A' ? 'hrs' : ''}
-                  </span>
-                </div>
-
-                <div className="bg-zinc-50 rounded border border-zinc-200 p-3 text-center">
-                  <span className="text-[8px] font-bold text-zinc-400 uppercase block">Average CSAT</span>
-                  <span className="text-lg font-bold text-zinc-950 mt-1 block flex items-center justify-center gap-1">
-                    {org360Data.avgCsat}
-                    <HeartHandshake size={11} className="text-zinc-500" />
                   </span>
                 </div>
               </div>

@@ -753,15 +753,11 @@ export default function ManagerTicketsPage() {
                     </div>
                   </div>
 
-                  {/* Rating & Closure Status */}
+                  {/* Closure Status */}
                   <div className="flex items-center justify-between text-[9px] pt-1">
                     <span className="text-zinc-450 uppercase font-bold">Closure:</span>
-                    {t.status === 'Closed' && t.rating ? (
-                      <span className="text-green-700 font-bold flex items-center gap-0.5">
-                        CSAT: {t.rating.score}/5 <Star size={10} className="fill-green-600 text-green-600" />
-                      </span>
-                    ) : t.status === 'Closed' ? (
-                      <span className="text-zinc-400 italic">No CSAT rating</span>
+                    {t.status === 'Closed' ? (
+                      <span className="text-zinc-500 font-bold font-mono">Closed</span>
                     ) : t.status === 'Request for Closure' ? (
                       <span className="text-[#d97706] font-bold animate-pulse">Awaiting Verification</span>
                     ) : (
@@ -866,7 +862,6 @@ export default function ManagerTicketsPage() {
                   <th className="py-2.5 px-4 font-bold text-center">Estimates</th>
                   <th className="py-2.5 px-4 font-bold text-center">Actuals</th>
                   <th className="py-2.5 px-4 font-bold text-center">SLA Health</th>
-                  <th className="py-2.5 px-4 font-bold text-center">Rating</th>
                   <th className="py-2.5 px-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
@@ -942,15 +937,6 @@ export default function ManagerTicketsPage() {
                         <span className={`px-1.5 py-0.2 rounded font-bold border text-[8px] uppercase ${slaCfg.color}`}>
                           {slaCfg.label}
                         </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-center">
-                        {t.status === 'Closed' && t.rating ? (
-                          <span className="text-green-700 font-bold flex items-center justify-center gap-0.5">
-                            {t.rating.score}/5 <Star size={10} className="fill-green-600 text-green-600" />
-                          </span>
-                        ) : (
-                          <span className="text-zinc-400 font-normal italic">-</span>
-                        )}
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex justify-end gap-1.5">

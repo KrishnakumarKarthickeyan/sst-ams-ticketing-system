@@ -208,10 +208,7 @@ export default function CustomerReportsPage() {
   const activeContract = contracts.find(c => c.organizationName === customerCompany && c.isActive);
   const m12_remainingBudget = activeContract ? Math.max(0, activeContract.totalHours - activeContract.usedHours) : 0;
 
-  // 13. Average Satisfaction Score (CSAT)
-  const ratedTickets = filteredTickets.filter(t => t.rating);
-  const csatSum = ratedTickets.reduce((sum, t) => sum + (t.rating?.score || 0), 0);
-  const m13_avgCsat = ratedTickets.length > 0 ? (csatSum / ratedTickets.length).toFixed(2) : '5.00';
+
 
 
   // --- CHART DATA PREPARATIONS ---
@@ -232,20 +229,7 @@ export default function CustomerReportsPage() {
     { name: 'SLA Breached', value: m6_slaBreached, fill: '#ef4444' }
   ].filter(item => item.value > 0);
 
-  // Chart C: CSAT Star Distribution
-  const csatDistribution = { '5★': 0, '4★': 0, '3★': 0, '2★': 0, '1★': 0 };
-  ratedTickets.forEach(t => {
-    if (t.rating) {
-      const star = `${t.rating.score}★`;
-      if (csatDistribution[star as keyof typeof csatDistribution] !== undefined) {
-        csatDistribution[star as keyof typeof csatDistribution]++;
-      }
-    }
-  });
-  const csatChartData = Object.entries(csatDistribution).map(([star, count]) => ({
-    star,
-    count
-  })).reverse();
+
 
   // Excel/CSV spreadsheet preview data (first 5 items)
   const spreadsheetPreview = filteredTickets.slice(0, 5);
@@ -270,8 +254,7 @@ export default function CustomerReportsPage() {
       'Quoted Hours',
       'Attachment Count',
       'Reopen Count',
-      'Escalation Count',
-      'CSAT Score'
+      'Escalation Count'
     ];
 
     const rows = filteredTickets.map((t: any) => {
@@ -316,8 +299,7 @@ export default function CustomerReportsPage() {
         (t.quotedHours || 0).toFixed(1),
         attachmentCount,
         reopenCount,
-        escalationCount,
-        t.rating ? t.rating.score : 'Unrated'
+        escalationCount
       ];
     });
 
@@ -506,8 +488,8 @@ export default function CustomerReportsPage() {
         )}
       </Card>
 
-      {/* 13 Performance Metric KPI Cards (Unified Grid Layout) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 gap-4">
+      {/* 12 Performance Metric KPI Cards (Unified Grid Layout) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         {/* Card 1: Total Volume */}
         <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
           <div className="text-zinc-400 flex items-center justify-between">
@@ -652,21 +634,10 @@ export default function CustomerReportsPage() {
           </div>
         </Card>
 
-        {/* Card 13: CSAT */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">13. CSAT Index</span>
-            <Award size={12} className="text-zinc-950" />
-          </div>
-          <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-zinc-950">{m13_avgCsat} ★</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Satisfaction score</span>
-          </div>
-        </Card>
       </div>
 
       {/* Visual Analytics Tabular Diagrams */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Chart A: Status distribution */}
         <Card className="border-zinc-200 bg-white shadow-sm">
           <CardHeader className="pb-2 border-b border-zinc-50 bg-zinc-50/50">
@@ -725,26 +696,7 @@ export default function CustomerReportsPage() {
               </div>
             )}
           </CardContent>
-        </Card>
-
-        {/* Chart C: CSAT distributions */}
-        <Card className="border-zinc-200 bg-white shadow-sm">
-          <CardHeader className="pb-2 border-b border-zinc-50 bg-zinc-50/50">
-            <CardTitle className="text-[10px] uppercase font-mono text-zinc-650 tracking-wider">Chart 3: CSAT feedback scores ratio</CardTitle>
-          </CardHeader>
-          <CardContent className="h-60 pt-4 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={csatChartData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                <XAxis type="number" stroke="#71717a" fontSize={9} className="font-mono" />
-                <YAxis dataKey="star" type="category" stroke="#71717a" fontSize={9} className="font-mono" width={30} />
-                <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                <Bar dataKey="count" fill="#3f3f46" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+        </Card>      </div>
 
       {/* CSV Spreadsheet Preview (Details table grid) */}
       <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
@@ -779,7 +731,6 @@ export default function CustomerReportsPage() {
                   <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Soft Delete</TableHead>
                   <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-right">Efforts (Approved/Quoted)</TableHead>
                   <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-center">Attachments</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-right">CSAT Rating</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="text-[11px]">
@@ -833,15 +784,12 @@ export default function CustomerReportsPage() {
                         {approvedHours.toFixed(1)}h / {(t.quotedHours || 0).toFixed(1)}h
                       </TableCell>
                       <TableCell className="py-2.5 px-4 font-mono text-zinc-600 text-center">{attachmentCount}</TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-950 font-bold text-right">
-                        {t.rating ? `${t.rating.score} ★` : '-'}
-                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {spreadsheetPreview.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-12 text-center text-zinc-400 font-mono italic">
+                    <TableCell colSpan={12} className="py-12 text-center text-zinc-400 font-mono italic">
                       <div className="flex flex-col items-center justify-center space-y-2 py-4">
                         <BrandedLogo width={24} height={24} iconOnly={true} className="opacity-40" />
                         <span>No records matched. Check filter ranges.</span>
