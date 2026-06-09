@@ -125,8 +125,32 @@ export default function ManagerEffortApprovalsPage() {
             .filter(e => e.status === 'Revision Approved' || e.status === 'Submitted')
             .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
 
+          const requestLogs = (ticket.actualHoursLogs || []).filter((ah: any) => ah.closureRequestId === req.id);
+          const hasLogs = requestLogs.length > 0;
+          const functionalActualHours = hasLogs
+            ? requestLogs.filter((ah: any) => ah.consultantType === 'Functional').reduce((sum, ah) => sum + ah.actualHours, 0)
+            : req.functionalActualHours;
+          const technicalActualHours = hasLogs
+            ? requestLogs.filter((ah: any) => ah.consultantType === 'Technical').reduce((sum, ah) => sum + ah.actualHours, 0)
+            : req.technicalActualHours;
+          const totalActualHours = hasLogs
+            ? (functionalActualHours + technicalActualHours)
+            : req.totalActualHours;
+
+          // Re-map perConsultantEfforts for this specific closure request
+          const perConsultantEfforts = (ticket.consultantEfforts || []).filter(e => !e.isDeleted).map(e => {
+            const actLog = requestLogs.find((ah: any) => ah.consultantId === e.consultantId);
+            return {
+              ...e,
+              actualHours: actLog ? actLog.actualHours : 0
+            };
+          });
+
           return {
             ...req,
+            functionalActualHours,
+            technicalActualHours,
+            totalActualHours,
             ticketTitle: ticket.title,
             sapModule: ticket.sapModule,
             organization: ticket.organization,
@@ -136,7 +160,7 @@ export default function ManagerEffortApprovalsPage() {
             estimatedFuncHours: latestApprovedEstimate?.functionalEstimatedHours || 0,
             estimatedTechHours: latestApprovedEstimate?.technicalEstimatedHours || 0,
             estimatedTotalHours: latestApprovedEstimate?.totalEstimatedHours || ticket.quotedHours || 0,
-            perConsultantEfforts: (ticket.consultantEfforts || []).filter(e => !e.isDeleted)
+            perConsultantEfforts
           };
         })
     );
@@ -708,7 +732,9 @@ export default function ManagerEffortApprovalsPage() {
                                   <tbody className="divide-y divide-zinc-100">
                                     {req.perConsultantEfforts.map((eff: any, idx: number) => (
                                       <tr key={eff.id || idx}>
-                                        <td className="py-0.5 font-semibold text-zinc-900">{eff.consultantName}</td>
+                                        <td className="py-0.5 font-semibold text-zinc-900">
+                                          {eff.consultantName}{eff.isPrimary ? ' (Lead)' : ''}
+                                        </td>
                                         <td className="py-0.5 text-center text-zinc-500">{eff.consultantType}</td>
                                         <td className="py-0.5 text-right font-bold text-zinc-900">{eff.actualHours}h</td>
                                         <td className="py-0.5 text-right text-zinc-600">{eff.estimatedHours}h</td>

@@ -817,6 +817,15 @@ export default function ManagerDashboardPage() {
     filteredDashboardTickets.forEach(t => {
       (t.closureRequests || []).forEach(r => {
         if (r.status === 'Pending Manager Approval') {
+          const requestLogs = (t.actualHoursLogs || []).filter((ah: any) => ah.closureRequestId === r.id);
+          const hasLogs = requestLogs.length > 0;
+          const funcHours = hasLogs
+            ? requestLogs.filter((ah: any) => ah.consultantType === 'Functional').reduce((sum, ah) => sum + ah.actualHours, 0)
+            : r.functionalActualHours;
+          const techHours = hasLogs
+            ? requestLogs.filter((ah: any) => ah.consultantType === 'Technical').reduce((sum, ah) => sum + ah.actualHours, 0)
+            : r.technicalActualHours;
+
           list.push({
             ticketId: t.id,
             ticketNumber: t.ticketNumber || t.id,
@@ -824,8 +833,8 @@ export default function ManagerDashboardPage() {
             customerName: t.organization,
             requestId: r.id,
             requestedBy: r.requestedBy,
-            funcHours: r.functionalActualHours,
-            techHours: r.technicalActualHours,
+            funcHours,
+            techHours,
             rootCause: r.rootCause,
             resolutionSummary: r.resolutionSummary,
             summary: r.workCompletedSummary,
@@ -4144,9 +4153,17 @@ export default function ManagerDashboardPage() {
               const estTech = techEff.reduce((sum, e) => sum + e.estimatedHours, 0);
               const estTotal = estFunc + estTech;
 
-              const actFunc = funcEff.reduce((sum, e) => sum + e.actualHours, 0);
-              const actTech = techEff.reduce((sum, e) => sum + e.actualHours, 0);
-              const actTotal = actFunc + actTech;
+              // Compute request-specific actual hours
+              const requestLogs = (activeTicketForClosure.actualHoursLogs || []).filter((ah: any) => ah.closureRequestId === activeRequestForClosure.id);
+              const hasLogs = requestLogs.length > 0;
+
+              const actFunc = hasLogs
+                ? requestLogs.filter((ah: any) => ah.consultantType === 'Functional').reduce((sum, ah) => sum + ah.actualHours, 0)
+                : activeRequestForClosure.functionalActualHours;
+              const actTech = hasLogs
+                ? requestLogs.filter((ah: any) => ah.consultantType === 'Technical').reduce((sum, ah) => sum + ah.actualHours, 0)
+                : activeRequestForClosure.technicalActualHours;
+              const actTotal = hasLogs ? (actFunc + actTech) : activeRequestForClosure.totalActualHours;
 
               const varFunc = actFunc - estFunc;
               const varTech = actTech - estTech;
@@ -4197,14 +4214,25 @@ export default function ManagerDashboardPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-150">
-                          {(activeTicketForClosure.consultantEfforts || []).filter(e => !e.isDeleted).map((e, idx) => (
-                            <tr key={e.id || idx}>
-                              <td className="py-1 px-2 font-semibold text-zinc-900">{e.consultantName}</td>
-                              <td className="py-1 px-2 text-zinc-500">{e.consultantType}</td>
-                              <td className="py-1 px-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>
-                              <td className="py-1 px-2 text-right text-zinc-600">{e.estimatedHours}h</td>
-                            </tr>
-                          ))}
+                          {(() => {
+                            const efforts = (activeTicketForClosure.consultantEfforts || []).filter(e => !e.isDeleted).map(e => {
+                              const actLog = requestLogs.find((ah: any) => ah.consultantId === e.consultantId);
+                              return {
+                                ...e,
+                                actualHours: actLog ? actLog.actualHours : 0
+                              };
+                            });
+                            return efforts.map((e, idx) => (
+                              <tr key={e.id || idx}>
+                                <td className="py-1 px-2 font-semibold text-zinc-900">
+                                  {e.consultantName}{e.isPrimary ? ' (Lead)' : ''}
+                                </td>
+                                <td className="py-1 px-2 text-zinc-500">{e.consultantType}</td>
+                                <td className="py-1 px-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>
+                                <td className="py-1 px-2 text-right text-zinc-600">{e.estimatedHours}h</td>
+                              </tr>
+                            ));
+                          })()}
                           <tr className="bg-zinc-100 font-extrabold border-t border-zinc-250">
                             <td className="py-1 px-2 uppercase text-[8px]" colSpan={2}>Total</td>
                             <td className="py-1 px-2 text-right">{actTotal}h</td>
