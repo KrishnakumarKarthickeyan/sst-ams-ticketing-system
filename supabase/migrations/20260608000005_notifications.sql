@@ -1,11 +1,14 @@
+-- Drop old notifications table if it exists to resolve schema definition conflict
+drop table if exists public.notifications cascade;
+
 -- Create notifications table
-create table if not exists public.notifications (
+create table public.notifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   type text not null,            -- e.g. 'escalation_ack','reopen_approved'
   title text not null,
   message text not null,
-  ticket_id uuid references public.tickets(id) on delete cascade,
+  ticket_id varchar(50) references public.tickets(id) on delete cascade,
   link_path text,                -- e.g. '/customer/tickets/<id>'
   read_at timestamptz,
   created_at timestamptz not null default now()
