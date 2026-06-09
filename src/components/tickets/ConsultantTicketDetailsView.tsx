@@ -510,8 +510,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             continue;
           }
 
-          const { data: urlData } = supabase.storage.from('sap-tickets').getPublicUrl(filePath);
-          const fileUrl = urlData?.publicUrl || '';
+          // Return relative storage path (not public URL) — bucket is private
+          const fileUrl = filePath;
           
           setClosureFiles(prev => prev.map(a => a.id === fileId ? { ...a, fileUrl, progress: 100, isUploading: false } : a));
         } else {
@@ -600,8 +600,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             continue;
           }
 
-          const { data: urlData } = supabase.storage.from('sap-tickets').getPublicUrl(filePath);
-          const fileUrl = urlData?.publicUrl || '';
+          // Return relative storage path (not public URL) — bucket is private
+          const fileUrl = filePath;
           
           setCommentFiles(prev => prev.map(a => a.id === fileId ? { ...a, fileUrl, progress: 100, isUploading: false } : a));
         } else {

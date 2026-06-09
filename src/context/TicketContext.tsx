@@ -358,7 +358,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           getOrganizationMap(),
           getOrganizationShortCodeMap(),
           wrapQuery(() => supabase.from('profiles').select('*')),
-          wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, created_at, author_id, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, file_name, file_size, created_at), ticket_attachments(id, ticket_id, file_name, file_size, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)').order('created_at', { ascending: false })),
+          wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, ticket_id, created_at, author_id, content, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, ticket_id, file_name, file_url, file_type, file_size, uploaded_by, created_at), ticket_attachments(id, ticket_id, file_name, file_path, mime_type, file_size, uploaded_by, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)').order('created_at', { ascending: false })),
           wrapQuery(() => supabase.from('customer_contracts').select('*')),
           wrapQuery(() => supabase.from('customer_contacts').select('*')),
           wrapQuery(() => supabase.from('knowledgebase_articles').select('*')),
@@ -1019,8 +1019,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           throw uploadErr;
         }
 
-        const { data } = supabase.storage.from('sap-tickets').getPublicUrl(storagePath);
-        return data?.publicUrl || storagePath;
+        // Return the relative storage path (not a public URL) so createSignedUrl works
+        return storagePath;
       } catch (err: any) {
         console.error('Error in uploadAttachmentToSupabase:', err);
         throw err;
@@ -1898,12 +1898,17 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const { data: prof } = await supabase.from('profiles').select('id').eq('email', authorEmail).maybeSingle();
         const authorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
 
-        const { data: commData } = await supabase.from('ticket_comments').insert({
+        const { data: commData, error: insertError } = await supabase.from('ticket_comments').insert({
           ticket_id: ticketId,
           author_id: authorId,
           content: content,
           is_internal: isInternal
         }).select('id').single();
+
+        if (insertError) {
+          console.error('[COMMENT INSERT ERROR]', insertError);
+          return { success: false, error: `Failed to save comment: ${insertError.message}` };
+        }
 
         const dbCommentId = commData ? commData.id : commentId;
 
