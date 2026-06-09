@@ -746,13 +746,30 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       closureRequests: t.ticket_closure_requests ? t.ticket_closure_requests.map((r: any) => {
         const reqActor = getProfile(r.requested_by);
+        
+        // Sum actual hours by type for this specific closure request across all consultants
+        const requestLogs = (t.ticket_actual_hours || []).filter((ah: any) => ah.closure_request_id === r.id);
+        const hasLogs = requestLogs.length > 0;
+        
+        const functionalActualHours = hasLogs
+          ? requestLogs.filter((ah: any) => ah.consultant_type === 'Functional').reduce((sum: number, ah: any) => sum + Number(ah.actual_hours), 0)
+          : Number(r.functional_actual_hours || 0);
+          
+        const technicalActualHours = hasLogs
+          ? requestLogs.filter((ah: any) => ah.consultant_type === 'Technical').reduce((sum: number, ah: any) => sum + Number(ah.actual_hours), 0)
+          : Number(r.technical_actual_hours || 0);
+          
+        const totalActualHours = hasLogs
+          ? (functionalActualHours + technicalActualHours)
+          : Number(r.total_actual_hours || 0);
+
         return {
           id: r.id,
           ticketId: r.ticket_id,
           requestedBy: reqActor?.full_name || r.requested_by,
-          functionalActualHours: Number(r.functional_actual_hours),
-          technicalActualHours: Number(r.technical_actual_hours),
-          totalActualHours: Number(r.total_actual_hours),
+          functionalActualHours,
+          technicalActualHours,
+          totalActualHours,
           workCompletedSummary: r.work_completed_summary,
           rootCause: r.root_cause,
           resolutionSummary: r.resolution_summary,
