@@ -18,6 +18,7 @@ export const filterTicketsByScope = (tickets: Ticket[], scope: DashboardScope): 
       t.softDeleteStatus !== 'Archived' &&
       (
         t.primaryConsultantId === scope.value ||
+        t.assignedConsultantId === scope.value ||
         t.assignedConsultant === scope.value ||
         (t.assignments || []).some(a => a.consultantId === scope.value && a.active)
       )

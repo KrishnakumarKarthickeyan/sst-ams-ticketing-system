@@ -126,11 +126,8 @@ export default function ConsultantDashboardPage() {
 
   // Role-specific ticket filter: only show functionally/technically relevant tickets
   const roleTickets = useMemo(() => {
-    return myTickets.filter(t =>
-      t.functionalOrTechnical === consultantType ||
-      t.functionalOrTechnical === undefined
-    );
-  }, [myTickets, consultantType]);
+    return myTickets;
+  }, [myTickets]);
 
   // Derived options for selectors based on this consultant's assigned tickets
   const distinctModules = useMemo(() => {
