@@ -477,6 +477,65 @@ export default function ManagerDashboardPage() {
   const [selectedConsultant, setSelectedConsultant] = useState<string | null>(null);
   const [trendGrouping, setTrendGrouping] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
 
+  const [checklistData, setChecklistData] = useState<{
+    customers: { count: number; status: 'ACTIVE' | 'EMPTY' | 'ERROR' };
+    consultants: { count: number; status: 'ACTIVE' | 'EMPTY' | 'ERROR' };
+    tickets: { count: number; status: 'ACTIVE' | 'EMPTY' | 'ERROR' };
+    approvals: { count: number; status: 'ACTIVE' | 'EMPTY' | 'ERROR' };
+    reports: { count: number; status: 'ACTIVE' | 'EMPTY' | 'ERROR' };
+  } | null>(null);
+
+  const fetchChecklist = async () => {
+    if (!supabase) return;
+    try {
+      const [customersRes, consultantsRes, ticketsRes, closureRes, pwdRes, reopenRes, pingRes] = await Promise.all([
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'Customer').eq('is_active', true),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'Consultant').eq('is_active', true),
+        supabase.from('tickets').select('id', { count: 'exact', head: true }),
+        supabase.from('ticket_closure_requests').select('id', { count: 'exact', head: true }).ilike('status', 'pending'),
+        supabase.from('password_change_requests').select('id', { count: 'exact', head: true }).ilike('status', 'pending'),
+        supabase.from('ticket_reopen_requests').select('id', { count: 'exact', head: true }).ilike('status', 'pending'),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).limit(1)
+      ]);
+
+      const customersCount = customersRes.error ? -1 : (customersRes.count ?? 0);
+      const consultantsCount = consultantsRes.error ? -1 : (consultantsRes.count ?? 0);
+      const ticketsCount = ticketsRes.error ? -1 : (ticketsRes.count ?? 0);
+      const approvalsCount = (closureRes.error || pwdRes.error || reopenRes.error) 
+        ? -1 
+        : ((closureRes.count ?? 0) + (pwdRes.count ?? 0) + (reopenRes.count ?? 0));
+      const reportsCount = pingRes.error ? -1 : 1;
+
+      const getStatus = (count: number): 'ACTIVE' | 'EMPTY' | 'ERROR' => {
+        if (count === -1) return 'ERROR';
+        return count > 0 ? 'ACTIVE' : 'EMPTY';
+      };
+
+      const data = {
+        customers: { count: customersCount === -1 ? 0 : customersCount, status: getStatus(customersCount) },
+        consultants: { count: consultantsCount === -1 ? 0 : consultantsCount, status: getStatus(consultantsCount) },
+        tickets: { count: ticketsCount === -1 ? 0 : ticketsCount, status: getStatus(ticketsCount) },
+        approvals: { count: approvalsCount === -1 ? 0 : approvalsCount, status: getStatus(approvalsCount) },
+        reports: { count: reportsCount === -1 ? 0 : reportsCount, status: getStatus(reportsCount) }
+      };
+
+      setChecklistData(data);
+
+      console.log('--- DATABASE STATUS: PRODUCTION READINESS STATUS CHECKLIST ---');
+      console.log(`Customers: DB Count = ${customersCount}, Rendered Status = ${data.customers.status}`);
+      console.log(`Consultants: DB Count = ${consultantsCount}, Rendered Status = ${data.consultants.status}`);
+      console.log(`Tickets: DB Count = ${ticketsCount}, Rendered Status = ${data.tickets.status}`);
+      console.log(`Approvals: DB Count = ${approvalsCount}, Rendered Status = ${data.approvals.status}`);
+      console.log(`Reports: DB Count = ${reportsCount === 1 ? 'System Online (1)' : 'System Error (0)'}, Rendered Status = ${data.reports.status}`);
+    } catch (err) {
+      console.error('Error fetching checklist data:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchChecklist();
+  }, [filters]);
+
   // Modals state
   const [rejectDialog, setRejectDialog] = useState<{
     isOpen: boolean;
@@ -1966,8 +2025,8 @@ export default function ManagerDashboardPage() {
         )}
       </Card>
 
-      {/* ── CLEAN DB EMPTY STATES OVERVIEW ── */}
-      {(managedCustomersCount === 0 || managedConsultantsCount === 0 || tickets.length === 0 || pendingApprovalsCount === 0) && (
+      {/* ── PRODUCTION READINESS STATUS CHECKLIST ── */}
+      {checklistData && (
         <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3 font-sans text-xs shadow-sm">
           <div className="flex items-center gap-2 border-b border-zinc-150 pb-2">
             <AlertCircle size={14} className="text-zinc-500" />
@@ -1975,69 +2034,84 @@ export default function ManagerDashboardPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
             
-            {/* Customers State */}
-            <div className={`p-3 rounded border flex flex-col justify-between ${managedCustomersCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+            {/* Customers Row */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${
+              checklistData.customers.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
+              checklistData.customers.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+            }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-zinc-700">Customers</span>
-                {managedCustomersCount === 0 ? (
-                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
-                ) : (
-                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
-                )}
+                {checklistData.customers.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.customers.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.customers.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{managedCustomersCount === 0 ? 'No customers created yet' : `${managedCustomersCount} customers active`}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+                {checklistData.customers.status === 'ERROR' ? 'Query failed' : `${checklistData.customers.count} customers active`}
+              </p>
             </div>
 
-            {/* Consultants State */}
-            <div className={`p-3 rounded border flex flex-col justify-between ${managedConsultantsCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+            {/* Consultants Row */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${
+              checklistData.consultants.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
+              checklistData.consultants.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+            }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-zinc-700">Consultants</span>
-                {managedConsultantsCount === 0 ? (
-                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
-                ) : (
-                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
-                )}
+                {checklistData.consultants.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.consultants.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.consultants.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{managedConsultantsCount === 0 ? 'No consultants created yet' : `${managedConsultantsCount} consultants active`}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+                {checklistData.consultants.status === 'ERROR' ? 'Query failed' : `${checklistData.consultants.count} consultants active`}
+              </p>
             </div>
 
-            {/* Tickets State */}
-            <div className={`p-3 rounded border flex flex-col justify-between ${tickets.length === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+            {/* Tickets Row */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${
+              checklistData.tickets.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
+              checklistData.tickets.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+            }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-zinc-700">Tickets</span>
-                {tickets.length === 0 ? (
-                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
-                ) : (
-                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
-                )}
+                {checklistData.tickets.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.tickets.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.tickets.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{tickets.length === 0 ? 'No tickets available' : `${tickets.length} tickets logged`}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+                {checklistData.tickets.status === 'ERROR' ? 'Query failed' : `${checklistData.tickets.count} tickets logged`}
+              </p>
             </div>
 
-            {/* Approvals State */}
-            <div className={`p-3 rounded border flex flex-col justify-between ${pendingApprovalsCount === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-amber-100 bg-amber-50/20'}`}>
+            {/* Approvals Row */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${
+              checklistData.approvals.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
+              checklistData.approvals.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+            }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-zinc-700">Approvals</span>
-                {pendingApprovalsCount === 0 ? (
-                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
-                ) : (
-                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-amber-600 text-white px-1 py-0.5">Pending</Badge>
-                )}
+                {checklistData.approvals.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.approvals.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.approvals.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{pendingApprovalsCount === 0 ? 'No approvals pending' : `${pendingApprovalsCount} pending approvals`}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+                {checklistData.approvals.status === 'ERROR' ? 'Query failed' : `${checklistData.approvals.count} pending approvals`}
+              </p>
             </div>
 
-            {/* Reports State */}
-            <div className={`p-3 rounded border flex flex-col justify-between ${tickets.length === 0 ? 'border-dashed border-zinc-200 bg-white' : 'border-emerald-100 bg-emerald-50/20'}`}>
+            {/* Reports Row */}
+            <div className={`p-3 rounded border flex flex-col justify-between ${
+              checklistData.reports.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
+              checklistData.reports.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+            }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-zinc-700">Reports</span>
-                {tickets.length === 0 ? (
-                  <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-zinc-400 bg-white border-zinc-200 px-1 py-0.5">Empty</Badge>
-                ) : (
-                  <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1 py-0.5">Active</Badge>
-                )}
+                {checklistData.reports.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.reports.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.reports.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">{tickets.length === 0 ? 'No reports available' : 'SLA reports active'}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+                {checklistData.reports.status === 'ERROR' ? 'System offline' : 'System online'}
+              </p>
             </div>
 
           </div>
