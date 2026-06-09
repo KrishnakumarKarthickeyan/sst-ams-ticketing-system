@@ -460,7 +460,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.warn('router.refresh() call warning:', e);
       }
       fetchDataRef.current();
-    }, 200);
+    }, 800);
   };
 
   useEffect(() => {
@@ -813,13 +813,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const estimates = t.ticket_estimates || [];
         const actualHoursLogs = t.ticket_actual_hours || [];
         const closureRequests = t.ticket_closure_requests || [];
-
+ 
         // Find the latest active closure request to read actual hours from
         const latestRequest = closureRequests.length > 0 
           ? [...closureRequests].sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime())[0]
           : null;
-
-        return assignments.map((a: any) => {
+ 
+        const mapped = assignments.map((a: any) => {
           const profile = getProfile(a.consultant_id);
           const est = estimates.find((e: any) => e.consultant_id === a.consultant_id);
           
@@ -827,7 +827,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const actLog = latestRequest 
             ? actualHoursLogs.find((ah: any) => ah.closure_request_id === latestRequest.id && ah.consultant_id === a.consultant_id)
             : null;
-
+ 
           return {
             id: `synthesized-${a.consultant_id}-${t.id}`,
             ticketId: t.id,
@@ -840,13 +840,22 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             createdAt: a.assigned_at,
             updatedAt: a.assigned_at,
             isDeleted: !a.active,
+            isPrimary: a.is_primary,
             closureStatus: latestRequest 
               ? (latestRequest.status === 'Approved' ? 'Approved' : 'Submitted') 
               : 'Pending',
             workSummary: latestRequest?.work_completed_summary || '',
             resolutionNotes: latestRequest?.resolution_summary || ''
           };
-        }).filter((eff: any) => !eff.isDeleted);
+        });
+
+        return mapped
+          .filter((eff: any) => !eff.isDeleted)
+          .sort((x: any, y: any) => {
+            if (x.isPrimary && !y.isPrimary) return -1;
+            if (!x.isPrimary && y.isPrimary) return 1;
+            return new Date(x.createdAt || 0).getTime() - new Date(y.createdAt || 0).getTime();
+          });
       })(),
 
       unlockRequests: t.ticket_unlock_requests ? t.ticket_unlock_requests.map((u: any) => {
@@ -5388,13 +5397,15 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         const { data: profActor } = await supabase.from('profiles').select('id').eq('email', actorEmail).maybeSingle();
         const actorId = profActor ? profActor.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
 
-        // 1. Process all active assignments and their estimates from the new efforts list
-        for (const e of efforts) {
+        // 1. Process active assignments and estimates in parallel
+        await Promise.all(efforts.map(async (e) => {
           let consultantUUID = e.consultantId;
           const { data: consProf } = await supabase.from('profiles').select('id, consultant_type').eq('full_name', e.consultantName).maybeSingle();
           if (consProf) {
             consultantUUID = consProf.id;
           }
+
+          const promises: Promise<any>[] = [];
 
           // Check if this assignment exists
           const { data: existingAsg } = await supabase.from('ticket_assignments')
@@ -5404,33 +5415,45 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             .maybeSingle();
 
           if (existingAsg) {
-            await supabase.from('ticket_assignments')
-              .update({ active: true })
-              .eq('ticket_id', ticketId)
-              .eq('consultant_id', consultantUUID);
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_assignments')
+                  .update({ active: true })
+                  .eq('ticket_id', ticketId)
+                  .eq('consultant_id', consultantUUID)
+              )
+            );
           } else {
-            await supabase.from('ticket_assignments').insert({
-              ticket_id: ticketId,
-              consultant_id: consultantUUID,
-              consultant_type: e.consultantType,
-              is_primary: false, // default false, changed through assignTicket
-              active: true,
-              assigned_by: actorId
-            });
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_assignments').insert({
+                  ticket_id: ticketId,
+                  consultant_id: consultantUUID,
+                  consultant_type: e.consultantType,
+                  is_primary: false,
+                  active: true,
+                  assigned_by: actorId
+                })
+              )
+            );
           }
 
           // Upsert estimate
           if (e.estimatedHours >= 0) {
-            await supabase.from('ticket_estimates').upsert({
-              ticket_id: ticketId,
-              consultant_id: consultantUUID,
-              consultant_type: e.consultantType,
-              estimated_hours: e.estimatedHours,
-              remarks: e.remarks || 'Updated by Manager',
-              submitted_at: new Date().toISOString()
-            }, {
-              onConflict: 'ticket_id,consultant_id'
-            });
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_estimates').upsert({
+                  ticket_id: ticketId,
+                  consultant_id: consultantUUID,
+                  consultant_type: e.consultantType,
+                  estimated_hours: e.estimatedHours,
+                  remarks: e.remarks || 'Updated by Manager',
+                  submitted_at: new Date().toISOString()
+                }, {
+                  onConflict: 'ticket_id,consultant_id'
+                })
+              )
+            );
           }
 
           // For legacy compatibility, also upsert into ticket_consultant_efforts
@@ -5442,80 +5465,110 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             .maybeSingle();
 
           if (legacyEff) {
-            await supabase.from('ticket_consultant_efforts').update({
-              estimated_hours: e.estimatedHours,
-              remarks: e.remarks || 'Updated by Manager',
-              updated_at: new Date().toISOString()
-            }).eq('id', legacyEff.id);
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_consultant_efforts').update({
+                  estimated_hours: e.estimatedHours,
+                  remarks: e.remarks || 'Updated by Manager',
+                  updated_at: new Date().toISOString()
+                }).eq('id', legacyEff.id)
+              )
+            );
           } else {
-            await supabase.from('ticket_consultant_efforts').insert({
-              ticket_id: ticketId,
-              consultant_id: consultantUUID,
-              consultant_type: e.consultantType,
-              estimated_hours: e.estimatedHours,
-              actual_hours: 0,
-              remarks: e.remarks || 'Updated by Manager'
-            });
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_consultant_efforts').insert({
+                  ticket_id: ticketId,
+                  consultant_id: consultantUUID,
+                  consultant_type: e.consultantType,
+                  estimated_hours: e.estimatedHours,
+                  actual_hours: 0,
+                  remarks: e.remarks || 'Updated by Manager'
+                })
+              )
+            );
           }
-        }
 
-        // 2. Mark removed consultants as inactive
-        for (const r of removedConsultants) {
-          await supabase.from('ticket_assignments')
-            .update({ active: false })
-            .eq('ticket_id', ticketId)
-            .eq('consultant_id', r.consultantId);
+          await Promise.all(promises);
+        }));
 
-          // For legacy compatibility, mark as deleted
-          await supabase.from('ticket_consultant_efforts')
-            .update({
-              is_deleted: true,
-              deleted_at: new Date().toISOString(),
-              deleted_by: actorId
-            })
-            .eq('ticket_id', ticketId)
-            .eq('consultant_id', r.consultantId);
-        }
+        // 2. Mark removed consultants as inactive in parallel
+        await Promise.all(removedConsultants.map(async (r) => {
+          const promises = [
+            Promise.resolve(
+              supabase.from('ticket_assignments')
+                .update({ active: false })
+                .eq('ticket_id', ticketId)
+                .eq('consultant_id', r.consultantId)
+            ),
+            
+            Promise.resolve(
+              supabase.from('ticket_consultant_efforts')
+                .update({
+                  is_deleted: true,
+                  deleted_at: new Date().toISOString(),
+                  deleted_by: actorId
+                })
+                .eq('ticket_id', ticketId)
+                .eq('consultant_id', r.consultantId)
+            )
+          ];
+          await Promise.all(promises);
+        }));
 
-        // 3. Log history and send notifications for added consultants
-        for (const added of addedConsultants) {
+        // 3. Log history and send notifications for added consultants in parallel
+        await Promise.all(addedConsultants.map(async (added) => {
           let targetUUID = added.consultantId;
           const { data: consProf } = await supabase.from('profiles').select('id').eq('full_name', added.consultantName).maybeSingle();
           if (consProf) targetUUID = consProf.id;
 
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: actorId,
-            field_changed: 'Resource Assigned',
-            old_value: 'None',
-            new_value: `${added.consultantName} (${added.consultantType})`
-          });
+          const promises = [
+            Promise.resolve(
+              supabase.from('ticket_history').insert({
+                ticket_id: ticketId,
+                changed_by: actorId,
+                field_changed: 'Resource Assigned',
+                old_value: 'None',
+                new_value: `${added.consultantName} (${added.consultantType})`
+              })
+            ),
+            
+            Promise.resolve(
+              supabase.from('notifications').insert({
+                user_id: targetUUID,
+                title: 'Resource Assigned',
+                message: `You have been assigned to ticket ${ticketId} as a ${added.consultantType} resource by ${actorName}.`,
+                ticket_id: ticketId
+              })
+            )
+          ];
+          await Promise.all(promises);
+        }));
 
-          await supabase.from('notifications').insert({
-            user_id: targetUUID,
-            title: 'Resource Assigned',
-            message: `You have been assigned to ticket ${ticketId} as a ${added.consultantType} resource by ${actorName}.`,
-            ticket_id: ticketId
-          });
-        }
-
-        // 4. Log history and send notifications for removed consultants
-        for (const removed of removedConsultants) {
-          await supabase.from('ticket_history').insert({
-            ticket_id: ticketId,
-            changed_by: actorId,
-            field_changed: 'Resource Removed',
-            old_value: `${removed.consultantName} (${removed.consultantType})`,
-            new_value: 'None'
-          });
-
-          await supabase.from('notifications').insert({
-            user_id: removed.consultantId,
-            title: 'Resource Removed',
-            message: `You have been removed from ticket ${ticketId} by ${actorName}.`,
-            ticket_id: ticketId
-          });
-        }
+        // 4. Log history and send notifications for removed consultants in parallel
+        await Promise.all(removedConsultants.map(async (removed) => {
+          const promises = [
+            Promise.resolve(
+              supabase.from('ticket_history').insert({
+                ticket_id: ticketId,
+                changed_by: actorId,
+                field_changed: 'Resource Removed',
+                old_value: `${removed.consultantName} (${removed.consultantType})`,
+                new_value: 'None'
+              })
+            ),
+            
+            Promise.resolve(
+              supabase.from('notifications').insert({
+                user_id: removed.consultantId,
+                title: 'Resource Removed',
+                message: `You have been removed from ticket ${ticketId} by ${actorName}.`,
+                ticket_id: ticketId
+              })
+            )
+          ];
+          await Promise.all(promises);
+        }));
 
         await fetchData();
       } catch (err) {
@@ -5624,11 +5677,17 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           createdAt: a.assignedAt,
           updatedAt: a.assignedAt,
           isDeleted: !a.active,
+          isPrimary: a.isPrimary,
           closureStatus: 'Pending' as const,
           workSummary: '',
           resolutionNotes: ''
         };
-      }).filter(eff => !eff.isDeleted);
+      }).filter(eff => !eff.isDeleted)
+        .sort((x, y) => {
+          if (x.isPrimary && !y.isPrimary) return -1;
+          if (!x.isPrimary && y.isPrimary) return 1;
+          return new Date(x.createdAt || 0).getTime() - new Date(y.createdAt || 0).getTime();
+        });
 
       const updated = tickets.map(t => {
         if (t.id === ticketId) {

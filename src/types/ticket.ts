@@ -394,6 +394,7 @@ export interface TicketConsultantEffort {
   closureStatus?: 'Pending' | 'Submitted' | 'Approved' | 'Rejected';
   workSummary?: string;
   resolutionNotes?: string;
+  isPrimary?: boolean;
 }
 
 export interface TicketMention {

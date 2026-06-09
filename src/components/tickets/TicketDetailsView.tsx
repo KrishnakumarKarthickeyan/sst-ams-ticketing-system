@@ -329,7 +329,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
   };
 
   // ── RESOURCE MANAGEMENT HANDLERS ──
-  const handleAddResource = (e: React.FormEvent) => {
+  const handleAddResource = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAllocName) return;
 
@@ -353,11 +353,11 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     };
 
     const updated = [...currentAllocations, newEffort];
-    updateConsultantEfforts(ticket.id, updated);
+    await updateConsultantEfforts(ticket.id, updated);
 
     // Sync primary lead if it was empty
     if (!ticket.assignedConsultant) {
-      assignTicket(ticket.id, ticket.assignedManager, selectedAllocName, user?.name || role);
+      await assignTicket(ticket.id, ticket.assignedManager, selectedAllocName, user?.name || role);
     }
 
     // Log to history
@@ -1166,7 +1166,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                     {list.map((e, idx) => {
                                       const prof = CONSULTANTS_DB.find(c => c.name === e.consultantName);
                                       return (
-                                        <tr key={idx} className="hover:bg-zinc-50/50">
+                                        <tr key={e.consultantId || idx} className="hover:bg-zinc-50/50">
                                           <td className="p-2 font-bold text-zinc-900 flex items-center gap-1.5">
                                             {e.consultantName}
                                             {((ticket.assignments?.find(a => a.consultantId === e.consultantId || a.consultantName === e.consultantName)?.isPrimary) || e.consultantName === ticket.assignedConsultant) && (
@@ -1212,7 +1212,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                     {list.map((e, idx) => {
                                       const prof = CONSULTANTS_DB.find(c => c.name === e.consultantName);
                                       return (
-                                        <tr key={idx} className="hover:bg-zinc-50/50">
+                                        <tr key={e.consultantId || idx} className="hover:bg-zinc-50/50">
                                           <td className="p-2 font-bold text-zinc-900 flex items-center gap-1.5">
                                             {e.consultantName}
                                             {((ticket.assignments?.find(a => a.consultantId === e.consultantId || a.consultantName === e.consultantName)?.isPrimary) || e.consultantName === ticket.assignedConsultant) && (
