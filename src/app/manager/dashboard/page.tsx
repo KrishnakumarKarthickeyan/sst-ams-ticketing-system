@@ -4181,42 +4181,40 @@ export default function ManagerDashboardPage() {
                     </div>
                   </div>
 
+                  <div className="flex flex-wrap gap-2 pb-1">
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold border border-zinc-200 bg-zinc-100 text-zinc-700 font-mono">
+                      FUNC: {actFunc}h Logged / {estFunc}h Quoted
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold border border-zinc-200 bg-zinc-100 text-zinc-700 font-mono">
+                      TECH: {actTech}h Logged / {estTech}h Quoted
+                    </span>
+                  </div>
+
                   <div className="space-y-1">
-                    <span className="text-zinc-450 block uppercase font-bold text-[8px]">Efforts & Variance Breakdown</span>
+                    <span className="text-zinc-450 block uppercase font-bold text-[8px]">Per-Consultant Efforts Breakdown</span>
                     <div className="border border-zinc-200 rounded bg-white overflow-hidden">
-                      <table className="w-full text-left text-[9px] border-collapse">
+                      <table className="w-full text-left text-[9px] border-collapse font-mono">
                         <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
                           <tr>
+                            <th className="py-1 px-2">Consultant</th>
                             <th className="py-1 px-2">Type</th>
-                            <th className="py-1 px-2 text-right">Est</th>
-                            <th className="py-1 px-2 text-right">Act</th>
-                            <th className="py-1 px-2 text-right">Var</th>
+                            <th className="py-1 px-2 text-right">Logged Hours</th>
+                            <th className="py-1 px-2 text-right">Quoted Hours</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-150">
-                          <tr>
-                            <td className="py-1 px-2 font-semibold">Functional</td>
-                            <td className="py-1 px-2 text-right text-zinc-600">{estFunc}h</td>
-                            <td className="py-1 px-2 text-right font-bold text-zinc-900">{actFunc}h</td>
-                            <td className={`py-1 px-2 text-right font-black ${varFunc > 0 ? 'text-red-650' : 'text-green-700'}`}>
-                              {varFunc >= 0 ? `+${varFunc}` : varFunc}h
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="py-1 px-2 font-semibold">Technical</td>
-                            <td className="py-1 px-2 text-right text-zinc-600">{estTech}h</td>
-                            <td className="py-1 px-2 text-right font-bold text-zinc-900">{actTech}h</td>
-                            <td className={`py-1 px-2 text-right font-black ${varTech > 0 ? 'text-red-650' : 'text-green-700'}`}>
-                              {varTech >= 0 ? `+${varTech}` : varTech}h
-                            </td>
-                          </tr>
+                          {(activeTicketForClosure.consultantEfforts || []).filter(e => !e.isDeleted).map((e, idx) => (
+                            <tr key={e.id || idx}>
+                              <td className="py-1 px-2 font-semibold text-zinc-900">{e.consultantName}</td>
+                              <td className="py-1 px-2 text-zinc-500">{e.consultantType}</td>
+                              <td className="py-1 px-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>
+                              <td className="py-1 px-2 text-right text-zinc-600">{e.estimatedHours}h</td>
+                            </tr>
+                          ))}
                           <tr className="bg-zinc-100 font-extrabold border-t border-zinc-250">
-                            <td className="py-1 px-2 uppercase text-[8px]">Total</td>
-                            <td className="py-1 px-2 text-right">{estTotal}h</td>
+                            <td className="py-1 px-2 uppercase text-[8px]" colSpan={2}>Total</td>
                             <td className="py-1 px-2 text-right">{actTotal}h</td>
-                            <td className={`py-1 px-2 text-right font-black ${varTotal > 0 ? 'text-red-650' : 'text-green-700'}`}>
-                              {varTotal >= 0 ? `+${varTotal}` : varTotal}h
-                            </td>
+                            <td className="py-1 px-2 text-right">{estTotal}h</td>
                           </tr>
                         </tbody>
                       </table>

@@ -1541,40 +1541,10 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {/* HUB D: ACTUAL HOURS & VARIANCE */}
               {activeHubTab === 'actuals' && (
                 <div className="space-y-4">
-                  {role === 'Customer' ? (
-                    !hasApprovedClosure ? (
-                      <div className="bg-amber-50 border border-amber-300 rounded p-4 text-center text-amber-800 font-bold font-mono">
-                        Actual hours will be visible upon final ticket resolution approval.
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Approved Actual Hours Summary</span>
-                        <div className="border border-zinc-200 rounded overflow-hidden bg-white">
-                          <table className="w-full text-left text-[10px]">
-                            <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
-                              <tr>
-                                <th className="py-2 px-3">Consultant Role Type</th>
-                                <th className="py-2 px-3 text-right">Approved Actual Hours</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-150">
-                              <tr className="hover:bg-zinc-50/50 transition">
-                                <td className="py-2 px-3 font-semibold text-zinc-800">Functional Consulting</td>
-                                <td className="py-2 px-3 text-right font-bold text-zinc-950">{actualsSummary.func}h</td>
-                              </tr>
-                              <tr className="hover:bg-zinc-50/50 transition">
-                                <td className="py-2 px-3 font-semibold text-zinc-800">Technical Development</td>
-                                <td className="py-2 px-3 text-right font-bold text-zinc-950">{actualsSummary.tech}h</td>
-                              </tr>
-                              <tr className="bg-zinc-100 font-black text-zinc-950 border-t border-zinc-200">
-                                <td className="py-2.5 px-3 uppercase text-[9px]">Grand Total Actuals:</td>
-                                <td className="py-2.5 px-3 text-right text-zinc-955">{actualsSummary.total}h</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )
+                  {role === 'Customer' && !hasApprovedClosure ? (
+                    <div className="bg-amber-50 border border-amber-300 rounded p-4 text-center text-amber-800 font-bold font-mono">
+                      Actual hours will be visible upon final ticket resolution approval.
+                    </div>
                   ) : (
                     <>
                       <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Actual vs Estimated Variance Table</span>

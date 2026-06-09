@@ -1808,6 +1808,24 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                           }>{req.status}</span>
                         </div>
                         {req.rejectionReason && <div className="text-[9px] text-red-500">Rejection: {req.rejectionReason}</div>}
+                        {(() => {
+                          const reqActualHours = (ticket.actualHoursLogs || []).filter(ah => ah.closureRequestId === req.id);
+                          if (reqActualHours.length === 0) return null;
+                          return (
+                            <div className="pt-1.5 mt-1 border-t border-slate-200/50 text-[9px] space-y-0.5 text-slate-500 font-mono">
+                              <span className="font-bold text-[8px] uppercase tracking-wider block text-slate-400">Consultant Breakdown</span>
+                              {reqActualHours.map((ah, idx) => {
+                                const name = (ticket.consultantEfforts || []).find(eff => eff.consultantId === ah.consultantId)?.consultantName || ah.consultantId;
+                                return (
+                                  <div key={ah.id || idx} className="flex justify-between">
+                                    <span>{name} ({ah.consultantType}):</span>
+                                    <span className="font-bold text-slate-700">{ah.actualHours}h</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>
