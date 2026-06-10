@@ -55,6 +55,7 @@ import {
   Area
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '../../../components/ui/chart';
+import { chartColors, priorityColors } from '../../../lib/chart-theme';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
@@ -530,13 +531,8 @@ export default function CustomerDashboardPage() {
     });
   }, [companyTickets, trendIntervals]);
 
-  const COLORS = ['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7'];
-  const PRIORITY_COLORS: Record<string, string> = {
-    Critical: '#ef4444',
-    High: '#f97316',
-    Medium: '#eab308',
-    Low: '#71717a'
-  };
+  const COLORS = chartColors.categorical;
+  const PRIORITY_COLORS = priorityColors;
 
   const chartConfig = {
     volume: {
@@ -1059,7 +1055,7 @@ export default function CustomerDashboardPage() {
                         <XAxis dataKey="name" stroke="#71717a" fontSize={9} className="font-mono" />
                         <YAxis stroke="#71717a" fontSize={9} className="font-mono" />
                         <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                        <Bar dataKey="value" fill="#18181b" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="value" fill={chartColors.categorical[0]} radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -1081,7 +1077,7 @@ export default function CustomerDashboardPage() {
                         <XAxis type="number" stroke="#71717a" fontSize={9} className="font-mono" />
                         <YAxis dataKey="name" type="category" stroke="#71717a" fontSize={9} className="font-mono" width={60} />
                         <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                        <Bar dataKey="value" fill="#3f3f46" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="value" fill={chartColors.categorical[2]} radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -1216,21 +1212,21 @@ export default function CustomerDashboardPage() {
                     <AreaChart data={openClosedTrendData}>
                       <defs>
                         <linearGradient id="colorOpen" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#71717a" stopOpacity={0.2} />
-                          <stop offset="95%" stopColor="#71717a" stopOpacity={0} />
+                          <stop offset="5%" stopColor={chartColors.semantic.neutral} stopOpacity={0.2} />
+                          <stop offset="95%" stopColor={chartColors.semantic.neutral} stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="colorClosed" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                          <stop offset="5%" stopColor={chartColors.semantic.success} stopOpacity={0.2} />
+                          <stop offset="95%" stopColor={chartColors.semantic.success} stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="month" stroke="#71717a" fontSize={9} className="font-mono" />
-                      <YAxis stroke="#71717a" fontSize={9} className="font-mono" />
+                      <XAxis dataKey="month" stroke={chartColors.semantic.neutral} fontSize={9} className="font-mono" />
+                      <YAxis stroke={chartColors.semantic.neutral} fontSize={9} className="font-mono" />
                       <RechartsTooltip content={<ChartTooltipContent />} />
                       <Legend verticalAlign="bottom" height={24} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '9px', fontFamily: 'monospace' }} />
-                      <Area type="monotone" dataKey="Open" stroke="#71717a" fillOpacity={1} fill="url(#colorOpen)" strokeWidth={2} />
-                      <Area type="monotone" dataKey="Closed" stroke="#10b981" fillOpacity={1} fill="url(#colorClosed)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="Open" stroke={chartColors.semantic.neutral} fillOpacity={1} fill="url(#colorOpen)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="Closed" stroke={chartColors.semantic.success} fillOpacity={1} fill="url(#colorClosed)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>

@@ -77,7 +77,9 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   'Awaiting Manager Approval':      { label: 'Awaiting Mgr Appr', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
 };
 
-const ZINC_COLORS = ['#27272a', '#3f3f46', '#52525b', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7', '#f4f4f5'];
+import { chartColors } from '../../../lib/chart-theme';
+
+const ZINC_COLORS = chartColors.categorical;
 
 export default function AllCustomerTicketsPage() {
   const { tickets, loading, updateTicketStatus, assignTicket, updateTicket, profiles, contracts, orgMap } = useTickets();

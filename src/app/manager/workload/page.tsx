@@ -32,26 +32,22 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { SAPModule } from '@/types/ticket';
 
+import { chartColors } from '@/lib/chart-theme';
+
 const COLORS = {
-  blue: '#3b82f6',
-  emerald: '#10b981',
-  amber: '#f59e0b',
-  red: '#ef4444',
-  gray: '#71717a',
-  zinc400: '#a1a1aa',
-  zinc300: '#d4d4d8',
+  blue: chartColors.semantic.info,
+  emerald: chartColors.semantic.success,
+  amber: chartColors.semantic.warning,
+  red: chartColors.semantic.danger,
+  gray: chartColors.semantic.neutral,
+  zinc400: chartColors.categorical[5],
+  zinc300: chartColors.categorical[4],
   zinc100: '#f4f4f5',
   zinc800: '#27272a',
-  zinc950: '#09090b',
+  zinc950: chartColors.categorical[0],
 };
 
-const CHART_COLORS = [
-  '#09090b', // zinc-950
-  '#3f3f46', // zinc-700
-  '#71717a', // zinc-500
-  '#a1a1aa', // zinc-400
-  '#d4d4d8', // zinc-300
-];
+const CHART_COLORS = chartColors.categorical;
 
 export default function ManagerWorkloadPage() {
   const { tickets, profiles } = useTickets();

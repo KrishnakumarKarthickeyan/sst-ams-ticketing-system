@@ -35,6 +35,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
+import { chartColors } from '../../../lib/chart-theme';
 
 type ReportType =
   | 'monthly_performance'
@@ -471,7 +472,7 @@ export default function ConsultantReportsPage() {
                   <XAxis dataKey="name" stroke="#94a3b8" tick={{ fill: '#64748b', fontSize: 8 }} />
                   <YAxis stroke="#94a3b8" tick={{ fill: '#64748b', fontSize: 8 }} />
                   <RechartsTooltip contentStyle={{ fontSize: 10 }} />
-                  <Bar dataKey="value" fill="#0f172a" barSize={14} radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="value" fill={chartColors.categorical[0]} barSize={14} radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

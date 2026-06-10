@@ -63,6 +63,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { chartColors } from '../../../lib/chart-theme';
 
 // Helper: Calculate Sunday through Thursday working days count in a date range (excluding Friday/Saturday)
 function getWorkingDaysInRange(start: Date, end: Date) {
@@ -1614,8 +1615,8 @@ export default function ConsultantDashboardPage() {
                       <YAxis stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} allowDecimals={false} />
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
                       <Legend wrapperStyle={{ fontSize: 9 }} />
-                      <Line type="monotone" dataKey="Created" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="Closed" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="Created" stroke={chartColors.semantic.info} strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="Closed" stroke={chartColors.semantic.success} strokeWidth={2} dot={{ r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -1631,7 +1632,7 @@ export default function ConsultantDashboardPage() {
                       <XAxis dataKey="month" stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} />
                       <YAxis stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} domain={[80, 100]} />
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
-                      <Bar dataKey="SLA" fill="#10b981" radius={[2, 2, 0, 0]} barSize={12} />
+                      <Bar dataKey="SLA" fill={chartColors.semantic.success} radius={[2, 2, 0, 0]} barSize={12} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1647,7 +1648,7 @@ export default function ConsultantDashboardPage() {
                       <XAxis dataKey="month" stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} />
                       <YAxis stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} />
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
-                      <Line type="monotone" dataKey="Resolution (h)" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="Resolution (h)" stroke={chartColors.categorical[0]} strokeWidth={2} dot={{ r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -1668,8 +1669,8 @@ export default function ConsultantDashboardPage() {
                       <YAxis stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} />
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
                       <Legend wrapperStyle={{ fontSize: 9 }} />
-                      <Area type="monotone" dataKey="Billable" stackId="1" stroke="#10b981" fill="#d1fae5" />
-                      <Area type="monotone" dataKey="Non-Billable" stackId="1" stroke="#64748b" fill="#f1f5f9" />
+                      <Area type="monotone" dataKey="Billable" stackId="1" stroke={chartColors.semantic.success} fill={chartColors.semantic.success} fillOpacity={0.2} />
+                      <Area type="monotone" dataKey="Non-Billable" stackId="1" stroke={chartColors.semantic.neutral} fill={chartColors.semantic.neutral} fillOpacity={0.2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -1685,7 +1686,7 @@ export default function ConsultantDashboardPage() {
                       <XAxis type="number" stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} />
                       <YAxis dataKey="name" type="category" stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} width={65} />
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
-                      <Bar dataKey="hours" fill="#18181b" radius={[0, 2, 2, 0]} barSize={8} />
+                      <Bar dataKey="hours" fill={chartColors.categorical[0]} radius={[0, 2, 2, 0]} barSize={8} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1701,7 +1702,7 @@ export default function ConsultantDashboardPage() {
                       <XAxis type="number" stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} />
                       <YAxis dataKey="name" type="category" stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} width={50} />
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
-                      <Bar dataKey="hours" fill="#6366f1" radius={[0, 2, 2, 0]} barSize={8} />
+                      <Bar dataKey="hours" fill={chartColors.categorical[2]} radius={[0, 2, 2, 0]} barSize={8} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1720,7 +1721,7 @@ export default function ConsultantDashboardPage() {
                     <PieChart>
                       <Pie data={monthlyStats.customerEffort} dataKey="volume" nameKey="name" cx="50%" cy="50%" outerRadius={55} label={{ fill: '#0f172a', fontSize: 8 }}>
                         {monthlyStats.customerEffort.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#64748b'][index % 5]} />
+                          <Cell key={`cell-${index}`} fill={chartColors.categorical[index % chartColors.categorical.length]} />
                         ))}
                       </Pie>
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
@@ -1739,7 +1740,7 @@ export default function ConsultantDashboardPage() {
                     <PieChart>
                       <Pie data={monthlyStats.modulePortfolio} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={55} label={{ fill: '#0f172a', fontSize: 8 }}>
                         {monthlyStats.modulePortfolio.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={['#18181b', '#2563eb', '#10b981', '#ea580c', '#7c3aed'][index % 5]} />
+                          <Cell key={`cell-${index}`} fill={chartColors.categorical[index % chartColors.categorical.length]} />
                         ))}
                       </Pie>
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
@@ -1759,7 +1760,7 @@ export default function ConsultantDashboardPage() {
                       <XAxis dataKey="name" stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} />
                       <YAxis stroke="#a1a1aa" tick={{ fill: '#71717a', fontSize: 8 }} allowDecimals={false} />
                       <RechartsTooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e4e4e7', fontSize: 10, borderRadius: '8px' }} />
-                      <Bar dataKey="open" fill="#ef4444" radius={[2, 2, 0, 0]} barSize={10} />
+                      <Bar dataKey="open" fill={chartColors.semantic.danger} radius={[2, 2, 0, 0]} barSize={10} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

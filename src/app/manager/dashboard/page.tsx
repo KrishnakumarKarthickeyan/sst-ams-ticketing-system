@@ -60,14 +60,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import { Label } from '../../../components/ui/label';
 import { SAPModule, TicketPriority, TicketStatus, EffortLog, TicketClosureRequest, TicketUnlockRequest, Ticket } from '../../../types/ticket';
 
-// Colors matched to semantic roles
-const COLORS = {
-  blue: '#3b82f6',    // Active / In Progress
-  green: '#10b981',   // Closed / Approved / SLA Met
-  amber: '#f59e0b',   // Pending / SLA Warning / Customer Action
-  red: '#ef4444',     // Critical / SLA Breached / Rejected / Risk
-  gray: '#71717a',    // Neutral
-};
+import { COLORS, chartColors } from '../../../lib/chart-theme';
 
 const SAP_MODULES_LIST: SAPModule[] = [
   'FICO', 'MM', 'SD', 'PP', 'HCM', 'ABAP', 'BASIS', 'CPI/Integration', 'Fiori', 'Security/GRC', 'PM', 'QM', 'TRM'
@@ -3234,7 +3227,7 @@ export default function ManagerDashboardPage() {
                       <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
-                      <Bar dataKey="value" fill="#64748b" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="value" fill={COLORS.gray} radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
