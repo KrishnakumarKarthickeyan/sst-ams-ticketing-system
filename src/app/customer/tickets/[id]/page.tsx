@@ -142,6 +142,7 @@ export default function CustomerTicketDetailPage() {
   const [showReopenDialog, setShowReopenDialog] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
+  const [escalationReasonInput, setEscalationReasonInput] = useState('');
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateSeverity, setEscalateSeverity] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -521,16 +522,18 @@ export default function CustomerTicketDetailPage() {
   };
 
   const handleEscalateConfirm = async () => {
+    if (escalationReasonInput.trim().length < 10) return;
     const toastId = toast.loading('Submitting escalation...');
     try {
       const res = await requestEscalation(
         ticket.id,
-        "Customer request",
+        escalationReasonInput.trim(),
         "High",
         user?.name || 'Customer User'
       );
       if (res.success) {
         toast.success("Your ticket has been escalated. A manager will review it shortly.", { id: toastId });
+        setEscalationReasonInput('');
         router.refresh();
       } else {
         toast.error(res.error || "Failed to escalate ticket.", { id: toastId });
@@ -846,7 +849,10 @@ export default function CustomerTicketDetailPage() {
                     Escalated — Awaiting Acknowledgment
                   </Badge>
                 ) : (
-                  <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
+                  <Dialog open={showEscalateDialog} onOpenChange={(open) => {
+                    setShowEscalateDialog(open);
+                    if (!open) setEscalationReasonInput('');
+                  }}>
                     <DialogTrigger asChild>
                       <Button variant="outline" className="h-9 text-[13px] font-medium border-orange-200 text-orange-600 hover:bg-orange-50 rounded-lg gap-1.5">
                         <Zap size={14} /> Escalate
@@ -856,14 +862,34 @@ export default function CustomerTicketDetailPage() {
                       <DialogHeader className="space-y-2">
                         <DialogTitle className="text-lg font-bold text-zinc-900 normal-case tracking-normal">Escalate Ticket</DialogTitle>
                         <DialogDescription className="text-sm text-zinc-500">
-                          Escalating will notify your support manager immediately and flag this ticket for priority handling. Are you sure?
+                          Escalating will notify your support manager immediately and flag this ticket for priority handling.
                         </DialogDescription>
                       </DialogHeader>
+                      <div className="space-y-2 mt-4">
+                        <label className="text-xs font-semibold text-zinc-650 uppercase tracking-wider block">Reason for escalation</label>
+                        <textarea
+                          rows={4}
+                          placeholder="Please describe the business impact or reason for escalating this ticket (minimum 10 characters)..."
+                          value={escalationReasonInput}
+                          onChange={(e) => setEscalationReasonInput(e.target.value)}
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition placeholder:text-zinc-400 resize-none"
+                        />
+                        {escalationReasonInput.trim().length > 0 && escalationReasonInput.trim().length < 10 && (
+                          <p className="text-xs text-red-500 font-semibold">Reason must be at least 10 characters (currently {escalationReasonInput.trim().length}).</p>
+                        )}
+                      </div>
                       <DialogFooter className="mt-6 flex gap-2">
-                        <Button variant="outline" onClick={() => setShowEscalateDialog(false)}>
+                        <Button variant="outline" onClick={() => {
+                          setShowEscalateDialog(false);
+                          setEscalationReasonInput('');
+                        }}>
                           Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleEscalateConfirm}>
+                        <Button
+                          variant="destructive"
+                          onClick={handleEscalateConfirm}
+                          disabled={escalationReasonInput.trim().length < 10}
+                        >
                           Escalate
                         </Button>
                       </DialogFooter>

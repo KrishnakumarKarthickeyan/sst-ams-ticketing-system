@@ -701,6 +701,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isEscalated: !!t.is_escalated,
       escalatedAt: t.escalated_at,
       escalatedBy: t.escalated_by,
+      escalationReason: t.escalation_reason,
       sapModules: t.ticket_modules && t.ticket_modules.length > 0
         ? t.ticket_modules.map((m: any) => m.module_id as SAPModule)
         : (t.sap_module ? [t.sap_module as SAPModule] : []),
@@ -1498,6 +1499,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           is_escalated: true,
           escalated_at: nowStr,
           escalated_by: actorId,
+          escalation_reason: reason,
           status: 'Escalated',
           priority: nextPriority,
           updated_at: nowStr
@@ -1518,7 +1520,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             userId: target.id,
             type: 'escalation_raised',
             title: 'Ticket Escalated by Customer',
-            message: `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}".`,
+            message: `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}". Reason: "${reason}"`,
             ticketId: ticketId,
             linkPath: `/manager/tickets/${ticketId}`
           });
@@ -1588,6 +1590,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           isEscalated: true,
           escalatedAt: nowStr,
           escalatedBy: actorId,
+          escalationReason: reason,
           status: 'Escalated' as any,
           priority: nextPriority as any,
           escalations: [...currentEscalations, newEscalation],
@@ -1606,7 +1609,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       createSystemNotification(
         target.id,
         `Ticket Escalated: ${currentTicket?.ticketNumber || ticketId}`,
-        `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}".`,
+        `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}". Reason: "${reason}"`,
         ticketId
       );
     });

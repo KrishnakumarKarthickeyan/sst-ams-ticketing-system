@@ -192,46 +192,53 @@ const EscalationTicketRow = ({
   user: any;
   profiles: any[];
 }) => {
-  const isEscalated = ticket.isEscalated;
   const customerName = profiles.find(p => p.id === ticket.escalatedBy)?.full_name || ticket.requestedBy || 'Customer';
+  const escReason = ticket.escalationReason || (ticket.escalations && ticket.escalations.length > 0 ? ticket.escalations[ticket.escalations.length - 1].reason : null) || 'No reason provided';
 
   return (
-    <div className="p-3 bg-red-50/10 border border-red-100 border-l-4 border-l-destructive rounded-lg flex flex-col gap-2">
-      {/* Top line with ticket number and inline badges */}
-      <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
-        <span className="text-red-600 shrink-0">🔴</span>
-        <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-semibold text-zinc-900 hover:underline">
-          {ticket.ticketNumber}
-        </Link>
-        <div className="flex items-center gap-2">
-          <Badge variant="destructive" className="text-[9px] font-bold py-0.5 px-1.5 uppercase leading-none h-5">
-            ESCALATED
-          </Badge>
-          <Badge variant="outline" className="text-[9px] font-bold py-0.5 px-1.5 uppercase leading-none h-5 border-zinc-300 text-zinc-800">
-            {ticket.priority}
-          </Badge>
-        </div>
+    <div className="p-3 bg-zinc-50/50 border border-zinc-200 rounded-xl flex flex-col gap-2.5">
+      {/* Row 1: Ticket Number, ESCALATED Badge, Priority Badge */}
+      <div className="flex items-center gap-2 flex-wrap text-xs">
+        <span className="font-mono font-medium text-zinc-900">
+          <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="hover:underline">
+            {ticket.ticketNumber}
+          </Link>
+        </span>
+        <span className="text-zinc-300">·</span>
+        <Badge variant="outline" className="text-[9px] font-semibold bg-amber-50 text-amber-800 border-amber-200 uppercase py-0.5 px-1.5 leading-none h-5">
+          ESCALATED
+        </Badge>
+        <Badge variant="outline" className="text-[9px] font-semibold bg-zinc-50 text-zinc-700 border-zinc-200 uppercase py-0.5 px-1.5 leading-none h-5">
+          {ticket.priority}
+        </Badge>
       </div>
       
-      {/* Title */}
-      <div className="text-sm text-zinc-900 font-sans line-clamp-1">
-        "{ticket.title}"
+      {/* Row 2: Title */}
+      <div className="text-sm font-medium text-zinc-800 font-sans line-clamp-1">
+        {ticket.title}
       </div>
       
-      {/* Org, Escalated by, Time */}
+      {/* Row 3: Org, Escalated by, Relative time */}
       <div className="text-xs text-muted-foreground font-sans">
-        Org: {ticket.organization} · Escalated by: {customerName} · {formatRelativeTime(ticket.escalatedAt || ticket.createdAt)} ago
+        Org: {ticket.organization} · Escalated by {customerName} · {formatRelativeTime(ticket.escalatedAt || ticket.createdAt)} ago
+      </div>
+
+      {/* Row 4: Escalation Reason quote block */}
+      <div className="border-l-2 border-zinc-300 pl-2.5 italic text-xs text-zinc-500 font-sans leading-relaxed">
+        "{escReason}"
       </div>
       
-      {/* Acknowledge Button */}
-      <Button 
-        variant="default" 
-        size="sm" 
-        className="w-full mt-1 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold rounded-lg text-xs py-1.5"
-        onClick={() => acknowledgeEscalation(ticket.id, user?.id || '', user?.name || '')}
-      >
-        ACKNOWLEDGE
-      </Button>
+      {/* Footer: right-aligned Acknowledge Button */}
+      <div className="flex justify-end mt-1">
+        <Button 
+          variant="default" 
+          size="sm" 
+          className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold rounded-lg text-xs py-1.5 px-4"
+          onClick={() => acknowledgeEscalation(ticket.id, user?.id || '', user?.name || '')}
+        >
+          Acknowledge
+        </Button>
+      </div>
     </div>
   );
 };
@@ -2492,10 +2499,13 @@ export default function ManagerDashboardPage() {
               <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider font-mono">
-                      ESCALATION CENTER ({filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).length})
-                    </span>
-                    <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">EXPOSURE</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle className="size-3.5 text-zinc-500" />
+                      <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider font-mono">
+                        ESCALATION CENTER ({filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).length})
+                      </span>
+                    </div>
+                    <Badge className="bg-zinc-100 text-zinc-800 text-[8px] font-bold border border-zinc-200">EXPOSURE</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                     {/* Active Escalations List */}
@@ -2523,7 +2533,7 @@ export default function ManagerDashboardPage() {
                     {/* Recently Acknowledged Escalations Sub-list */}
                     {filteredDashboardTickets.filter(t => t.isEscalated && t.escalationAcknowledgedAt).length > 0 && (
                       <div className="mt-3 pt-2 border-t border-zinc-100 space-y-2">
-                        <span className="font-bold text-zinc-600 uppercase text-[8px] tracking-wider font-mono block">
+                        <span className="font-bold text-zinc-650 uppercase text-[8px] tracking-wider font-mono block">
                           Recently Acknowledged
                         </span>
                         {filteredDashboardTickets
@@ -2531,14 +2541,14 @@ export default function ManagerDashboardPage() {
                           .sort((a, b) => new Date(b.escalationAcknowledgedAt || 0).getTime() - new Date(a.escalationAcknowledgedAt || 0).getTime())
                           .slice(0, 3)
                           .map(t => (
-                            <div key={t.id} className="p-2 bg-emerald-50/10 border border-emerald-100/50 border-l-4 border-l-emerald-500 rounded-lg flex flex-col justify-between gap-1">
+                            <div key={t.id} className="p-2 bg-zinc-50/50 border border-zinc-200 rounded-lg flex flex-col justify-between gap-1">
                               <div className="flex justify-between items-center">
-                                <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
-                                <div className="flex gap-1 items-center">
-                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">
-                                    ACKNOWLEDGED
+                                <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-semibold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                                <div className="flex gap-1.5 items-center">
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-150 text-[7px] font-semibold py-0.5 px-1.5 uppercase leading-none h-4.5 flex items-center gap-1">
+                                    <Check className="size-2.5 text-emerald-600" /> Ack
                                   </Badge>
-                                  <span className="text-[7px] bg-zinc-100 text-zinc-800 px-1 py-0.2 rounded font-bold uppercase leading-none h-4">{t.priority}</span>
+                                  <span className="text-[7px] bg-zinc-100 text-zinc-800 px-1 py-0.2 rounded font-bold uppercase leading-none h-4 flex items-center">{t.priority}</span>
                                 </div>
                               </div>
                               <span className="text-zinc-700 truncate block font-sans text-[11px]">{t.title}</span>

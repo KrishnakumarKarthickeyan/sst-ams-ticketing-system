@@ -283,6 +283,7 @@ export interface Ticket {
   isEscalated: boolean;
   escalatedAt?: string | null;
   escalatedBy?: string | null;
+  escalationReason?: string | null;
 }
 
 export interface TicketAssignment {
