@@ -27,7 +27,8 @@ import {
   adminUpdatePasswordDirect,
   adminForcePasswordChange,
   logUserAuditAction,
-  verifyPasswordPolicy
+  verifyPasswordPolicy,
+  provisionUser
 } from '@/app/actions/auth';
 import {
   Dialog,
@@ -91,6 +92,36 @@ export default function ManagerUsersPage() {
   const [updateConfirmPassword, setUpdateConfirmPassword] = useState('');
   const [updateForceChange, setUpdateForceChange] = useState(false);
 
+  // Dialog Open States
+  const [createConsultantOpen, setCreateConsultantOpen] = useState(false);
+  const [createClientOpen, setCreateClientOpen] = useState(false);
+
+  // Common provision success states (to display the generated credentials)
+  const [provisionSuccessOpen, setProvisionSuccessOpen] = useState(false);
+  const [provisionSuccessUser, setProvisionSuccessUser] = useState<{ name: string; email: string; role: string; tempPass: string } | null>(null);
+
+  // Create Consultant state variables
+  const [consName, setConsName] = useState('');
+  const [consEmail, setConsEmail] = useState('');
+  const [consType, setConsType] = useState<'Functional' | 'Technical'>('Functional');
+  const [consSapModules, setConsSapModules] = useState<string[]>([]);
+  const [consPasswordMode, setConsPasswordMode] = useState<'auto' | 'manual'>('auto');
+  const [consPassword, setConsPassword] = useState('');
+  const [consIsActive, setConsIsActive] = useState(true);
+  const [consLoading, setConsLoading] = useState(false);
+
+  // Create Client state variables
+  const [clientName, setClientName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientOrgMode, setClientOrgMode] = useState<'existing' | 'new'>('existing');
+  const [clientOrgId, setClientOrgId] = useState('');
+  const [clientNewOrgName, setClientNewOrgName] = useState('');
+  const [clientNewOrgCode, setClientNewOrgCode] = useState('');
+  const [clientPasswordMode, setClientPasswordMode] = useState<'auto' | 'manual'>('auto');
+  const [clientPassword, setClientPassword] = useState('');
+  const [clientIsActive, setClientIsActive] = useState(true);
+  const [clientLoading, setClientLoading] = useState(false);
+
   // Generate temporary password helper
   const generatePass = () => {
     const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -109,12 +140,16 @@ export default function ManagerUsersPage() {
   };
 
   // Fetch organizations from Supabase
-  useEffect(() => {
+  const fetchOrganizations = () => {
     if (isSupabaseConfigured && supabase) {
       supabase.from('organizations').select('id, name').then(({ data }) => {
         if (data) setOrganizationsList(data);
       });
     }
+  };
+
+  useEffect(() => {
+    fetchOrganizations();
   }, []);
 
   // Map database profiles into clean objects
@@ -373,6 +408,134 @@ export default function ManagerUsersPage() {
     }
   };
 
+  // Form input validation helpers
+  const isEmailValid = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const isPasswordValid = (password: string) => {
+    if (password.length < 8) return false;
+    if (!/[A-Z]/.test(password)) return false;
+    if (!/[a-z]/.test(password)) return false;
+    if (!/[0-9]/.test(password)) return false;
+    if (!/[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(password)) return false;
+    return true;
+  };
+
+  const handleCreateConsultantSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConsLoading(true);
+    const toastId = toast.loading(`Provisioning consultant ${consEmail}...`);
+
+    try {
+      const res = await provisionUser({
+        email: consEmail,
+        fullName: consName,
+        role: 'Consultant',
+        performedBy: user?.email || 'Manager',
+        initialPassword: consPasswordMode === 'manual' ? consPassword : undefined,
+        consultantType: consType,
+        sapModules: consSapModules,
+        phoneNumber: 'N/A',
+        roleTitle: `${consType} Specialist`,
+        skills: 'SAP Operations',
+        loginEnabled: consIsActive
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Provisioning failed');
+      }
+
+      toast.success('Consultant provisioned successfully!', { id: toastId });
+      
+      setProvisionSuccessUser({
+        name: consName,
+        email: consEmail,
+        role: 'Consultant',
+        tempPass: res.password || ''
+      });
+      setProvisionSuccessOpen(true);
+      
+      setConsName('');
+      setConsEmail('');
+      setConsType('Functional');
+      setConsSapModules([]);
+      setConsPasswordMode('auto');
+      setConsPassword('');
+      setConsIsActive(true);
+      
+      setCreateConsultantOpen(false);
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Provisioning failed: ${err.message}`, { id: toastId });
+    } finally {
+      setConsLoading(false);
+    }
+  };
+
+  const handleCreateClientSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setClientLoading(true);
+    const toastId = toast.loading(`Provisioning client ${clientEmail}...`);
+
+    try {
+      let companyName = '';
+      let customerShortCode: string | undefined = undefined;
+
+      if (clientOrgMode === 'existing') {
+        const found = organizationsList.find(o => o.id === clientOrgId);
+        companyName = found ? found.name : '';
+      } else {
+        companyName = clientNewOrgName;
+        customerShortCode = clientNewOrgCode;
+      }
+
+      const res = await provisionUser({
+        email: clientEmail,
+        fullName: clientName,
+        role: 'Customer',
+        performedBy: user?.email || 'Manager',
+        initialPassword: clientPasswordMode === 'manual' ? clientPassword : undefined,
+        companyName,
+        customerShortCode,
+        loginEnabled: clientIsActive
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Provisioning failed');
+      }
+
+      toast.success('Client provisioned successfully!', { id: toastId });
+      
+      setProvisionSuccessUser({
+        name: clientName,
+        email: clientEmail,
+        role: 'Customer (Client)',
+        tempPass: res.password || ''
+      });
+      setProvisionSuccessOpen(true);
+      
+      setClientName('');
+      setClientEmail('');
+      setClientOrgMode('existing');
+      setClientOrgId('');
+      setClientNewOrgName('');
+      setClientNewOrgCode('');
+      setClientPasswordMode('auto');
+      setClientPassword('');
+      setClientIsActive(true);
+      
+      setCreateClientOpen(false);
+      
+      fetchOrganizations();
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Provisioning failed: ${err.message}`, { id: toastId });
+    } finally {
+      setClientLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6 font-mono text-xs text-zinc-900">
       
@@ -433,26 +596,44 @@ export default function ManagerUsersPage() {
 
       {/* Tabs list & search query filter */}
       <div className="bg-white border border-zinc-200 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
-        {/* Tab Selector */}
-        <div className="flex bg-zinc-100 p-0.5 rounded border border-zinc-250 w-full md:w-auto">
-          <button
-            onClick={() => { setActiveTab('consultants'); setSearchQuery(''); }}
-            className={`flex-1 md:flex-none px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'consultants' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
-            }`}
-          >
-            <Users size={12} />
-            Consultants ({counts.totalConsultants})
-          </button>
-          <button
-            onClick={() => { setActiveTab('clients'); setSearchQuery(''); }}
-            className={`flex-1 md:flex-none px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'clients' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
-            }`}
-          >
-            <Building2 size={12} />
-            Clients ({counts.totalClients})
-          </button>
+        {/* Tab Selector & Creation Buttons */}
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+          <div className="flex bg-zinc-100 p-0.5 rounded border border-zinc-250 w-full md:w-auto">
+            <button
+              onClick={() => { setActiveTab('consultants'); setSearchQuery(''); }}
+              className={`flex-1 md:flex-none px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'consultants' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
+            >
+              <Users size={12} />
+              Consultants ({counts.totalConsultants})
+            </button>
+            <button
+              onClick={() => { setActiveTab('clients'); setSearchQuery(''); }}
+              className={`flex-1 md:flex-none px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'clients' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
+            >
+              <Building2 size={12} />
+              Clients ({counts.totalClients})
+            </button>
+          </div>
+
+          {activeTab === 'consultants' ? (
+            <button
+              onClick={() => setCreateConsultantOpen(true)}
+              className="w-full sm:w-auto px-4 py-1.5 bg-zinc-950 text-white hover:bg-zinc-800 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>+ Create Consultant</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setCreateClientOpen(true)}
+              className="w-full sm:w-auto px-4 py-1.5 bg-zinc-950 text-white hover:bg-zinc-800 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>+ Create Client</span>
+            </button>
+          )}
         </div>
 
         {/* Filters and Inputs */}
@@ -1161,6 +1342,419 @@ export default function ManagerUsersPage() {
                 </button>
               </div>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* RENDER MODAL: CREATE CONSULTANT */}
+      <Dialog open={createConsultantOpen} onOpenChange={setCreateConsultantOpen}>
+        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg text-zinc-955 font-mono text-xs shadow-xl">
+          <DialogHeader className="border-b border-zinc-150 pb-2">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wide">Provision SAP Consultant</DialogTitle>
+            <DialogDescription className="text-[10px] text-zinc-450 mt-1">
+              Create a new consultant user account in the identity directory and set their expertise profile.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateConsultantSubmit} className="space-y-4 my-2">
+            <div className="space-y-1">
+              <label className="font-bold text-zinc-700 uppercase text-[9px]">Full Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. John Doe"
+                value={consName}
+                onChange={(e) => setConsName(e.target.value)}
+                className="w-full bg-white border border-zinc-250 rounded p-2.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-zinc-700 uppercase text-[9px]">Email Address *</label>
+              <input
+                type="email"
+                required
+                placeholder="e.g. john.doe@company.com"
+                value={consEmail}
+                onChange={(e) => setConsEmail(e.target.value)}
+                className="w-full bg-white border border-zinc-250 rounded p-2.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+              />
+              {consEmail && !isEmailValid(consEmail) && (
+                <span className="text-[9.5px] text-red-650 font-bold block mt-0.5">Please enter a valid email address.</span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="font-bold text-zinc-700 uppercase text-[9px]">Consultant Type *</label>
+                <select
+                  value={consType}
+                  onChange={(e) => setConsType(e.target.value as any)}
+                  className="w-full bg-white border border-zinc-250 rounded p-2.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono cursor-pointer"
+                >
+                  <option value="Functional">Functional Consultant</option>
+                  <option value="Technical">Technical Consultant</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-zinc-700 uppercase text-[9px] block">Login Access *</label>
+                <label className="inline-flex items-center gap-2 mt-2.5 cursor-pointer font-bold text-zinc-700">
+                  <input
+                    type="checkbox"
+                    checked={consIsActive}
+                    onChange={(e) => setConsIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950 cursor-pointer"
+                  />
+                  <span>Enabled (Default)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t border-zinc-150 pt-3">
+              <label className="font-bold text-zinc-700 uppercase text-[9px] block">SAP Modules Expertise</label>
+              <div className="grid grid-cols-5 gap-1.5 bg-zinc-50 border border-zinc-200 rounded p-2.5">
+                {SAP_MODULES_LIST.map(mod => {
+                  const isChecked = consSapModules.includes(mod);
+                  return (
+                    <label 
+                      key={mod} 
+                      className={`flex items-center justify-center py-1.5 border rounded cursor-pointer transition-all ${
+                        isChecked 
+                          ? 'bg-zinc-950 text-white border-zinc-900 font-bold' 
+                          : 'bg-white text-zinc-650 hover:bg-zinc-50 border-zinc-200'
+                      }`}
+                    >
+                      <span className="text-[9.5px]">{mod}</span>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setConsSapModules(prev => 
+                            prev.includes(mod) ? prev.filter(m => m !== mod) : [...prev, mod]
+                          );
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2.5 border-t border-zinc-150 pt-3">
+              <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Security Policy</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-zinc-700">
+                  <input
+                    type="radio"
+                    name="consPasswordMode"
+                    checked={consPasswordMode === 'auto'}
+                    onChange={() => setConsPasswordMode('auto')}
+                    className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950 cursor-pointer"
+                  />
+                  <span>Auto-generate password</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-zinc-700">
+                  <input
+                    type="radio"
+                    name="consPasswordMode"
+                    checked={consPasswordMode === 'manual'}
+                    onChange={() => setConsPasswordMode('manual')}
+                    className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-950 cursor-pointer"
+                  />
+                  <span>Set manual password</span>
+                </label>
+              </div>
+
+              {consPasswordMode === 'manual' && (
+                <div className="space-y-1">
+                  <input
+                    type="password"
+                    required
+                    placeholder="Min 8 chars, uppercase, lowercase, digit, special char"
+                    value={consPassword}
+                    onChange={(e) => setConsPassword(e.target.value)}
+                    className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+                  />
+                  {consPassword && !isPasswordValid(consPassword) && (
+                    <span className="text-[9px] text-red-650 font-bold block leading-tight">
+                      Complexity required: 8+ chars, uppercase, lowercase, digit, special char.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150">
+              <button
+                type="button"
+                disabled={consLoading}
+                onClick={() => setCreateConsultantOpen(false)}
+                className="px-3 py-1.5 border border-zinc-250 hover:bg-zinc-50 rounded font-bold uppercase text-[9px] cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  consLoading || 
+                  !consName.trim() || 
+                  !isEmailValid(consEmail) || 
+                  (consPasswordMode === 'manual' && !isPasswordValid(consPassword))
+                }
+                className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[9px] cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {consLoading ? 'Provisioning...' : 'Provision Consultant'}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* RENDER MODAL: CREATE CLIENT */}
+      <Dialog open={createClientOpen} onOpenChange={setCreateClientOpen}>
+        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg text-zinc-955 font-mono text-xs shadow-xl">
+          <DialogHeader className="border-b border-zinc-150 pb-2">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wide">Provision Client (Customer)</DialogTitle>
+            <DialogDescription className="text-[10px] text-zinc-450 mt-1">
+              Provision a new client user account in the database linked to a client organization contract.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateClientSubmit} className="space-y-4 my-2">
+            <div className="space-y-1">
+              <label className="font-bold text-zinc-700 uppercase text-[9px]">Full Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Alice Smith"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                className="w-full bg-white border border-zinc-250 rounded p-2.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-zinc-700 uppercase text-[9px]">Email Address *</label>
+              <input
+                type="email"
+                required
+                placeholder="e.g. alice.smith@client.com"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                className="w-full bg-white border border-zinc-250 rounded p-2.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+              />
+              {clientEmail && !isEmailValid(clientEmail) && (
+                <span className="text-[9.5px] text-red-650 font-bold block mt-0.5">Please enter a valid email address.</span>
+              )}
+            </div>
+
+            <div className="space-y-3 border-t border-zinc-150 pt-3">
+              <div className="flex justify-between items-center">
+                <label className="font-bold text-zinc-700 uppercase text-[9px]">Organization *</label>
+                <button
+                  type="button"
+                  onClick={() => setClientOrgMode(prev => prev === 'existing' ? 'new' : 'existing')}
+                  className="text-[9px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                >
+                  {clientOrgMode === 'existing' ? 'Create new organization' : 'Use existing organization'}
+                </button>
+              </div>
+
+              {clientOrgMode === 'existing' ? (
+                <div className="space-y-1">
+                  <select
+                    value={clientOrgId}
+                    required
+                    onChange={(e) => setClientOrgId(e.target.value)}
+                    className="w-full bg-white border border-zinc-250 rounded p-2.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono cursor-pointer"
+                  >
+                    <option value="">Select Organization</option>
+                    {organizationsList.map(org => (
+                      <option key={org.id} value={org.id}>{org.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 bg-zinc-50 p-3 rounded border border-zinc-200">
+                  <div className="col-span-2 space-y-1">
+                    <label className="font-bold text-zinc-500 uppercase text-[8px]">New Company Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Acme Corp"
+                      value={clientNewOrgName}
+                      onChange={(e) => setClientNewOrgName(e.target.value)}
+                      className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-500 uppercase text-[8px]">Short Code *</label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={4}
+                      placeholder="ACM"
+                      value={clientNewOrgCode}
+                      onChange={(e) => setClientNewOrgCode(e.target.value.toUpperCase())}
+                      className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 border-t border-zinc-150 pt-3">
+              <div className="space-y-1">
+                <label className="font-bold text-zinc-700 uppercase text-[9px] block">Login Access *</label>
+                <label className="inline-flex items-center gap-2 mt-2.5 cursor-pointer font-bold text-zinc-700">
+                  <input
+                    type="checkbox"
+                    checked={clientIsActive}
+                    onChange={(e) => setClientIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950 cursor-pointer"
+                  />
+                  <span>Enabled (Default)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 border-t border-zinc-150 pt-3">
+              <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Security Policy</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-zinc-700">
+                  <input
+                    type="radio"
+                    name="clientPasswordMode"
+                    checked={clientPasswordMode === 'auto'}
+                    onChange={() => setClientPasswordMode('auto')}
+                    className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955 cursor-pointer"
+                  />
+                  <span>Auto-generate password</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-zinc-700">
+                  <input
+                    type="radio"
+                    name="clientPasswordMode"
+                    checked={clientPasswordMode === 'manual'}
+                    onChange={() => setClientPasswordMode('manual')}
+                    className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955 cursor-pointer"
+                  />
+                  <span>Set manual password</span>
+                </label>
+              </div>
+
+              {clientPasswordMode === 'manual' && (
+                <div className="space-y-1">
+                  <input
+                    type="password"
+                    required
+                    placeholder="Min 8 chars, uppercase, lowercase, digit, special char"
+                    value={clientPassword}
+                    onChange={(e) => setClientPassword(e.target.value)}
+                    className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+                  />
+                  {clientPassword && !isPasswordValid(clientPassword) && (
+                    <span className="text-[9px] text-red-650 font-bold block leading-tight">
+                      Complexity required: 8+ chars, uppercase, lowercase, digit, special char.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150">
+              <button
+                type="button"
+                disabled={clientLoading}
+                onClick={() => setCreateClientOpen(false)}
+                className="px-3 py-1.5 border border-zinc-250 hover:bg-zinc-50 rounded font-bold uppercase text-[9px] cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  clientLoading || 
+                  !clientName.trim() || 
+                  !isEmailValid(clientEmail) || 
+                  (clientOrgMode === 'existing' && !clientOrgId) ||
+                  (clientOrgMode === 'new' && (!clientNewOrgName.trim() || !clientNewOrgCode.trim())) ||
+                  (clientPasswordMode === 'manual' && !isPasswordValid(clientPassword))
+                }
+                className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[9px] cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {clientLoading ? 'Provisioning...' : 'Provision Client'}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* RENDER MODAL: PROVISION SUCCESS */}
+      <Dialog open={provisionSuccessOpen} onOpenChange={setProvisionSuccessOpen}>
+        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg text-zinc-955 font-mono text-xs shadow-xl">
+          <DialogHeader className="border-b border-zinc-150 pb-2">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wide text-emerald-700 flex items-center gap-1.5">
+              <ShieldCheck size={16} />
+              Provisioning Successful
+            </DialogTitle>
+            <DialogDescription className="text-[10px] text-zinc-450 mt-1">
+              The user identity has been successfully created and provisioned.
+            </DialogDescription>
+          </DialogHeader>
+
+          {provisionSuccessUser && (
+            <div className="space-y-4 my-2">
+              <div className="bg-zinc-50 border border-zinc-200 rounded p-3 space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-bold text-zinc-400 uppercase text-[9px]">Name:</span>
+                  <span className="text-zinc-900 font-bold">{provisionSuccessUser.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold text-zinc-400 uppercase text-[9px]">Email:</span>
+                  <span className="text-zinc-900 font-bold break-all select-all">{provisionSuccessUser.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold text-zinc-400 uppercase text-[9px]">Role Group:</span>
+                  <span className="text-zinc-900 font-bold uppercase text-[10px]">{provisionSuccessUser.role}</span>
+                </div>
+              </div>
+
+              <div className="bg-zinc-950 text-white rounded-lg p-4 font-bold space-y-3">
+                <span className="text-[9.5px] text-emerald-400 font-semibold uppercase block">Temporary Credentials Issued</span>
+                <div className="flex items-center justify-between gap-2 bg-zinc-900 p-2.5 rounded border border-zinc-800">
+                  <span className="font-mono text-xs tracking-wider select-all text-emerald-400 font-extrabold">{provisionSuccessUser.tempPass}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(provisionSuccessUser.tempPass);
+                      toast.success('Temporary password copied to clipboard!');
+                    }}
+                    className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-[9.5px] font-bold uppercase transition"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <span className="text-[9px] text-zinc-400 leading-normal block font-normal pt-1">
+                  Important: Share this password with the user. Since they have force reset flags activated, they will be required to configure their permanent passwords on first login.
+                </span>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-zinc-150">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProvisionSuccessOpen(false);
+                    setProvisionSuccessUser(null);
+                  }}
+                  className="px-4 py-2 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wide cursor-pointer"
+                >
+                  Acknowledge & Close
+                </button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

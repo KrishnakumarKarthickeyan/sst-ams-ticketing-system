@@ -91,6 +91,9 @@ export async function createAuthUser(email: string, password: string, fullName: 
   }
 }
 
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+
 export async function provisionUser(params: {
   email: string;
   fullName: string;
@@ -116,6 +119,44 @@ export async function provisionUser(params: {
   contractStatus?: string;
   loginEnabled?: boolean;
 }) {
+  // 1. Authenticate the requester via cookie session
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {}
+        },
+      },
+    }
+  );
+
+  const { data: { user: requester }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !requester) {
+    return { success: false, error: 'Unauthorized session.' };
+  }
+
+  // 2. Verify requester is a SuperAdmin or Manager in profiles table
+  const { data: requesterProfile, error: reqProfErr } = await supabase
+    .from('profiles')
+    .select('role, email')
+    .eq('id', requester.id)
+    .single();
+
+  const allowedRequesterRoles = ['SuperAdmin', 'Manager'];
+  if (reqProfErr || !requesterProfile || !allowedRequesterRoles.includes(requesterProfile.role)) {
+    return { success: false, error: 'Access denied. Privileged role required.' };
+  }
+
   const client = getAdminClient();
   if (!client) {
     return { success: false, error: 'NO_SERVICE_KEY' };
@@ -249,6 +290,28 @@ export async function provisionUser(params: {
       const skills = params.skills || 'SAP Specialist';
       const phoneNumber = params.phoneNumber || 'N/A';
 
+      let orgId = null;
+      try {
+        const { data: existingOrg } = await client
+          .from('organizations')
+          .select('id')
+          .eq('name', 'SST SAP Operations')
+          .maybeSingle();
+
+        if (existingOrg) {
+          orgId = existingOrg.id;
+        } else {
+          const { data: newOrg } = await client
+            .from('organizations')
+            .insert({ name: 'SST SAP Operations', customer_short_code: 'SST' })
+            .select('id')
+            .single();
+          if (newOrg) orgId = newOrg.id;
+        }
+      } catch (orgErr) {
+        console.warn('Non-blocking consultant organization resolution error:', orgErr);
+      }
+
       const { error: profErr } = await client.from('profiles').upsert({
         id: userId,
         email,
@@ -261,7 +324,8 @@ export async function provisionUser(params: {
         role_title: roleTitle,
         skills: skills,
         first_login_completed: false,
-        force_password_change: false
+        force_password_change: false,
+        organization_id: orgId
       });
 
       if (profErr) throw profErr;
