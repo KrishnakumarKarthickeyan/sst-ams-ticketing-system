@@ -60,13 +60,175 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
     return parts.length > 0 ? parts : text;
   };
 
-  const getRoleByName = (name: string): TimelineItem['role'] => {
+  const getPerformerInfo = (name: string): { role: TimelineItem['role']; consultantType?: 'Functional' | 'Technical' } => {
     const lower = name.toLowerCase();
-    if (lower.includes('marcus') || lower.includes('manager')) return 'Manager';
-    if (lower.includes('sarah') || lower.includes('jenkins') || lower.includes('customer') || lower.includes('client')) return 'Customer';
-    if (lower.includes('admin')) return 'SuperAdmin';
-    if (lower.includes('system') || lower.includes('auto-approved')) return 'System';
-    return 'Consultant';
+    
+    if (lower.includes('system') || lower.includes('auto-approved')) {
+      return { role: 'System' };
+    }
+
+    if (ticket.assignments) {
+      const assignment = ticket.assignments.find(
+        a => a.consultantName.toLowerCase() === lower || a.consultantId.toLowerCase() === lower
+      );
+      if (assignment) {
+        return { role: 'Consultant', consultantType: assignment.consultantType };
+      }
+    }
+
+    if (ticket.assignedConsultant && ticket.assignedConsultant.toLowerCase() === lower) {
+      return { role: 'Consultant', consultantType: (ticket.functionalOrTechnical as any) || 'Functional' };
+    }
+
+    if (
+      (ticket.assignedManager && ticket.assignedManager.toLowerCase() === lower) ||
+      (ticket.escalationAcknowledgedByName && ticket.escalationAcknowledgedByName.toLowerCase() === lower)
+    ) {
+      return { role: 'Manager' };
+    }
+
+    if (ticket.comments) {
+      const comment = ticket.comments.find(
+        c => c.authorName.toLowerCase() === lower
+      );
+      if (comment) {
+        if (comment.authorRole === 'Customer') return { role: 'Customer' };
+        if (comment.authorRole === 'Consultant') return { role: 'Consultant' };
+        if (comment.authorRole === 'Manager') return { role: 'Manager' };
+        if (comment.authorRole === 'SuperAdmin') return { role: 'SuperAdmin' };
+      }
+    }
+
+    if (ticket.requestedBy && ticket.requestedBy.toLowerCase() === lower) {
+      return { role: 'Customer' };
+    }
+    if (ticket.createdByName && ticket.createdByName.toLowerCase() === lower) {
+      return { role: 'Customer' };
+    }
+
+    if (lower.includes('marcus') || lower.includes('manager')) {
+      return { role: 'Manager' };
+    }
+    if (lower.includes('sarah') || lower.includes('jenkins') || lower.includes('customer') || lower.includes('client')) {
+      return { role: 'Customer' };
+    }
+    if (lower.includes('admin') || lower.includes('superadmin')) {
+      return { role: 'SuperAdmin' };
+    }
+
+    return { role: 'Consultant', consultantType: 'Functional' };
+  };
+
+  const getRoleByName = (name: string): TimelineItem['role'] => {
+    return getPerformerInfo(name).role;
+  };
+
+  const formatTimelineEvent = (item: TimelineItem): string => {
+    const { role, consultantType } = getPerformerInfo(item.performer);
+    const performerStr = `${item.performer} (${role})`;
+
+    switch (item.type) {
+      case 'effort': {
+        const hoursMatch = item.action.match(/Hours Logged:\s*([\d.]+)/);
+        const hours = hoursMatch ? hoursMatch[1] : '0';
+        const typeStr = consultantType || 'Functional';
+        return `${performerStr} logged ${hours}h of ${typeStr} effort.`;
+      }
+
+      case 'estimate': {
+        const act = item.action.toLowerCase();
+        if (act.includes('approved')) {
+          return `${performerStr} approved the estimated hours.`;
+        } else if (act.includes('rejected')) {
+          return `${performerStr} rejected the estimated hours.`;
+        } else if (act.includes('revision requested')) {
+          return `${performerStr} requested a revision of the estimated hours.`;
+        }
+        
+        const estMatch = item.newValue?.match(/^([\d.]+)/);
+        const estHours = estMatch ? estMatch[1] : '';
+        return `${performerStr} estimated ${estHours ? `${estHours}h` : 'hours'} of effort.`;
+      }
+
+      case 'closure': {
+        const act = item.action.toLowerCase();
+        if (act.includes('approved')) {
+          return `${performerStr} approved the closure request and closed the ticket.`;
+        } else if (act.includes('rejected')) {
+          return `${performerStr} rejected the closure request.`;
+        } else if (act.includes('resubmitted')) {
+          return `${performerStr} resubmitted the closure request.`;
+        }
+        return `${performerStr} requested ticket closure.`;
+      }
+
+      case 'history': {
+        const actionStr = item.action.toLowerCase();
+        
+        if (actionStr.includes('status')) {
+          if (item.newValue === 'Closed') {
+            return `${performerStr} closed the ticket.`;
+          } else if (item.newValue === 'Reopened' || item.newValue === 'Reopen Requested') {
+            return `${performerStr} reopened the ticket.`;
+          } else if (item.oldValue && item.newValue) {
+            return `${performerStr} changed status from ${item.oldValue} to ${item.newValue}.`;
+          } else if (item.newValue) {
+            return `${performerStr} changed status to ${item.newValue}.`;
+          }
+          return `${performerStr} updated the status.`;
+        }
+
+        if (actionStr.includes('assign') || actionStr.includes('consultant')) {
+          if (item.newValue) {
+            return `${performerStr} assigned the ticket to ${item.newValue}.`;
+          }
+          return `${performerStr} reassigned the ticket.`;
+        }
+
+        if (actionStr.includes('priority')) {
+          if (item.oldValue && item.newValue) {
+            return `${performerStr} changed priority from ${item.oldValue} to ${item.newValue}.`;
+          } else if (item.newValue) {
+            return `${performerStr} changed priority to ${item.newValue}.`;
+          }
+          return `${performerStr} changed ticket priority.`;
+        }
+
+        if (actionStr.includes('escalat')) {
+          const isEscalated = item.newValue === 'true' || item.newValue === 'Yes' || item.newValue === 'Escalated';
+          if (isEscalated) {
+            return `${performerStr} escalated the ticket.`;
+          } else {
+            return `${performerStr} resolved the escalation.`;
+          }
+        }
+
+        if (actionStr.includes('acknowledg')) {
+          return `${performerStr} acknowledged the escalation.`;
+        }
+
+        if (actionStr.includes('description')) {
+          return `${performerStr} updated description details.`;
+        }
+        if (actionStr.includes('title')) {
+          return `${performerStr} updated ticket title.`;
+        }
+        if (actionStr.includes('module')) {
+          if (item.newValue) {
+            return `${performerStr} updated SAP module scope to ${item.newValue}.`;
+          }
+          return `${performerStr} updated SAP module scope.`;
+        }
+
+        if (item.oldValue && item.newValue) {
+          return `${performerStr} changed ${item.action.replace(' Changed', '')} from ${item.oldValue} to ${item.newValue}.`;
+        }
+        return `${performerStr} updated ${item.action.replace(' Changed', '') || 'ticket details'}.`;
+      }
+
+      default:
+        return `${performerStr} performed action: ${item.action}`;
+    }
   };
 
   const timelineItems = useMemo(() => {
@@ -337,16 +499,10 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
                             className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer select-none ${hasDetails ? 'hover:opacity-80' : ''}`}
                             onClick={() => hasDetails && toggleExpand(item.id)}
                           >
-                            <span className="text-[12px] font-semibold text-zinc-900 leading-tight">
-                              {item.action}
+                            <span className="text-[12px] font-semibold text-zinc-900 leading-tight flex-1">
+                              {formatTimelineEvent(item)}
                             </span>
-                            <span className={`inline-flex items-center px-1.5 py-px rounded text-[8px] font-bold uppercase border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}>
-                              {item.role}
-                            </span>
-                            <span className="text-[11px] text-zinc-500">
-                              by <strong className="text-zinc-700 font-medium">{item.performer}</strong>
-                            </span>
-                            <span className="text-[10px] text-zinc-400 ml-auto whitespace-nowrap">
+                            <span className="text-[10px] text-zinc-400 ml-auto whitespace-nowrap pr-2">
                               {formatRelativeTime(item.date)}
                             </span>
                             {hasDetails && (
