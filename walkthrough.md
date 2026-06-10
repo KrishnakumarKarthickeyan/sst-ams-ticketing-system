@@ -223,14 +223,20 @@ We have executed a series of database-side and network-side optimizations to max
 * **Performance Gain**: Avoids full HTML asset re-fetching and layout re-parsing, reducing dashboard redirection times to under 1.5 seconds.
 * **Auth Context Integration**: Refactored first-login force redirection inside [AuthContext.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/context/AuthContext.tsx) to use client-side router transition.
 
+---
+
 ## Part 8: Context State Refetch Expose
 * **Manual Revalidation**: Added `refetchData: () => Promise<void>` to the `TicketContextType` interface and exposed the underlying data-fetching mechanism in [TicketContext.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/context/TicketContext.tsx).
 * **Live Invalidation**: Consumers can now trigger an immediate, synchronous cache invalidation and query refetch to reflect database updates on-demand.
+
+---
 
 ## Part 9: Consultant Cards Statistics
 * **Pure Database Metrics**: Removed all legacy randomized or simulated KPIs from consultant dashboards. Backlog, Utilization, SLA Rate, and Average Resolution Speed are now computed directly from live ticket records.
 * **Zero-Ticket Safe Fallbacks**: If a consultant has 0 assigned tickets, statistics display clean slate values: Backlog = `0`, Utilization = `0%`, SLA Rate = `N/A`, and Resolution Speed = `N/A`.
 * **Resource Breakdown Grid**: Added a detailed stats sub-grid in the card body listing: Total Assigned Tickets, Open Tickets, Closed Tickets, Approved Effort Hours, and Last Activity (last ticket update timestamp).
+
+---
 
 ## Part 10: Customer Creation Form Redesign
 * **Responsive Layout**: Widened the modal container dynamic styling specifically for Customer provisioning/editing forms (`max-w-3xl` instead of standard `max-w-md`).
@@ -240,9 +246,37 @@ We have executed a series of database-side and network-side optimizations to max
   3. **Contact Information**: Primary Contact, Email, Phone.
   4. **Account Information & System Access**: Initial Password, Login Status.
 
+---
+
 ## Part 11: Realtime Sync Without Page Reloads
 * **Reload Elimination**: Replaced all instances of `window.location.reload()` inside [admin/users/page.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/users/page.tsx) and [manager/consultants/page.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/consultants/page.tsx) with `await refetchData()`.
 * **State Updates**: Consultant cards, user lists, and statistics are refreshed in place instantly upon create/update/delete operations.
+
+---
+
+## Part 12: Unified SLA Telemetry Panel & Customer Registry Upgrades
+
+We have implemented an end-to-end SLA Telemetry Panel and customer registry upgrade across the application.
+
+### 1. Unified SLA Telemetry Panel Component
+* **New Modular Component**: Created [SlaTelemetryPanel.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/tickets/SlaTelemetryPanel.tsx) to act as a single source of truth for SLA analytics inside ticket details.
+* **Key Indicators Rendered**:
+  - **Urgency Priority**: Displays the priority tier (Critical, High, Medium, Low).
+  - **SLA Target Hours**: Dynamically derived by calculating the absolute difference between `createdAt` and `slaDueAt` (falls back to global/org-level override hours).
+  - **Consumed Hours**: Calculates the aggregate of approved actual hours logged by all consultants.
+  - **Remaining Hours**: Subtracts consumed hours from target hours, showing a precise hours budget remaining.
+  - **Due Date**: Displays the calendar target date and time formatted in local user format.
+  - **Time Remaining / Countdown**: Real-time countdown to the due date. Displays "SLA Met" if resolved/closed, "SLA Breached" if overdue, or warning countdown if < 2 hours remain.
+  - **Escalation Path Level**: Identifies current escalation path status (Nominal Level 0 vs Active Levels 1-3).
+* **Visual SLA Progress Gauge**: Renders a custom progress bar displaying the percentage of SLA capacity consumed (`consumedHours / targetHours`). Utilizes Tailwind status coloring: red for breached, amber for warning (>80% or near-breach), and indigo for compliant/on-track.
+* **Unified Integration**: Integrated the panel in the right sidebar across:
+  - Manager & Customer Ticket details view: [TicketDetailsView.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/tickets/TicketDetailsView.tsx)
+  - Consultant Ticket details view: [ConsultantTicketDetailsView.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/tickets/ConsultantTicketDetailsView.tsx)
+
+### 2. Customer Ticket Listing Enhancements
+* **Upgraded Registry Columns**: Audited and expanded the customer ticket list registry inside [src/app/customer/tickets/page.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/tickets/page.tsx) to guarantee visibility of SLA targets.
+* **Tabular Table Mode**: Added columns for **SLA Status**, **Remaining Time**, **Due Date**, and **Escalation** level.
+* **Responsive Card Mode**: Injected an interactive SLA parameters sub-grid inside the card body rendering real-time countdown, due date timestamp, and active escalation level alerts.
 
 ---
 
@@ -250,7 +284,3 @@ We have executed a series of database-side and network-side optimizations to max
 
 - **Next.js Production Build**: Successfully compiled with Next.js Turbopack compiler. Ensured typescript date-parsing safety (resolving warnings about optional date strings in [manager/consultants/page.tsx](file:///Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/consultants/page.tsx)).
 - **Git Push**: Committed and pushed all modified files to remote `main`.
-
-
-
-

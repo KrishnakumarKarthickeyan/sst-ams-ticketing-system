@@ -776,6 +776,23 @@ ${ticket.description}
                 };
                 const sla = getSlaStatus();
 
+                const getRemainingTimeStr = () => {
+                  if (!hasSla) return 'N/A';
+                  if (t.status === 'Resolved' || t.status === 'Closed') return 'SLA Met';
+                  const due = new Date(t.slaDueAt).getTime();
+                  const diffMs = due - Date.now();
+                  if (diffMs <= 0) return 'Breached';
+                  const diffHrs = diffMs / (1000 * 60 * 60);
+                  const hrs = Math.floor(diffHrs);
+                  const mins = Math.floor((diffHrs - hrs) * 60);
+                  return `${hrs}h ${mins}m left`;
+                };
+                const remainingTimeStr = getRemainingTimeStr();
+
+                const escalationLevel = t.escalations && t.escalations.length > 0
+                  ? t.escalations.length
+                  : (t.escalationFlag ? 1 : 0);
+
                 const createdDate = new Date(t.createdAt);
                 const ageDays = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
                 
@@ -828,6 +845,18 @@ ${ticket.description}
                         </span>
                       </div>
 
+                      {hasSla && (
+                        <div className="text-[10px] font-mono text-zinc-500 grid grid-cols-2 gap-y-1 gap-x-2 bg-zinc-50 p-2 rounded border border-zinc-100 mt-2">
+                          <div>Due: <strong className="text-zinc-800">{new Date(t.slaDueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></div>
+                          <div>Remaining: <strong className={t.status === 'Resolved' || t.status === 'Closed' ? 'text-emerald-600' : 'text-zinc-855'}>{remainingTimeStr}</strong></div>
+                          {escalationLevel > 0 && (
+                            <div className="col-span-2 text-red-650 font-bold flex items-center gap-0.5">
+                              <AlertTriangle size={10} /> Escalation Level {escalationLevel}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[11px]">
                         <div className="flex items-center gap-1.5">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${sla.color}`}>
@@ -849,7 +878,7 @@ ${ticket.description}
                       </span>
                       <Link
                         href={`/customer/tickets/${t.id}`}
-                        className="text-[10px] font-bold uppercase tracking-wider text-zinc-700 hover:text-zinc-950 transition flex items-center gap-1"
+                        className="text-[10px] font-bold uppercase tracking-wider text-zinc-700 hover:text-zinc-955 transition flex items-center gap-1"
                       >
                         Manage Ticket
                         <ChevronRight size={12} />
@@ -869,17 +898,20 @@ ${ticket.description}
                     <TableRow>
                       <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Ticket #</TableHead>
                       <TableHead className="font-bold text-[10px] uppercase font-mono py-3 px-4">Title</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Module</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[150px] py-3 px-4">Status</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Priority</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[100px] py-3 px-4">Module</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[100px] py-3 px-4">Priority</TableHead>
                       <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Created</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">SLA</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[110px] py-3 px-4">SLA Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Remaining Time</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Due Date</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[110px] py-3 px-4">Escalation</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentTickets.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-zinc-500 font-medium">
+                        <TableCell colSpan={10} className="h-24 text-center text-zinc-500 font-medium">
                           No records found.
                         </TableCell>
                       </TableRow>
@@ -902,6 +934,23 @@ ${ticket.description}
                           return { label: 'On Track', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
                         };
                         const sla = getSlaStatus();
+
+                        const getRemainingTimeStr = () => {
+                          if (!hasSla) return 'N/A';
+                          if (t.status === 'Resolved' || t.status === 'Closed') return 'SLA Met';
+                          const due = new Date(t.slaDueAt).getTime();
+                          const diffMs = due - Date.now();
+                          if (diffMs <= 0) return 'Breached';
+                          const diffHrs = diffMs / (1000 * 60 * 60);
+                          const hrs = Math.floor(diffHrs);
+                          const mins = Math.floor((diffHrs - hrs) * 60);
+                          return `${hrs}h ${mins}m left`;
+                        };
+                        const remainingTimeStr = getRemainingTimeStr();
+
+                        const escalationLevel = t.escalations && t.escalations.length > 0
+                          ? t.escalations.length
+                          : (t.escalationFlag ? 1 : 0);
 
                         const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
                                               t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
@@ -947,6 +996,27 @@ ${ticket.description}
                                 <span className={`w-1 h-1 rounded-full ${sla.dot}`}></span>
                                 {sla.label}
                               </span>
+                            </TableCell>
+                            <TableCell className={`font-mono text-xs font-bold py-3 px-4 ${
+                              t.status === 'Resolved' || t.status === 'Closed' ? 'text-emerald-650' :
+                              sla.label === 'Overdue' || sla.label === 'Breached' ? 'text-red-650 animate-pulse' :
+                              sla.label === 'At Risk' ? 'text-amber-655' : 'text-zinc-700'
+                            }`}>
+                              {remainingTimeStr}
+                            </TableCell>
+                            <TableCell className="text-zinc-500 font-mono text-xs py-3 px-4">
+                              {t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable'
+                                ? new Date(t.slaDueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                : 'N/A'}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              {escalationLevel > 0 ? (
+                                <Badge className="bg-red-50 text-red-755 border border-red-200 uppercase font-mono text-[8px] font-black animate-pulse">
+                                  Level {escalationLevel}
+                                </Badge>
+                              ) : (
+                                <span className="text-zinc-400 font-mono text-[10px]">Nominal</span>
+                              )}
                             </TableCell>
                           </TableRow>
                         );

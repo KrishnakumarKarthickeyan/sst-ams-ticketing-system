@@ -8,6 +8,7 @@ import AttachmentPanel from './AttachmentPanel';
 import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
 import { ChatThread } from './ChatThread';
+import { SlaTelemetryPanel } from './SlaTelemetryPanel';
 import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
 import {
   ArrowLeft,
@@ -1717,6 +1718,9 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
 
         {/* ── RIGHT PAGE: PARAMETERS & APPROVAL ACTIONS ── */}
         <div className="space-y-6">
+          
+          {/* SLA Telemetry Card */}
+          <SlaTelemetryPanel ticket={ticket} />
           
           {/* Metadata Card */}
           <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-sm">

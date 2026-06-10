@@ -8,6 +8,7 @@ import AttachmentPanel from './AttachmentPanel';
 import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
 import { ChatThread } from './ChatThread';
+import { SlaTelemetryPanel } from './SlaTelemetryPanel';
 import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import {
@@ -1572,6 +1573,9 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
         {/* Right Column: Sidebar metadata */}
         <div className="space-y-6">
+          
+          {/* SLA Telemetry Card */}
+          <SlaTelemetryPanel ticket={ticket} />
           
           {/* Controls */}
           <Card className="bg-white border border-slate-200 p-4 shadow-sm space-y-4">

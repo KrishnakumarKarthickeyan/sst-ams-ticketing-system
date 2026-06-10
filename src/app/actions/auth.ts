@@ -106,6 +106,20 @@ export async function provisionUser(params: {
   phoneNumber?: string;
   roleTitle?: string;
   skills?: string;
+  employeeId?: string;
+  gender?: string;
+  dob?: string;
+  specialization?: string;
+  joinDate?: string;
+  emergencyContact?: string;
+  experienceYears?: number;
+  certifications?: string;
+  dailyCapacityHours?: number;
+  weeklyCapacityHours?: number;
+  monthlyCapacityHours?: number;
+  reportingManagerId?: string;
+  teamLeadId?: string;
+  avatarUrl?: string;
   // Customer specific fields:
   companyName?: string;
   customerShortCode?: string;
@@ -118,6 +132,23 @@ export async function provisionUser(params: {
   monthlyAllocatedHours?: number;
   contractStatus?: string;
   loginEnabled?: boolean;
+  legalName?: string;
+  registrationNumber?: string;
+  taxNumber?: string;
+  website?: string;
+  country?: string;
+  city?: string;
+  logoUrl?: string;
+  notes?: string;
+  internalComments?: string;
+  slaTemplate?: string;
+  slaCriticalHours?: number;
+  slaHighHours?: number;
+  slaMediumHours?: number;
+  slaLowHours?: number;
+  contractValue?: number;
+  alternatePhone?: string;
+  designation?: string;
 }) {
   // 1. Authenticate the requester via cookie session
   const cookieStore = await cookies();
@@ -185,7 +216,7 @@ export async function provisionUser(params: {
         full_name: fullName, 
         role, 
         first_login_completed: false,
-        force_password_change: false
+        force_password_change: !params.initialPassword
       }
     });
 
@@ -224,26 +255,39 @@ export async function provisionUser(params: {
 
       if (findOrgErr) throw findOrgErr;
 
+      const orgPayload = {
+        name: companyName,
+        customer_short_code: params.customerShortCode ? params.customerShortCode.trim().toUpperCase() : null,
+        address: params.address || null,
+        industry: params.industry || null,
+        legal_name: params.legalName || null,
+        registration_number: params.registrationNumber || null,
+        tax_number: params.taxNumber || null,
+        website: params.website || null,
+        country: params.country || null,
+        city: params.city || null,
+        logo_url: params.logoUrl || null,
+        status: params.contractStatus || 'Active',
+        notes: params.notes || null,
+        internal_comments: params.internalComments || null,
+        sla_template: params.slaTemplate || 'Standard',
+        sla_critical_hours: params.slaCriticalHours != null ? params.slaCriticalHours : null,
+        sla_high_hours: params.slaHighHours != null ? params.slaHighHours : null,
+        sla_medium_hours: params.slaMediumHours != null ? params.slaMediumHours : null,
+        sla_low_hours: params.slaLowHours != null ? params.slaLowHours : null
+      };
+
       if (existingOrg) {
         orgId = existingOrg.id;
         const { error: orgUpdErr } = await client
           .from('organizations')
-          .update({
-            address: params.address || null,
-            industry: params.industry || null,
-            customer_short_code: params.customerShortCode ? params.customerShortCode.trim().toUpperCase() : undefined
-          })
+          .update(orgPayload)
           .eq('id', orgId);
         if (orgUpdErr) throw orgUpdErr;
       } else {
         const { data: newOrg, error: orgErr } = await client
           .from('organizations')
-          .insert({
-            name: companyName,
-            customer_short_code: params.customerShortCode ? params.customerShortCode.trim().toUpperCase() : null,
-            address: params.address || null,
-            industry: params.industry || null
-          })
+          .insert(orgPayload)
           .select('id')
           .single();
 
@@ -261,7 +305,7 @@ export async function provisionUser(params: {
         organization_id: orgId,
         phone_number: params.phoneNumber || 'N/A',
         first_login_completed: false,
-        force_password_change: false
+        force_password_change: !params.initialPassword
       });
 
       if (profErr) throw profErr;
@@ -277,12 +321,42 @@ export async function provisionUser(params: {
         used_hours: 0.00,
         monthly_budget_hours: params.monthlyAllocatedHours || Math.round(contractHours / 12) || 15.00,
         is_active: params.contractStatus ? (params.contractStatus === 'Active') : true,
-        status: params.contractStatus || 'Active'
+        status: params.contractStatus || 'Active',
+        contract_value: params.contractValue != null ? params.contractValue : 0.00
       });
 
       if (contractErr) {
         console.warn('Non-blocking contract error:', contractErr.message);
       }
+
+      // Insert primary contact into organization_contacts
+      try {
+        const { data: contactData, error: contactErr } = await client
+          .from('organization_contacts')
+          .insert({
+            name: fullName,
+            email: email,
+            phone: params.phoneNumber || null,
+            alternate_phone: params.alternatePhone || null,
+            designation: params.designation || 'Primary Contact',
+            is_primary: true,
+            is_secondary: false
+          })
+          .select('id')
+          .single();
+
+        if (contactErr) {
+          console.warn('Non-blocking contact registration error:', contactErr.message);
+        } else if (contactData) {
+          await client.from('organization_contact_tags').insert({
+            contact_id: contactData.id,
+            organization_name: companyName
+          });
+        }
+      } catch (cErr) {
+        console.warn('Non-blocking contact registration exception:', cErr);
+      }
+
     } else if (role === 'Consultant') {
       const consultantType = params.consultantType || 'Functional';
       const sapModules = params.sapModules || [];
@@ -324,8 +398,22 @@ export async function provisionUser(params: {
         role_title: roleTitle,
         skills: skills,
         first_login_completed: false,
-        force_password_change: false,
-        organization_id: orgId
+        force_password_change: !params.initialPassword,
+        organization_id: orgId,
+        avatar_url: params.avatarUrl || null,
+        employee_id: params.employeeId || null,
+        gender: params.gender || null,
+        dob: params.dob || null,
+        specialization: params.specialization || null,
+        join_date: params.joinDate || null,
+        emergency_contact: params.emergencyContact || null,
+        experience_years: params.experienceYears != null ? params.experienceYears : null,
+        certifications: params.certifications || null,
+        daily_capacity_hours: params.dailyCapacityHours != null ? params.dailyCapacityHours : 8.00,
+        weekly_capacity_hours: params.weeklyCapacityHours != null ? params.weeklyCapacityHours : 40.00,
+        monthly_capacity_hours: params.monthlyCapacityHours != null ? params.monthlyCapacityHours : 160.00,
+        reporting_manager_id: params.reportingManagerId || null,
+        team_lead_id: params.teamLeadId || null
       });
 
       if (profErr) throw profErr;
@@ -338,7 +426,7 @@ export async function provisionUser(params: {
         role,
         is_active: true,
         first_login_completed: false,
-        force_password_change: false
+        force_password_change: !params.initialPassword
       });
       if (profErr) throw profErr;
     }

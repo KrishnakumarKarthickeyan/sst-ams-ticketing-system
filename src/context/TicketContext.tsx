@@ -108,6 +108,7 @@ interface TicketContextType {
   orgMap: Record<string, string>;
   orgShortCodeMap: Record<string, string>;
   loading: boolean;
+  slaConfigurations: any[];
   
   // Ticket Operations
   createTicket: (data: {
@@ -325,6 +326,117 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loading, setLoading] = useState(true);
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
   const [orgShortCodeMap, setOrgShortCodeMap] = useState<Record<string, string>>({});
+  const [slaConfigurations, setSlaConfigurations] = useState<any[]>([]);
+
+  const resolveSlaHours = async (priority: TicketPriority, organizationId: string): Promise<number> => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('sla_critical_hours, sla_high_hours, sla_medium_hours, sla_low_hours')
+          .eq('id', organizationId)
+          .maybeSingle();
+        if (orgData) {
+          if (priority === 'Critical' && orgData.sla_critical_hours != null) return Number(orgData.sla_critical_hours);
+          if (priority === 'High' && orgData.sla_high_hours != null) return Number(orgData.sla_high_hours);
+          if (priority === 'Medium' && orgData.sla_medium_hours != null) return Number(orgData.sla_medium_hours);
+          if (priority === 'Low' && orgData.sla_low_hours != null) return Number(orgData.sla_low_hours);
+        }
+      } catch (e) {
+        console.warn('Error fetching organization SLA override:', e);
+      }
+      
+      try {
+        const { data: slaData } = await supabase
+          .from('sla_configuration')
+          .select('resolution_hours')
+          .eq('priority', priority)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (slaData && slaData.resolution_hours != null) {
+          return Number(slaData.resolution_hours);
+        }
+      } catch (e) {
+        console.warn('Error fetching global SLA configuration:', e);
+      }
+    }
+
+    // fallback
+    if (priority === 'Critical') return 8;
+    if (priority === 'High') return 16;
+    if (priority === 'Medium') return 32;
+    return 64;
+  };
+
+  const calculateContractUtilization = (c: any, mappedTickets: Ticket[], orgName: string) => {
+    const orgId = c.organization_id || c.customer_id;
+    const contractTickets = mappedTickets.filter(t => t.organizationId === orgId || t.organization === orgName);
+
+    // Get all approved closure requests for this contract's tickets
+    const approvedClosures = contractTickets.flatMap(t => 
+      (t.closureRequests || []).filter((r: any) => r.status === 'Approved')
+    );
+
+    // Total dynamic used hours (approved only)
+    const dynamicUsedHours = approvedClosures.reduce((sum, r) => sum + Number(r.totalActualHours || 0), 0);
+
+    // Current date parameters
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+
+    // Monthly consumption (approved in the current month)
+    const monthlyUsedHours = approvedClosures
+      .filter(r => {
+        const appDate = new Date(r.managerApprovedAt || r.createdAt);
+        return appDate.getFullYear() === currentYear && appDate.getMonth() === currentMonth;
+      })
+      .reduce((sum, r) => sum + Number(r.totalActualHours || 0), 0);
+
+    // Annual consumption (approved in the current year)
+    const annualUsedHours = approvedClosures
+      .filter(r => {
+        const appDate = new Date(r.managerApprovedAt || r.createdAt);
+        return appDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, r) => sum + Number(r.totalActualHours || 0), 0);
+
+    const totalHours = Number(c.total_contract_hours != null ? c.total_contract_hours : c.total_hours || 0);
+    const remainingHours = Math.max(0, totalHours - dynamicUsedHours);
+
+    const monthlyBudgetHours = Number(c.monthly_allocated_hours != null ? c.monthly_allocated_hours : c.monthly_budget_hours || 0);
+    const monthlyUtilizationPct = monthlyBudgetHours > 0 ? (monthlyUsedHours / monthlyBudgetHours) * 100 : 0;
+    const annualUtilizationPct = totalHours > 0 ? (annualUsedHours / totalHours) * 100 : 0;
+
+    // Projected contract exhaustion date
+    let projectedExhaustion = 'Never';
+    const startDateStr = c.contract_start_date || c.start_date;
+    if (startDateStr) {
+      const startDate = new Date(startDateStr);
+      const timeDiffMs = now.getTime() - startDate.getTime();
+      // Calculate elapsed months (min 1)
+      const monthsElapsed = Math.max(1, timeDiffMs / (1000 * 60 * 60 * 24 * 30.44));
+      const averageMonthlyBurn = dynamicUsedHours / monthsElapsed;
+
+      if (averageMonthlyBurn > 0.1 && remainingHours > 0) {
+        const remainingMonths = remainingHours / averageMonthlyBurn;
+        const exhaustionDate = new Date(now.getTime() + remainingMonths * 30.44 * 24 * 60 * 60 * 1000);
+        projectedExhaustion = exhaustionDate.toISOString().split('T')[0];
+      } else if (remainingHours === 0) {
+        projectedExhaustion = 'Exhausted';
+      }
+    }
+
+    return {
+      dynamicUsedHours,
+      monthlyUsedHours,
+      annualUsedHours,
+      remainingHours,
+      monthlyUtilizationPct,
+      annualUtilizationPct,
+      projectedExhaustion
+    };
+  };
 
   const fetchData = async () => {
     if (authLoading) {
@@ -353,7 +465,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           dbContacts,
           dbArticles,
           dbCategories,
-          dbNotifications
+          dbNotifications,
+          dbSlaConfigurations
         ] = await Promise.all([
           getOrganizationMap(),
           getOrganizationShortCodeMap(),
@@ -363,7 +476,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           wrapQuery(() => supabase.from('customer_contacts').select('*')),
           wrapQuery(() => supabase.from('knowledgebase_articles').select('*')),
           wrapQuery(() => supabase.from('knowledgebase_categories').select('*')),
-          wrapQuery(() => supabase.from('notifications').select('*').order('created_at', { ascending: false }))
+          wrapQuery(() => supabase.from('notifications').select('*').order('created_at', { ascending: false })),
+          wrapQuery(() => supabase.from('sla_configuration').select('*'))
         ]);
 
         setOrgMap(organizationMap);
@@ -376,19 +490,37 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         mappedTickets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setTickets(mappedTickets);
 
-        setContracts(dbContracts ? dbContracts.map(c => ({
-          id: c.id,
-          organizationName: organizationMap[c.customer_id || c.organization_id] || (c.organizations as any)?.name || c.customer_id || c.organization_id,
-          contractType: c.contract_type as SupportContractType,
-          startDate: c.contract_start_date || c.start_date,
-          endDate: c.contract_end_date || c.end_date,
-          totalHours: Number(c.total_contract_hours !== undefined && c.total_contract_hours !== null ? c.total_contract_hours : c.total_hours),
-          usedHours: Number(c.used_hours),
-          monthlyBudgetHours: Number(c.monthly_allocated_hours !== undefined && c.monthly_allocated_hours !== null ? c.monthly_allocated_hours : c.monthly_budget_hours),
-          isActive: c.status !== undefined && c.status !== null ? c.status === 'Active' : c.is_active,
-          customerId: c.customer_id || c.organization_id,
-          status: c.status || (c.is_active ? 'Active' : 'Inactive')
-        })) : []);
+        setSlaConfigurations(dbSlaConfigurations || [
+          { priority: 'Critical', resolution_hours: 8, response_hours: 1, escalation_hours: 8, is_active: true },
+          { priority: 'High', resolution_hours: 16, response_hours: 2, escalation_hours: 16, is_active: true },
+          { priority: 'Medium', resolution_hours: 32, response_hours: 8, escalation_hours: 32, is_active: true },
+          { priority: 'Low', resolution_hours: 64, response_hours: 24, escalation_hours: 64, is_active: true }
+        ]);
+
+        setContracts(dbContracts ? dbContracts.map(c => {
+          const orgName = organizationMap[c.customer_id || c.organization_id] || (c.organizations as any)?.name || c.customer_id || c.organization_id;
+          const utils = calculateContractUtilization(c, mappedTickets, orgName);
+          return {
+            id: c.id,
+            organizationName: orgName,
+            contractType: c.contract_type as SupportContractType,
+            startDate: c.contract_start_date || c.start_date,
+            endDate: c.contract_end_date || c.end_date,
+            totalHours: Number(c.total_contract_hours !== undefined && c.total_contract_hours !== null ? c.total_contract_hours : c.total_hours),
+            usedHours: utils.dynamicUsedHours,
+            monthlyBudgetHours: Number(c.monthly_allocated_hours !== undefined && c.monthly_allocated_hours !== null ? c.monthly_allocated_hours : c.monthly_budget_hours),
+            isActive: c.status !== undefined && c.status !== null ? c.status === 'Active' : c.is_active,
+            customerId: c.customer_id || c.organization_id,
+            status: c.status || (c.is_active ? 'Active' : 'Inactive'),
+            contractValue: c.contract_value ? Number(c.contract_value) : 0,
+            monthlyUsedHours: utils.monthlyUsedHours,
+            annualUsedHours: utils.annualUsedHours,
+            remainingHours: utils.remainingHours,
+            monthlyUtilizationPct: utils.monthlyUtilizationPct,
+            annualUtilizationPct: utils.annualUtilizationPct,
+            projectedExhaustion: utils.projectedExhaustion
+          };
+        }) : []);
 
         setContacts(dbContacts ? dbContacts.map(c => ({
           id: c.id,
@@ -1183,6 +1315,10 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         if (!orgId) {
           return { success: false, error: 'Validation Error: Target organization could not be resolved.' };
+        }
+
+        if (isIncident) {
+          slaHours = await resolveSlaHours(data.priority, orgId);
         }
 
         let requestorId = user?.id || '';
@@ -3087,13 +3223,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         if (data.priority !== undefined) {
           dbUpdate.priority = data.priority;
           if (data.priority !== currentTicket?.priority) {
-            let slaHours = 32;
-            if (data.priority === 'Critical') slaHours = 8;
-            else if (data.priority === 'High') slaHours = 16;
-            else if (data.priority === 'Low') slaHours = 64;
-
             const isIncident = (data.ticketType || currentTicket?.ticketType || 'Incident') === 'Incident';
             if (isIncident) {
+              const orgId = currentTicket?.organizationId || '';
+              const slaHours = await resolveSlaHours(data.priority, orgId);
               const originalCreatedDate = currentTicket?.createdAt || new Date().toISOString();
               const newSlaDueAt = addSlaHours(originalCreatedDate, slaHours);
               dbUpdate.sla_due_at = newSlaDueAt;
@@ -6146,7 +6279,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         fetchTicketById,
         refetchData: fetchData,
         addAttachment,
-        deleteAttachment
+        deleteAttachment,
+        slaConfigurations
       }}
     >
       {children}

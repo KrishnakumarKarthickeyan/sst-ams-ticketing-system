@@ -471,6 +471,13 @@ export interface CustomerContract {
   isActive: boolean;
   customerId?: string;
   status?: string;
+  monthlyUsedHours?: number;
+  annualUsedHours?: number;
+  remainingHours?: number;
+  monthlyUtilizationPct?: number;
+  annualUtilizationPct?: number;
+  projectedExhaustion?: string;
+  contractValue?: number;
 }
 
 export interface ReportPreset {

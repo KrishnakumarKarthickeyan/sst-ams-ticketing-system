@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
               Password Reset Required
             </DialogTitle>
             <DialogDescription className="text-[11px] text-zinc-550 pt-2 leading-relaxed">
-              Please contact your Super Admin to reset your password.
+              Please contact your Super Administrator to reset your password.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 flex justify-end">
