@@ -51,33 +51,10 @@ import {
   Cell
 } from 'recharts';
 
-const priorityConfig: Record<string, { label: string; color: string; dot: string }> = {
-  Critical: { label: 'Critical', color: 'text-red-700 bg-red-50 border-red-200', dot: 'bg-red-500' },
-  High:     { label: 'High',     color: 'text-orange-700 bg-orange-50 border-orange-200', dot: 'bg-orange-400' },
-  Medium:   { label: 'Medium',   color: 'text-blue-700 bg-blue-50 border-blue-200', dot: 'bg-blue-400' },
-  Low:      { label: 'Low',      color: 'text-zinc-650 bg-zinc-50 border-zinc-200', dot: 'bg-zinc-400' },
-};
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  'Requirement Gathering':     { label: 'Req. Gathering', color: 'text-slate-650 bg-slate-105 border-slate-200' },
-  'Waiting for Hours Approval':{ label: 'Hrs Approval',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  'In Progress - Technical':   { label: 'IP Technical',   color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  'In Progress - Functional':  { label: 'IP Functional',  color: 'text-zinc-700 bg-zinc-100 border-zinc-200' },
-  'In Progress':               { label: 'In Progress',    color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  'Raised to SAP':             { label: 'Raised to SAP',  color: 'text-orange-700 bg-orange-50 border-orange-200' },
-  'Customer Action':           { label: 'Cust. Action',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  'On Hold':                   { label: 'On Hold',        color: 'text-zinc-600 bg-zinc-100 border-zinc-200' },
-  'Request for Closure':       { label: 'Req. Closure',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-  'Closed':                    { label: 'Closed',         color: 'text-zinc-600 bg-zinc-200 border-zinc-300' },
-  'Reopened':                  { label: 'Reopened',       color: 'text-red-700 bg-red-50 border-red-200' },
-  'New':                       { label: 'New',            color: 'text-zinc-650 bg-zinc-100 border-zinc-200 font-bold' },
-  'Assigned':                  { label: 'Assigned',       color: 'text-blue-650 bg-blue-50 border-blue-150' },
-  'Awaiting Functional Submission': { label: 'Awaiting Func. Sub', color: 'text-zinc-700 bg-zinc-100 border-zinc-200' },
-  'Awaiting Technical Submission':  { label: 'Awaiting Tech. Sub', color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  'Awaiting Manager Approval':      { label: 'Awaiting Mgr Appr', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-};
 
 import { chartColors } from '../../../lib/chart-theme';
+import { statusConfig, priorityConfig } from '../../../lib/status-theme';
 
 const ZINC_COLORS = chartColors.categorical;
 

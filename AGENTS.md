@@ -10,5 +10,5 @@ This project maintains a codebase knowledge graph using Graphify.
 
 1. **Navigation**: Consult the Graphify index in `graphify-out/` before scanning or reading arbitrary files when searching for codebase structure.
 2. **Maintenance**: You MUST run `npm run graphify` (which executes `graphify update .`) immediately after modifying any code files to rebuild the AST dependency graph.
-3. **RLS & Security**: Check RLS policies (`src/sql/fix_rls_policies_v3.sql`) to ensure multi-consultant support is maintained for all new/modified ticket query and effort logging features.
+3. **RLS & Security**: Check RLS policies in `supabase/migrations/` (latest tickets/profiles policies: `20260611000002_security_hardening_rls.sql`) to ensure multi-consultant support via `ticket_consultant_efforts` is maintained for all new/modified ticket query and effort logging features.
 

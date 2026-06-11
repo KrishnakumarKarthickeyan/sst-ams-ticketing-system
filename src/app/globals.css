@@ -29,6 +29,64 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  /* Interpolated in-between shades. The codebase uses many nonstandard
+     Tailwind steps (zinc-150, zinc-450, red-655, ...) that Tailwind v4 does
+     not ship - without these @theme entries those utilities emit NO css.
+     Values are sRGB interpolations of the official palette. */
+  --color-amber-105: #fef2c4;
+  --color-amber-250: #fddd6c;
+  --color-amber-255: #fcdc68;
+  --color-amber-550: #e78b09;
+  --color-amber-650: #c76508;
+  --color-amber-655: #c56308;
+  --color-amber-750: #a34a0c;
+  --color-amber-850: #853b0f;
+  --color-blue-150: #cde3fe;
+  --color-blue-250: #a9d0fe;
+  --color-blue-650: #2159e2;
+  --color-emerald-150: #bcf7db;
+  --color-emerald-250: #8bedc4;
+  --color-emerald-650: #058760;
+  --color-emerald-755: #056a4e;
+  --color-green-150: #ccfadc;
+  --color-green-750: #167339;
+  --color-green-955: #052914;
+  --color-indigo-650: #493fd8;
+  --color-red-150: #fed6d6;
+  --color-red-250: #fdb8b8;
+  --color-red-505: #ee4343;
+  --color-red-550: #e63535;
+  --color-red-605: #da2626;
+  --color-red-650: #cb2121;
+  --color-red-655: #c92121;
+  --color-red-750: #a91c1c;
+  --color-red-755: #a71b1b;
+  --color-red-850: #8c1c1c;
+  --color-red-955: #3e0909;
+  --color-slate-105: #f0f4f9;
+  --color-slate-150: #eaeff5;
+  --color-slate-450: #7c8ca2;
+  --color-slate-550: #56657a;
+  --color-slate-650: #3d4b5f;
+  --color-slate-655: #3c4a5e;
+  --color-slate-955: #020515;
+  --color-zinc-105: #f3f3f4;
+  --color-zinc-150: #ececee;
+  --color-zinc-250: #dcdce0;
+  --color-zinc-350: #bbbbc1;
+  --color-zinc-450: #898992;
+  --color-zinc-455: #878790;
+  --color-zinc-550: #62626b;
+  --color-zinc-55: #f9f9fa;
+  --color-zinc-605: #51515a;
+  --color-zinc-650: #494951;
+  --color-zinc-655: #48484f;
+  --color-zinc-750: #333338;
+  --color-zinc-850: #202023;
+  --color-zinc-855: #1f1f22;
+  --color-zinc-905: #171719;
+  --color-zinc-955: #08080a;
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);

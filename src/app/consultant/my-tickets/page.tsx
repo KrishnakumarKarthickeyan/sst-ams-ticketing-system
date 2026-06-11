@@ -52,31 +52,11 @@ import {
   TableHead,
   TableCell
 } from '../../../components/ui/table';
+import { statusConfig, priorityConfig } from '../../../lib/status-theme';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const priorityConfig: Record<string, { label: string; color: string; dot: string }> = {
-  Critical: { label: 'Critical', color: 'text-red-700 bg-red-50 border-red-200', dot: 'bg-red-500' },
-  High:     { label: 'High',     color: 'text-orange-700 bg-orange-50 border-orange-200', dot: 'bg-orange-400' },
-  Medium:   { label: 'Medium',   color: 'text-blue-700 bg-blue-50 border-blue-200', dot: 'bg-blue-400' },
-  Low:      { label: 'Low',      color: 'text-slate-655 bg-slate-50 border-slate-200', dot: 'bg-slate-400' },
-};
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  'Requirement Gathering':     { label: 'Req. Gathering', color: 'text-slate-600 bg-slate-100 border-slate-200' },
-  'Waiting for Hours Approval':{ label: 'Hrs Approval',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  'In Progress - Technical':   { label: 'IP Technical',   color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  'In Progress - Functional':  { label: 'IP Functional',  color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
-  'In Progress':               { label: 'In Progress',    color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  'Raised to SAP':             { label: 'Raised to SAP',  color: 'text-orange-700 bg-orange-50 border-orange-200' },
-  'Customer Action':           { label: 'Cust. Action',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  'Request for Closure':       { label: 'Req. Closure',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-  'Closed':                    { label: 'Closed',         color: 'text-slate-600 bg-slate-200 border-slate-300' },
-  'Reopened':                  { label: 'Reopened',       color: 'text-red-700 bg-red-50 border-red-200' },
-  'Awaiting Functional Submission': { label: 'Awaiting Func. Sub', color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
-  'Awaiting Technical Submission':  { label: 'Awaiting Tech. Sub', color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  'Awaiting Manager Approval':      { label: 'Awaiting Mgr Appr', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-};
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = statusConfig[status] || { label: status, color: 'text-slate-600 bg-slate-50 border-slate-200' };

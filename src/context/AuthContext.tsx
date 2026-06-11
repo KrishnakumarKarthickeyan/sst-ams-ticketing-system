@@ -42,6 +42,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const activeRef = React.useRef(true);
   const activeProfileFetchRef = React.useRef<Promise<UserSession | null> | null>(null);
   const isLoggingInRef = React.useRef(false);
+  // Mirror of `user` readable from callbacks registered once (onAuthStateChange):
+  // those capture the first render's `user` (always null), which made the
+  // duplicate-fetch guard below dead code and refetched the profile on every
+  // token refresh / tab focus.
+  const userRef = React.useRef<UserSession | null>(null);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const fetchAndSetProfile = async (session: any, force = false) => {
     if (!session || !activeRef.current) {
@@ -50,9 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isLoggingInRef.current && !force) return null;
     
     // Prevent duplicate fetches if profile is already loaded and matches current session user
-    if (!force && user && user.id === session.user.id) {
+    if (!force && userRef.current && userRef.current.id === session.user.id) {
       setLoading(false);
-      return user;
+      return userRef.current;
     }
 
     if (activeProfileFetchRef.current && !force) {
@@ -177,24 +183,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured && supabase) {
       try {
-        // Pre-check user locked/active status from profiles
-        const lockCheck = await checkUserLockedStatus(normalizedEmail);
-        if (!lockCheck.success) {
-          isLoggingInRef.current = false;
-          return { success: false, error: lockCheck.error };
-        }
-
         const loginPromise = supabase.auth.signInWithPassword({
           email: normalizedEmail,
           password: password || ''
         });
 
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Authentication service timeout. Please verify your connection status.')), 15000)
+          setTimeout(() => reject(new Error('Authentication service timeout. Please verify your connection status.')), 10000)
         );
 
-        // Enforce a strict network timeout safety check
-        const { data, error } = await Promise.race([loginPromise, timeoutPromise]) as any;
+        // The app-level lock/active check runs in parallel with the credential
+        // check — sequencing them doubled login latency for no security gain
+        // (the lock decision is enforced below either way).
+        const [lockCheck, signInResult] = await Promise.all([
+          checkUserLockedStatus(normalizedEmail),
+          Promise.race([loginPromise, timeoutPromise])
+        ]);
+        const { data, error } = signInResult as any;
+
+        if (!lockCheck.success) {
+          if (data?.user) {
+            await supabase.auth.signOut();
+          }
+          isLoggingInRef.current = false;
+          return { success: false, error: lockCheck.error };
+        }
 
         if (error) {
           // Increment failed attempts and trigger lockout if limit reached
@@ -205,8 +218,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (data.user) {
-          // Successful login: reset failed attempts
-          await handleSuccessfulLogin(normalizedEmail);
+          // Reset failed attempts in the background — the profile fetch below
+          // doesn't depend on it, and awaiting it added a full round trip.
+          handleSuccessfulLogin(normalizedEmail).catch(() => {});
 
           const getProfileRes = () => getUserProfileServer(data.user.id);
           let profileRes = await getProfileRes();

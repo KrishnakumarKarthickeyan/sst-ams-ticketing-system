@@ -73,11 +73,13 @@ export default function LoginPage() {
     }
 
     let timedOut = false;
+    // Slightly above AuthContext's 10s auth timeout, so the context's precise
+    // error surfaces first instead of this generic one racing ahead of it.
     const timeoutId = setTimeout(() => {
       timedOut = true;
       setError('Login is taking longer than expected. Please try again.');
       setAuthenticating(false);
-    }, 8000);
+    }, 12000);
 
     try {
       const res = await login(email, password);

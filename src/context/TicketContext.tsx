@@ -3027,25 +3027,18 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (isSupabaseConfigured && supabase && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
       try {
-        const insertData: any = {
-          user_id: resolvedUuid,
-          title: data.title,
-          message: data.message,
-          ticket_id: data.ticketId,
-          type: data.type,
-          link_path: data.linkPath,
-        };
-        const { error } = await supabase.from('notifications').insert(insertData);
+        // Inserts go through a SECURITY DEFINER RPC: direct INSERT is admin-only
+        // since the notification-spoofing hardening (20260611000002).
+        const { error } = await supabase.rpc('create_notification', {
+          p_user_id: resolvedUuid,
+          p_title: data.title,
+          p_message: data.message,
+          p_ticket_id: data.ticketId ?? null,
+          p_type: data.type ?? 'system',
+          p_link_path: data.linkPath ?? null
+        });
         if (error) {
-          console.warn('New notification columns not found, falling back to basic columns...', error);
-          const fallbackData = {
-            user_id: resolvedUuid,
-            title: data.title,
-            message: data.message,
-            ticket_id: data.ticketId,
-            is_read: false
-          };
-          await supabase.from('notifications').insert(fallbackData);
+          console.warn('create_notification RPC failed:', error.message);
         }
       } catch (err) {
         console.error('Error creating database notification:', err);
@@ -3188,12 +3181,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // 2. Insert into Supabase
     if (isSupabaseConfigured && supabase && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
       try {
-        await supabase.from('notifications').insert({
-          user_id: resolvedUuid,
-          title,
-          message,
-          ticket_id: ticketId,
-          is_read: false
+        await supabase.rpc('create_notification', {
+          p_user_id: resolvedUuid,
+          p_title: title,
+          p_message: message,
+          p_ticket_id: ticketId ?? null
         });
       } catch (err) {
         console.error('Error creating database notification:', err);
@@ -5800,11 +5792,11 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             ),
             
             Promise.resolve(
-              supabase.from('notifications').insert({
-                user_id: targetUUID,
-                title: 'Resource Assigned',
-                message: `You have been assigned to ticket ${ticketId} as a ${added.consultantType} resource by ${actorName}.`,
-                ticket_id: ticketId
+              supabase.rpc('create_notification', {
+                p_user_id: targetUUID,
+                p_title: 'Resource Assigned',
+                p_message: `You have been assigned to ticket ${ticketId} as a ${added.consultantType} resource by ${actorName}.`,
+                p_ticket_id: ticketId
               })
             )
           ];
@@ -5825,11 +5817,11 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             ),
             
             Promise.resolve(
-              supabase.from('notifications').insert({
-                user_id: removed.consultantId,
-                title: 'Resource Removed',
-                message: `You have been removed from ticket ${ticketId} by ${actorName}.`,
-                ticket_id: ticketId
+              supabase.rpc('create_notification', {
+                p_user_id: removed.consultantId,
+                p_title: 'Resource Removed',
+                p_message: `You have been removed from ticket ${ticketId} by ${actorName}.`,
+                p_ticket_id: ticketId
               })
             )
           ];
