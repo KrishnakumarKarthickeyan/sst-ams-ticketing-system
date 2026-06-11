@@ -17,13 +17,16 @@ Platform governance invariants:
 - **Supabase is the ONLY source of truth** — no mock data, placeholder data, static arrays, hardcoded counts, or fake analytics in any card, table, chart, dashboard, report, notification, filter, or export.
 - **SLA defaults**: Critical 8h, High 16h, Medium 32h, Low 64h — must agree across frontend, backend, database, reports, dashboards, notifications, escalations (org-level overrides live in `organizations`, global config in `sla_configuration`).
 - **Performance targets**: login < 2s, dashboard < 2s, navigation < 1s, realtime < 500ms, chart render < 1s.
-- After modifying code run BOTH `npm run graphify` and `codegraph sync`.
+- **UI library**: shadcn/ui only — validate alignment, spacing, typography, responsiveness, accessibility, and empty/loading/error/success states on every touched screen.
+- **RLS & Security**: check RLS policies in `supabase/migrations/` (latest tickets/profiles policies: `20260611000002_security_hardening_rls.sql`) to ensure multi-consultant support via `ticket_consultant_efforts` is maintained for all new/modified ticket query and effort logging features.
+- After modifying code run `codegraph sync`.
 
-# Graphify Integration Rules
+# Graphify Mode (OPTIONAL — explicit request only)
 
-This project maintains a codebase knowledge graph using Graphify.
-
-1. **Navigation**: Consult the Graphify index in `graphify-out/` before scanning or reading arbitrary files when searching for codebase structure.
-2. **Maintenance**: You MUST run `npm run graphify` (which executes `graphify update .`) immediately after modifying any code files to rebuild the AST dependency graph.
-3. **RLS & Security**: Check RLS policies in `supabase/migrations/` (latest tickets/profiles policies: `20260611000002_security_hardening_rls.sql`) to ensure multi-consultant support via `ticket_consultant_efforts` is maintained for all new/modified ticket query and effort logging features.
+Graphify is NOT part of the default flow. Run it only when the user explicitly asks
+("Use Graphify" / "Run Graphify Analysis" / "Graphify Mode"), and only for large-scale
+work: authentication/dashboard/workflow/database/SLA-engine/reporting/realtime
+redesigns or major platform refactoring. Never run it for UI fixes, padding/alignment
+fixes, small bugs, or minor enhancements. When it does run, rebuild with
+`npm run graphify` and consult the index in `graphify-out/`.
 
