@@ -1044,29 +1044,29 @@ export default function UserManagementPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="p-4">Name</TableHead>
-                  <TableHead className="p-4">Type</TableHead>
-                  <TableHead className="p-4">Status</TableHead>
-                  <TableHead className="p-4">Active Tickets</TableHead>
-                  <TableHead className="p-4">Utilization %</TableHead>
-                  <TableHead className="p-4 text-right">Actions</TableHead>
+                  <TableHead className="py-3 px-4">Name</TableHead>
+                  <TableHead className="py-3 px-4">Type</TableHead>
+                  <TableHead className="py-3 px-4">Status</TableHead>
+                  <TableHead className="py-3 px-4">Active Tickets</TableHead>
+                  <TableHead className="py-3 px-4">Utilization %</TableHead>
+                  <TableHead className="py-3 px-4 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, idx) => (
                     <TableRow key={idx}>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-48" /></TableCell>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-8" /></TableCell>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-12" /></TableCell>
-                      <TableCell className="p-4 text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-48" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-8" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-12" /></TableCell>
+                      <TableCell className="py-3 px-4 text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-48 text-center">
+                    <TableCell colSpan={6} className="py-3 px-4 text-center h-48">
                       <div className="flex flex-col items-center justify-center space-y-2 text-zinc-400">
                         <User className="h-8 w-8 stroke-1" />
                         <span className="text-sm font-semibold">No consultants yet.</span>
@@ -1079,7 +1079,7 @@ export default function UserManagementPage() {
                 ) : (
                   filteredUsers.map((u) => (
                     <TableRow key={u.id}>
-                      <TableCell className="p-4">
+                      <TableCell className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8 border border-zinc-200">
                             <AvatarFallback className="bg-zinc-100 text-zinc-800 font-semibold text-xs">
@@ -1092,20 +1092,20 @@ export default function UserManagementPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="p-4">
+                      <TableCell className="py-3 px-4">
                         <Badge variant={u.consultantType === 'Technical' ? 'outline' : 'secondary'} className="text-[9px] font-bold">
                           {u.consultantType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="p-4">
+                      <TableCell className="py-3 px-4">
                         <Badge variant={u.isActive ? 'success' : 'warning'} className="text-[9px] font-bold">
                           {u.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="p-4 font-mono text-xs text-zinc-700">
+                      <TableCell className="py-3 px-4 font-mono text-xs text-zinc-700">
                         {u.activeTicketsCount}
                       </TableCell>
-                      <TableCell className="p-4">
+                      <TableCell className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs text-zinc-700">{u.utilizationPercent}%</span>
                           <div className="w-16 bg-zinc-100 rounded-full h-1.5 overflow-hidden hidden sm:block border border-zinc-200">
@@ -1116,7 +1116,7 @@ export default function UserManagementPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="p-4 text-right">
+                      <TableCell className="py-3 px-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 p-0 cursor-pointer">
@@ -1207,29 +1207,29 @@ export default function UserManagementPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="p-4">Name</TableHead>
-                  <TableHead className="p-4">Organization</TableHead>
-                  <TableHead className="p-4">Contract</TableHead>
-                  <TableHead className="p-4">Status</TableHead>
-                  <TableHead className="p-4">Open Tickets</TableHead>
-                  <TableHead className="p-4 text-right">Actions</TableHead>
+                  <TableHead className="py-3 px-4">Name</TableHead>
+                  <TableHead className="py-3 px-4">Organization</TableHead>
+                  <TableHead className="py-3 px-4">Contract</TableHead>
+                  <TableHead className="py-3 px-4">Status</TableHead>
+                  <TableHead className="py-3 px-4">Open Tickets</TableHead>
+                  <TableHead className="py-3 px-4 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, idx) => (
                     <TableRow key={idx}>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-48" /></TableCell>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-36" /></TableCell>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell className="p-4"><Skeleton className="h-5 w-8" /></TableCell>
-                      <TableCell className="p-4 text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-48" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-36" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell className="py-3 px-4"><Skeleton className="h-5 w-8" /></TableCell>
+                      <TableCell className="py-3 px-4 text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-48 text-center">
+                    <TableCell colSpan={6} className="py-3 px-4 text-center h-48">
                       <div className="flex flex-col items-center justify-center space-y-2 text-zinc-400">
                         <Building className="h-8 w-8 stroke-1" />
                         <span className="text-sm font-semibold">No clients yet.</span>
@@ -1242,7 +1242,7 @@ export default function UserManagementPage() {
                 ) : (
                   filteredUsers.map((u) => (
                     <TableRow key={u.id}>
-                      <TableCell className="p-4">
+                      <TableCell className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8 border border-zinc-200">
                             <AvatarFallback className="bg-zinc-100 text-zinc-800 font-semibold text-xs">
@@ -1255,7 +1255,7 @@ export default function UserManagementPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="p-4">
+                      <TableCell className="py-3 px-4">
                         <div className="flex flex-col">
                           <span className="text-xs text-zinc-900 font-semibold">{u.organizationName}</span>
                           {u.customerShortCode && (
@@ -1263,7 +1263,7 @@ export default function UserManagementPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="p-4">
+                      <TableCell className="py-3 px-4">
                         {u.activeContract ? (
                           <div className="flex flex-col gap-1">
                             <Badge variant="success" className="text-[9px] font-bold w-max">
@@ -1279,15 +1279,15 @@ export default function UserManagementPage() {
                           <span className="text-zinc-400 italic text-[11px]">No active contract</span>
                         )}
                       </TableCell>
-                      <TableCell className="p-4">
+                      <TableCell className="py-3 px-4">
                         <Badge variant={u.isActive ? 'success' : 'warning'} className="text-[9px] font-bold">
                           {u.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="p-4 font-mono text-xs text-zinc-700">
+                      <TableCell className="py-3 px-4 font-mono text-xs text-zinc-700">
                         {u.openClientTicketsCount}
                       </TableCell>
-                      <TableCell className="p-4 text-right">
+                      <TableCell className="py-3 px-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 p-0 cursor-pointer">
