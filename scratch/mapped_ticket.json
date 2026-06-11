@@ -1,0 +1,253 @@
+{
+  "id": "SST-QM-1008",
+  "title": "Cannot able to move stock from QC to SD",
+  "description": "NA",
+  "organization": "Alsuhaimi",
+  "organizationId": "806ffc2e-ef7d-4af8-a897-6bef1070efe3",
+  "requestedBy": "Thiru",
+  "requestedByEmail": "thiru@suhaimi.com",
+  "requestedByPhone": "N/A",
+  "sapModule": "QM",
+  "category": "Workflow Issue",
+  "priority": "Critical",
+  "status": "Closed",
+  "assignedManager": "SAP Manager",
+  "assignedConsultant": "Keerthana",
+  "slaDueAt": "2026-05-29T23:28:51.589+00:00",
+  "resolvedAt": "2026-05-29T19:39:57.528+00:00",
+  "closedAt": "2026-05-29T19:39:57.528+00:00",
+  "createdAt": "2026-05-29T19:28:51.702184+00:00",
+  "updatedAt": "2026-05-29T19:39:57.528+00:00",
+  "rootCause": "NA",
+  "resolutionSummary": "NA",
+  "billable": true,
+  "escalationFlag": false,
+  "approvalRequiredFlag": true,
+  "transportRequest": null,
+  "source": "Created by Client",
+  "primaryConsultantId": "7408c315-ab62-475d-af67-6471b926efbc",
+  "closureStatus": "Approved",
+  "closedBy": "7d1be7f4-01b8-4b66-a842-d28a2b63c4f3",
+  "comments": [
+    {
+      "id": "6c4afdb6-7bd8-439d-974d-6f1cdf424603",
+      "ticketId": "SST-QM-1008",
+      "authorName": "Keerthana",
+      "authorEmail": "keerthana@sst.com",
+      "authorRole": "Consultant",
+      "content": "hi",
+      "isInternal": false,
+      "createdAt": "2026-05-29T19:34:06.978013+00:00",
+      "attachments": [
+        {
+          "id": "5d59fd69-949d-4428-8df5-28f47b5d13e3",
+          "ticketId": "SST-QM-1008",
+          "commentId": "6c4afdb6-7bd8-439d-974d-6f1cdf424603",
+          "fileName": "Balaji -Sales_Manager_Self_Evaluation_FY25-26.pdf",
+          "filePath": "https://wpddvcwsahzofmdrxthd.supabase.co/storage/v1/object/public/sap-tickets/tickets/SST-QM-1008/comments/file-1780083242503-9i5b6ob/Balaji%20-Sales_Manager_Self_Evaluation_FY25-26.pdf",
+          "fileUrl": "https://wpddvcwsahzofmdrxthd.supabase.co/storage/v1/object/public/sap-tickets/tickets/SST-QM-1008/comments/file-1780083242503-9i5b6ob/Balaji%20-Sales_Manager_Self_Evaluation_FY25-26.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 872174,
+          "uploadedBy": "7408c315-ab62-475d-af67-6471b926efbc",
+          "visibility": "public",
+          "createdAt": "2026-05-29T19:34:07.0773+00:00"
+        }
+      ]
+    }
+  ],
+  "attachments": [
+    {
+      "id": "a8f2c3fe-b037-4aed-be57-055296e3d3db",
+      "ticketId": "SST-QM-1008",
+      "fileName": "RFP_EBidding_System_McDonalds_KSA.pdf",
+      "filePath": "https://wpddvcwsahzofmdrxthd.supabase.co/storage/v1/object/public/sap-tickets/SST-QM-1008/1780082930872_RFP_EBidding_System_McDonalds_KSA.pdf",
+      "fileUrl": "https://wpddvcwsahzofmdrxthd.supabase.co/storage/v1/object/public/sap-tickets/SST-QM-1008/1780082930872_RFP_EBidding_System_McDonalds_KSA.pdf",
+      "fileType": "application/pdf",
+      "fileSize": 392975,
+      "uploadedBy": "Thiru",
+      "visibility": "public",
+      "createdAt": "2026-05-29T19:28:51.947495+00:00"
+    },
+    {
+      "id": "5d59fd69-949d-4428-8df5-28f47b5d13e3",
+      "ticketId": "SST-QM-1008",
+      "commentId": "6c4afdb6-7bd8-439d-974d-6f1cdf424603",
+      "fileName": "Balaji -Sales_Manager_Self_Evaluation_FY25-26.pdf",
+      "filePath": "https://wpddvcwsahzofmdrxthd.supabase.co/storage/v1/object/public/sap-tickets/tickets/SST-QM-1008/comments/file-1780083242503-9i5b6ob/Balaji%20-Sales_Manager_Self_Evaluation_FY25-26.pdf",
+      "fileUrl": "https://wpddvcwsahzofmdrxthd.supabase.co/storage/v1/object/public/sap-tickets/tickets/SST-QM-1008/comments/file-1780083242503-9i5b6ob/Balaji%20-Sales_Manager_Self_Evaluation_FY25-26.pdf",
+      "fileType": "application/pdf",
+      "fileSize": 872174,
+      "uploadedBy": "Keerthana",
+      "visibility": "public",
+      "createdAt": "2026-05-29T19:34:07.0773+00:00"
+    }
+  ],
+  "efforts": [],
+  "history": [
+    {
+      "id": "c52127e8-9f12-453a-ad3e-aaead90c1216",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "Thiru",
+      "fieldChanged": "Ticket",
+      "oldValue": "Created",
+      "newValue": "New",
+      "createdAt": "2026-05-29T19:28:52.061976+00:00"
+    },
+    {
+      "id": "bc571864-0327-4f49-a2ef-1df53cb2797f",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SAP Manager",
+      "fieldChanged": "Assigned Lead Consultant",
+      "oldValue": "Unassigned",
+      "newValue": "Keerthana",
+      "createdAt": "2026-05-29T19:31:01.859724+00:00"
+    },
+    {
+      "id": "bc943271-dcfa-44ac-9248-72daad3704ac",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SAP Manager",
+      "fieldChanged": "Assigned Lead Consultant",
+      "oldValue": "Unassigned",
+      "newValue": "Krishna",
+      "createdAt": "2026-05-29T19:31:01.860763+00:00"
+    },
+    {
+      "id": "170752ed-912e-4117-8310-9f86b15c9647",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SAP Manager",
+      "fieldChanged": "Status",
+      "oldValue": "New",
+      "newValue": "Assigned",
+      "createdAt": "2026-05-29T19:31:02.16427+00:00"
+    },
+    {
+      "id": "081ce0a2-f2dc-4671-bf60-af696000a779",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SAP Manager",
+      "fieldChanged": "Status",
+      "oldValue": "New",
+      "newValue": "Assigned",
+      "createdAt": "2026-05-29T19:31:02.18123+00:00"
+    },
+    {
+      "id": "df2e4f54-8846-44ef-9de3-5fa84e590d62",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SAP Manager",
+      "fieldChanged": "Resource Assigned",
+      "oldValue": "None",
+      "newValue": "Keerthana (Technical)",
+      "createdAt": "2026-05-29T19:31:02.294007+00:00"
+    },
+    {
+      "id": "ac0a72e2-3e41-4c4b-9a92-589c86b56ee8",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "Keerthana",
+      "fieldChanged": "Comment Added",
+      "oldValue": "",
+      "newValue": "Public comment added by Keerthana",
+      "createdAt": "2026-05-29T19:34:07.154176+00:00"
+    },
+    {
+      "id": "e4dbd3fb-9541-4c7a-a376-759cb37af494",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "Keerthana",
+      "fieldChanged": "Estimated Hours Quoted",
+      "oldValue": "0",
+      "newValue": "10 (Func: 0, Tech: 10)",
+      "createdAt": "2026-05-29T19:34:15.504063+00:00"
+    },
+    {
+      "id": "4498d6d4-8dc1-46af-bcbd-b27d1209b915",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SST Super Admin",
+      "fieldChanged": "Resource Removed",
+      "oldValue": "Krishna (Functional)",
+      "newValue": "None",
+      "createdAt": "2026-05-29T19:36:14.274938+00:00"
+    },
+    {
+      "id": "8d1f5416-3d01-4a68-a8f2-beb61121b68e",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SST Super Admin",
+      "fieldChanged": "Resource Assigned",
+      "oldValue": "None",
+      "newValue": "Krishna (Functional)",
+      "createdAt": "2026-05-29T19:36:29.815861+00:00"
+    },
+    {
+      "id": "5bbcc691-2397-41d4-b5ba-e515d3063ee0",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SST Super Admin",
+      "fieldChanged": "Assigned Manager",
+      "oldValue": "None",
+      "newValue": "SAP Manager",
+      "createdAt": "2026-05-29T19:36:35.543755+00:00"
+    },
+    {
+      "id": "d37109d1-eeaf-472c-9eba-d162dc66c45d",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SST Super Admin",
+      "fieldChanged": "Assigned Lead Consultant",
+      "oldValue": "Keerthana",
+      "newValue": "Keerthana",
+      "createdAt": "2026-05-29T19:36:35.686945+00:00"
+    },
+    {
+      "id": "708903cc-f878-4af0-ad21-17b8993585e9",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "Krishna",
+      "fieldChanged": "Estimated Hours Quoted",
+      "oldValue": "0",
+      "newValue": "24 (Func: 24, Tech: 0)",
+      "createdAt": "2026-05-29T19:37:52.014269+00:00"
+    },
+    {
+      "id": "3d544121-843d-47d1-baed-d451c643a204",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "Keerthana",
+      "fieldChanged": "Status",
+      "oldValue": "Assigned",
+      "newValue": "Request for Closure",
+      "createdAt": "2026-05-29T19:38:51.670926+00:00"
+    },
+    {
+      "id": "757f61b5-93c7-4657-a47f-dd65314523fd",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "Keerthana",
+      "fieldChanged": "Actual Hours Submitted",
+      "oldValue": "0",
+      "newValue": "34 (Func: 24, Tech: 10)",
+      "createdAt": "2026-05-29T19:38:51.748044+00:00"
+    },
+    {
+      "id": "b45024fa-e42f-4e97-a91a-94d19f012d9e",
+      "ticketId": "SST-QM-1008",
+      "changedBy": "SAP Manager",
+      "fieldChanged": "Status",
+      "oldValue": "Request for Closure",
+      "newValue": "Closed",
+      "createdAt": "2026-05-29T19:39:57.652731+00:00"
+    }
+  ],
+  "ticketType": "Incident",
+  "functionalOrTechnical": "Functional",
+  "classification": "Functional",
+  "businessImpact": "Minor Business Impact",
+  "businessImpactLevel": "Minor Business Impact",
+  "businessJustification": null,
+  "expectedResolutionDate": null,
+  "quotedHours": 34,
+  "raisedToSap": false,
+  "reopenedCount": 0,
+  "customerActionRequired": false,
+  "currentOwner": null,
+  "nextActionOwner": "Support Desk",
+  "escalations": [],
+  "createdByName": "Thiru",
+  "createdByUser": "20f01cc7-4311-429f-a44a-74bb2f8eaad3",
+  "softDeleteStatus": "Active",
+  "sapModules": [
+    "QM"
+  ],
+  "deleteRequests": []
+}

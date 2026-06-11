@@ -1,0 +1,787 @@
+{
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/query_user.js": {
+    "mtime": 1779820970.4237385,
+    "ast_hash": "9e58961b0788a6078495b89998497d41",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_raise_closure.js": {
+    "mtime": 1779981805.4943445,
+    "ast_hash": "0ea9afa524294278cb41b7a9b0aa19de",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_map_closure.js": {
+    "mtime": 1779982006.981194,
+    "ast_hash": "2ebf97e4011882771b57226da969c85a",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/postcss.config.mjs": {
+    "mtime": 1779541551.478392,
+    "ast_hash": "239f3ebf717465dc636818a1a619398d",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_rls_closure.js": {
+    "mtime": 1779982430.8125103,
+    "ast_hash": "91783092c14217123542b9aa26453d6f",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_map_with_assignments.js": {
+    "mtime": 1779982133.1034207,
+    "ast_hash": "0cd713317654828d42056d2837e8b18d",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_client_auth.js": {
+    "mtime": 1779893531.3729217,
+    "ast_hash": "444d2a9778343314f141f69d984d0286",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/inspect_db.js": {
+    "mtime": 1779890459.3143775,
+    "ast_hash": "8cdddcbf029f1ea42d1dc71c47a1f13e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_auth_keerthana.js": {
+    "mtime": 1779982405.6621363,
+    "ast_hash": "a2f5f02071e97a9234c929d4a4c7d8d8",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/package.json": {
+    "mtime": 1779992914.981033,
+    "ast_hash": "2dfaa27b12e3eb2bbcb5018582de1b29",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_mapping.js": {
+    "mtime": 1779893605.971174,
+    "ast_hash": "2a28b27e43ffab94a8c0db3a56dbde43",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_consultant_fetch.js": {
+    "mtime": 1779982446.696868,
+    "ast_hash": "71a7fbdbc9b1adfaab19e62ce1a1796a",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/tsconfig.json": {
+    "mtime": 1779541551.4793255,
+    "ast_hash": "ee17fd1c97c735e9f3564e3f5251f125",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_query.js": {
+    "mtime": 1779890464.8536682,
+    "ast_hash": "2112aba91bacffce9d9d337382f3820d",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/eslint.config.mjs": {
+    "mtime": 1779541551.4782145,
+    "ast_hash": "dfa1f5f6a7037bf39dc510f30b180002",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/test_all_queries.js": {
+    "mtime": 1779982747.3147562,
+    "ast_hash": "9c0f83bdc077e00ea23ed339353aecf5",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/next.config.ts": {
+    "mtime": 1779704112.3469765,
+    "ast_hash": "daad32b4de0b92afe04301ebf0a6cc76",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/test-select-no-single.js": {
+    "mtime": 1779802134.4267626,
+    "ast_hash": "f481e56e938cdf12d4c0d9f88aff28a6",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/test-auth.js": {
+    "mtime": 1779800502.949557,
+    "ast_hash": "44affad1b33be269e1c0ad48a907a592",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/sync-profiles.js": {
+    "mtime": 1779802640.9072282,
+    "ast_hash": "291c7cf847eee2c036f9069ab5f0d930",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/list-policies.js": {
+    "mtime": 1779804216.4264348,
+    "ast_hash": "0d1c4421b801b5ffb1c8649b3c2f8279",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check-manager.js": {
+    "mtime": 1779801974.3080735,
+    "ast_hash": "5589ce08c1ed3b0874036106234f7be3",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/test-inserts.js": {
+    "mtime": 1779804754.66969,
+    "ast_hash": "1b5f6571e552eabe781000db4deb5d4d",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/test_column.js": {
+    "mtime": 1779883079.61008,
+    "ast_hash": "e0185f3035300ebd715e771e39ac7afa",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/clear_db.js": {
+    "mtime": 1779823449.5549634,
+    "ast_hash": "62de642b38dd7590432f705c6c67fc09",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/inspect_tables.js": {
+    "mtime": 1779882930.07034,
+    "ast_hash": "f843d20c23172317f93cf8da721fafcb",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/debug-profiles.js": {
+    "mtime": 1779802093.4372957,
+    "ast_hash": "46e2b63032913e230579aabd1d8543e2",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/seed-manager.js": {
+    "mtime": 1779801986.070224,
+    "ast_hash": "3d751a79cbe5a066af3a6ed4df684bb0",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/replace_emails.js": {
+    "mtime": 1779797687.2518787,
+    "ast_hash": "f57c35f8c47fc0e8afabaf75fb8e4367",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/list-tickets.js": {
+    "mtime": 1779822582.3127818,
+    "ast_hash": "d943217a8e2ebe4c107b41f665415e16",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/test-login.js": {
+    "mtime": 1779802063.9822285,
+    "ast_hash": "537818ba2e4abaf404b416968d0845ad",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/test-select-no-join.js": {
+    "mtime": 1779802121.361812,
+    "ast_hash": "ff46133df3f9b25ed0aa8fbb5b77fb67",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/test-insert-ticket.js": {
+    "mtime": 1779822602.042121,
+    "ast_hash": "a4896e937ed3ed69a1d10271b8e9d0f7",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/list-auth-users.js": {
+    "mtime": 1779804228.0627074,
+    "ast_hash": "ccd69342b6e2265a989876ad3d41c475",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/schema.json": {
+    "mtime": 1779777086.6944573,
+    "ast_hash": "38a12468ef6f166d48274781b877413c",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/cleanup_test.js": {
+    "mtime": 1779883097.8303332,
+    "ast_hash": "3437cf4689c4b0b09dfa98ab96256056",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check_db.js": {
+    "mtime": 1779870453.2823913,
+    "ast_hash": "9044ce78b1f305837454d1a2a9accc8e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/test_insert_ticket.js": {
+    "mtime": 1779822964.8632464,
+    "ast_hash": "c0e8c8f2c84d896871aa4b75a8b4ee5b",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/inspect_joined_ticket.js": {
+    "mtime": 1779883182.2144809,
+    "ast_hash": "fd0bc642be19456752f7192085aeb69e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/fetch-openapi.js": {
+    "mtime": 1779804374.5084786,
+    "ast_hash": "7573bf5f7bc32dae4970ea56023d3407",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/middleware.ts": {
+    "mtime": 1779544421.1234975,
+    "ast_hash": "5713115b89e0a25ebc6a019ab016111d",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/types/ticket.ts": {
+    "mtime": 1780036217.1782546,
+    "ast_hash": "b2719698134e85dc08f013408ec48774",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/context/TicketContext.tsx": {
+    "mtime": 1780036940.7756016,
+    "ast_hash": "776e7c4fb17fa9efdd717334091cc361",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/context/AuthContext.tsx": {
+    "mtime": 1780036118.5114193,
+    "ast_hash": "521baa8f2c37b96c2e6fbb86d4c43092",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/layout.tsx": {
+    "mtime": 1779773050.6356287,
+    "ast_hash": "6929ada4468dae3743f0b583e7961386",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/page.tsx": {
+    "mtime": 1779544267.102148,
+    "ast_hash": "e48bb81bede586dffc03337be3131e19",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/tickets/[id]/page.tsx": {
+    "mtime": 1779546198.1409912,
+    "ast_hash": "e3f78ea157915a5c050ee3c70441ef8d",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/consultant/layout.tsx": {
+    "mtime": 1779544253.3557136,
+    "ast_hash": "5336a045afc1c2ce2c7bbd96d8db0684",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/consultant/tickets/[id]/page.tsx": {
+    "mtime": 1779634767.9551206,
+    "ast_hash": "3c29787cd146dc0fad6c2db13e5da5ca",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/consultant/my-tickets/page.tsx": {
+    "mtime": 1780000962.988354,
+    "ast_hash": "3732339324911e283ab603503df307d1",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/consultant/dashboard/page.tsx": {
+    "mtime": 1779981226.683893,
+    "ast_hash": "944120342bb0dc43cd89bfdd78654d93",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/consultant/reports/page.tsx": {
+    "mtime": 1779722718.1951244,
+    "ast_hash": "eafa95fac230cdbe05a9d8139ecd6a35",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/layout.tsx": {
+    "mtime": 1779544248.2447531,
+    "ast_hash": "d7d336d4337f1cf813a727ea182220d2",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/organizations/page.tsx": {
+    "mtime": 1780036416.0595145,
+    "ast_hash": "ccb5e7c30e5834082bf9764cb6fcfb56",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/audit-logs/page.tsx": {
+    "mtime": 1779797849.1349692,
+    "ast_hash": "dcfb4f0da799778142f70133f0c41cd4",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/settings/page.tsx": {
+    "mtime": 1779544309.3768408,
+    "ast_hash": "ba5fc0961a9184ac0518093533055383",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/tickets/page.tsx": {
+    "mtime": 1780036443.3198109,
+    "ast_hash": "46e20ebefe3eb528cfbed28f2cb6ceaa",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/tickets/[id]/page.tsx": {
+    "mtime": 1779545811.5341616,
+    "ast_hash": "503e17ca2d1a9e138a472b4faa07b42b",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/contracts/page.tsx": {
+    "mtime": 1779544299.1445277,
+    "ast_hash": "9c18c31f9253f1bfdf3ff822f3a85d0a",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/effort-logs/page.tsx": {
+    "mtime": 1779546022.9840734,
+    "ast_hash": "5b09e199567f129d5a0fe9cfd7edf069",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/dashboard/page.tsx": {
+    "mtime": 1780036395.8771281,
+    "ast_hash": "b77a085102d88bb4ae8d5030b5366c89",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/create-ticket/page.tsx": {
+    "mtime": 1779979946.2338881,
+    "ast_hash": "c461cbb779497abdac2b35ff44893095",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/users/page.tsx": {
+    "mtime": 1779804717.6193988,
+    "ast_hash": "d652cf2978230e18b1574f2591274734",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/sla/page.tsx": {
+    "mtime": 1779544296.425191,
+    "ast_hash": "8d2f57b508a3c810d36fd4a065e020ec",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/reports/page.tsx": {
+    "mtime": 1779546120.7261717,
+    "ast_hash": "866aeb6151c61e6b1f84fd637b104e36",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/dashboard/page.tsx": {
+    "mtime": 1779544405.2556689,
+    "ast_hash": "47e330cc32d2a42804688189cf9f4504",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/layout.tsx": {
+    "mtime": 1779544250.146849,
+    "ast_hash": "98bfc566062b4a9ab4b9e5d95a29de24",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/tickets/page.tsx": {
+    "mtime": 1779873665.5078728,
+    "ast_hash": "ac68470b7c80dea2ef4c070ca8f4fe8a",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/tickets/[id]/page.tsx": {
+    "mtime": 1779545816.5959888,
+    "ast_hash": "2e541ccc86ee0e89d20564d489eecdc7",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/dashboard/page.tsx": {
+    "mtime": 1780034737.0488067,
+    "ast_hash": "92726632610bb42a6a4b97323d50e872",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/knowledgebase/page.tsx": {
+    "mtime": 1779716582.2553914,
+    "ast_hash": "5f5a4a45964c7b8e5cbde920dac4dc68",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/consultants/page.tsx": {
+    "mtime": 1779823421.7701144,
+    "ast_hash": "c03f2cef62738361322b16a1d873f86a",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/create-ticket/page.tsx": {
+    "mtime": 1779979943.0078754,
+    "ast_hash": "4edf7e268fe47de263e51ef28f398c60",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/effort-approvals/page.tsx": {
+    "mtime": 1779883655.2820172,
+    "ast_hash": "b35079a91e28a99ac2bf24391d5c6e3e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/sla-monitoring/page.tsx": {
+    "mtime": 1779716571.2008443,
+    "ast_hash": "7d0477783ac79cd35969e4e9bc27a498",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/manager/reports/page.tsx": {
+    "mtime": 1779546123.9714053,
+    "ast_hash": "0e3f11626c9f78c342a6477f0b380da3",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/forgot-password/page.tsx": {
+    "mtime": 1779544270.16182,
+    "ast_hash": "e85bf8643fb7246aa964ce127bc23659",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/actions/auth.ts": {
+    "mtime": 1780002163.758223,
+    "ast_hash": "4a22606273f7b7bca49c9815ffb10c8d",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/login/page.tsx": {
+    "mtime": 1780036122.2539155,
+    "ast_hash": "8f379ddfe8bee45a017f5b3c5f8ee940",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/layout.tsx": {
+    "mtime": 1779544256.1385744,
+    "ast_hash": "eaffd1cdf9aa0c7316117c69074839fb",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/tickets/page.tsx": {
+    "mtime": 1780036827.5616612,
+    "ast_hash": "88e9ea86495db019c4b5993a045e6d86",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/tickets/[id]/page.tsx": {
+    "mtime": 1780036782.7583878,
+    "ast_hash": "80da175396f4ceec42e89e1586f52340",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/contacts/page.tsx": {
+    "mtime": 1779610585.3174756,
+    "ast_hash": "a67f3603396bc7df454931d2789b1721",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/dashboard/page.tsx": {
+    "mtime": 1779873684.3404124,
+    "ast_hash": "718f1801b30a09d18af4dad78e527644",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/profile/page.tsx": {
+    "mtime": 1779610760.9653387,
+    "ast_hash": "757caaebb86e01e32b3f2759fbca0779",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/create-ticket/page.tsx": {
+    "mtime": 1779979935.9642742,
+    "ast_hash": "390607d2c15e18502840e3a0a0269ec3",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/customer/reports/page.tsx": {
+    "mtime": 1779622693.753549,
+    "ast_hash": "f0482c51dd28712ab86199b937dfba6f",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/utils/mockData.ts": {
+    "mtime": 1779868539.9191895,
+    "ast_hash": "d5be10b93392268899c06da13f27d313",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/TicketCard.tsx": {
+    "mtime": 1779544239.5481472,
+    "ast_hash": "a826545c8ceb36f082afd3866df42974",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/tabs.tsx": {
+    "mtime": 1779610358.084867,
+    "ast_hash": "a61fd3a15d484c39e6264b9703896e31",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/card.tsx": {
+    "mtime": 1779610338.068805,
+    "ast_hash": "5de3e305a6b282dd6df932e58aca7fbc",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/progress.tsx": {
+    "mtime": 1779976043.5178123,
+    "ast_hash": "150299180d522bdd45d35e6808124644",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/chart.tsx": {
+    "mtime": 1779610402.1184835,
+    "ast_hash": "791a1ab1d261914587caebeb29496463",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/sheet.tsx": {
+    "mtime": 1779610348.225721,
+    "ast_hash": "a2622895d98bc0c29d233ae20261a887",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/label.tsx": {
+    "mtime": 1779610373.3067465,
+    "ast_hash": "63421956366eec73436824f53a4c0097",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/tooltip.tsx": {
+    "mtime": 1779610391.2044907,
+    "ast_hash": "d1966257cd9d5dc88acd75a775c5ba47",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/breadcrumb.tsx": {
+    "mtime": 1779610792.269654,
+    "ast_hash": "e3a8333ae5cdcaf0f86edf2f75a1a6c4",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/avatar.tsx": {
+    "mtime": 1779610382.2347426,
+    "ast_hash": "4453332634cafa0aa6b0d27a0fddb2db",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/dialog.tsx": {
+    "mtime": 1779610343.9147959,
+    "ast_hash": "222689dcce377f11acd57f8eb177ea55",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/badge.tsx": {
+    "mtime": 1779610377.691448,
+    "ast_hash": "51c61c785bdfc3b4840ab790807acd29",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/table.tsx": {
+    "mtime": 1779610361.904978,
+    "ast_hash": "80106131a1c8e97849a68ef68318cad8",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/separator.tsx": {
+    "mtime": 1779976046.4200292,
+    "ast_hash": "5cabd99a976fb9ed7022f7d62fa30ecf",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/button.tsx": {
+    "mtime": 1779610333.70549,
+    "ast_hash": "fa7d0b4f0095da9591aa3b29060eccea",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/dropdown-menu.tsx": {
+    "mtime": 1779610397.745028,
+    "ast_hash": "3bbc4b5a95ecd011bda03eda4c133336",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/select.tsx": {
+    "mtime": 1779610353.8551831,
+    "ast_hash": "cc42b6b805dab2f6d6d4e92da0b459eb",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/textarea.tsx": {
+    "mtime": 1779610369.6619465,
+    "ast_hash": "75a3c9062a09b5f9995d1b3f20999e42",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/ui/input.tsx": {
+    "mtime": 1779610365.3536034,
+    "ast_hash": "145b4c2d1a92f98cad4cd563f311e3a8",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/tickets/TicketTimeline.tsx": {
+    "mtime": 1779870764.5282342,
+    "ast_hash": "75d706f3ea618d0fd8ccf81e93c1bbbb",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/tickets/TicketDetailsView.tsx": {
+    "mtime": 1780036868.1564572,
+    "ast_hash": "849736d181df2d614e84800f1cdf913f",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/tickets/SlaBadge.tsx": {
+    "mtime": 1779693365.4281564,
+    "ast_hash": "74a407cc4b9f166100d4b16a91defc5a",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/tickets/ConsultantTicketDetailsView.tsx": {
+    "mtime": 1780036893.024431,
+    "ast_hash": "49d3300322c1f22d0c19ec1b10091c1c",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/layout/Header.tsx": {
+    "mtime": 1779610572.5481021,
+    "ast_hash": "29abc4610848e5eff9fb63904ecc9d44",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/layout/Sidebar.tsx": {
+    "mtime": 1780036317.6264896,
+    "ast_hash": "dd7495f2125da10749f9ecb0678c640f",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/dashboard/KpiCards.tsx": {
+    "mtime": 1779725611.6565375,
+    "ast_hash": "d48e2e87e90c554937b82fcd54dec3b1",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/components/reports/ReportsView.tsx": {
+    "mtime": 1779546115.7031536,
+    "ast_hash": "684234e2199b6251b3a2f90acd3d108b",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/lib/utils.ts": {
+    "mtime": 1779541598.6936405,
+    "ast_hash": "1eb686df76fde9c3de66bd8ad099a3c5",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/lib/supabase/client.ts": {
+    "mtime": 1779544183.6679013,
+    "ast_hash": "eae06e4c952ea725945614f2d4283e02",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_tickets_rls_explicit.sql": {
+    "mtime": 1779979867.1984742,
+    "ast_hash": "76945e39efc4d27a3e0e5484ba5bc6f3",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/update_consultant_unlock_and_efforts.sql": {
+    "mtime": 1779779855.9737122,
+    "ast_hash": "15c31b4f40c6a1867e6709adb32c4bfe",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_workflow_db_v2.sql": {
+    "mtime": 1779972279.9257917,
+    "ast_hash": "2107d3b573e7d5eca79d42efd6457fc0",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_rls_consultants.sql": {
+    "mtime": 1779890999.867961,
+    "ast_hash": "8783843c3bb9e9e6709768443e200452",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/schema.sql": {
+    "mtime": 1779544180.4738798,
+    "ast_hash": "bf2693b4ef98d928fb37c722c2553035",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/update_consultant_closure.sql": {
+    "mtime": 1779870260.207053,
+    "ast_hash": "c5ad89bb50285af7cd11dea402d4a6b7",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/update_consultant_schema.sql": {
+    "mtime": 1779779855.974002,
+    "ast_hash": "653fb6cb829e5735f043914d9346f3b5",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/update_schema.sql": {
+    "mtime": 1779622452.224139,
+    "ast_hash": "0041af99f82d0a19258c158dd16786b1",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/unified_migration.sql": {
+    "mtime": 1779993785.4391654,
+    "ast_hash": "9dd4f5ecb87b27a335a8b8cca914ff61",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/seed_prd.sql": {
+    "mtime": 1779821728.2578654,
+    "ast_hash": "015cbdfc8ad5e683b002f09067ecbbca",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/update_profiles_rls_and_columns.sql": {
+    "mtime": 1779802151.8155217,
+    "ast_hash": "9e529e7a78662d9a15d7669623ba6918",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_workflow_db.sql": {
+    "mtime": 1779779996.5119166,
+    "ast_hash": "93a399ae3610c4fe9a9e505e85ebf791",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_recursion.sql": {
+    "mtime": 1779823936.0071697,
+    "ast_hash": "a11914d18decdc0b11a9a4a6d8d9d011",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_tickets_rls_prd.sql": {
+    "mtime": 1779974069.2538605,
+    "ast_hash": "fbd4ef24096713050984afdd0cd6a609",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/alter_ticket_columns.sql": {
+    "mtime": 1779868252.639652,
+    "ast_hash": "d0cfe6b5eec0eaed075e2b86d774162c",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_rls_and_stakeholders.sql": {
+    "mtime": 1779993783.29603,
+    "ast_hash": "2aa4dd1d4f69e5435f39b47b8d860b20",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/README.md": {
+    "mtime": 1779541551.478116,
+    "ast_hash": "f15aaa42d5d299d091b1171097ea56ad",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/walkthrough.md": {
+    "mtime": 1779973161.2268388,
+    "ast_hash": "225f2e70d6462c6e03405a9cd217d73e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/AGENTS.md": {
+    "mtime": 1780035289.462942,
+    "ast_hash": "dde49ab77cef83076e415b3af174c997",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/CLAUDE.md": {
+    "mtime": 1779541572.1952786,
+    "ast_hash": "5c27369b226fcf2be8a6cfe52224e767",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/.agents/workflows/graphify.md": {
+    "mtime": 1779992803.3999507,
+    "ast_hash": "afa1ffc01aa56ac681c7335686f44767",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/.agents/rules/graphify.md": {
+    "mtime": 1780001073.0965292,
+    "ast_hash": "18c39ad9f73978dc6f387264a5c6650e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/public/file.svg": {
+    "mtime": 1779541551.4788015,
+    "ast_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/public/vercel.svg": {
+    "mtime": 1779541551.4786577,
+    "ast_hash": "c0af2f507b369b085b35ef4bbe3bcf1e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/public/next.svg": {
+    "mtime": 1779541551.4788604,
+    "ast_hash": "8e061864f388b47f33a1c3780831193e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/public/globe.svg": {
+    "mtime": 1779541551.478773,
+    "ast_hash": "2aaafa6a49b6563925fe440891e32717",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/public/window.svg": {
+    "mtime": 1779541551.4786623,
+    "ast_hash": "a2760511c65806022ad20adf74370ff3",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_satisfaction_ratings_rls.sql": {
+    "mtime": 1779993858.7344797,
+    "ast_hash": "11ae3b52cd0ff36dc19d22c6f99859bd",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/inspect_db_fixed.js": {
+    "mtime": 1779996584.1014874,
+    "ast_hash": "5435d3a3444dc1a92093043fdc72dc75",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check_profile_query.js": {
+    "mtime": 1780001340.4436913,
+    "ast_hash": "33788776e8531100b2c7d38198f5f31a",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check_policies.js": {
+    "mtime": 1780001330.888223,
+    "ast_hash": "968189bc08313a24faa676f49a89a609",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check_profiles.js": {
+    "mtime": 1780001222.016241,
+    "ast_hash": "bfd677328be370c5875c973f4601d80b",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check_anon_profile_query.js": {
+    "mtime": 1780001399.3762944,
+    "ast_hash": "6565d1535d381c4a4d73946ca5912040",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check_auth_users.js": {
+    "mtime": 1780001371.3326955,
+    "ast_hash": "825eadbfba00e809f16ad9559378de7e",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check_authenticated_org_query.js": {
+    "mtime": 1780001811.016446,
+    "ast_hash": "05851c348e852ece78521f9d846da161",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/scratch/check_organizations.js": {
+    "mtime": 1780001725.0524354,
+    "ast_hash": "ede5f207f46e9e3fc10ab459056c9818",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/fix_rls_policies_v3.sql": {
+    "mtime": 1780034729.9528387,
+    "ast_hash": "a003b946ef68160e69e6d120480237a5",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/managers/page.tsx": {
+    "mtime": 1780036345.1390147,
+    "ast_hash": "8d409edf9adf2a96c7a7522c153d2946",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/app/admin/consultants/page.tsx": {
+    "mtime": 1780036366.5274956,
+    "ast_hash": "281e97e1544ca42910f288b9d26dd4da",
+    "semantic_hash": ""
+  },
+  "/Users/krishnakumarkarthickeyan/.gemini/antigravity/scratch/sap-ticketing-system/src/sql/alter_attachments_and_escalations.sql": {
+    "mtime": 1780036094.5122795,
+    "ast_hash": "d4b71cbac1449db12312221306ef59e7",
+    "semantic_hash": ""
+  }
+}
