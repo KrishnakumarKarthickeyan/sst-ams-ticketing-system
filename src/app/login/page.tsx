@@ -3,41 +3,62 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { KeyRound, ShieldCheck, Mail, Cpu, ArrowLeft } from 'lucide-react';
+import { KeyRound, ShieldCheck, Mail, ArrowLeft, Activity, Star, ClipboardList, Shield, Globe } from 'lucide-react';
 import Link from 'next/link';
+import { BrandedLogo } from '../../components/ui/BrandedLogo';
+import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../../components/ui/dialog';
+import {
+  AreaChart,
+  Area,
+  ResponsiveContainer
+} from 'recharts';
 
 export default function LoginPage() {
   const { user, login, loading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('••••••••');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+
+  const redirectIssuedRef = React.useRef(false);
 
   // Auto redirect to correct dashboard if already logged in
   useEffect(() => {
-    if (!loading && user) {
-      redirectToDashboard(user.role);
+    if (!loading && user && !authenticating && !redirectIssuedRef.current) {
+      redirectIssuedRef.current = true;
+      redirectToDashboard(user);
     }
-  }, [user, loading]);
+  }, [user, loading, authenticating]);
 
-  const redirectToDashboard = (role: string) => {
-    switch (role) {
-      case 'SuperAdmin':
-        router.push('/admin/dashboard');
-        break;
-      case 'Manager':
-        router.push('/manager/dashboard');
-        break;
-      case 'Consultant':
-        router.push('/consultant/dashboard');
-        break;
-      case 'Customer':
-        router.push('/customer/dashboard');
-        break;
-      default:
-        router.push('/dashboard');
+  const redirectToDashboard = (sessionUser: any) => {
+    const isForce = sessionUser.forcePasswordChange === true || sessionUser.firstLoginCompleted === false;
+    let target = '/dashboard';
+    if (isForce) {
+      target = '/first-login-reset';
+    } else {
+      switch (sessionUser.role) {
+        case 'SuperAdmin': target = '/admin/dashboard'; break;
+        case 'Manager':    target = '/manager/dashboard'; break;
+        case 'Consultant': target = '/consultant/dashboard'; break;
+        case 'Customer':   target = '/customer/dashboard'; break;
+      }
     }
+    // Hard navigation ensures cookies are committed and avoids router.push+refresh race
+    window.location.href = target;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,199 +72,304 @@ export default function LoginPage() {
       return;
     }
 
-    const res = await login(email, password === '••••••••' ? 'password123' : password);
-    if (res.success) {
-      // router is handled in useEffect or we can do it directly
-      const session = localStorage.getItem('sap_user_session');
-      if (session) {
-        const uObj = JSON.parse(session);
-        redirectToDashboard(uObj.role);
+    let timedOut = false;
+    // Slightly above AuthContext's 10s auth timeout, so the context's precise
+    // error surfaces first instead of this generic one racing ahead of it.
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setError('Login is taking longer than expected. Please try again.');
+      setAuthenticating(false);
+    }, 12000);
+
+    try {
+      const res = await login(email, password);
+      clearTimeout(timeoutId);
+
+      if (timedOut) return;
+
+      if (res.success && res.user) {
+        // Wait for the auth cookie to be written to document.cookie
+        const hasCookie = () => document.cookie.split(';').some(c => c.trim().startsWith('sb-'));
+        if (!hasCookie()) {
+          for (let i = 0; i < 20; i++) {
+            await new Promise(r => setTimeout(r, 50));
+            if (hasCookie()) break;
+          }
+        }
+        
+        redirectToDashboard(res.user);
       } else {
-        // Fallback checks
-        redirectToDashboard('Customer');
+        setError(res.error || 'Invalid credentials.');
+        setAuthenticating(false);
       }
-    } else {
-      setError(res.error || 'Invalid credentials. Please use a demo account.');
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (!timedOut) {
+        console.error('Login submission error:', err);
+        setError(err.message || 'An unexpected authentication error occurred.');
+        setAuthenticating(false);
+      }
     }
-    setAuthenticating(false);
   };
 
-  const handleDemoLogin = async (demoEmail: string) => {
-    setError('');
-    setAuthenticating(true);
-    setEmail(demoEmail);
-    setPassword('••••••••');
-    const res = await login(demoEmail, 'password123');
-    if (res.success) {
-      // Find role and redirect
-      const role = demoEmail.split('@')[0] === 'admin' ? 'SuperAdmin' :
-                   demoEmail.split('@')[0] === 'manager' ? 'Manager' :
-                   demoEmail.split('@')[0] === 'consultant' ? 'Consultant' : 'Customer';
-      redirectToDashboard(role);
-    } else {
-      setError(res.error || 'Failed to authenticate demo account.');
-    }
-    setAuthenticating(false);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-zinc-950 font-mono text-xs">
-        <span>Initializing SST Auth Modules...</span>
-      </div>
-    );
-  }
+  // Mock chart data for Left column preview
+  const liveHealthData = [
+    { name: '01', compliance: 98.4 },
+    { name: '02', compliance: 98.6 },
+    { name: '03', compliance: 98.9 },
+    { name: '04', compliance: 98.7 },
+    { name: '05', compliance: 99.1 }
+  ];
 
   return (
-    <main className="min-h-screen flex flex-col justify-center items-center px-4 bg-zinc-50 relative overflow-hidden py-16 text-[#09090b]">
+    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-white text-[#111827]">
       
-      {/* Brand Header */}
-      <div className="w-full max-w-md space-y-6 z-10">
+      {/* ── LEFT COLUMN: LARGE COVER AREA & MOCKUP ── */}
+      <div className="hidden lg:flex lg:col-span-6 bg-[#F8F9FB] border-r border-[#E5E7EB] p-12 flex-col justify-between relative overflow-hidden">
         
-        {/* Back Link */}
-        <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-950 font-mono transition">
-          <ArrowLeft size={12} />
-          Back to home
-        </Link>
-
-        {/* Portal title */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-zinc-950 text-white text-[9px] font-mono uppercase tracking-wider mx-auto font-bold">
-            <Cpu size={11} />
-            SST SAP Support Desk
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 font-mono uppercase">
-            Secure Portal Sign In
-          </h1>
-          <p className="text-xs text-zinc-500 max-w-xs mx-auto font-mono">
-            Enter enterprise credentials or access instantly with demo accounts.
-          </p>
+        {/* Decorative Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-35"></div>
+        
+        {/* Brand Header */}
+        <div className="relative z-10 flex items-center gap-3">
+          <BrandedLogo width={24} height={24} />
+          <span className="font-bold text-sm tracking-wider text-[#111827] font-mono">ASSIST360</span>
         </div>
 
-        {/* Login Form Card */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-8 shadow-sm space-y-6">
+        {/* High-Fidelity Product Mockup Center */}
+        <div className="relative z-10 max-w-md mx-auto space-y-6 w-full font-sans">
           
-          {error && (
-            <div className="bg-zinc-50 border border-zinc-900 rounded p-3 text-xs text-zinc-900 font-mono font-bold">
-              [ERROR]: {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
-            {/* Email Field */}
-            <div className="space-y-1.5">
-              <label className="font-bold text-zinc-700 uppercase tracking-wider text-[10px]">Email Address</label>
-              <div className="relative">
-                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input 
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g., consultant@sap.com"
-                  className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
-                  disabled={authenticating}
-                />
-              </div>
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="font-bold text-zinc-700 uppercase tracking-wider text-[10px]">Password</label>
-                <Link href="/forgot-password" className="text-[10px] text-zinc-400 hover:text-zinc-950 hover:underline">
-                  Forgot?
-                </Link>
-              </div>
-              <div className="relative">
-                <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input 
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded pl-9 pr-3.5 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition font-mono"
-                  disabled={authenticating}
-                />
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-800 text-[11px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono disabled:opacity-50"
-              disabled={authenticating}
-            >
-              {authenticating ? 'Connecting...' : 'Validate & Authenticate'}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="relative flex items-center justify-center font-mono">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-zinc-200"></div>
-            </div>
-            <span className="relative bg-white px-3 text-[9px] font-bold uppercase tracking-wider text-zinc-400 z-10">
-              One-Click Demo Roles
-            </span>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold uppercase tracking-wider text-[#111827] font-mono">Enterprise Service Management Platform</h2>
+            <p className="text-xs text-[#6B7280]">Real-time operational dashboard, SLA trends, and customer satisfaction metrics.</p>
           </div>
 
-          {/* Quick Demo Selectors */}
-          <div className="grid grid-cols-2 gap-2 font-mono">
+          {/* Floating Showcase Mock Cards */}
+          <div className="bg-white border border-[#E5E7EB] rounded p-5 shadow-sm space-y-4">
             
-            {/* Demo 1: Customer */}
-            <button
-              onClick={() => handleDemoLogin('customer@sap.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Customer</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Apex Global</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">customer@sap.com</span>
-            </button>
+            <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-2 font-mono">
+              <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider">Service Operations Cockpit</span>
+              <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[8px] uppercase">System Normal</Badge>
+            </div>
 
-            {/* Demo 2: Consultant */}
-            <button
-              onClick={() => handleDemoLogin('consultant@sap.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Consultant</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Karthik S.</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">consultant@sap.com</span>
-            </button>
+            {/* SLA Trend Micro Chart */}
+            <div className="space-y-1">
+              <span className="text-[9px] font-mono text-[#6B7280] uppercase block">SLA Compliance Trend</span>
+              <div className="h-16 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={liveHealthData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="loginChartGradLight" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.12} />
+                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Area type="monotone" dataKey="compliance" stroke="#2563EB" strokeWidth={2} fill="url(#loginChartGradLight)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-            {/* Demo 3: Manager */}
-            <button
-              onClick={() => handleDemoLogin('manager@sap.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">SAP Manager</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">Marcus Vance</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">manager@sap.com</span>
-            </button>
-
-            {/* Demo 4: Super Admin */}
-            <button
-              onClick={() => handleDemoLogin('admin@sap.com')}
-              className="p-3 text-left border border-zinc-200 rounded hover:border-zinc-950 hover:bg-zinc-50 transition flex flex-col justify-between group"
-              disabled={authenticating}
-            >
-              <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-950">Super Admin</span>
-              <span className="text-xs font-bold text-zinc-800 mt-1 truncate">System Admin</span>
-              <span className="text-[9px] text-zinc-400 mt-0.5 truncate">admin@sap.com</span>
-            </button>
+            {/* Floating KPI Cards Grid inside mockup */}
+            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div className="p-2.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                <span className="text-[8px] text-[#6B7280] uppercase block">Platform SLA</span>
+                <span className="text-[#2563EB] font-bold block mt-0.5">98.7% Met</span>
+              </div>
+              <div className="p-2.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
+                <span className="text-[8px] text-[#6B7280] uppercase block">Response latency</span>
+                <span className="text-[#10B981] font-bold block mt-0.5">8ms latency</span>
+              </div>
+            </div>
 
           </div>
+
+          {/* Floating KPI Cards Overlay Stack */}
+          <div className="grid grid-cols-2 gap-4">
+            
+            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-[#6B7280]">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Availability</span>
+                <Activity size={12} className="text-[#10B981]" />
+              </div>
+              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">99.95%</span>
+            </div>
+
+            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-[#6B7280]">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Requests</span>
+                <ClipboardList size={12} className="text-[#2563EB]" />
+              </div>
+              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">500K+</span>
+            </div>
+
+            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-[#6B7280]">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Compliance</span>
+                <ShieldCheck size={12} className="text-[#10B981]" />
+              </div>
+              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">98.7%</span>
+            </div>
+
+            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-[#6B7280]">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Satisfaction</span>
+                <Star size={12} className="text-[#F59E0B] fill-[#F59E0B] stroke-none" />
+              </div>
+              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">95% CSAT</span>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Footer secure info */}
+        <div className="relative z-10 flex items-center gap-1.5 text-[10px] text-[#6B7280] font-mono">
+          <ShieldCheck size={12} className="text-[#10B981]" />
+          <span>FIPS 140-2 Encrypted Security Standard</span>
+        </div>
+
+      </div>
+
+      {/* ── RIGHT COLUMN: AUTHENTICATION CARD ── */}
+      <div className="col-span-1 lg:col-span-6 flex flex-col justify-between p-8 md:p-12 min-h-screen bg-white">
+        
+        {/* Header Back To Home link */}
+        <div className="flex justify-between items-center w-full">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#111827] font-mono transition">
+            <ArrowLeft size={12} />
+            Back to home
+          </Link>
+          <div className="lg:hidden flex items-center gap-2">
+            <BrandedLogo width={20} height={20} />
+            <span className="font-bold text-xs tracking-wider text-[#111827] font-mono">ASSIST360</span>
+          </div>
+        </div>
+
+        {/* Main Authentication card form container */}
+        <div className="max-w-sm w-full mx-auto space-y-6 py-12 font-sans">
+          
+          <div className="text-center lg:text-left space-y-1.5">
+            <BrandedLogo width={40} height={40} className="mx-auto lg:mx-0 hidden lg:block" />
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#111827] uppercase font-mono mt-3">Sign In</h1>
+            <p className="text-xs text-[#6B7280]">Welcome back. Sign in to continue.</p>
+          </div>
+
+          <Card className="p-6 border-[#E5E7EB] bg-white rounded shadow-sm relative min-h-[300px] flex flex-col justify-center">
+            
+            {loading ? (
+              <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                <BrandedLogo animated={true} width={40} height={40} />
+                <span className="text-[10px] uppercase font-mono font-bold text-[#6B7280] tracking-widest text-center block">
+                  Establishing secure tunnel...
+                </span>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
+                
+                {error && (
+                  <div className="bg-[#FAFAFA] border border-[#EF4444] rounded p-3 text-xs text-[#EF4444] font-mono">
+                    <span className="font-bold">Login Error:</span> {error}
+                  </div>
+                )}
+
+                {/* Email input field */}
+                <div className="space-y-1">
+                  <label className="font-bold text-[#111827] uppercase tracking-wider text-[9px]">Email Address</label>
+                  <div className="relative">
+                    <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+                    <input 
+                      required
+                      type="email"
+                      placeholder="username@company.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded pl-9 pr-3 py-2.5 text-xs text-[#111827] placeholder:text-[#6B7280] focus:outline-none focus:border-[#111827] focus:ring-1 focus:ring-[#111827] transition"
+                      disabled={authenticating}
+                    />
+                  </div>
+                </div>
+
+                {/* Password input field */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="font-bold text-[#111827] uppercase tracking-wider text-[9px]">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setForgotPasswordOpen(true)}
+                      className="text-[9px] text-[#6B7280] hover:text-[#111827] hover:underline bg-transparent border-none cursor-pointer p-0"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+                    <input 
+                      required
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded pl-9 pr-3 py-2.5 text-xs text-[#111827] focus:outline-none focus:border-[#111827] focus:ring-1 focus:ring-[#111827] transition"
+                      disabled={authenticating}
+                    />
+                  </div>
+                </div>
+
+                {/* Remember Me switch */}
+                <div className="flex items-center gap-2 pt-1 font-sans text-xs text-[#6B7280]">
+                  <input 
+                    type="checkbox" 
+                    id="remember"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="rounded border-[#E5E7EB] text-[#111827] focus:ring-[#111827] w-3.5 h-3.5 cursor-pointer"
+                  />
+                  <label htmlFor="remember" className="cursor-pointer select-none">Remember Me</label>
+                </div>
+
+                {/* Action submit button */}
+                <Button 
+                  type="submit"
+                  disabled={authenticating}
+                  className="w-full py-2.5 bg-[#2563EB] hover:bg-blue-700 text-[10px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono border-none"
+                >
+                  {authenticating ? 'Verifying...' : 'Sign In'}
+                </Button>
+
+              </form>
+            )}
+
+          </Card>
 
         </div>
 
         {/* Footer Secure Badge */}
-        <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-400 font-mono">
-          <ShieldCheck size={11} className="text-zinc-950" />
-          <span>SSL 256-bit Decoupled Auth Encryption</span>
+        <div className="text-center text-[10px] text-[#6B7280] font-mono flex items-center justify-center gap-1.5">
+          <span>Copyright &copy; {new Date().getFullYear()} Assist360. All Rights Reserved.</span>
         </div>
 
       </div>
+
+      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+        <DialogContent className="max-w-md bg-white border border-zinc-200 shadow-lg p-6 rounded-lg font-mono text-xs">
+          <DialogHeader className="space-y-1 text-center sm:text-left">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-950">
+              Password Reset Required
+            </DialogTitle>
+            <DialogDescription className="text-[11px] text-zinc-550 pt-2 leading-relaxed">
+              Please contact your Super Admin to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex justify-end">
+            <Button
+              onClick={() => setForgotPasswordOpen(false)}
+              className="px-4 py-2 bg-zinc-950 hover:bg-zinc-800 text-white rounded text-[10px] font-bold uppercase tracking-wider transition border-none cursor-pointer"
+            >
+              Okay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </main>
   );

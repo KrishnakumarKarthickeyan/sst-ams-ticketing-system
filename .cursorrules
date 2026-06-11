@@ -1,0 +1,20 @@
+# SAP AMS Portal Agent Rules
+
+This project uses **Graphify** for codebase indexing and structure tracking. Any AI assistant working on this codebase MUST follow these instructions.
+
+## 1. Codebase Navigation via Graphify
+* The project has a Graphify knowledge graph located in `graphify-out/`.
+* For any questions regarding codebase architecture, imports, dependencies, or components, consult the graph first:
+  * Run `graphify query "<your question>"` to query the graph.
+  * Use `graphify path "<nodeA>" "<nodeB>"` to check relationships.
+  * Use `graphify explain "<concept>"` to detail a concept.
+* Read `graphify-out/GRAPH_REPORT.md` for a broad architectural overview if needed.
+
+## 2. Graph Maintenance (CRITICAL)
+* **You MUST run `graphify update .` (or `npm run graphify`) immediately after making any file modifications.** This keeps the AST graph completely current without incurring API costs.
+
+## 3. Architecture & Tech Stack Rules
+* **Single Source of Truth**: Supabase is the single source of truth. Remove mock/local data from dashboards. If Supabase connection fails or credentials are not in `.env.local`, fall back gracefully but warn the user.
+* **RLS Policies**: Row Level Security is active. Ensure secondary/backup consultants assigned via the `ticket_assignments` table can access tickets and log efforts by checking `is_consultant_on_ticket()`.
+* **No UI Redesigns**: Do not redesign or alter the dashboard UI unless explicitly requested. Keep the existing premium layout and style tokens intact.
+* **Next.js & React**: Follow the specific Next.js versioning guidelines detailed in `AGENTS.md`. Avoid nesting `<button>` tags (e.g., using shadcn/ui `<Button>` inside an outer `<button>`) to prevent hydration mismatch errors.

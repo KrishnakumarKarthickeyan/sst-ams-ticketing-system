@@ -6,14 +6,20 @@ export type SAPModule =
   | 'PM'
   | 'QM'
   | 'HCM'
-  | 'SuccessFactors'
+  | 'SuccessFactors' // legacy
   | 'BASIS'
   | 'ABAP'
-  | 'Security/GRC'
-  | 'CPI/Integration'
-  | 'BW/BI'
-  | 'Fiori'
-  | 'TRM';
+  | 'Security/GRC' // legacy
+  | 'CPI/Integration' // legacy
+  | 'BW/BI' // legacy
+  | 'Fiori' // legacy
+  | 'TRM' // legacy
+  | 'SF EC'
+  | 'SF ECP'
+  | 'SF PMGM'
+  | 'SF RCM'
+  | 'SAC'
+  | 'CPI';
 
 export type IssueCategory =
   | 'Functional Issue'
@@ -52,7 +58,14 @@ export type TicketStatus =
   | 'In Progress - Functional'
   | 'Raised to SAP'
   | 'Customer Action'
-  | 'Request for Closure';
+  | 'Request for Closure'
+  | 'Reopen Requested'
+  | 'Awaiting Closure'
+  | 'On Hold'
+  | 'Awaiting Functional Submission'
+  | 'Awaiting Technical Submission'
+  | 'Awaiting Manager Approval'
+  | 'Escalated';
 
 export interface Comment {
   id: string;
@@ -70,6 +83,8 @@ export interface Attachment {
   id: string;
   ticketId: string;
   commentId?: string; // Nullable if attached to ticket directly
+  closureRequestId?: string; // Nullable if attached to closure request
+  escalationId?: string; // Nullable if attached to escalation
   fileName: string;
   filePath: string;
   fileUrl: string;
@@ -188,14 +203,16 @@ export interface TicketDeleteRequest {
 }
 
 export interface Ticket {
-  id: string; // e.g. SST-MM-1001
+  id: string; // e.g. UUID (internal) or legacy AS360-MM-1001
+  ticketNumber?: string; // e.g. BIT-FICO-000001
   title: string;
   description: string;
   organization: string; // Organization Name
   requestedBy: string; // Requester Full Name
   requestedByEmail: string;
+  requestedByPhone?: string;
   sapModule: SAPModule;
-  category: IssueCategory;
+  category: string;
   priority: TicketPriority;
   status: TicketStatus;
   assignedManager?: string; // Manager Name
@@ -219,9 +236,12 @@ export interface Ticket {
   rating?: SatisfactionRating;
   
   // Extended properties for Customer Portal redesign
-  ticketType?: TicketType;
-  functionalOrTechnical?: FunctionalOrTechnical;
+  ticketType?: string;
+  functionalOrTechnical?: string;
+  classification?: string;
   businessImpact?: string;
+  businessImpactLevel?: string;
+  businessJustification?: string;
   expectedResolutionDate?: string;
   quotedHours?: number;
   raisedToSap?: boolean;
@@ -245,6 +265,60 @@ export interface Ticket {
   mentions?: TicketMention[];
   commentAttachments?: TicketCommentAttachment[];
   unlockRequests?: TicketUnlockRequest[];
+
+  // Overhauled workflow fields
+  primaryConsultantId?: string;
+  closureStatus?: string;
+  closedBy?: string;
+  assignments?: TicketAssignment[];
+  estimates?: TicketEstimate[];
+  actualHoursLogs?: TicketActualHours[];
+  organizationId?: string;
+  leadConsultantId?: string;
+  assignedConsultantId?: string;
+  assignedManagerId?: string;
+  escalationAcknowledgedAt?: string | null;
+  escalationAcknowledgedBy?: string | null;
+  escalationAcknowledgedByName?: string | null;
+  isEscalated: boolean;
+  escalatedAt?: string | null;
+  escalatedBy?: string | null;
+  escalationReason?: string | null;
+}
+
+export interface TicketAssignment {
+  ticketId: string;
+  consultantId: string;
+  consultantName: string;
+  consultantType: 'Functional' | 'Technical';
+  isPrimary: boolean;
+  active: boolean;
+  assignedBy?: string;
+  assignedAt: string;
+}
+
+export interface TicketEstimate {
+  id: string;
+  ticketId: string;
+  consultantId: string;
+  consultantType: 'Functional' | 'Technical';
+  estimatedHours: number;
+  remarks?: string;
+  submittedAt: string;
+}
+
+export interface TicketActualHours {
+  id: string;
+  closureRequestId: string;
+  ticketId: string;
+  consultantId: string;
+  consultantType: 'Functional' | 'Technical';
+  actualHours: number;
+  billable?: boolean;
+  approvalStatus?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt?: string;
 }
 
 export interface TicketUnlockRequest {
@@ -322,6 +396,10 @@ export interface TicketConsultantEffort {
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
+  closureStatus?: 'Pending' | 'Submitted' | 'Approved' | 'Rejected';
+  workSummary?: string;
+  resolutionNotes?: string;
+  isPrimary?: boolean;
 }
 
 export interface TicketMention {
@@ -376,6 +454,9 @@ export interface Notification {
   ticketId?: string;
   isRead: boolean;
   createdAt: string;
+  type?: string;
+  linkPath?: string;
+  readAt?: string | null;
 }
 
 export interface CustomerContract {
@@ -388,6 +469,15 @@ export interface CustomerContract {
   usedHours: number;
   monthlyBudgetHours: number;
   isActive: boolean;
+  customerId?: string;
+  status?: string;
+  monthlyUsedHours?: number;
+  annualUsedHours?: number;
+  remainingHours?: number;
+  monthlyUtilizationPct?: number;
+  annualUtilizationPct?: number;
+  projectedExhaustion?: string;
+  contractValue?: number;
 }
 
 export interface ReportPreset {

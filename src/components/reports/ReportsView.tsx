@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTickets } from '../../context/TicketContext';
 import { 
   Download, 
@@ -38,11 +38,10 @@ type ReportType =
   | 'Priority-wise'
   | 'Aging Tickets'
   | 'Reopened Tickets'
-  | 'Customer Satisfaction'
   | 'Monthly Support';
 
 export default function ReportsView({ role, userScope }: ReportsViewProps) {
-  const { tickets, contracts } = useTickets();
+  const { tickets, contracts, profiles, orgMap } = useTickets();
 
   // 1. Report Type Selection
   const [reportType, setReportType] = useState<ReportType>('Ticket Summary');
@@ -71,16 +70,53 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
   };
 
   // Compile full list of effort logs across tickets for effort-related reports
-  const allEffortLogs = tickets.flatMap(ticket => 
-    (ticket.efforts || []).map(effort => ({
-      ...effort,
+  const allEffortLogs = tickets.flatMap(ticket => {
+    const fromEfforts = (ticket.efforts || []).map(effort => ({
+      id: effort.id,
+      ticketId: effort.ticketId,
+      consultantId: effort.consultantId,
+      consultantName: effort.consultantName || 'Consultant',
+      hoursLogged: effort.hoursLogged || effort.hoursWorked || 0,
+      activityDate: effort.activityDate || effort.workDate || effort.createdAt || '',
+      startTime: effort.startTime || 'N/A',
+      endTime: effort.endTime || 'N/A',
+      activityType: effort.activityType || 'Analysis',
+      billable: effort.billable !== false,
+      status: effort.status || 'Approved',
+      description: effort.description || ticket.title,
       ticketTitle: ticket.title,
       sapModule: ticket.sapModule,
       organization: ticket.organization,
       priority: ticket.priority,
       category: ticket.category
-    }))
-  );
+    }));
+
+    const fromActualHours = (ticket.actualHoursLogs || []).map(ah => {
+      const consultantProfile = profiles.find(p => p.id === ah.consultantId);
+      const consultantName = consultantProfile?.full_name || ah.consultantId || 'Consultant';
+      return {
+        id: ah.id,
+        ticketId: ah.ticketId,
+        consultantId: ah.consultantId,
+        consultantName: consultantName,
+        hoursLogged: ah.actualHours || 0,
+        activityDate: ah.createdAt ? ah.createdAt.split('T')[0] : '',
+        startTime: 'N/A',
+        endTime: 'N/A',
+        activityType: ah.consultantType || 'Analysis',
+        billable: ah.billable !== false,
+        status: ah.approvalStatus || 'Approved',
+        description: `Closure actual hours log: ${ah.consultantType}`,
+        ticketTitle: ticket.title,
+        sapModule: ticket.sapModule,
+        organization: ticket.organization,
+        priority: ticket.priority,
+        category: ticket.category
+      };
+    });
+
+    return [...fromEfforts, ...fromActualHours];
+  });
 
   // Apply Role-Based Constraints immediately
   const isCustomer = role === 'Customer';
@@ -91,8 +127,34 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
   const consultantConstraint = isConsultant ? (userScope?.name || 'Karthik Subramanian') : '';
 
   // Extract unique organization & consultant lists from data for dropdown filters
-  const availableOrgs = Array.from(new Set(tickets.map(t => t.organization)));
-  const availableConsultants = Array.from(new Set(tickets.map(t => t.assignedConsultant).filter(Boolean))) as string[];
+  const availableOrgs = useMemo(() => {
+    const list = new Set<string>();
+    (contracts || []).forEach(c => {
+      if (c.organizationName) list.add(c.organizationName);
+    });
+    (profiles || [])
+      .filter(p => p.role === 'Customer')
+      .forEach(p => {
+        const orgName = orgMap[p.organization_id] || p.organization || (p.organizations as any)?.name;
+        if (orgName) list.add(orgName);
+      });
+    tickets.forEach(t => {
+      if (t.organization) list.add(t.organization);
+    });
+    return Array.from(list).filter(Boolean).sort();
+  }, [contracts, profiles, orgMap, tickets]);
+
+  const availableConsultants = useMemo(() => {
+    const list = new Set<string>();
+    (profiles || [])
+      .filter(p => p.role === 'Consultant' && p.full_name)
+      .forEach(p => list.add(p.full_name));
+    tickets.forEach(t => {
+      if (t.assignedConsultant) list.add(t.assignedConsultant);
+    });
+    return Array.from(list).filter(Boolean).sort();
+  }, [profiles, tickets]);
+
   const availableModules = Array.from(new Set(tickets.map(t => t.sapModule)));
   const availableCategories = Array.from(new Set(tickets.map(t => t.category)));
 
@@ -172,16 +234,13 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
     if (t.status === 'Closed' || t.status === 'Resolved') return false;
     return new Date(t.slaDueAt).getTime() < nowTime;
   }).length;
-  const compliancePct = totalCount > 0 ? (((totalCount - breachedCount) / totalCount) * 150 - 50).toFixed(0) : '100'; // scaled index representation
+  const compliancePct = totalCount > 0 ? Math.max(0, Math.min(100, Math.round(((totalCount - breachedCount) / totalCount) * 100))).toFixed(0) : '100';
   
   const totalHoursLogged = filteredEfforts.reduce((sum, e) => sum + e.hoursLogged, 0);
   const billableHours = filteredEfforts.filter(e => e.billable).reduce((sum, e) => sum + e.hoursLogged, 0);
   const nonBillableHours = filteredEfforts.filter(e => !e.billable).reduce((sum, e) => sum + e.hoursLogged, 0);
 
-  const ratedTickets = filteredTickets.filter(t => t.rating);
-  const avgCsat = ratedTickets.length > 0 
-    ? (ratedTickets.reduce((sum, t) => sum + (t.rating?.score || 0), 0) / ratedTickets.length).toFixed(1) 
-    : '4.8';
+
 
   // SVG Chart Aggregators (counts grouped based on selected report type)
   const chartData: Record<string, number> = {};
@@ -207,6 +266,25 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
     filteredEfforts.forEach(e => {
       chartData[e.consultantName] = (chartData[e.consultantName] || 0) + e.hoursLogged;
     });
+  } else if (reportType === 'Billable vs Non-billable') {
+    chartData['Billable'] = billableHours;
+    chartData['Non-Billable'] = nonBillableHours;
+  } else if (reportType === 'SLA Compliance') {
+    chartData['SLA Compliant'] = totalCount - breachedCount;
+    chartData['SLA Breached'] = breachedCount;
+  } else if (reportType === 'Aging Tickets') {
+    filteredTickets.forEach(t => {
+      const ageDays = Math.floor((Date.now() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      let bracket = '0-5 days';
+      if (ageDays > 15) bracket = '> 15 days';
+      else if (ageDays > 5) bracket = '6-15 days';
+      chartData[bracket] = (chartData[bracket] || 0) + 1;
+    });
+  } else if (reportType === 'Reopened Tickets') {
+    const reopened = filteredTickets.filter(t => t.status === 'Reopened').length;
+    chartData['Reopened'] = reopened;
+    chartData['Standard'] = totalCount - reopened;
+
   } else {
     // Default to status breakdown
     filteredTickets.forEach(t => {
@@ -326,7 +404,6 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
             <option value="Priority-wise">Priority-wise Severity Audit</option>
             <option value="Aging Tickets">Aging Tickets Report (Open Backlog)</option>
             <option value="Reopened Tickets">Reopened Tickets & Validation Loops</option>
-            <option value="Customer Satisfaction">Customer Satisfaction Index (CSAT)</option>
             <option value="Monthly Support">Monthly Support Burn Report</option>
           </select>
         </div>
@@ -546,15 +623,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
             </div>
           </div>
 
-          <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex justify-between items-center">
-            <div>
-              <div className="text-zinc-400 font-bold uppercase text-[9px]">Average CSAT Rating</div>
-              <div className="text-lg font-bold text-zinc-950 mt-1">{avgCsat} / 5.0</div>
-            </div>
-            <div className="bg-zinc-50 text-zinc-800 p-2.5 rounded border border-zinc-150 font-bold text-[10px]">
-              CSAT Index
-            </div>
-          </div>
+
         </div>
 
         {/* Dynamic Chart Preview */}
@@ -655,14 +724,13 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                   <th className="py-2.5 px-3">Category</th>
                   <th className="py-2.5 px-3 text-center">Priority</th>
                   <th className="py-2.5 px-3 text-center">SLA State</th>
-                  <th className="py-2.5 px-3 text-center">Satisfaction</th>
                   <th className="py-2.5 px-3 text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 text-[11px]">
                 {filteredTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-zinc-400 italic">No tickets match active report parameters.</td>
+                    <td colSpan={8} className="py-8 text-center text-zinc-400 italic">No tickets match active report parameters.</td>
                   </tr>
                 ) : (
                   filteredTickets.map(t => {
@@ -694,7 +762,6 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                           }`}>{t.priority}</span>
                         </td>
                         <td className="py-2 px-3 text-center">{slaBadge}</td>
-                        <td className="py-2 px-3 text-center font-bold">{t.rating ? `${t.rating.score}★` : '--'}</td>
                         <td className="py-2 px-3 text-right">
                           <span className="px-1.5 py-0.2 bg-zinc-150 rounded uppercase text-[9px] font-bold">
                             {t.status}

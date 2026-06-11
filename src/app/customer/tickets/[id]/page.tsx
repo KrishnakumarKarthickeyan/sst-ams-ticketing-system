@@ -12,10 +12,15 @@ import {
   AlertCircle,
   Building2,
   FileCode,
+  FileText,
+  File,
+  FileImage,
   Paperclip,
-  User,
+  Users,
+  Wrench,
+  CheckSquare,
+  Archive,
   ShieldCheck,
-  Flame,
   History,
   MessageSquare,
   BadgeAlert,
@@ -24,10 +29,28 @@ import {
   Star,
   Trash2,
   Edit,
-  Quote
+  Quote,
+  Upload,
+  Calendar,
+  Lock,
+  Unlock,
+  Sparkles,
+  ChevronRight,
+  Send,
+  CircleDot,
+  Tag,
+  Layers,
+  User,
+  ExternalLink,
+  AlertTriangle,
+  Info,
+  Timer,
+  Activity,
+  Zap
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../../components/ui/card';
 import { Badge } from '../../../../components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '../../../../components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../../components/ui/tabs';
 import {
   Dialog,
@@ -39,6 +62,16 @@ import {
   DialogFooter
 } from '../../../../components/ui/dialog';
 import { Button } from '../../../../components/ui/button';
+import AttachmentPanel from '../../../../components/tickets/AttachmentPanel';
+import { isSupabaseConfigured, supabase } from '../../../../lib/supabase/client';
+import { toast } from 'sonner';
+
+interface PendingAttachment {
+  id: string;
+  file: File;
+  progress: number;
+  previewUrl?: string;
+}
 
 export default function CustomerTicketDetailPage() {
   const { id } = useParams();
@@ -47,53 +80,110 @@ export default function CustomerTicketDetailPage() {
   const { user } = useAuth();
   const {
     tickets,
+    loading,
     addComment,
     closeTicket,
     reopenTicket,
     requestEscalation,
     updateTicket,
-    requestDelete
+    requestDelete,
+    fetchTicketById
   } = useTickets();
 
   const ticketId = Array.isArray(id) ? id[0] : id;
-  const ticket = tickets.find((t) => t.id === ticketId);
+  const [ticket, setTicket] = useState<any | null>(null);
+  const [localLoading, setLocalLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
 
-  // Form & Interaction States
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  useEffect(() => {
+    let active = true;
+    const loadTicket = async () => {
+      if (!ticketId) return;
+      try {
+        const found = tickets.find((t) => t.id === ticketId);
+        if (found) {
+          if (active) {
+            setTicket(found);
+            setLocalLoading(false);
+          }
+        } else if (fetchTicketById) {
+          const fresh = await fetchTicketById(ticketId);
+          if (active) {
+            setTicket(fresh);
+            setLocalLoading(false);
+          }
+        } else {
+          if (active) setLocalLoading(false);
+        }
+      } catch (err: any) {
+        if (active) {
+          setFetchError(err instanceof Error ? err : new Error(err.message || 'Failed to load ticket details'));
+          setLocalLoading(false);
+        }
+      }
+    };
+    loadTicket();
+    return () => {
+      active = false;
+    };
+  }, [ticketId, tickets, fetchTicketById]);
+
+  // Interaction States
   const [commentText, setCommentText] = useState('');
-  const [uploadFileName, setUploadFileName] = useState('');
-  const [uploadFileSize, setUploadFileSize] = useState('');
-
-  // Rating States
+  const [commentFiles, setCommentFiles] = useState<PendingAttachment[]>([]);
+  const [escalateFiles, setEscalateFiles] = useState<PendingAttachment[]>([]);
   const [showRatingDialog, setShowRatingDialog] = useState(false);
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingFeedback, setRatingFeedback] = useState('');
-
-  // Reopen States
   const [showReopenDialog, setShowReopenDialog] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
-
-  // Escalation States
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
+  const [escalationReasonInput, setEscalationReasonInput] = useState('');
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateSeverity, setEscalateSeverity] = useState<'Low' | 'Medium' | 'High'>('Medium');
-
-  // Edit States (Available before assignment)
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
-
-  // Soft-Delete States
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
-
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+
+  const [pendingReopenRequest, setPendingReopenRequest] = useState<any>(null);
+
+  const fetchPendingReopenRequest = async () => {
+    if (!ticketId || !isSupabaseConfigured || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('ticket_reopen_requests')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .eq('status', 'Pending')
+        .maybeSingle();
+
+      if (!error && data) {
+        setPendingReopenRequest(data);
+      } else {
+        setPendingReopenRequest(null);
+      }
+    } catch (err) {
+      console.error('Error fetching reopen request:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingReopenRequest();
+  }, [ticketId]);
 
   const showBannerMessage = (msg: string) => {
     setSuccessBanner(msg);
-    setTimeout(() => setSuccessBanner(null), 6000);
+    setTimeout(() => setSuccessBanner(null), 5000);
   };
 
-  // Sync edit mode from search query param (e.g. ?edit=true)
+  // Sync edit mode details from query params or database record
   useEffect(() => {
     if (ticket) {
       setEditTitle(ticket.title);
@@ -106,34 +196,66 @@ export default function CustomerTicketDetailPage() {
     }
   }, [searchParams, ticket]);
 
-  if (!ticket) {
+  if (localLoading) {
     return (
-      <div className="p-8 text-center text-red-650 font-bold font-mono text-xs border border-red-200 rounded-lg bg-red-50/50">
-        Error: Ticket ID {ticketId} not found in corporate support registers.
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="relative w-10 h-10 mx-auto">
+            <span className="absolute inset-0 rounded-full border-[3px] border-zinc-100"></span>
+            <span className="absolute inset-0 rounded-full border-[3px] border-t-zinc-950 animate-spin"></span>
+          </div>
+          <p className="text-sm text-zinc-400 font-mono">Loading ticket details...</p>
+        </div>
       </div>
     );
   }
 
-  // Double check organization scope
+  if (!ticket) {
+    return (
+      <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-white border border-zinc-200 shadow-sm space-y-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto">
+          <AlertCircle size={24} className="text-red-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-zinc-900">Ticket Not Found</h2>
+        <p className="text-sm text-zinc-500">
+          The ticket with ID &quot;{ticketId}&quot; could not be found in your records.
+        </p>
+        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
+          <ArrowLeft size={14} /> Back to tickets
+        </Link>
+      </div>
+    );
+  }
+
+  // Cross-tenant access validation check
   const customerCompany = user?.company || 'Apex Global Industries';
   if (ticket.organization !== customerCompany) {
     return (
-      <div className="p-8 text-center text-red-650 font-bold font-mono text-xs border border-red-200 rounded-lg bg-red-50/50">
-        Security Breach: You are not authorized to access this support register.
+      <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-white border border-red-200 shadow-sm space-y-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto">
+          <ShieldCheck size={24} className="text-red-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-red-700">Access Denied</h2>
+        <p className="text-sm text-zinc-500">
+          You don&apos;t have permission to view this ticket. It belongs to a different organization.
+        </p>
+        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition">
+          <ArrowLeft size={14} /> Return to my tickets
+        </Link>
       </div>
     );
   }
 
-  // Filter public comments and attachments
+  // Filter out internal comments/attachments
   const visibleComments = (ticket.comments || []).filter(c => !c.isInternal);
   const visibleAttachments = (ticket.attachments || []).filter(a => a.visibility === 'public');
 
-  // Unified activity log timeline (Combining public comments and audits)
+  // Unified timeline
   const timelineEvents = [
     ...visibleComments.map(c => ({
       type: 'comment',
       id: c.id,
-      title: 'Response Posted',
+      title: c.authorRole === 'Customer' ? 'Your Message' : 'Support Response',
       author: c.authorName,
       role: c.authorRole,
       content: c.content,
@@ -143,1007 +265,1347 @@ export default function CustomerTicketDetailPage() {
     ...(ticket.history || []).map(h => ({
       type: 'audit',
       id: h.id,
-      title: `${h.fieldChanged} modified`,
+      title: 'Status Update',
       author: h.changedBy,
       role: 'System',
-      content: `Field "${h.fieldChanged}" changed from "${h.oldValue}" to "${h.newValue}"`,
+      content: `${h.fieldChanged} changed from "${h.oldValue}" to "${h.newValue}"`,
       createdAt: h.createdAt,
       attachments: []
     })),
     ...(ticket.escalations || []).map(e => ({
       type: 'escalation',
       id: e.id,
-      title: 'Escalation Alert Logged',
+      title: 'Escalation Filed',
       author: e.escalatedBy,
-      role: 'Client Requester',
-      content: `Escalation requested. Severity: ${e.severity}. Reason: ${e.reason} [Status: ${e.status}]`,
+      role: 'Escalation',
+      content: `Severity: ${e.severity} — ${e.reason} (${e.status})`,
       createdAt: e.createdAt,
       attachments: []
     }))
   ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-  // Hours calculations
-  const totalApprovedHours = (ticket.efforts || [])
-    .filter(e => e.status === 'Approved')
-    .reduce((sum, e) => sum + e.hoursLogged, 0);
-
-  // SLA status builders
+  // SLA
   const isIncident = ticket.ticketType === 'Incident' || !ticket.ticketType;
   const isSlaApplicable = isIncident && ticket.slaDueAt !== 'SLA Not Applicable';
-  
+
   const getSlaStatus = () => {
-    if (!isSlaApplicable) return { label: 'SLA Exempted', color: 'bg-zinc-100 text-zinc-500 border-zinc-200' };
-    
-    const nowTime = new Date().getTime();
+    if (!isSlaApplicable) return { label: 'Not Applicable', color: 'bg-zinc-100 text-zinc-500 border-zinc-200', dot: 'bg-zinc-400' };
+    const nowTime = Date.now();
     const due = new Date(ticket.slaDueAt).getTime();
     const resolved = ticket.resolvedAt ? new Date(ticket.resolvedAt).getTime() : null;
-
     if (resolved) {
-      if (resolved > due) return { label: 'SLA Breached (Resolved Overdue)', color: 'bg-red-50 text-red-700 border-red-200' };
-      return { label: 'SLA Met (Resolved On Time)', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-red-600 border-red-200', dot: 'bg-red-500' };
+      return { label: 'Met', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
     }
-
-    if (nowTime > due) return { label: 'SLA Breached (Overdue)', color: 'bg-red-50 text-red-700 border-red-200 animate-pulse' };
-    
-    const diff = due - nowTime;
-    if (diff < 12 * 60 * 60 * 1000) return { label: 'SLA Near Breach', color: 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse' };
-    return { label: 'SLA Active (On Track)', color: 'bg-emerald-50 text-emerald-700 border-emerald-250' };
+    if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-red-600 border-red-200', dot: 'bg-red-500 animate-pulse' };
+    if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-amber-600 border-amber-200', dot: 'bg-amber-500' };
+    return { label: 'On Track', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
   };
-
   const slaStatus = getSlaStatus();
 
+  // Step progression
+  const getTimelineStep = (status: string) => {
+    switch (status) {
+      case 'New': return 1;
+      case 'Assigned': case 'Requirement Gathering': case 'Awaiting Functional Submission': case 'Awaiting Technical Submission': return 2;
+      case 'In Progress': case 'In Progress - Functional': case 'In Progress - Technical': case 'Waiting for Internal Team': case 'Raised to SAP': case 'On Hold': return 3;
+      case 'Resolved': case 'Awaiting Manager Approval': case 'Awaiting Closure': case 'Request for Closure': case 'Waiting for Customer': case 'Customer Action': case 'Reopen Requested': case 'Reopened': return 4;
+      case 'Closed': return 5;
+      default: return 1;
+    }
+  };
+  const currentStepIndex = getTimelineStep(ticket.status);
+
+  const getFileIcon = (fileType: string) => {
+    const type = fileType.toLowerCase();
+    if (type.startsWith('image/')) return <FileImage size={16} className="text-zinc-600" />;
+    if (type.includes('pdf')) return <FileText size={16} className="text-red-500" />;
+    if (type.includes('sheet') || type.includes('excel')) return <FileText size={16} className="text-emerald-500" />;
+    return <File size={16} className="text-zinc-400" />;
+  };
+
+  // File handling
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const selected = Array.from(e.target.files);
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    
+    const validFiles: PendingAttachment[] = [];
+    for (const file of selected) {
+      if (file.size > 10 * 1024 * 1024) {
+        showBannerMessage(`Error: File size exceeds 10MB limit: ${file.name}`);
+        continue;
+      }
+      
+      const lastDotIdx = file.name.lastIndexOf('.');
+      const fileExtension = lastDotIdx !== -1 ? file.name.slice(lastDotIdx).toLowerCase() : '';
+      if (blockedExtensions.includes(fileExtension)) {
+        showBannerMessage(`Error: Forbidden file extension: ${file.name}. Executable and script files are blocked.`);
+        continue;
+      }
+
+      const id = `${Date.now()}-${file.name}`;
+      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+      const pendingFile: PendingAttachment = { id, file, progress: 0, previewUrl };
+      let currentProgress = 0;
+      const interval = setInterval(() => {
+        currentProgress += 10;
+        setCommentFiles(prev => prev.map(f => f.id === id ? { ...f, progress: currentProgress } : f));
+        if (currentProgress >= 100) clearInterval(interval);
+      }, 50);
+      validFiles.push(pendingFile);
+    }
+    
+    if (validFiles.length > 0) {
+      setCommentFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const removePendingFile = (id: string) => {
+    setCommentFiles(prev => {
+      const target = prev.find(f => f.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter(f => f.id !== id);
+    });
+  };
+
+  const handleEscalateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const selected = Array.from(e.target.files);
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    
+    const validFiles: PendingAttachment[] = [];
+    for (const file of selected) {
+      if (file.size > 10 * 1024 * 1024) {
+        showBannerMessage(`Error: File size exceeds 10MB limit: ${file.name}`);
+        continue;
+      }
+      
+      const lastDotIdx = file.name.lastIndexOf('.');
+      const fileExtension = lastDotIdx !== -1 ? file.name.slice(lastDotIdx).toLowerCase() : '';
+      if (blockedExtensions.includes(fileExtension)) {
+        showBannerMessage(`Error: Forbidden file extension: ${file.name}. Executable and script files are blocked.`);
+        continue;
+      }
+
+      const id = `${Date.now()}-${file.name}`;
+      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+      const pendingFile: PendingAttachment = { id, file, progress: 0, previewUrl };
+      let currentProgress = 0;
+      const interval = setInterval(() => {
+        currentProgress += 10;
+        setEscalateFiles(prev => prev.map(f => f.id === id ? { ...f, progress: currentProgress } : f));
+        if (currentProgress >= 100) clearInterval(interval);
+      }, 50);
+      validFiles.push(pendingFile);
+    }
+    
+    if (validFiles.length > 0) {
+      setEscalateFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const removeEscalateFile = (id: string) => {
+    setEscalateFiles(prev => {
+      const target = prev.find(f => f.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter(f => f.id !== id);
+    });
+  };
+
+  const handleDownloadFile = async (fileName: string, path: string) => {
+    const { isSupabaseConfigured, supabase } = await import('../../../../lib/supabase/client');
+    if (isSupabaseConfigured && supabase && path) {
+      try {
+        let relativePath = path;
+        if (path.includes('/sap-tickets/')) {
+          const parts = path.split('/sap-tickets/');
+          relativePath = parts[parts.length - 1];
+        }
+        
+        console.log(`[STORAGE] Generating signed URL for path: ${relativePath}`);
+        const { data, error } = await supabase.storage
+          .from('sap-tickets')
+          .createSignedUrl(relativePath, 60);
+
+        if (error) {
+          console.error('[STORAGE] Error generating signed URL:', error);
+          if (path.startsWith('http://') || path.startsWith('https://')) {
+            window.open(path, '_blank');
+          } else {
+            showBannerMessage(`Failed to generate signed URL: ${error.message}`);
+          }
+          return;
+        }
+
+        if (data?.signedUrl) {
+          window.open(data.signedUrl, '_blank');
+        } else {
+          window.open(path, '_blank');
+        }
+      } catch (err: any) {
+        console.error('[STORAGE] Error generating signed URL:', err);
+        window.open(path, '_blank');
+      }
+    } else {
+      if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+        window.open(path, '_blank');
+      } else {
+        showBannerMessage(`Simulated download: Fetching file "${fileName}" from secure path: ${path}`);
+      }
+    }
+  };
+
   // Handlers
-  const handleCommentSubmit = (e: React.FormEvent) => {
+  const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
-
-    const files = uploadFileName
-      ? [{ fileName: uploadFileName, fileSize: Number(uploadFileSize) || 150000, fileType: 'application/octet-stream' }]
-      : undefined;
-
-    addComment(
-      ticket.id,
-      commentText,
-      user?.name || 'Sarah Jenkins',
-      user?.email || 'customer@sap.com',
-      'Customer',
-      false,
-      files
-    );
-
+    if (!commentText.trim() && commentFiles.length === 0) return;
+    const filesToSubmit = commentFiles.filter(f => f.progress >= 100).map(f => ({
+      fileName: f.file.name, fileSize: f.file.size, fileType: f.file.type, fileObj: f.file
+    }));
+    await addComment(ticket.id, commentText, user?.name || 'Customer Requester', user?.email || 'customer@sap.com', 'Customer', false, filesToSubmit.length > 0 ? filesToSubmit : undefined);
     setCommentText('');
-    setUploadFileName('');
-    setUploadFileSize('');
-    showBannerMessage('Comment response successfully added to the ticket timeline.');
+    setCommentFiles([]);
+    showBannerMessage('Your reply has been submitted successfully.');
   };
 
   const handleRatingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    closeTicket(ticket.id, ratingScore, ratingFeedback || 'Accepted by client.', user?.name || 'Sarah Jenkins');
+    closeTicket(ticket.id, ratingScore, ratingFeedback || 'Closed by user.', user?.name || 'Sarah Jenkins');
     setShowRatingDialog(false);
     setRatingFeedback('');
-    showBannerMessage('Ticket has been closed. CSAT rating successfully recorded.');
+    showBannerMessage('Ticket closed. Thank you for your feedback!');
   };
 
-  const handleReopenSubmit = (e: React.FormEvent) => {
+  const handleReopenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reopenReason.trim()) return;
 
-    reopenTicket(ticket.id, reopenReason, user?.name || 'Sarah Jenkins');
-    setShowReopenDialog(false);
-    setReopenReason('');
-    showBannerMessage('Ticket successfully reopened. Status shifted back to Reopened.');
+    if (isSupabaseConfigured && supabase) {
+      const toastId = toast.loading('Submitting reopen request...');
+      try {
+        const { data, error } = await supabase
+          .from('ticket_reopen_requests')
+          .insert({
+            ticket_id: ticket.id,
+            requester_name: user?.name || 'Customer User',
+            reason: reopenReason.trim(),
+            status: 'Pending'
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        setPendingReopenRequest(data);
+        setShowReopenDialog(false);
+        setReopenReason('');
+        toast.success('Ticket reopen request submitted to support managers.', { id: toastId });
+        showBannerMessage('Reopen request has been submitted to support managers.');
+      } catch (err: any) {
+        console.error('Error submitting reopen request:', err);
+        toast.error(`Failed to submit request: ${err.message}`, { id: toastId });
+      }
+    } else {
+      // Local fallback
+      setPendingReopenRequest({
+        id: `rr-${Date.now()}`,
+        ticket_id: ticket.id,
+        requester_name: user?.name || 'Customer User',
+        reason: reopenReason,
+        status: 'Pending',
+        requested_at: new Date().toISOString()
+      });
+      setShowReopenDialog(false);
+      setReopenReason('');
+      showBannerMessage('Reopen request submitted locally.');
+    }
   };
 
-  const handleEscalateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!escalateReason.trim()) return;
-
-    requestEscalation(ticket.id, escalateReason, escalateSeverity, user?.name || 'Sarah Jenkins');
-    setShowEscalateDialog(false);
-    setEscalateReason('');
-    showBannerMessage('Escalation request successfully triggered.');
+  const handleEscalateConfirm = async () => {
+    if (escalationReasonInput.trim().length < 10) return;
+    const toastId = toast.loading('Submitting escalation...');
+    try {
+      const res = await requestEscalation(
+        ticket.id,
+        escalationReasonInput.trim(),
+        "High",
+        user?.name || 'Customer User'
+      );
+      if (res.success) {
+        toast.success("Your ticket has been escalated. A manager will review it shortly.", { id: toastId });
+        setEscalationReasonInput('');
+        router.refresh();
+      } else {
+        toast.error(res.error || "Failed to escalate ticket.", { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An unexpected error occurred.", { id: toastId });
+    } finally {
+      setShowEscalateDialog(false);
+    }
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTitle.trim() || !editDescription.trim()) return;
-    
-    updateTicket(ticket.id, {
-      title: editTitle,
-      description: editDescription,
-      requestedBy: user?.name || 'Customer'
-    });
+    updateTicket(ticket.id, { title: editTitle, description: editDescription, requestedBy: user?.name || 'Customer' });
     setShowEditDialog(false);
-    showBannerMessage('Ticket details successfully updated.');
+    showBannerMessage('Ticket details have been updated.');
   };
 
   const handleDeleteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!deleteReason.trim()) return;
-
     requestDelete(ticket.id, deleteReason, user?.name || 'Customer');
     setShowDeleteDialog(false);
     setDeleteReason('');
-    showBannerMessage('Soft-delete request successfully submitted and is awaiting approvals.');
+    showBannerMessage('Deletion request has been submitted for approval.');
   };
 
-  // Quotes generator
   const handleQuoteComment = (author: string, content: string) => {
     const formattedQuote = `> ${author} wrote:\n> ${content}\n\n`;
     setCommentText(prev => formattedQuote + prev);
   };
 
-  // Blockquote Parser for Comments
   const renderCommentContent = (content: string) => {
+    if (!content) return null;
     const lines = content.split('\n');
     return lines.map((line, idx) => {
       if (line.trim().startsWith('>')) {
         return (
-          <blockquote key={idx} className="border-l-4 border-zinc-300 pl-3 italic text-zinc-500 bg-zinc-50 py-1.5 px-2.5 rounded my-1.5 text-[11px] leading-relaxed">
+          <blockquote key={idx} className="border-l-[3px] border-indigo-300 pl-3 italic text-zinc-500 bg-indigo-50/50 py-1.5 px-3 rounded-r-lg my-2 text-[13px]">
             {line.trim().substring(1).trim()}
           </blockquote>
         );
       }
-      return <p key={idx} className="leading-relaxed text-zinc-800 mt-1">{line}</p>;
+      return <p key={idx} className="leading-relaxed text-zinc-700">{line}</p>;
     });
   };
 
-  // Quoted vs Consumed progress stats
-  const quoted = ticket.quotedHours || 0;
-  const consumed = totalApprovedHours;
-  const progressPercent = quoted > 0 ? Math.min(100, (consumed / quoted) * 100) : 0;
-  const exceedsBudget = consumed > quoted && quoted > 0;
+  // Effort calculations
+  const isClosed = ticket.status === 'Closed';
+  const actualFuncHours = isClosed && ticket.actualHoursLogs ? ticket.actualHoursLogs.filter(h => h.consultantType === 'Functional').reduce((sum, h) => sum + h.actualHours, 0) : 0;
+  const actualTechHours = isClosed && ticket.actualHoursLogs ? ticket.actualHoursLogs.filter(h => h.consultantType === 'Technical').reduce((sum, h) => sum + h.actualHours, 0) : 0;
+  const totalActualHours = actualFuncHours + actualTechHours;
+
+  // Status color helper
+  const getStatusStyle = (status: string) => {
+    if (status === 'Resolved' || status === 'Closed') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (status === 'Waiting for Customer' || status === 'Customer Action') return 'bg-amber-50 text-amber-700 border-amber-200';
+    if (status === 'New') return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (status === 'In Progress' || status.includes('Progress')) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    if (status === 'Reopened' || status === 'Reopen Requested') return 'bg-orange-50 text-orange-700 border-orange-200';
+    return 'bg-zinc-100 text-zinc-600 border-zinc-200';
+  };
+
+  const getPriorityStyle = (priority: string) => {
+    if (priority === 'Critical') return 'bg-red-50 text-red-700 border-red-200';
+    if (priority === 'High') return 'bg-orange-50 text-orange-700 border-orange-200';
+    if (priority === 'Medium') return 'bg-amber-50 text-amber-700 border-amber-200';
+    return 'bg-zinc-100 text-zinc-600 border-zinc-200';
+  };
+
+  const steps = [
+    { step: 1, label: 'Submitted', icon: FileText },
+    { step: 2, label: 'Assigned', icon: Users },
+    { step: 3, label: 'In Progress', icon: Wrench },
+    { step: 4, label: 'Resolved', icon: CheckSquare },
+    { step: 5, label: 'Closed', icon: Archive }
+  ];
 
   return (
     <div className="space-y-6 pb-12">
-      
-      {/* Success Notification Banner */}
+
+      {/* ── Success Banner ── */}
       {successBanner && (
-        <div className="bg-emerald-50 border border-emerald-500 rounded p-4 flex items-start gap-3 text-emerald-800 animate-in fade-in slide-in-from-top-1 duration-200">
-          <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <span className="font-bold uppercase tracking-wider block">SUCCESS</span>
-            <p className="mt-1 leading-normal text-[11px] font-mono">{successBanner}</p>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 shadow-sm animate-in slide-in-from-top-2 duration-300">
+          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={16} className="text-emerald-600" />
           </div>
-          <button 
-            type="button" 
-            onClick={() => setSuccessBanner(null)} 
-            className="text-emerald-600 hover:text-emerald-800 font-bold font-mono text-[10px] uppercase cursor-pointer"
-          >
-            Dismiss
+          <p className="flex-1 text-sm text-emerald-800 font-medium">{successBanner}</p>
+          <button onClick={() => setSuccessBanner(null)} className="text-emerald-400 hover:text-emerald-600 p-1 rounded-lg hover:bg-emerald-100 transition">
+            <X size={16} />
           </button>
         </div>
       )}
-      
-      {/* Top Navigation */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-5">
-        <div className="flex items-center gap-3">
-          <Link href="/customer/tickets" className="p-2 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-500 hover:text-zinc-950 transition">
-            <ArrowLeft size={14} />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold font-mono text-zinc-955">{ticket.id}</span>
-              <Badge className="bg-zinc-950 text-white font-mono text-[9px] uppercase rounded border-0">{ticket.ticketType || 'Incident'}</Badge>
-              {ticket.softDeleteStatus === 'Pending Delete' && (
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-250 font-mono text-[9px]">PENDING DELETION APPROVAL</Badge>
+
+      {/* ── Back & Breadcrumb ── */}
+      <div className="flex items-center gap-2 text-sm text-zinc-500">
+        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-zinc-500 hover:text-zinc-900 font-medium transition group">
+          <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> My Tickets
+        </Link>
+        <ChevronRight size={14} className="text-zinc-300" />
+        <span className="text-zinc-900 font-semibold">{ticket.ticketNumber}</span>
+      </div>
+
+      {/* ── Hero Header Card ── */}
+      <div className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+        
+        <div className="p-6 md:p-8">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+            {/* Left: Title & Meta */}
+            <div className="space-y-4 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Status Badge */}
+                {(() => {
+                  const status = ticket.status.toUpperCase();
+                  if (status === 'NEW') {
+                    return <Badge variant="secondary" className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full">{ticket.status}</Badge>;
+                  }
+                  if (status === 'CLOSED' || status === 'RESOLVED') {
+                    return <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600 text-white border-transparent text-[11px] font-semibold px-2.5 py-0.5 rounded-full">{ticket.status}</Badge>;
+                  }
+                  return <Badge variant="outline" className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full">{ticket.status}</Badge>;
+                })()}
+
+                {/* Type Badge */}
+                {ticket.ticketType === 'Incident' || !ticket.ticketType ? (
+                  <Badge variant="outline" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">Incident</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">{ticket.ticketType}</Badge>
+                )}
+
+                {/* Priority Badge */}
+                {(() => {
+                  const priority = ticket.priority.toUpperCase();
+                  if (priority === 'HIGH' || priority === 'CRITICAL') {
+                    return <Badge variant="destructive" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">{ticket.priority}</Badge>;
+                  }
+                  return <Badge variant="secondary" className="text-[11px] font-medium px-2.5 py-0.5 rounded-full">{ticket.priority}</Badge>;
+                })()}
+
+                 {ticket.softDeleteStatus === 'Pending Delete' && (
+                  <Badge className="bg-amber-50 text-amber-600 border border-amber-200 text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse hover:bg-transparent">
+                    Pending Deletion
+                  </Badge>
+                )}
+
+                {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
+                  <Badge variant="secondary" className="bg-zinc-100 text-zinc-800 border-zinc-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <Info size={12} className="text-zinc-500 shrink-0" />
+                    Critical Priority — Being handled
+                  </Badge>
+                )}
+              </div>
+
+              <h1 className="text-xl md:text-2xl font-bold text-zinc-900 leading-tight tracking-tight">
+                {ticket.title}
+              </h1>
+
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-zinc-500">
+                <span className="flex items-center gap-1.5">
+                  <Building2 size={14} className="text-zinc-400" />
+                  {ticket.organization}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Layers size={14} className="text-zinc-400" />
+                  {ticket.sapModule}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar size={14} className="text-zinc-400" />
+                  Created {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                {isSlaApplicable && (
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${slaStatus.color}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${slaStatus.dot}`}></span>
+                    SLA: {slaStatus.label}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Actions */}
+            <div className="flex flex-wrap gap-2 lg:self-start shrink-0">
+              {!ticket.assignedConsultant && ticket.status === 'New' && (
+                <Button
+                  onClick={() => setShowEditDialog(true)}
+                  variant="outline"
+                  className="h-9 text-[13px] font-medium border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-lg gap-1.5"
+                >
+                  <Edit size={14} /> Edit
+                </Button>
+              )}
+
+              {ticket.status === 'Resolved' && (
+                <>
+                  <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
+                    <DialogTrigger asChild>
+                      <Button className="h-9 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1.5 shadow-sm">
+                        <CheckCircle2 size={14} /> Accept & Close
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+                      <div className="p-6 space-y-5">
+                        <DialogHeader>
+                          <DialogTitle className="text-lg font-bold text-zinc-900">Close Ticket</DialogTitle>
+                          <DialogDescription className="text-sm text-zinc-500">
+                            Provide any final remarks or feedback before closing ticket {ticket.ticketNumber}.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleRatingSubmit} className="space-y-5">
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Closure Comments (Optional)</label>
+                            <textarea
+                              rows={3}
+                              placeholder="Provide any closure comments or feedback..."
+                              value={ratingFeedback}
+                              onChange={(e) => setRatingFeedback(e.target.value)}
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-zinc-400 resize-none"
+                            />
+                          </div>
+                          <DialogFooter>
+                            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl shadow-sm">
+                              Confirm & Close
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="h-9 text-[13px] font-medium border-red-200 text-red-600 hover:bg-red-50 rounded-lg gap-1.5">
+                        Reject & Reopen
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+                      <div className="p-6 space-y-5">
+                        <DialogHeader>
+                          <DialogTitle className="text-lg font-bold text-zinc-900">Reject Resolution</DialogTitle>
+                          <DialogDescription className="text-sm text-zinc-500">
+                            Explain why the fix doesn&apos;t resolve your issue.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleReopenSubmit} className="space-y-5">
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Reason</label>
+                            <textarea
+                              required
+                              rows={4}
+                              placeholder="Describe what's still not working..."
+                              value={reopenReason}
+                              onChange={(e) => setReopenReason(e.target.value)}
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition placeholder:text-zinc-400 resize-none"
+                            />
+                          </div>
+                          <DialogFooter>
+                            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl">
+                              Reopen Ticket
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
+
+              {ticket.status === 'Closed' && (
+                <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      disabled={!!pendingReopenRequest}
+                      className="h-9 text-[13px] font-medium border-zinc-200 text-zinc-650 hover:text-zinc-900 hover:bg-zinc-50 rounded-lg gap-1.5"
+                    >
+                      {pendingReopenRequest ? 'Reopen Pending Approval' : 'Request Reopen'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+                    <div className="p-6 space-y-5">
+                      <DialogHeader>
+                        <DialogTitle className="text-lg font-bold text-zinc-900">Reopen Ticket</DialogTitle>
+                        <DialogDescription className="text-sm text-zinc-500">
+                          Explain why this closed ticket needs to be reopened.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleReopenSubmit} className="space-y-5">
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Reason</label>
+                          <textarea
+                            required
+                            rows={4}
+                            placeholder="Describe the recurring or new issue..."
+                            value={reopenReason}
+                            onChange={(e) => setReopenReason(e.target.value)}
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-zinc-400 resize-none"
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl">
+                            Submit Reopen Request
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+
+              {ticket.status !== 'Closed' && ticket.status !== 'Resolved' && (
+                ticket.isEscalated ? (
+                  <Badge variant="destructive" className="h-9 text-[13px] font-medium border-red-200 bg-red-100 text-red-800 hover:bg-red-100 rounded-lg">
+                    Escalated — Awaiting Acknowledgment
+                  </Badge>
+                ) : (
+                  <Dialog open={showEscalateDialog} onOpenChange={(open) => {
+                    setShowEscalateDialog(open);
+                    if (!open) setEscalationReasonInput('');
+                  }}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="h-9 text-[13px] font-medium border-orange-200 text-orange-600 hover:bg-orange-50 rounded-lg gap-1.5">
+                        <Zap size={14} /> Escalate
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-6 max-w-md overflow-hidden font-sans text-sm">
+                      <DialogHeader className="space-y-2">
+                        <DialogTitle className="text-lg font-bold text-zinc-900 normal-case tracking-normal">Escalate Ticket</DialogTitle>
+                        <DialogDescription className="text-sm text-zinc-500">
+                          Escalating will notify your support manager immediately and flag this ticket for priority handling.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-2 mt-4">
+                        <label className="text-xs font-semibold text-zinc-650 uppercase tracking-wider block">Reason for escalation</label>
+                        <textarea
+                          rows={4}
+                          placeholder="Please describe the business impact or reason for escalating this ticket (minimum 10 characters)..."
+                          value={escalationReasonInput}
+                          onChange={(e) => setEscalationReasonInput(e.target.value)}
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition placeholder:text-zinc-400 resize-none"
+                        />
+                        {escalationReasonInput.trim().length > 0 && escalationReasonInput.trim().length < 10 && (
+                          <p className="text-xs text-red-500 font-semibold">Reason must be at least 10 characters (currently {escalationReasonInput.trim().length}).</p>
+                        )}
+                      </div>
+                      <DialogFooter className="mt-6 flex gap-2">
+                        <Button variant="outline" onClick={() => {
+                          setShowEscalateDialog(false);
+                          setEscalationReasonInput('');
+                        }}>
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={handleEscalateConfirm}
+                          disabled={escalationReasonInput.trim().length < 10}
+                        >
+                          Escalate
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )
+              )}
+
+              {ticket.softDeleteStatus === 'Active' && (
+                <Button
+                  onClick={() => setShowDeleteDialog(true)}
+                  variant="outline"
+                  className="h-9 text-[13px] font-medium border-zinc-200 text-zinc-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-lg gap-1.5 transition"
+                >
+                  <Trash2 size={14} /> Delete
+                </Button>
               )}
             </div>
-            <p className="text-xs text-zinc-500 font-mono mt-1 font-semibold">{ticket.title}</p>
           </div>
         </div>
 
-        {/* Action Panel */}
-        <div className="flex flex-wrap gap-2">
-          
-          {/* Edit Button (Available BEFORE Consultant Assignment only) */}
-          {!ticket.assignedConsultant && ticket.status === 'New' && (
-            <Button
-              onClick={() => setShowEditDialog(true)}
-              variant="outline"
-              className="border-zinc-200 text-zinc-700 text-[10px] font-mono font-bold uppercase tracking-wider h-8 hover:border-zinc-950 flex items-center gap-1"
-            >
-              <Edit size={12} />
-              Edit Description
-            </Button>
-          )}
+        {/* ── Progress Stepper ── */}
+        <div className="px-6 md:px-8 pb-6 pt-2">
+          <div className="flex items-center justify-between relative">
+            {/* Connection line */}
+            <div className="absolute top-5 left-[40px] right-[40px] h-[2px] bg-muted">
+              <div
+                className="h-full bg-primary transition-all duration-700 ease-out rounded-full"
+                style={{ width: `${Math.max(0, ((currentStepIndex - 1) / 4) * 100)}%` }}
+              ></div>
+            </div>
 
-          {ticket.status === 'Resolved' && (
-            <>
-              {/* Accept & Close */}
-              <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
-                <DialogTrigger asChild>
-                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-mono font-bold uppercase tracking-wider h-8">
-                    Accept & Close Ticket
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-white border border-zinc-200 rounded-xl p-6 font-mono text-xs max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle className="text-sm font-bold uppercase tracking-wider font-mono">Confirm Support Resolution</DialogTitle>
-                    <DialogDescription className="text-[11px] font-mono mt-1">
-                      Rate your satisfaction with the resolution of incident {ticket.id} to confirm closing.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleRatingSubmit} className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-zinc-400 uppercase font-mono">Satisfaction Score (CSAT)</label>
-                      <div className="flex gap-2 justify-center py-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => setRatingScore(star)}
-                            className="p-1 text-zinc-300 hover:text-amber-500 transition-colors"
-                          >
-                            <Star
-                              size={24}
-                              className={star <= ratingScore ? 'fill-amber-500 text-amber-500' : 'text-zinc-200'}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold text-zinc-400 uppercase font-mono">Closing Feedback Notes</label>
-                      <textarea
-                        rows={3}
-                        placeholder="Provide details on response time, quality of fix, or other notes..."
-                        value={ratingFeedback}
-                        onChange={(e) => setRatingFeedback(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" className="w-full bg-zinc-955 hover:bg-zinc-900 text-white uppercase text-[10px] tracking-wider font-bold">
-                        Confirm and Close
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
- 
-              {/* Reject & Reopen */}
-              <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="border-red-200 text-red-650 hover:bg-red-50 text-[10px] font-mono font-bold uppercase tracking-wider h-8 hover:border-red-400">
-                    Reject Fixed & Reopen
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-white border border-zinc-205 rounded-xl p-6 font-mono text-xs max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle className="text-sm font-bold uppercase tracking-wider font-mono">Reject Fixed & Reopen</DialogTitle>
-                    <DialogDescription className="text-[11px] font-mono mt-1">
-                      State the reasons why the proposed solution failed to resolve the incident.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleReopenSubmit} className="space-y-4 pt-2">
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold text-zinc-400 uppercase font-mono">Detailed Reopen Reason (Mandatory)</label>
-                      <textarea
-                        required
-                        rows={4}
-                        placeholder="Replication steps showing issue still persists..."
-                        value={reopenReason}
-                        onChange={(e) => setReopenReason(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950"
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" className="w-full bg-red-600 hover:bg-red-750 text-white uppercase text-[10px] tracking-wider font-bold">
-                        Confirm Reopen
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
+            {steps.map((milestone) => {
+              const isCompleted = milestone.step < currentStepIndex;
+              const isActive = milestone.step === currentStepIndex;
+              const Icon = milestone.icon;
 
-          {ticket.status === 'Closed' && (
-            <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="border-zinc-300 text-zinc-800 text-[10px] font-mono font-bold uppercase tracking-wider h-8 hover:border-zinc-950">
-                  Request Ticket Reopen
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-white border border-zinc-200 rounded-xl p-6 font-mono text-xs max-w-sm">
-                <DialogHeader>
-                  <DialogTitle className="text-sm font-bold uppercase tracking-wider font-mono">Request Ticket Reopen</DialogTitle>
-                  <DialogDescription className="text-[11px] font-mono mt-1">
-                    Briefly detail why the ticket needs to be reactivated.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleReopenSubmit} className="space-y-4 pt-2">
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-zinc-400 uppercase font-mono">Reopen Reason</label>
-                    <textarea
-                      required
-                      rows={4}
-                      placeholder="Why do you need to reopen this closed ticket..."
-                      value={reopenReason}
-                      onChange={(e) => setReopenReason(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950"
-                    />
+              return (
+                <div key={milestone.step} className="flex flex-col items-center text-center relative z-10 w-[80px]">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : isCompleted
+                        ? 'bg-muted text-muted-foreground'
+                        : 'bg-white border-2 border-muted text-muted-foreground/60'
+                  }`}>
+                    {isCompleted ? <CheckCircle2 size={18} /> : <Icon size={16} />}
                   </div>
-                  <DialogFooter>
-                    <Button type="submit" className="w-full bg-zinc-950 hover:bg-zinc-900 text-white uppercase text-[10px] tracking-wider font-bold">
-                      Reopen Ticket
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
-
-          {/* SLA Escalation */}
-          {ticket.status !== 'Closed' && ticket.status !== 'Resolved' && !ticket.escalationFlag && (
-            <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="border-zinc-200 text-zinc-650 text-[10px] font-mono font-bold uppercase tracking-wider h-8 hover:text-red-750 hover:border-red-400 hover:bg-red-50/50">
-                  Request Escalation
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-white border border-zinc-200 rounded-xl p-6 font-mono text-xs max-w-sm">
-                <DialogHeader>
-                  <DialogTitle className="text-sm font-bold uppercase tracking-wider font-mono text-red-850">Request SLA Escalation</DialogTitle>
-                  <DialogDescription className="text-[11px] font-mono mt-1">
-                    Escalate this request to SAP service managers due to business disruption.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleEscalateSubmit} className="space-y-4 pt-2">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-zinc-400 uppercase font-mono">Escalation Level</label>
-                    <select
-                      value={escalateSeverity}
-                      onChange={(e: any) => setEscalateSeverity(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs text-zinc-955 focus:outline-none"
-                    >
-                      <option value="Low">Low Severity</option>
-                      <option value="Medium">Medium Severity</option>
-                      <option value="High">High Severity</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-zinc-400 uppercase font-mono">Escalation Reason</label>
-                    <textarea
-                      required
-                      rows={3}
-                      placeholder="State standard business impact, SLA slippage details, or lack of feedback..."
-                      value={escalateReason}
-                      onChange={(e) => setEscalateReason(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950"
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit" className="w-full bg-zinc-950 hover:bg-zinc-900 text-white uppercase text-[10px] tracking-wider font-bold">
-                      Escalate Request
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
-
-          {/* Soft-Delete Button */}
-          {ticket.softDeleteStatus === 'Active' && (
-            <Button
-              onClick={() => setShowDeleteDialog(true)}
-              variant="outline"
-              className="border-red-200 text-red-655 text-[10px] font-mono font-bold uppercase tracking-wider h-8 hover:text-red-700 hover:border-red-400 hover:bg-red-50/50 flex items-center gap-1"
-            >
-              <Trash2 size={12} />
-              Request Deletion
-            </Button>
-          )}
-
+                  <span className={`mt-2 text-[11px] font-semibold transition-colors ${
+                    isActive ? 'text-primary font-bold' : 'text-muted-foreground'
+                  }`}>
+                    {milestone.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Critical SLA Banner */}
+      {/* Escalation Banners */}
+      {ticket.isEscalated && !ticket.escalationAcknowledgedAt && (
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Escalation Raised</AlertTitle>
+          <AlertDescription>
+            Your escalation is pending manager acknowledgment.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
+        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
+          <ShieldCheck className="size-4 text-emerald-600" />
+          <AlertTitle>Escalation Acknowledged — Priority Handling Active</AlertTitle>
+          <AlertDescription>
+            Your support team has acknowledged this escalation and is actively working
+            to resolve it as a top priority.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* SLA Breach Warning */}
       {ticket.status !== 'Resolved' && ticket.status !== 'Closed' && isSlaApplicable && new Date(ticket.slaDueAt).getTime() < Date.now() && (
-        <div className="bg-red-50 border border-red-350 rounded-lg p-4 flex items-start gap-3 text-red-800 animate-pulse">
-          <AlertCircle size={18} className="shrink-0 mt-0.5" />
-          <div className="font-mono text-xs">
-            <span className="font-bold uppercase tracking-wider block">CRITICAL ALERT: SLA Breach Incident</span>
-            <p className="mt-1 leading-normal text-[11px]">This ticket has crossed its resolution target time. Immediate escalation has been dispatched to functional managers.</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+            <AlertTriangle size={16} className="text-red-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-red-700 text-sm">SLA Target Exceeded</p>
+            <p className="text-[13px] text-red-600/80 mt-0.5 leading-relaxed">This ticket has exceeded its resolution target. The support team has been notified for immediate action.</p>
           </div>
         </div>
       )}
 
-      {/* Main Grid Content */}
+      {/* ── Main Content Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left column: Overview, Timeline, SLA Details */}
+
+        {/* Left Column (2/3) */}
         <div className="lg:col-span-2 space-y-6">
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="bg-zinc-100 p-1 border border-zinc-200 rounded-lg flex gap-1 font-mono text-[10px] w-full max-w-md h-auto">
-              <TabsTrigger value="overview" className="rounded px-3 py-1.5 text-[10px] uppercase font-bold tracking-wide data-[state=active]:bg-white data-[state=active]:text-zinc-950 flex-1">Overview & Fix</TabsTrigger>
-              <TabsTrigger value="timeline" className="rounded px-3 py-1.5 text-[10px] uppercase font-bold tracking-wide data-[state=active]:bg-white data-[state=active]:text-zinc-950 flex-1">Timeline ({timelineEvents.length})</TabsTrigger>
-              <TabsTrigger value="efforts" className="rounded px-3 py-1.5 text-[10px] uppercase font-bold tracking-wide data-[state=active]:bg-white data-[state=active]:text-zinc-950 flex-1">SLA & Efforts</TabsTrigger>
+          <Tabs defaultValue="details" className="space-y-5">
+            <TabsList className="bg-zinc-100/80 border border-zinc-200/60 p-1 rounded-xl flex gap-0.5 w-full max-w-lg h-auto">
+              <TabsTrigger value="details" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm flex-1 transition text-zinc-500">
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="conversation" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm flex-1 transition text-zinc-500">
+                Conversation ({timelineEvents.length})
+              </TabsTrigger>
+              <TabsTrigger value="sla" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm flex-1 transition text-zinc-500">
+                SLA & Efforts
+              </TabsTrigger>
             </TabsList>
 
-            {/* TAB 1: OVERVIEW & DETAILS */}
-            <TabsContent value="overview" className="space-y-6">
-              {/* Detailed Description */}
-              <Card className="border-zinc-200 shadow-sm bg-white">
-                <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-                  <div className="flex flex-wrap gap-4 text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
-                    <span className="flex items-center gap-1"><Building2 size={11} /> {ticket.organization}</span>
-                    <span>Category: {ticket.category}</span>
-                    <span>Source: {ticket.source}</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4 font-mono text-xs">
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-zinc-400 uppercase text-[9px] tracking-wider">Replication & Description</h3>
-                    <p className="text-zinc-800 leading-relaxed text-[11px] whitespace-pre-wrap">{ticket.description}</p>
-                  </div>
+            {/* TAB 1: Details */}
+            <TabsContent value="details" className="space-y-5 animate-in fade-in duration-200">
+              {/* Description Card */}
+              <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+                  <FileText size={16} className="text-indigo-500" />
+                  <h3 className="text-sm font-semibold text-zinc-900">Description</h3>
+                </div>
+                <div className="p-6 space-y-5">
+                  <p className="text-[14px] text-zinc-700 leading-relaxed whitespace-pre-wrap">{ticket.description}</p>
 
                   {ticket.businessImpact && (
-                    <div className="space-y-1 pt-3 border-t border-zinc-100">
-                      <h3 className="font-bold text-zinc-400 uppercase text-[9px] tracking-wider">Business Impact</h3>
-                      <p className="text-zinc-800 leading-relaxed text-[11px]">{ticket.businessImpact}</p>
+                    <div className="pt-4 border-t border-zinc-100 space-y-2">
+                      <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Business Impact</h4>
+                      <p className="text-[13px] text-zinc-600 leading-relaxed">{ticket.businessImpact}</p>
                     </div>
                   )}
 
-                  {/* Public Attachments */}
-                  {visibleAttachments.length > 0 && (
-                    <div className="space-y-2 pt-4 border-t border-zinc-100">
-                      <h3 className="font-bold text-zinc-400 uppercase text-[9px] tracking-wider flex items-center gap-1">
-                        <Paperclip size={11} />
-                        Downloadable Attachments ({visibleAttachments.length})
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {visibleAttachments.map(att => (
-                          <a
-                            key={att.id}
-                            href="#"
-                            onClick={(e) => { e.preventDefault(); showBannerMessage(`Simulated download: "${att.fileName}" retrieved successfully from Supabase storage.`); }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 border border-zinc-200 hover:border-zinc-950 rounded-lg bg-zinc-50 font-mono font-bold text-[10px] text-zinc-700 hover:text-zinc-950 transition-all"
-                          >
-                            <FileCode size={13} className="text-zinc-400" />
-                            <span>{att.fileName} ({(att.fileSize / 1024).toFixed(0)}kb)</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  {/* Category & Source metadata row */}
+                  <div className="pt-4 border-t border-zinc-100 flex flex-wrap gap-4 text-[13px] text-zinc-500">
+                    <span className="flex items-center gap-1.5"><Tag size={13} className="text-zinc-400" /> {ticket.category}</span>
+                    <span className="flex items-center gap-1.5"><CircleDot size={13} className="text-zinc-400" /> {ticket.source}</span>
+                    <span className="flex items-center gap-1.5"><Layers size={13} className="text-zinc-400" /> {ticket.functionalOrTechnical || 'Functional'}</span>
+                  </div>
+                </div>
+              </div>
 
-              {/* Proposed resolution (visible only when resolved or closed) */}
+              {/* Attachments */}
+              <AttachmentPanel ticketId={ticket.id} />
+
+              {/* Resolution Summary */}
               {(ticket.status === 'Resolved' || ticket.status === 'Closed') && (
-                <Card className="border-emerald-250 bg-emerald-50/20 shadow-sm overflow-hidden">
-                  <CardHeader className="bg-emerald-50/40 pb-2 border-b border-emerald-100">
-                    <CardTitle className="text-xs font-mono uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                      <ShieldCheck size={14} />
-                      Solution Delivery Details
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-4 font-mono text-xs text-zinc-800">
+                <div className="bg-emerald-50/50 rounded-2xl border border-emerald-200/60 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-emerald-100 flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-emerald-600" />
+                    <h3 className="text-sm font-semibold text-emerald-800">Resolution Summary</h3>
+                  </div>
+                  <div className="p-6 space-y-4">
                     {ticket.rootCause && (
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-emerald-800 uppercase text-[9px] block">Root Cause Mapped:</span>
-                        <p className="leading-relaxed text-[11px]">{ticket.rootCause}</p>
+                      <div className="space-y-1.5">
+                        <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Root Cause</h4>
+                        <p className="text-[13px] text-zinc-700 leading-relaxed">{ticket.rootCause}</p>
                       </div>
                     )}
                     {ticket.resolutionSummary && (
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-emerald-800 uppercase text-[9px] block">Resolution Summary:</span>
-                        <p className="leading-relaxed text-[11px]">{ticket.resolutionSummary}</p>
+                      <div className="space-y-1.5">
+                        <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Fix Applied</h4>
+                        <p className="text-[13px] text-zinc-700 leading-relaxed">{ticket.resolutionSummary}</p>
                       </div>
                     )}
                     {ticket.transportRequest && (
-                      <div className="space-y-1">
-                        <span className="font-bold text-emerald-800 uppercase text-[9px] block">SAP Transport Request Linked:</span>
-                        <Badge className="bg-emerald-105 bg-emerald-100 border border-emerald-200 text-emerald-800 font-mono text-[10px]">
+                      <div className="space-y-1.5">
+                        <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">SAP Transport</h4>
+                        <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-mono rounded-lg px-2.5 py-0.5 hover:bg-transparent">
                           {ticket.transportRequest}
                         </Badge>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
             </TabsContent>
 
-            {/* TAB 2: TIMELINE & CONVERSATIONS */}
-            <TabsContent value="timeline" className="space-y-6">
-              {/* Timeline Thread */}
-              <Card className="border-zinc-200 shadow-sm bg-white">
-                <CardContent className="p-6 space-y-6">
+            {/* TAB 2: Conversation */}
+            <TabsContent value="conversation" className="space-y-5 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+                  <MessageSquare size={16} className="text-indigo-500" />
+                  <h3 className="text-sm font-semibold text-zinc-900">Activity Timeline</h3>
+                </div>
+                <div className="p-6">
                   {timelineEvents.length === 0 ? (
-                    <div className="text-center py-10 font-mono text-zinc-400 italic">No updates registered on ticket registry.</div>
+                    <div className="text-center py-12 space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mx-auto">
+                        <MessageSquare size={20} className="text-zinc-400" />
+                      </div>
+                      <p className="text-sm text-zinc-400">No activity yet</p>
+                    </div>
                   ) : (
-                    <div className="relative border-l border-zinc-200 pl-6 ml-2 space-y-6">
+                    <div className="space-y-4">
                       {timelineEvents.map((evt) => {
                         const isAudit = evt.type === 'audit';
                         const isEsc = evt.type === 'escalation';
+                        const isCustomer = evt.role === 'Customer';
 
                         return (
-                          <div key={evt.id} className="relative group">
-                            {/* Point Dot Icon */}
-                            <span className={`absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full border bg-white ${
-                              isEsc ? 'border-red-400 text-red-500 animate-pulse' : isAudit ? 'border-zinc-200 text-zinc-400' : 'border-zinc-950 text-zinc-950'
-                            }`}>
-                              {isEsc ? <BadgeAlert size={10} /> : isAudit ? <History size={10} /> : <MessageSquare size={10} />}
-                            </span>
-
-                            <div className="space-y-1">
-                              <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-zinc-400">
-                                <span className={`font-bold uppercase tracking-wider ${isEsc ? 'text-red-750' : isAudit ? 'text-zinc-500' : 'text-zinc-950'}`}>
-                                  {evt.title}
+                          <div key={evt.id} className={`rounded-xl border p-4 transition-all hover:shadow-sm group ${
+                            isEsc
+                              ? 'bg-orange-50/50 border-orange-200/60'
+                              : isAudit
+                                ? 'bg-zinc-50/50 border-zinc-200/60'
+                                : isCustomer
+                                  ? 'bg-indigo-50/30 border-indigo-200/50'
+                                  : 'bg-white border-zinc-200/60'
+                          }`}>
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 ${
+                                  isEsc ? 'bg-orange-500' : isAudit ? 'bg-zinc-400' : isCustomer ? 'bg-indigo-500' : 'bg-zinc-800'
+                                }`}>
+                                  {isEsc ? <Zap size={13} /> : isAudit ? <History size={13} /> : <User size={13} />}
+                                </div>
+                                <div>
+                                  <span className="text-sm font-semibold text-zinc-900">{evt.author}</span>
+                                  <span className="text-[11px] text-zinc-400 ml-1.5">
+                                    {evt.role !== 'System' && `· ${evt.role}`}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[11px] text-zinc-400">
+                                  {new Date(evt.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(evt.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
-                                <div className="flex items-center gap-2">
-                                  <span>{new Date(evt.createdAt).toLocaleString()}</span>
-                                  {evt.type === 'comment' && (
-                                    <button
-                                      onClick={() => handleQuoteComment(evt.author, evt.content)}
-                                      className="opacity-0 group-hover:opacity-100 hover:text-zinc-900 flex items-center gap-0.5 text-zinc-400 transition"
-                                      title="Quote reply"
-                                    >
-                                      <Quote size={10} />
-                                      <span>Quote</span>
-                                    </button>
-                                  )}
-                                </div>
+                                {evt.type === 'comment' && (
+                                  <button
+                                    onClick={() => handleQuoteComment(evt.author, evt.content)}
+                                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition"
+                                    title="Quote"
+                                  >
+                                    <Quote size={12} />
+                                  </button>
+                                )}
                               </div>
-                              
-                              <span className="font-semibold text-zinc-500 text-[10px] block font-mono">
-                                Actioned by: <span className="font-bold text-zinc-950">{evt.author}</span> {evt.role !== 'System' && `(${evt.role})`}
-                              </span>
-
-                              <div className={`mt-1 font-mono text-xs leading-relaxed ${isAudit ? 'text-zinc-500 italic bg-zinc-50 p-2 rounded' : 'text-zinc-800'}`}>
-                                {isAudit ? evt.content : renderCommentContent(evt.content)}
-                              </div>
-
-                              {/* Comment Attachments */}
-                              {evt.attachments && evt.attachments.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 pt-1.5">
-                                  {evt.attachments.map((att: any) => (
-                                    <a
-                                      key={att.id}
-                                      href="#"
-                                      onClick={(e) => { e.preventDefault(); showBannerMessage('Simulated download: Comment attachment file retrieved successfully.'); }}
-                                      className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-50 border border-zinc-200 rounded font-mono text-[9px] text-zinc-650 hover:border-zinc-950 transition"
-                                    >
-                                      <FileCode size={11} className="text-zinc-400" />
-                                      {att.fileName}
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
                             </div>
+
+                            <div className={`ml-[38px] text-[13px] leading-relaxed ${isAudit ? 'text-zinc-500 italic' : 'text-zinc-700'}`}>
+                              {isAudit ? evt.content : renderCommentContent(evt.content)}
+                            </div>
+
+                            {evt.attachments && evt.attachments.length > 0 && (
+                              <div className="ml-[38px] flex flex-wrap gap-2 mt-3">
+                                {evt.attachments.map((att: any) => (
+                                  <a
+                                    key={att.id}
+                                    href="#"
+                                    onClick={(e) => { e.preventDefault(); handleDownloadFile(att.fileName, att.fileUrl || att.filePath); }}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-[12px] text-zinc-600 hover:border-indigo-300 hover:text-indigo-600 transition font-medium"
+                                  >
+                                    <FileCode size={12} className="text-indigo-400" />
+                                    {att.fileName}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              {/* Message Composer (visible if not closed) */}
+              {/* Composer */}
               {ticket.status !== 'Closed' && (
-                <Card className="border-zinc-200 shadow-sm bg-white">
-                  <CardHeader className="pb-2 border-b border-zinc-100">
-                    <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-955">Add Reply Comment</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <form onSubmit={handleCommentSubmit} className="space-y-4 font-mono text-xs">
+                <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+                    <Send size={16} className="text-indigo-500" />
+                    <h3 className="text-sm font-semibold text-zinc-900">Reply</h3>
+                  </div>
+                  <div className="p-6">
+                    <form onSubmit={handleCommentSubmit} className="space-y-4">
                       <textarea
                         required
                         rows={4}
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="Provide details on clarifications, feedback requests, or error dumps..."
-                        className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950"
+                        placeholder="Write your message here..."
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-zinc-400 resize-none"
                       />
 
-                      {/* Mockup file uploader for comments */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">Add Attachment File Name (Optional)</label>
+                      {/* Attachments */}
+                      <div className="space-y-3">
+                        <div className="relative border-2 border-dashed border-zinc-200 rounded-xl p-5 bg-zinc-50/50 hover:bg-indigo-50/30 hover:border-indigo-300 transition flex flex-col items-center justify-center gap-2 cursor-pointer group">
                           <input
-                            type="text"
-                            placeholder="e.g. billing_dump.log"
-                            value={uploadFileName}
-                            onChange={(e) => setUploadFileName(e.target.value)}
-                            className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs focus:outline-none focus:border-zinc-950"
+                            type="file"
+                            multiple
+                            onChange={handleFileChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed"
                           />
+                          <div className="w-10 h-10 rounded-full bg-white border border-zinc-200 flex items-center justify-center group-hover:border-indigo-300 group-hover:bg-indigo-50 transition">
+                            <Upload size={18} className="text-zinc-400 group-hover:text-indigo-500 transition" />
+                          </div>
+                          <span className="text-sm text-zinc-600 font-medium">Drop files here or click to browse</span>
+                          <span className="text-[11px] text-zinc-400">Max 10MB per file</span>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">File Size (Bytes)</label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 240000"
-                            value={uploadFileSize}
-                            onChange={(e) => setUploadFileSize(e.target.value)}
-                            className="w-full bg-white border border-zinc-200 rounded p-1.5 text-xs focus:outline-none focus:border-zinc-950"
-                          />
-                        </div>
+
+                        {commentFiles.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {commentFiles.map((pf) => (
+                              <div key={pf.id} className="relative flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl">
+                                {pf.previewUrl ? (
+                                  <img src={pf.previewUrl} alt="Preview" className="w-11 h-11 object-cover rounded-lg border border-zinc-200" />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-lg border border-zinc-200 bg-white flex items-center justify-center">
+                                    {getFileIcon(pf.file.type)}
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-zinc-900 truncate pr-6">{pf.file.name}</p>
+                                  <p className="text-[11px] text-zinc-400">{(pf.file.size / 1024).toFixed(0)} KB</p>
+                                  <div className="w-full bg-zinc-200 rounded-full h-1 mt-1.5 overflow-hidden">
+                                    <div className="bg-indigo-500 h-full transition-all duration-300 rounded-full" style={{ width: `${pf.progress}%` }}></div>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removePendingFile(pf.id)}
+                                  className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex justify-end pt-2">
-                        <Button type="submit" className="bg-zinc-950 hover:bg-zinc-800 text-white font-mono font-bold uppercase tracking-wider text-[10px] h-9">
-                          Post Reply
+                        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm h-10 px-6 rounded-xl shadow-sm transition gap-1.5">
+                          <Send size={14} /> Send Reply
                         </Button>
                       </div>
                     </form>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
             </TabsContent>
 
-            {/* TAB 3: SLA & EFFORTS */}
-            <TabsContent value="efforts" className="space-y-6">
-              {/* SLA details */}
-              <Card className="border-zinc-200 shadow-sm bg-white">
-                <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-                  <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950">SLA Resolution Target</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4 font-mono text-xs text-zinc-705">
-                  <div className="flex justify-between">
-                    <span>SLA Application Flag:</span>
-                    <span className="font-bold text-zinc-955">{isIncident ? 'ACTIVE (INCIDENT TICKET)' : 'NOT APPLICABLE (EXEMPT TICKET TYPE)'}</span>
+            {/* TAB 3: SLA & Efforts */}
+            <TabsContent value="sla" className="space-y-5 animate-in fade-in duration-200">
+              {/* SLA Card */}
+              <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+                  <Timer size={16} className="text-indigo-500" />
+                  <h3 className="text-sm font-semibold text-zinc-900">SLA Details</h3>
+                </div>
+                <div className="p-6 space-y-4 text-sm">
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-zinc-500">Coverage</span>
+                    <span className="font-medium text-zinc-900">{isIncident ? 'Active Incident SLA' : 'Exempt (Non-Incident)'}</span>
                   </div>
-
                   {isSlaApplicable ? (
                     <>
-                      <div className="flex justify-between">
-                        <span>Target Resolved Due At:</span>
-                        <span className="font-bold text-zinc-950 font-mono">{new Date(ticket.slaDueAt).toLocaleString()}</span>
+                      <div className="flex justify-between items-center py-2 border-t border-zinc-100">
+                        <span className="text-zinc-500">Resolution Due</span>
+                        <span className="font-medium text-zinc-900">{new Date(ticket.slaDueAt).toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>SLA Compliance Status:</span>
-                        <Badge className={`${slaStatus.color} font-mono text-[9px] rounded py-0.5 px-1.5 border`}>
+                      <div className="flex justify-between items-center py-2 border-t border-zinc-100">
+                        <span className="text-zinc-500">Status</span>
+                        <Badge className={`${slaStatus.color} border text-[11px] font-semibold px-2.5 py-0.5 rounded-full hover:bg-transparent`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${slaStatus.dot} mr-1.5 inline-block`}></span>
                           {slaStatus.label}
                         </Badge>
                       </div>
                       {ticket.resolvedAt && (
-                        <div className="flex justify-between">
-                          <span>Actual Solution Resolved At:</span>
-                          <span className="font-bold text-zinc-950">{new Date(ticket.resolvedAt).toLocaleString()}</span>
+                        <div className="flex justify-between items-center py-2 border-t border-zinc-100">
+                          <span className="text-zinc-500">Resolved At</span>
+                          <span className="font-medium text-zinc-900">{new Date(ticket.resolvedAt).toLocaleString()}</span>
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-[11px] text-zinc-500 leading-normal flex items-start gap-2">
-                      <HelpCircle className="text-zinc-400 shrink-0 mt-0.5" size={14} />
-                      <span>
-                        SLA tracking applies **only** to Incident class support requests. For other request types (e.g. Enhancement, Change, Service, Training), delivery bounds are governed by target expected resolution schedules rather than system alarms.
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Efforts summary (Restricting individual logs list and showing Quoted vs Consumed progress bar) */}
-              <Card className="border-zinc-200 shadow-sm bg-white">
-                <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-                  <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center justify-between">
-                    <span>Effort Delivery Tracking</span>
-                    <Badge variant="outline" className="text-[9px] font-bold border-zinc-200">EXECUTIVE OVERVIEW</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                  {quoted === 0 ? (
-                    <div className="space-y-2 font-mono text-xs">
-                      <div className="flex justify-between">
-                        <span>Consumed Hours:</span>
-                        <span className="font-bold text-zinc-900">{consumed.toFixed(1)}h</span>
-                      </div>
-                      <p className="text-[10px] text-zinc-450 italic">
-                        No quoted hours budget has been set for this ticket yet.
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 flex items-start gap-3 mt-2">
+                      <Info size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+                      <p className="text-[13px] text-zinc-600 leading-relaxed">
+                        SLA tracking is applicable to Incident-type tickets only. Enhancement and change requests follow milestone-based delivery timelines.
                       </p>
                     </div>
-                  ) : (
-                    <div className="space-y-4 font-mono text-xs">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg">
-                          <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block">Quoted Budget</span>
-                          <span className="text-sm font-bold text-zinc-900 block mt-0.5">{quoted.toFixed(1)}h</span>
-                        </div>
-                        <div className={`p-3 border rounded-lg ${exceedsBudget ? 'bg-red-50 border-red-200' : 'bg-zinc-50 border-zinc-200'}`}>
-                          <span className={`text-[8px] font-bold uppercase tracking-wider block ${exceedsBudget ? 'text-red-750' : 'text-zinc-400'}`}>Consumed</span>
-                          <span className={`text-sm font-bold block mt-0.5 ${exceedsBudget ? 'text-red-650' : 'text-zinc-900'}`}>{consumed.toFixed(1)}h</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Effort Hours Card */}
+              <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity size={16} className="text-indigo-500" />
+                    <h3 className="text-sm font-semibold text-zinc-900">Effort Hours</h3>
+                  </div>
+                  <Badge className="bg-zinc-100 text-zinc-500 border border-zinc-200 text-[10px] font-medium px-2 py-0 rounded-full hover:bg-transparent">
+                    {isClosed ? 'Released' : 'Locked'}
+                  </Badge>
+                </div>
+                <div className="p-6">
+                  {isClosed ? (
+                    <div className="space-y-5">
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+                        <Unlock size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-emerald-800 text-sm">Hours Released</p>
+                          <p className="text-[12px] text-emerald-600 mt-0.5">Actual effort hours are now visible after ticket closure.</p>
                         </div>
                       </div>
-
-                      {/* Progress Bar */}
-                      <div className="space-y-1.5 pt-2">
-                        <div className="flex justify-between text-[10px] font-bold">
-                          <span>Hours Utilization</span>
-                          <span className={exceedsBudget ? 'text-red-650 font-black' : 'text-zinc-650'}>
-                            {progressPercent.toFixed(0)}% Used
-                          </span>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl text-center">
+                          <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">Functional</p>
+                          <p className="text-2xl font-bold text-zinc-900 mt-1">{actualFuncHours.toFixed(1)}<span className="text-sm font-normal text-zinc-400">h</span></p>
                         </div>
-                        <div className="w-full h-3 bg-zinc-100 rounded-full overflow-hidden border border-zinc-200">
-                          <div
-                            className={`h-full transition-all duration-300 rounded-full ${
-                              exceedsBudget ? 'bg-red-500' : 'bg-emerald-500'
-                            }`}
-                            style={{ width: `${progressPercent}%` }}
-                          ></div>
+                        <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl text-center">
+                          <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">Technical</p>
+                          <p className="text-2xl font-bold text-zinc-900 mt-1">{actualTechHours.toFixed(1)}<span className="text-sm font-normal text-zinc-400">h</span></p>
                         </div>
-                        {exceedsBudget && (
-                          <span className="text-[9px] text-red-700 block font-bold mt-1 uppercase flex items-center gap-1">
-                            <AlertCircle size={10} />
-                            Budget Exceeded. Contact Account Manager to review AMS quoted limits.
-                          </span>
-                        )}
+                        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl text-center">
+                          <p className="text-[11px] text-indigo-600 font-semibold uppercase tracking-wider">Total</p>
+                          <p className="text-2xl font-bold text-indigo-600 mt-1">{totalActualHours.toFixed(1)}<span className="text-sm font-normal text-indigo-400">h</span></p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 space-y-3">
+                      <div className="w-14 h-14 rounded-full bg-zinc-100 flex items-center justify-center mx-auto">
+                        <Lock size={22} className="text-zinc-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-zinc-700 text-sm">Effort Hours Locked</p>
+                        <p className="text-[13px] text-zinc-400 max-w-xs mx-auto leading-relaxed mt-1">
+                          Hours are verified by team managers and will become visible once this ticket is closed.
+                        </p>
                       </div>
                     </div>
                   )}
-
-                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-[10px] text-zinc-450 leading-relaxed font-mono">
-                    <span className="font-bold text-zinc-500 uppercase block mb-1">Visibility restriction note</span>
-                    Timesheet logs are summarized at the executive level for client portals. Detailed consultant timesheet logs, audits, and billing references are restricted to interior teams.
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
 
-        {/* Right column: Status Attributes, Owner Details, Escalation statuses */}
-        <div className="space-y-6">
-          
-          {/* Soft-Delete Request status widget if pending delete */}
+        {/* Right Column (1/3) */}
+        <div className="space-y-5">
+
+          {/* Pending Delete Alert */}
           {ticket.softDeleteStatus === 'Pending Delete' && ticket.deleteRequests && ticket.deleteRequests.length > 0 && (
-            <Card className="border-amber-250 bg-amber-50/20 shadow-sm overflow-hidden">
-              <CardHeader className="bg-amber-50/40 pb-2 border-b border-amber-100">
-                <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
-                  <Trash2 size={14} className="text-amber-600 animate-pulse" />
-                  Soft-Delete Pending
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3.5 font-mono text-xs text-zinc-800">
-                {ticket.deleteRequests.map((req, idx) => (
+            <div className="bg-amber-50 rounded-2xl border border-amber-200/60 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-amber-100 flex items-center gap-2">
+                <Trash2 size={14} className="text-amber-600" />
+                <h3 className="text-sm font-semibold text-amber-800">Deletion Pending</h3>
+              </div>
+              <div className="p-5 space-y-3 text-sm">
+                {(ticket.deleteRequests || []).map((req, idx) => (
                   <div key={req.id || idx} className="space-y-3">
                     <div className="flex justify-between">
-                      <span>Requested By:</span>
-                      <span className="font-bold text-zinc-950">{req.requestedBy}</span>
+                      <span className="text-zinc-500">Requested by</span>
+                      <span className="font-medium text-zinc-900">{req.requestedBy}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Requested At:</span>
-                      <span className="font-bold text-zinc-950">{new Date(req.requestedAt).toLocaleDateString()}</span>
+                      <span className="text-zinc-500">Date</span>
+                      <span className="font-medium text-zinc-900">{new Date(req.requestedAt).toLocaleDateString()}</span>
                     </div>
-                    <div className="border-t border-amber-100/50 pt-2.5 space-y-1">
-                      <span className="font-bold block text-[9px] text-amber-850 uppercase">Reason for Deletion:</span>
-                      <p className="italic text-zinc-700">"{req.reason}"</p>
-                    </div>
-                    <div className="border-t border-amber-100/50 pt-2.5 grid grid-cols-2 gap-2 text-[10px]">
-                      <div className="p-2 bg-white rounded border border-amber-100 text-center">
-                        <span className="font-bold block text-[8px] text-zinc-400 uppercase">Manager</span>
-                        <Badge variant="outline" className="mt-1.5 bg-amber-50 text-amber-700 border-amber-200 text-[8px] font-mono rounded">
-                          {req.managerApproval}
-                        </Badge>
+                    <p className="text-[13px] text-zinc-600 italic bg-white/60 rounded-lg p-3 border border-amber-100">&quot;{req.reason}&quot;</p>
+                    <div className="grid grid-cols-2 gap-2 text-center">
+                      <div className="p-2.5 bg-white rounded-lg border border-amber-100">
+                        <p className="text-[10px] text-zinc-400 font-medium uppercase">Manager</p>
+                        <Badge className="mt-1 bg-amber-100 text-amber-700 border border-amber-200 text-[10px] rounded-full hover:bg-transparent">{req.managerApproval}</Badge>
                       </div>
-                      <div className="p-2 bg-white rounded border border-amber-100 text-center">
-                        <span className="font-bold block text-[8px] text-zinc-400 uppercase">Super Admin</span>
-                        <Badge variant="outline" className="mt-1.5 bg-amber-50 text-amber-700 border-amber-200 text-[8px] font-mono rounded">
-                          {req.adminApproval}
-                        </Badge>
+                      <div className="p-2.5 bg-white rounded-lg border border-amber-100">
+                        <p className="text-[10px] text-zinc-400 font-medium uppercase">Director</p>
+                        <Badge className="mt-1 bg-amber-100 text-amber-700 border border-amber-200 text-[10px] rounded-full hover:bg-transparent">{req.adminApproval}</Badge>
                       </div>
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
-          {/* System Registers Card */}
-          <Card className="border-zinc-200 shadow-sm bg-white">
-            <CardHeader className="pb-2 border-b border-zinc-100 bg-zinc-50/50">
-              <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950">System Registers</CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 space-y-3.5 font-mono text-xs text-zinc-705">
-              <div className="flex justify-between">
-                <span>SAP Modules:</span>
-                <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
+          {/* Assigned Team */}
+          <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
+              <Users size={14} className="text-indigo-500" />
+              <h3 className="text-sm font-semibold text-zinc-900">Assigned Team</h3>
+            </div>
+            <div className="p-5">
+              {(!ticket.assignments || ticket.assignments.filter(a => a.active).length === 0) ? (
+                <div className="text-center py-6 space-y-2">
+                  <div className="w-11 h-11 rounded-full bg-zinc-100 flex items-center justify-center mx-auto">
+                    <Users size={18} className="text-zinc-400" />
+                  </div>
+                  <p className="text-sm text-zinc-500 font-medium">Not yet assigned</p>
+                  <p className="text-[12px] text-zinc-400 max-w-[200px] mx-auto leading-relaxed">A consultant will be assigned based on the SAP module.</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {(ticket.assignments || []).filter(a => a.active).map((assignment) => (
+                    <div
+                      key={assignment.consultantId}
+                      className={`p-3.5 rounded-xl border flex items-center justify-between transition hover:shadow-sm ${
+                        assignment.isPrimary ? 'bg-indigo-50/50 border-indigo-200/60' : 'bg-zinc-50/50 border-zinc-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                          assignment.isPrimary ? 'bg-indigo-500' : 'bg-zinc-400'
+                        }`}>
+                          {assignment.consultantName?.charAt(0) || 'C'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-zinc-900">{assignment.consultantName}</p>
+                          <p className="text-[11px] text-zinc-400">{assignment.consultantType} Consultant</p>
+                        </div>
+                      </div>
+                      {assignment.isPrimary && (
+                        <Badge className="bg-amber-100 text-amber-700 border border-amber-200 text-[10px] font-semibold rounded-full px-2 py-0 hover:bg-transparent">
+                          <Star size={9} className="fill-amber-500 text-amber-500 mr-0.5" /> Lead
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Ticket Properties */}
+          <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
+              <Layers size={14} className="text-indigo-500" />
+              <h3 className="text-sm font-semibold text-zinc-900">Properties</h3>
+            </div>
+            <div className="p-5 space-y-3 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-500">SAP Module</span>
+                <div className="flex flex-wrap gap-1 justify-end">
                   {(ticket.sapModules || [ticket.sapModule || 'FICO']).map(m => (
-                    <Badge key={m} variant="outline" className="text-[8px] font-mono bg-zinc-50 border-zinc-300 text-zinc-700 rounded py-0 px-1">
-                      {m}
-                    </Badge>
+                    <Badge key={m} className="bg-zinc-100 text-zinc-700 border border-zinc-200 text-[11px] font-medium rounded-md px-2 py-0 hover:bg-transparent">{m}</Badge>
                   ))}
                 </div>
               </div>
-              <div className="flex justify-between">
-                <span>Status Flag:</span>
-                <Badge className={`font-mono text-[9px] rounded py-0.5 px-1.5 border-0 hover:bg-transparent ${
-                  ticket.status === 'Resolved' || ticket.status === 'Closed' ? 'bg-emerald-100 text-emerald-850' :
-                  ticket.status === 'Waiting for Customer' ? 'bg-amber-100 text-amber-850 animate-pulse' :
-                  ticket.status === 'New' ? 'bg-zinc-950 text-white font-bold' :
-                  'bg-zinc-150 text-zinc-800'
-                }`}>
-                  {ticket.status}
-                </Badge>
+              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
+                <span className="text-zinc-500">Status</span>
+                <Badge className={`${getStatusStyle(ticket.status)} border text-[11px] font-semibold px-2.5 py-0.5 rounded-full hover:bg-transparent`}>{ticket.status}</Badge>
               </div>
-              <div className="flex justify-between">
-                <span>Severity Priority:</span>
-                <Badge className={`font-mono text-[9px] rounded py-0.5 px-1.5 border-0 hover:bg-transparent ${
-                  ticket.priority === 'Critical' ? 'bg-red-100 text-red-800 animate-pulse' :
-                  ticket.priority === 'High' ? 'bg-zinc-950 text-white' :
-                  'bg-zinc-100 text-zinc-800'
-                }`}>
-                  {ticket.priority}
-                </Badge>
+              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
+                <span className="text-zinc-500">Priority</span>
+                <Badge className={`${getPriorityStyle(ticket.priority)} border text-[11px] font-semibold px-2.5 py-0.5 rounded-full hover:bg-transparent`}>{ticket.priority}</Badge>
               </div>
-              <div className="flex justify-between">
-                <span>Scope Category:</span>
-                <span className="font-bold text-zinc-900 uppercase text-[10px]">{ticket.functionalOrTechnical || 'Functional'}</span>
+              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
+                <span className="text-zinc-500">Type</span>
+                <span className="font-medium text-zinc-900">{ticket.functionalOrTechnical || 'Functional'}</span>
               </div>
-
-              <div className="border-t border-zinc-100 pt-3.5 space-y-3.5">
-                <div className="flex justify-between">
-                  <span>Assigned Consultant:</span>
-                  <span className="font-bold text-zinc-950">{ticket.assignedConsultant || 'Queue (Pending Allocation)'}</span>
+              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
+                <span className="text-zinc-500">Lead</span>
+                <span className="font-medium text-zinc-900">{ticket.assignedConsultant || 'Pending'}</span>
+              </div>
+              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
+                <span className="text-zinc-500">Action Owner</span>
+                <span className="font-medium text-zinc-900">{ticket.nextActionOwner || ticket.assignedConsultant || 'Support Desk'}</span>
+              </div>
+              {ticket.expectedResolutionDate && (
+                <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
+                  <span className="text-zinc-500">Target Date</span>
+                  <span className="font-medium text-zinc-900">{new Date(ticket.expectedResolutionDate).toLocaleDateString()}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Next Action Owner:</span>
-                  <span className="font-bold text-zinc-950">{ticket.nextActionOwner || (ticket.assignedConsultant ? ticket.assignedConsultant : 'Support Desk')}</span>
+              )}
+              {ticket.reopenedCount ? (
+                <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
+                  <span className="text-zinc-500">Reopens</span>
+                  <Badge className="bg-orange-50 text-orange-600 border border-orange-200 text-[11px] font-medium rounded-full px-2 py-0 hover:bg-transparent">{ticket.reopenedCount}×</Badge>
                 </div>
-                {ticket.expectedResolutionDate && (
-                  <div className="flex justify-between">
-                    <span>Expected Date:</span>
-                    <span className="font-bold text-zinc-905 font-mono">{new Date(ticket.expectedResolutionDate).toLocaleDateString()}</span>
-                  </div>
-                )}
-                {quoted > 0 && (
-                  <div className="flex justify-between">
-                    <span>Quoted Hours Budget:</span>
-                    <span className="font-bold text-zinc-905 font-mono">{quoted}h</span>
-                  </div>
-                )}
-                {ticket.reopenedCount ? (
-                  <div className="flex justify-between">
-                    <span>Reopened Loop:</span>
-                    <Badge className="bg-red-50 text-red-700 font-mono text-[9px] border-red-200">{ticket.reopenedCount} Times</Badge>
-                  </div>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
+              ) : null}
+            </div>
+          </div>
 
-          {/* Active Escalation Details */}
+          {/* Active Escalation */}
           {ticket.escalationFlag && (
-            <Card className="border-red-205 bg-red-50/30 shadow-sm">
-              <CardHeader className="bg-red-100/40 pb-2 border-b border-red-100">
-                <CardTitle className="text-xs font-mono uppercase tracking-wider text-red-800 flex items-center gap-1.5">
-                  <BadgeAlert size={14} className="text-red-650 animate-pulse" />
-                  Active Service Escalation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3 font-mono text-xs text-red-950">
+            <div className="bg-orange-50/50 rounded-2xl border border-orange-200/60 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-orange-100 flex items-center gap-2">
+                <Zap size={14} className="text-orange-600" />
+                <h3 className="text-sm font-semibold text-orange-800">Active Escalation</h3>
+              </div>
+              <div className="p-5 text-sm space-y-3">
                 {ticket.escalations && ticket.escalations.length > 0 ? (
                   (() => {
                     const latestEsc = ticket.escalations[ticket.escalations.length - 1];
                     return (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-bold">
-                          <span>Severity Level:</span>
-                          <span className="uppercase text-red-750">{latestEsc.severity}</span>
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-500">Severity</span>
+                          <Badge className="bg-orange-100 text-orange-700 border border-orange-200 text-[11px] font-semibold rounded-full px-2.5 py-0 hover:bg-transparent">{latestEsc.severity}</Badge>
                         </div>
-                        <div className="flex justify-between text-[10px] font-bold">
-                          <span>Status:</span>
-                          <Badge className="bg-red-100 text-red-850 border border-red-200 text-[8px] py-0 px-1 rounded-sm uppercase">{latestEsc.status}</Badge>
+                        <div className="flex justify-between border-t border-orange-100 pt-3">
+                          <span className="text-zinc-500">Status</span>
+                          <Badge className="bg-orange-100 text-orange-700 border border-orange-200 text-[11px] font-semibold rounded-full px-2.5 py-0 hover:bg-transparent">{latestEsc.status}</Badge>
                         </div>
-                        <div className="space-y-0.5 border-t border-red-100/50 pt-2 text-[11px]">
-                          <span className="font-bold block text-[9px] text-red-800">Escalation Reason:</span>
-                          <p className="italic leading-normal text-red-900">"{latestEsc.reason}"</p>
+                        <div className="border-t border-orange-100 pt-3">
+                          <p className="text-xs text-zinc-500 font-medium mb-1.5">Reason</p>
+                          <p className="text-[13px] text-zinc-700 italic leading-relaxed bg-white/60 rounded-lg p-3 border border-orange-100">&quot;{latestEsc.reason}&quot;</p>
                         </div>
-                      </div>
+                      </>
                     );
                   })()
                 ) : (
-                  <p className="text-[11px] text-zinc-550 font-bold">Escalation flag is active. Allocating SLA resolution team.</p>
+                  <p className="text-[13px] text-zinc-500">Escalation active. A service manager has been notified.</p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
-          {/* SLA Clock Card */}
+          {/* SLA Clock */}
           {isSlaApplicable && (
-            <Card className="border-zinc-200 shadow-sm bg-white">
-              <CardHeader className="pb-2 border-b border-zinc-100 bg-zinc-50/50">
-                <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center gap-1">
-                  <Clock size={13} />
-                  SLA Target Clock
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 text-center font-mono space-y-3">
-                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg">
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block">Due Date Time</span>
-                  <span className="text-xs font-bold text-zinc-950 block mt-1">{new Date(ticket.slaDueAt).toLocaleString()}</span>
+            <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
+                <Clock size={14} className="text-indigo-500" />
+                <h3 className="text-sm font-semibold text-zinc-900">SLA Clock</h3>
+              </div>
+              <div className="p-5 text-center space-y-3">
+                <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+                  <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">Resolution Due</p>
+                  <p className="text-sm font-bold text-zinc-900 mt-1">{new Date(ticket.slaDueAt).toLocaleString()}</p>
                 </div>
-                <div className={`p-2.5 rounded-lg border text-[10px] font-bold uppercase ${
-                  ticket.status === 'Resolved' || ticket.status === 'Closed' ? 'bg-emerald-50 text-emerald-800 border-emerald-250' : 'bg-zinc-50 text-zinc-600 border-zinc-200'
+                <div className={`p-2.5 rounded-xl border text-[11px] font-semibold ${
+                  ticket.status === 'Resolved' || ticket.status === 'Closed'
+                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                    : 'bg-indigo-50 text-indigo-600 border-indigo-200'
                 }`}>
-                  {ticket.status === 'Resolved' || ticket.status === 'Closed' ? 'SLA Target Closed' : 'Active Clock Pending'}
+                  {ticket.status === 'Resolved' || ticket.status === 'Closed' ? '✓ Resolution Complete' : '◉ Clock Active'}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* DIALOGS FOR EDIT AND DELETE REQUESTS */}
+      {/* ══ Dialogs ══ */}
 
-      {/* 1. Edit Description Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
-          <DialogHeader>
-            <DialogTitle>Edit Support Request description</DialogTitle>
-            <DialogDescription>
-              Modify title and description elements before consultant assignment begins.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="space-y-4 py-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider block">Ticket Title</label>
-              <input
-                type="text"
-                required
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider block">Detailed description</label>
-              <textarea
-                rows={5}
-                required
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950"
-              />
-            </div>
-            <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" className="h-8 text-[10px] uppercase font-bold" onClick={() => setShowEditDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="default" className="h-8 text-[10px] uppercase font-bold bg-zinc-950 text-white">
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
+        <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+          <div className="p-6 space-y-5">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-zinc-900">Edit Ticket Details</DialogTitle>
+              <DialogDescription className="text-sm text-zinc-500">
+                Update the title and description before a consultant is assigned.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Title</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Description</label>
+                <textarea
+                  rows={5}
+                  required
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition resize-none"
+                />
+              </div>
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)} className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50">
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold">
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* 2. Soft-Delete Request Dialog */}
+      {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
-          <DialogHeader>
-            <DialogTitle>Submit Deletion Request</DialogTitle>
-            <DialogDescription>
-              Explain the reason why you are requesting this ticket to be deleted.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleDeleteSubmit} className="space-y-4 py-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider block">Reason for deletion</label>
-              <textarea
-                rows={3}
-                required
-                placeholder="Mistaken duplicate creation, resolved internally before assignment..."
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950"
-              />
-            </div>
-            <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" className="h-8 text-[10px] uppercase font-bold" onClick={() => setShowDeleteDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="destructive" className="h-8 text-[10px] uppercase font-bold bg-red-600 hover:bg-red-700 text-white">
-                Request Soft-Delete
-              </Button>
-            </DialogFooter>
-          </form>
+        <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+          <div className="p-6 space-y-5">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-zinc-900">Request Deletion</DialogTitle>
+              <DialogDescription className="text-sm text-zinc-500">
+                This requires approval from your account manager.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleDeleteSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Reason</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Why should this ticket be deleted?"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition placeholder:text-zinc-400 resize-none"
+                />
+              </div>
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowDeleteDialog(false)} className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50">
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold">
+                  Submit Request
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

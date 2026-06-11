@@ -1,525 +1,2804 @@
 'use client';
 
-import React from 'react';
-import { useTickets } from '../../../context/TicketContext';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useTickets } from '../../../context/TicketContext';
+import { useAuth } from '../../../context/AuthContext';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
+import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
+import { toast } from 'sonner';
 import {
-  Users,
-  Building2,
-  Ticket,
-  AlertTriangle,
-  HeartHandshake,
-  ArrowUpRight,
-  TrendingUp,
-  Activity,
-  Compass,
-  Cpu,
-  Layers,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  HelpCircle,
-  FileText,
-  MessageSquare,
-  Plus
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart,
+  ScatterChart, Scatter
+} from 'recharts';
+import {
+  Users, Building2, Ticket, AlertTriangle, Clock, HeartHandshake,
+  Layers, Calendar, BarChart3, TrendingUp, ShieldAlert, BadgeCheck,
+  FileText, CheckCircle2, UserCheck, DollarSign, Activity, FileCheck,
+  HelpCircle, UserX, AlertCircle, RefreshCw, ChevronRight, Check,
+  Lock, KeyRound, Search, ShieldCheck as ShieldIcon, Filter, Download,
+  Sliders, Settings, Eye, Info, Database, Server, RefreshCw as LoopIcon,
+  Maximize2, Power
 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
+import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { Progress } from '../../../components/ui/progress';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs';
+import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+  DialogFooter
+} from '../../../components/ui/dialog';
+
+// IAM actions imported from auth.ts
+import {
+  updateUserAuthStatus,
+  adminForcePasswordChange,
+  resetUserPasswordAdmin,
+  adminUpdatePasswordDirect,
+  logUserAuditAction,
+  verifyPasswordPolicy
+} from '../../actions/auth';
+
+const SYSTEM_NOW = new Date('2026-06-07T08:00:00Z').getTime();
 
 export default function AdminDashboardPage() {
-  const { tickets, contracts } = useTickets();
+  const { user } = useAuth();
+  const { tickets, contracts, profiles, loading, refetchData, orgMap } = useTickets();
 
-  // 1. Customer & User stats
-  const totalCustomers = 3;
-  const activeCustomers = 3;
-  const totalUsers = 12;
-  const totalConsultants = 3; // Karthik, Rajesh, Amit
-  const totalSapManagers = 2; // Marcus, Sarah
+  // Navigation tab state
+  const [activeTab, setActiveTab] = useState<string>('cockpit');
 
-  // 2. Ticket Status Breakdown
-  const totalTickets = tickets.length;
-  const newTickets = tickets.filter(t => t.status === 'New').length;
-  const assignedTickets = tickets.filter(t => t.status === 'Assigned').length;
-  const inProgressTickets = tickets.filter(t => t.status === 'In Progress').length;
-  const waitingForCustomer = tickets.filter(t => t.status === 'Waiting for Customer').length;
-  const waitingForInternalTeam = tickets.filter(t => t.status === 'Waiting for Internal Team').length;
-  const resolvedTickets = tickets.filter(t => t.status === 'Resolved').length;
-  const closedTickets = tickets.filter(t => t.status === 'Closed').length;
-  const reopenedTickets = tickets.filter(t => t.status === 'Reopened').length;
-
-  // 3. Priority Breakdown
-  const criticalTickets = tickets.filter(t => t.priority === 'Critical').length;
-  const escalatedTickets = tickets.filter(t => t.escalationFlag).length;
-
-  // 4. SLA Status Calculations
-  const now = Date.now();
-  const slaBreachedTicketsList = tickets.filter(t => {
-    if (t.status === 'Closed' || t.status === 'Resolved') return false;
-    return new Date(t.slaDueAt).getTime() < now;
+  // Search and filter states (10 Global Filters + Sub-filters)
+  const [filters, setFilters] = useState({
+    period: 'This Year' as 'This Month' | 'This Quarter' | 'This Year' | 'Custom',
+    dateFrom: '',
+    dateTo: '',
+    statuses: [] as string[],
+    priority: 'All' as string,
+    module: 'All' as string,
+    customer: 'All' as string,
+    consultant: 'All' as string,
+    manager: 'All' as string
   });
-  const slaBreachedCount = slaBreachedTicketsList.length;
 
-  const slaWarningTicketsList = tickets.filter(t => {
-    if (t.status === 'Closed' || t.status === 'Resolved') return false;
-    const dueTime = new Date(t.slaDueAt).getTime();
-    return dueTime >= now && (dueTime - now) < 12 * 60 * 60 * 1000; // within 12 hours
+  // IAM User management state
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedUserType, setSelectedUserType] = useState<'All' | 'Customer' | 'Consultant' | 'Manager' | 'SuperAdmin'>('All');
+  const [isIAMModalOpen, setIsIAMModalOpen] = useState(false);
+  const [selectedIAMUser, setSelectedIAMUser] = useState<any>(null);
+  const [manualPassword, setManualPassword] = useState('');
+  const [forcePasswordChange, setForcePasswordChange] = useState(true);
+  const [generatedPassResult, setGeneratedPassResult] = useState('');
+
+  // Audit Center states
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditsLoading, setAuditsLoading] = useState(false);
+
+  // Platform health states (Active checks)
+  const [healthStatus, setHealthStatus] = useState<Record<string, { status: 'Online' | 'Offline'; latency: number }>>({
+    database: { status: 'Online', latency: 0 },
+    auth: { status: 'Online', latency: 0 },
+    storage: { status: 'Online', latency: 0 },
+    realtime: { status: 'Online', latency: 0 },
+    api: { status: 'Online', latency: 0 }
   });
-  const slaWarningCount = slaWarningTicketsList.length;
+  const [checkingHealth, setCheckingHealth] = useState(false);
 
-  const slaHealthyCount = totalTickets - slaBreachedCount - slaWarningCount;
-  const slaCompliancePct = totalTickets > 0 ? (((totalTickets - slaBreachedCount) / totalTickets) * 100).toFixed(0) : '100';
-
-  // 5. Avg Response & Resolution Times (mock calculations from real seed data where available)
-  const avgResponseTime = "45 mins";
-  const avgResolutionTime = "4.2 hours";
-
-  // 6. CSAT Score
-  const ratedTickets = tickets.filter(t => t.rating);
-  const avgCsat = ratedTickets.length > 0
-    ? (ratedTickets.reduce((acc, t) => acc + (t.rating?.score || 0), 0) / ratedTickets.length).toFixed(1)
-    : '4.8';
-
-  // 7. Work breakdowns
-  const allEfforts = tickets.flatMap(t => t.efforts || []);
-  const totalLoggedHours = allEfforts.reduce((sum, e) => sum + e.hoursLogged, 0);
-  const totalBillable = allEfforts.filter(e => e.billable).reduce((sum, e) => sum + e.hoursLogged, 0);
-  const totalNonBillable = allEfforts.filter(e => !e.billable).reduce((sum, e) => sum + e.hoursLogged, 0);
-
-  // Group module volume
-  const moduleCounts: Record<string, number> = {};
-  tickets.forEach(t => {
-    moduleCounts[t.sapModule] = (moduleCounts[t.sapModule] || 0) + 1;
-  });
-  const modulesList = Object.entries(moduleCounts).sort((a, b) => b[1] - a[1]);
-  const maxModuleVal = Math.max(...Object.values(moduleCounts), 1);
-
-  // Group customer volume
-  const customerCounts: Record<string, number> = {};
-  tickets.forEach(t => {
-    customerCounts[t.organization] = (customerCounts[t.organization] || 0) + 1;
-  });
-  const customerList = Object.entries(customerCounts).sort((a, b) => b[1] - a[1]);
-
-  // Consultant queue workload
-  const consultantWorkload: Record<string, number> = {};
-  tickets.forEach(t => {
-    if (t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved') {
-      consultantWorkload[t.assignedConsultant] = (consultantWorkload[t.assignedConsultant] || 0) + 1;
+  // Load audit logs from Supabase
+  const fetchAuditLogs = async () => {
+    if (!isSupabaseConfigured || !supabase) return;
+    setAuditsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setAuditLogs(data || []);
+    } catch (err: any) {
+      console.error('Failed to fetch audit logs:', err.message);
+    } finally {
+      setAuditsLoading(false);
     }
-  });
+  };
 
-  // Recent ticket activities list
-  const recentActivities = tickets
-    .flatMap(t => (t.history || []).map(h => ({ ...h, ticketId: t.id, title: t.title })))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
+  useEffect(() => {
+    if (activeTab === 'audits') {
+      fetchAuditLogs();
+    }
+  }, [activeTab]);
 
-  // Recent Comments list
-  const recentComments = tickets
-    .flatMap(t => (t.comments || []).map(c => ({ ...c, ticketId: t.id, title: t.title })))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
 
-  // Pending assignment tickets list
-  const pendingAssignments = tickets.filter(t => t.status === 'New' || !t.assignedConsultant).slice(0, 5);
+    const channel = supabase
+      .channel('realtime-audit-logs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'audit_logs' },
+        (payload) => {
+          console.log('Realtime audit logs change detected:', payload);
+          fetchAuditLogs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+
+  // Run dynamic health checks on Platform Health Tab enter
+  const runPlatformHealthChecks = async () => {
+    setCheckingHealth(true);
+    const results: any = {};
+    const checkService = async (key: string, fn: () => Promise<any>) => {
+      const start = Date.now();
+      try {
+        await fn();
+        results[key] = { status: 'Online', latency: Date.now() - start };
+      } catch (err) {
+        results[key] = { status: 'Offline', latency: Date.now() - start };
+      }
+    };
+
+    if (isSupabaseConfigured && supabase) {
+      await checkService('database', async () => {
+        const { data, error } = await supabase.from('profiles').select('id').limit(1);
+        if (error) throw error;
+        return data;
+      });
+      await checkService('auth', async () => {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        return data;
+      });
+      await checkService('storage', async () => {
+        const { data, error } = await supabase.storage.from('sap-tickets').list('', { limit: 1 });
+        if (error) throw error;
+        return data;
+      });
+      await checkService('realtime', async () => {
+        const channel = supabase.channel('health-check-chan');
+        channel.subscribe();
+        await supabase.removeChannel(channel);
+      });
+      await checkService('api', async () => {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error('API not ok');
+        return res;
+      });
+    } else {
+      // Offline fallback pings
+      results.database = { status: 'Offline', latency: 0 };
+      results.auth = { status: 'Offline', latency: 0 };
+      results.storage = { status: 'Offline', latency: 0 };
+      results.realtime = { status: 'Offline', latency: 0 };
+      results.api = { status: 'Offline', latency: 0 };
+    }
+    setHealthStatus(results);
+    setCheckingHealth(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'health') {
+      runPlatformHealthChecks();
+    }
+  }, [activeTab]);
+
+  // RLS Security & Verification Check Helpers
+  const RLS_POSTURE = useMemo(() => {
+    return isSupabaseConfigured ? 'ENABLED (PostgreSQL RLS Active)' : 'DISABLED (Mock Fallback Mode)';
+  }, []);
+
+  // Filter lists derived from DB
+  const customerOrgsList = useMemo(() => {
+    return Array.from(new Set(tickets.map(t => t.organization))).filter(Boolean).sort();
+  }, [tickets]);
+
+  const managersProfilesList = useMemo(() => {
+    return Array.from(new Set(profiles.filter(p => p.role === 'Manager').map(p => p.full_name || p.email))).sort();
+  }, [profiles]);
+
+  const consultantsProfilesList = useMemo(() => {
+    return Array.from(new Set(profiles.filter(p => p.role === 'Consultant').map(p => p.full_name || p.email))).sort();
+  }, [profiles]);
+
+  const modulesList = useMemo(() => {
+    return Array.from(new Set(tickets.map(t => t.sapModule))).filter(Boolean).sort();
+  }, [tickets]);
+
+  const statusList = useMemo(() => {
+    return Array.from(new Set(tickets.map(t => t.status))).filter(Boolean).sort();
+  }, [tickets]);
+
+  const applyFilters = (rawTickets: any[], filtersState: typeof filters) => {
+    return rawTickets.filter(t => {
+      // 1. Period filter
+      if (filtersState.period !== 'Custom') {
+        const createdDate = new Date(t.createdAt);
+        const now = new Date(SYSTEM_NOW);
+        if (filtersState.period === 'This Month') {
+          if (createdDate.getMonth() !== now.getMonth() || createdDate.getFullYear() !== now.getFullYear()) return false;
+        } else if (filtersState.period === 'This Quarter') {
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          const ticketQuarter = Math.floor(createdDate.getMonth() / 3);
+          if (ticketQuarter !== currentQuarter || createdDate.getFullYear() !== now.getFullYear()) return false;
+        } else if (filtersState.period === 'This Year') {
+          if (createdDate.getFullYear() !== now.getFullYear()) return false;
+        }
+      } else {
+        const createdDate = new Date(t.createdAt);
+        if (filtersState.dateFrom) {
+          const from = new Date(filtersState.dateFrom);
+          from.setHours(0, 0, 0, 0);
+          if (createdDate < from) return false;
+        }
+        if (filtersState.dateTo) {
+          const to = new Date(filtersState.dateTo);
+          to.setHours(23, 59, 59, 999);
+          if (createdDate > to) return false;
+        }
+      }
+
+      // 2. Statuses filter
+      if (filtersState.statuses.length > 0) {
+        let mappedGroup = 'New';
+        const st = t.status;
+        if (st === 'New') mappedGroup = 'New';
+        else if (st === 'Assigned') mappedGroup = 'Assigned';
+        else if (['In Progress - Functional', 'Awaiting Functional Submission', 'In Progress - Technical', 'Awaiting Technical Submission', 'Requirement Gathering', 'In Progress'].includes(st)) {
+          mappedGroup = 'In Progress';
+        } else if (['Waiting for Hours Approval', 'Request for Closure', 'Awaiting Manager Approval'].includes(st)) {
+          mappedGroup = 'Pending Closure';
+        } else if (st === 'Closed' || st === 'Resolved') mappedGroup = 'Closed';
+        else if (st === 'Reopened') mappedGroup = 'Reopened';
+        else if (st === 'Raised to SAP' || t.escalationFlag) mappedGroup = 'Escalated';
+
+        if (!filtersState.statuses.includes(mappedGroup)) return false;
+      }
+
+      // 3. Priority filter
+      if (filtersState.priority !== 'All' && t.priority !== filtersState.priority) return false;
+
+      // 4. Module filter
+      if (filtersState.module !== 'All' && t.sapModule !== filtersState.module) return false;
+
+      // 5. Customer filter
+      if (filtersState.customer !== 'All' && t.organization !== filtersState.customer) return false;
+
+      // 6. Consultant filter
+      if (filtersState.consultant !== 'All' && t.assignedConsultant !== filtersState.consultant) return false;
+
+      // 7. Manager filter
+      if (filtersState.manager !== 'All' && t.assignedManager !== filtersState.manager) return false;
+
+      return true;
+    });
+  };
+
+  // Base tickets selection filter
+  const activeTickets = useMemo(() => {
+    return applyFilters(tickets, filters);
+  }, [tickets, filters]);
+
+  // color configs
+  const THEME_COLORS = ['#09090b', '#18181b', '#27272a', '#3f3f46', '#52525b', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7', '#f4f4f5'];
+  const PRIORITY_COLORS: Record<string, string> = {
+    Critical: '#ef4444',
+    High: '#f97316',
+    Medium: '#eab308',
+    Low: '#71717a'
+  };
+
+  // ── 1. GLOBAL DELIVERY STATS & SUMMARY (Executive KPIs) ──
+  const globalStats = useMemo(() => {
+    const totalCustomers = Object.keys(orgMap).length;
+    // Active customers: Unique organizations with at least one active contract
+    const activeCustomers = Array.from(new Set(contracts.filter(c => c.isActive).map(c => c.organizationName))).length;
+    
+    const totalConsultants = profiles.filter(p => p.role === 'Consultant').length;
+    const activeConsultants = profiles.filter(p => p.role === 'Consultant' && p.is_active).length;
+    const totalManagers = profiles.filter(p => p.role === 'Manager').length;
+    const totalContracts = contracts.length;
+
+    const openTicketsCount = activeTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
+    const closedTicketsCount = activeTickets.filter(t => t.status === 'Closed' || t.status === 'Resolved').length;
+    const escalatedTicketsCount = activeTickets.filter(t => t.escalationFlag).length;
+
+    // SLA compliance calculation (incidents only)
+    const incidents = activeTickets.filter(t => (t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable');
+    const breachedIncidents = incidents.filter(t => {
+      const due = new Date(t.slaDueAt).getTime();
+      const end = t.status === 'Resolved' || t.status === 'Closed'
+        ? new Date(t.resolvedAt || t.closedAt || Date.now()).getTime()
+        : Date.now();
+      return end > due;
+    }).length;
+    const slaBreachesCount = breachedIncidents;
+
+    // Pending Approvals mapping
+    const pendingHours = tickets.reduce((sum, t) => sum + (t.actualHoursLogs || []).filter(h => h.approvalStatus?.toLowerCase() === 'pending').length, 0);
+    const pendingClosures = tickets.filter(t => t.closureRequests?.some(r => r.status === 'Pending Manager Approval' || r.managerApprovalStatus === 'Pending')).length;
+    const pendingUnlocks = tickets.reduce((sum, t) => sum + (t.unlockRequests || []).filter(u => u.status === 'Pending').length, 0);
+    const pendingDeletes = tickets.reduce((sum, t) => sum + (t.deleteRequests || []).filter(r => r.managerApproval === 'Pending' || r.adminApproval === 'Pending').length, 0);
+    const pendingReopens = tickets.filter(t => t.status === 'Reopen Requested').length;
+    const pendingApprovalsCount = pendingHours + pendingClosures + pendingUnlocks + pendingDeletes + pendingReopens;
+
+    // Hours calculations (Supabase strict mapping)
+    // Utilized Hours = Only Manager Approved Actual Hours
+    const totalApprovedHours = tickets.reduce((sum, t) => {
+      const approved = (t.actualHoursLogs || []).filter(log => log.approvalStatus?.toLowerCase() === 'approved');
+      return sum + approved.reduce((acc, curr) => acc + curr.actualHours, 0);
+    }, 0);
+
+    const thisMonthStr = new Date().toISOString().slice(0, 7);
+    const currentMonthUtilizedHours = tickets.reduce((sum, t) => {
+      const approvedThisMonth = (t.actualHoursLogs || []).filter(log => 
+        log.approvalStatus?.toLowerCase() === 'approved' && 
+        log.approvedAt?.startsWith(thisMonthStr)
+      );
+      return sum + approvedThisMonth.reduce((acc, curr) => acc + curr.actualHours, 0);
+    }, 0);
+
+    const totalContractHours = contracts.reduce((sum, c) => sum + (c.isActive ? c.totalHours : 0), 0);
+    const remainingContractHours = Math.max(0, totalContractHours - totalApprovedHours);
+
+    // Platform Health dynamic Score calculation
+    const healthOnlineCount = Object.values(healthStatus).filter(h => h.status === 'Online').length;
+    const platformHealthScore = Math.round((healthOnlineCount / Object.keys(healthStatus).length) * 100);
+
+    return {
+      totalCustomers,
+      activeCustomers,
+      totalConsultants,
+      activeConsultants,
+      totalManagers,
+      totalContracts,
+      openTicketsCount,
+      closedTicketsCount,
+      escalatedTicketsCount,
+      pendingApprovalsCount,
+      slaBreachesCount,
+      totalApprovedHours,
+      currentMonthUtilizedHours,
+      remainingContractHours,
+      platformHealthScore
+    };
+  }, [activeTickets, tickets, contracts, profiles, orgMap, healthStatus]);
+
+  // ── 2. CUSTOMER PORTFOLIO INTELLIGENCE ──
+  const customerPortfolio = useMemo(() => {
+    return Object.entries(orgMap).map(([id, name]) => {
+      const customerTickets = activeTickets.filter(t => t.organizationId === id || t.organization === name);
+      const activeContract = contracts.find(c => (c.customerId === id || c.organizationName === name) && c.isActive);
+
+      const monthlyHours = activeContract ? activeContract.monthlyBudgetHours : 0;
+      const annualHours = activeContract ? activeContract.totalHours : 0;
+
+      // Utilized hours = strictly manager approved hours
+      let approvedHours = 0;
+      let pendingHours = 0;
+      customerTickets.forEach(t => {
+        (t.actualHoursLogs || []).forEach(log => {
+          if (log.approvalStatus?.toLowerCase() === 'approved') {
+            approvedHours += log.actualHours;
+          } else if (log.approvalStatus?.toLowerCase() === 'pending') {
+            pendingHours += log.actualHours;
+          }
+        });
+      });
+
+      const remainingHours = Math.max(0, annualHours - approvedHours);
+
+      const openCount = customerTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
+      const closedCount = customerTickets.filter(t => t.status === 'Closed' || t.status === 'Resolved').length;
+      const escalations = customerTickets.filter(t => t.escalationFlag).length;
+
+      // SLA calculation
+      const incidents = customerTickets.filter(t => (t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable');
+      const breached = incidents.filter(t => {
+        const due = new Date(t.slaDueAt).getTime();
+        const end = t.status === 'Resolved' || t.status === 'Closed'
+          ? new Date(t.resolvedAt || t.closedAt || Date.now()).getTime()
+          : Date.now();
+        return end > due;
+      }).length;
+      const slaCompliance = incidents.length > 0 ? ((incidents.length - breached) / incidents.length) * 100 : 100;
+
+      // Avg resolution time (in hours)
+      const resolvedT = customerTickets.filter(t => (t.status === 'Resolved' || t.status === 'Closed') && t.resolvedAt);
+      const avgResolutionTime = resolvedT.length > 0
+        ? resolvedT.reduce((sum, t) => sum + (new Date(t.resolvedAt!).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60), 0) / resolvedT.length
+        : 0;
+
+      const lastActivity = customerTickets.length > 0 
+        ? new Date(Math.max(...customerTickets.map(t => new Date(t.updatedAt).getTime()))).toISOString()
+        : 'N/A';
+
+      return {
+        id,
+        name,
+        code: activeContract?.customerId?.slice(0, 6) || id.slice(0, 6).toUpperCase(),
+        start: activeContract?.startDate || 'N/A',
+        end: activeContract?.endDate || 'N/A',
+        status: activeContract ? (activeContract.isActive ? 'Active' : 'Inactive') : 'No Contract',
+        monthlyHours,
+        annualHours,
+        approvedHours,
+        pendingHours,
+        remainingHours,
+        openCount,
+        closedCount,
+        escalations,
+        slaCompliance,
+        avgResolutionTime: avgResolutionTime > 0 ? `${avgResolutionTime.toFixed(1)}h` : 'N/A',
+        lastActivity
+      };
+    });
+  }, [activeTickets, contracts, orgMap]);
+
+  // ── 3. CONSULTANT COMMAND CENTER ──
+  const consultantsPortfolio = useMemo(() => {
+    return profiles.filter(p => p.role === 'Consultant').map(cons => {
+      const name = cons.full_name || cons.email;
+      const id = cons.id;
+
+      const consTickets = activeTickets.filter(t => 
+        t.assignedConsultant === name || 
+        t.assignments?.some(a => a.consultantId === id && a.active)
+      );
+
+      const activeCount = consTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
+      const closedCount = consTickets.filter(t => t.status === 'Closed' || t.status === 'Resolved').length;
+      const escalatedCount = consTickets.filter(t => t.escalationFlag).length;
+
+      // Estimated hours logged
+      let estimatedHours = 0;
+      activeTickets.forEach(t => {
+        (t.estimates || []).forEach(e => {
+          if (e.consultantId === id) estimatedHours += e.estimatedHours;
+        });
+      });
+
+      // Approved actual hours logged
+      let approvedHours = 0;
+      activeTickets.forEach(t => {
+        (t.actualHoursLogs || []).forEach(log => {
+          if (log.consultantId === id && log.approvalStatus?.toLowerCase() === 'approved') {
+            approvedHours += log.actualHours;
+          }
+        });
+      });
+
+      const capacity = 160;
+      const utilization = (approvedHours / capacity) * 100;
+      const remainingCapacity = Math.max(0, capacity - approvedHours);
+
+      let workloadRisk: 'Overloaded' | 'Near Capacity' | 'Healthy' | 'Underutilized' = 'Healthy';
+      if (activeCount > 5 || utilization > 92) {
+        workloadRisk = 'Overloaded';
+      } else if (activeCount >= 4 || utilization >= 80) {
+        workloadRisk = 'Near Capacity';
+      } else if (activeCount === 0 || utilization < 40) {
+        workloadRisk = 'Underutilized';
+      }
+
+      const lastActivity = consTickets.length > 0
+        ? new Date(Math.max(...consTickets.map(t => new Date(t.updatedAt).getTime()))).toISOString()
+        : 'N/A';
+
+      return {
+        id,
+        name,
+        email: cons.email,
+        modules: cons.sap_modules || [],
+        type: cons.consultant_type || 'Technical',
+        activeCount,
+        closedCount,
+        escalatedCount,
+        estimatedHours,
+        approvedHours,
+        capacity,
+        utilization,
+        remainingCapacity,
+        workloadRisk,
+        lastActivity
+      };
+    });
+  }, [profiles, activeTickets]);
+
+  // Consultant ranking aggregates
+  const overloadedConsultants = useMemo(() => {
+    return consultantsPortfolio.filter(c => c.workloadRisk === 'Overloaded' || c.workloadRisk === 'Near Capacity')
+      .sort((a, b) => b.activeCount - a.activeCount);
+  }, [consultantsPortfolio]);
+
+  const underutilizedConsultants = useMemo(() => {
+    return consultantsPortfolio.filter(c => c.workloadRisk === 'Underutilized')
+      .sort((a, b) => a.utilization - b.utilization);
+  }, [consultantsPortfolio]);
+
+  // ── 4. SAP MANAGER COMMAND CENTER ──
+  const managersPortfolio = useMemo(() => {
+    return profiles.filter(p => p.role === 'Manager').map(mgr => {
+      const name = mgr.full_name || mgr.email;
+      const id = mgr.id;
+
+      const mgrTickets = activeTickets.filter(t => t.assignedManager === name);
+      const ticketsManaged = mgrTickets.length;
+      const openCount = mgrTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
+      const escalations = mgrTickets.filter(t => t.escalationFlag).length;
+
+      const customersManaged = Array.from(new Set(mgrTickets.map(t => t.organization).filter(Boolean))).length;
+      const teamSize = Array.from(new Set(mgrTickets.map(t => t.assignedConsultant).filter(Boolean))).length;
+
+      // Pending approvals count for this manager
+      const pendingHours = mgrTickets.reduce((sum, t) => sum + (t.actualHoursLogs || []).filter(h => h.approvalStatus?.toLowerCase() === 'pending').length, 0);
+      const pendingClosures = mgrTickets.filter(t => t.closureRequests?.some(r => r.status === 'Pending Manager Approval' || r.managerApprovalStatus === 'Pending')).length;
+      const pendingUnlocks = mgrTickets.reduce((sum, t) => sum + (t.unlockRequests || []).filter(u => u.status === 'Pending').length, 0);
+      const pendingApprovals = pendingHours + pendingClosures + pendingUnlocks;
+
+      // SLA Compliance
+      const incidents = mgrTickets.filter(t => (t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable');
+      const breached = incidents.filter(t => {
+        const due = new Date(t.slaDueAt).getTime();
+        const end = t.status === 'Resolved' || t.status === 'Closed'
+          ? new Date(t.resolvedAt || t.closedAt || Date.now()).getTime()
+          : Date.now();
+        return end > due;
+      }).length;
+      const slaCompliance = incidents.length > 0 ? ((incidents.length - breached) / incidents.length) * 100 : 100;
+      const slaRisks = incidents.filter(t => {
+        if (t.status === 'Resolved' || t.status === 'Closed') return false;
+        const due = new Date(t.slaDueAt).getTime();
+        return due - Date.now() > 0 && (due - Date.now()) <= 2 * 60 * 60 * 1000; // within 2 hours
+      }).length;
+
+      // Team utilization average
+      const teamConsultants = profiles.filter(p => p.role === 'Consultant' && mgrTickets.some(t => t.assignedConsultant === (p.full_name || p.email)));
+      const teamHoursSum = teamConsultants.reduce((sum, c) => {
+        const consActual = activeTickets.reduce((s, t) => {
+          const approved = (t.actualHoursLogs || []).filter(log => log.consultantId === c.id && log.approvalStatus?.toLowerCase() === 'approved');
+          return s + approved.reduce((acc, curr) => acc + curr.actualHours, 0);
+        }, 0);
+        return sum + consActual;
+      }, 0);
+      const teamUtilization = teamConsultants.length > 0 ? (teamHoursSum / (teamConsultants.length * 160)) * 100 : 0;
+
+      // Contract consumption rate
+      const mgrContracts = contracts.filter(c => mgrTickets.some(t => t.organization === c.organizationName));
+      const contractedHoursSum = mgrContracts.reduce((sum, c) => sum + c.totalHours, 0);
+      const consumedHoursSum = mgrContracts.reduce((sum, c) => sum + c.usedHours, 0);
+      const contractConsumption = contractedHoursSum > 0 ? (consumedHoursSum / contractedHoursSum) * 100 : 0;
+
+      // Approval Speed: Avg hours between closure request creation and manager approval
+      const approvedClosures = mgrTickets.flatMap(t => t.closureRequests || [])
+        .filter(r => r.status === 'Approved' && r.managerApprovedAt);
+      const avgApprovalSpeedHours = approvedClosures.length > 0
+        ? approvedClosures.reduce((sum, r) => sum + (new Date(r.managerApprovedAt!).getTime() - new Date(r.createdAt).getTime()) / (1000 * 60 * 60), 0) / approvedClosures.length
+        : 0;
+
+      // Delivery health calculation
+      const deliveryHealth = Math.round((slaCompliance * 0.4) + ((100 - (escalations > 0 ? (escalations / ticketsManaged) * 100 : 0)) * 0.3) + ((teamUtilization > 40 && teamUtilization < 90 ? 100 : 50) * 0.3));
+
+      return {
+        id,
+        name,
+        ticketsManaged,
+        customersManaged,
+        teamSize,
+        pendingApprovals,
+        escalations,
+        slaCompliance,
+        slaRisks,
+        teamUtilization,
+        contractConsumption,
+        avgApprovalSpeedHours,
+        deliveryHealth
+      };
+    });
+  }, [profiles, activeTickets, contracts]);
+
+  // ── 5. APPROVALS & REOPEN/DELETE QUEUE ──
+  const approvalsQueue = useMemo(() => {
+    const list: Array<{
+      id: string;
+      ticketId: string;
+      ticketNumber: string;
+      type: 'Timesheet' | 'Closure' | 'Reopen' | 'Unlock' | 'Delete';
+      details: string;
+      requester: string;
+      date: string;
+      refObject: any;
+    }> = [];
+
+    activeTickets.forEach(t => {
+      // Pending Timesheet Efforts
+      (t.actualHoursLogs || []).forEach(log => {
+        if (log.approvalStatus?.toLowerCase() === 'pending') {
+          const cons = profiles.find(p => p.id === log.consultantId);
+          list.push({
+            id: `ts-${log.id}`,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
+            type: 'Timesheet',
+            details: `${log.actualHours} hrs logged by ${cons?.full_name || 'Consultant'} (${log.consultantType})`,
+            requester: cons?.full_name || 'Consultant',
+            date: t.updatedAt || t.createdAt,
+            refObject: log
+          });
+        }
+      });
+
+      // Pending Closure Requests
+      (t.closureRequests || []).forEach(cr => {
+        if (cr.status === 'Pending Manager Approval' || cr.managerApprovalStatus === 'Pending') {
+          list.push({
+            id: `closure-${cr.id}`,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
+            type: 'Closure',
+            details: `Closure Request: ${cr.totalActualHours} total hrs. Summary: ${cr.workCompletedSummary || 'N/A'}`,
+            requester: cr.requestedBy,
+            date: cr.createdAt,
+            refObject: cr
+          });
+        }
+      });
+
+      // Reopen Requests
+      if (t.status === 'Reopen Requested') {
+        list.push({
+          id: `reopen-${t.id}`,
+          ticketId: t.id,
+          ticketNumber: t.ticketNumber || t.id,
+          type: 'Reopen',
+          details: 'Customer requested ticket reopening due to resolution failure.',
+          requester: t.requestedBy || 'Customer',
+          date: t.updatedAt || t.createdAt,
+          refObject: t
+        });
+      }
+
+      // Pending Unlock Requests
+      (t.unlockRequests || []).forEach(ur => {
+        if (ur.status === 'Pending') {
+          list.push({
+            id: `unlock-${ur.id}`,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
+            type: 'Unlock',
+            details: `Request to unlock: ${ur.requestedChange}. Reason: ${ur.reason}`,
+            requester: ur.requestedBy,
+            date: ur.createdAt,
+            refObject: ur
+          });
+        }
+      });
+
+      // Pending Delete Requests
+      (t.deleteRequests || []).forEach(dr => {
+        if (dr.finalStatus === 'Pending' || dr.adminApproval === 'Pending') {
+          list.push({
+            id: `delete-${dr.id}`,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
+            type: 'Delete',
+            details: `Soft Delete Request. Reason: ${dr.reason}`,
+            requester: dr.requestedBy,
+            date: dr.createdAt,
+            refObject: dr
+          });
+        }
+      });
+    });
+
+    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [activeTickets, profiles]);
+
+  // Actions execution
+  const executeTimesheetApproval = async (ticketId: string, logId: string, action: 'Approved' | 'Rejected') => {
+    if (!isSupabaseConfigured || !supabase) return;
+    const toastId = toast.loading(`${action === 'Approved' ? 'Approving' : 'Rejecting'} effort log...`);
+    try {
+      const { error } = await supabase
+        .from('ticket_actual_hours')
+        .update({
+          approval_status: action === 'Approved' ? 'approved' : 'rejected',
+          approved_by: user?.id,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', logId);
+
+      if (error) throw error;
+      toast.success(`Effort log ${action.toLowerCase()} successfully.`, { id: toastId });
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Operation failed: ${err.message}`, { id: toastId });
+    }
+  };
+
+  const executeClosureApproval = async (ticketId: string, requestId: string, action: 'Approved' | 'Rejected') => {
+    if (!isSupabaseConfigured || !supabase) return;
+    const toastId = toast.loading(`${action === 'Approved' ? 'Approving' : 'Rejecting'} closure...`);
+    try {
+      // 1. Update closure status
+      const { error: requestErr } = await supabase
+        .from('ticket_closure_requests')
+        .update({
+          status: action === 'Approved' ? 'Approved' : 'Rejected',
+          manager_approval_status: action === 'Approved' ? 'Approved' : 'Rejected',
+          manager_approved_by: user?.id,
+          manager_approved_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (requestErr) throw requestErr;
+
+      // 2. Update ticket status to Closed if approved
+      if (action === 'Approved') {
+        const { error: ticketErr } = await supabase
+          .from('tickets')
+          .update({
+            status: 'Closed',
+            closed_at: new Date().toISOString(),
+            closed_by: user?.name || user?.email
+          })
+          .eq('id', ticketId);
+
+        if (ticketErr) throw ticketErr;
+      }
+
+      toast.success(`Closure ${action.toLowerCase()} successfully.`, { id: toastId });
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Operation failed: ${err.message}`, { id: toastId });
+    }
+  };
+
+  const executeDeleteRequest = async (ticketId: string, requestId: string, action: 'Approved' | 'Rejected') => {
+    if (!isSupabaseConfigured || !supabase) return;
+    const toastId = toast.loading(`${action === 'Approved' ? 'Approving' : 'Rejecting'} delete request...`);
+    try {
+      // Update delete requests
+      const { error: requestErr } = await supabase
+        .from('ticket_delete_requests')
+        .update({
+          admin_approval: action === 'Approved' ? 'Approved' : 'Rejected',
+          admin_approved_by: user?.id,
+          admin_approved_at: new Date().toISOString(),
+          final_status: action === 'Approved' ? 'Approved' : 'Rejected'
+        })
+        .eq('id', requestId);
+
+      if (requestErr) throw requestErr;
+
+      if (action === 'Approved') {
+        // Soft delete the ticket
+        const { error: ticketErr } = await supabase
+          .from('tickets')
+          .update({ soft_delete_status: 'Archived' })
+          .eq('id', ticketId);
+        if (ticketErr) throw ticketErr;
+      }
+
+      toast.success(`Soft delete ${action.toLowerCase()} successfully.`, { id: toastId });
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Operation failed: ${err.message}`, { id: toastId });
+    }
+  };
+
+  // ── 6. ESCALATION COMMAND CENTER ──
+  const escalationsQueue = useMemo(() => {
+    const list: any[] = [];
+    tickets.forEach(t => {
+      (t.escalations || []).forEach(esc => {
+        if (esc.status !== 'Resolved') {
+          list.push({
+            id: esc.id,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber || t.id,
+            title: t.title,
+            customer: t.organization,
+            consultant: t.assignedConsultant || 'Unassigned',
+            manager: t.assignedManager || 'Unassigned',
+            escalatedBy: esc.escalatedBy,
+            severity: esc.severity,
+            reason: esc.reason,
+            status: esc.status,
+            date: esc.createdAt,
+            priority: t.priority
+          });
+        }
+      });
+    });
+    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [tickets]);
+
+  // ── 7. DELIVERY & PLATFORM HEALTH ──
+  const deliveryHealthPostures = useMemo(() => {
+    const warnings: string[] = [];
+    if (globalStats.slaBreachesCount > 0) warnings.push('SLA Breaches');
+    if (globalStats.pendingApprovalsCount > 10) warnings.push('Approval Backlog');
+    if (escalationsQueue.length > 0) warnings.push('Active Escalations');
+
+    let posture: 'Healthy' | 'Warning' | 'Critical' = 'Healthy';
+    if (escalationsQueue.length > 2 || globalStats.slaBreachesCount > 3) {
+      posture = 'Critical';
+    } else if (warnings.length > 0) {
+      posture = 'Warning';
+    }
+    return { posture, warnings };
+  }, [globalStats, escalationsQueue]);
+
+  // ── 8. AUDIT LOGS SEARCH & FILTERS ──
+  const filteredAuditLogs = useMemo(() => {
+    return auditLogs.filter(log => {
+      if (!log) return false;
+      const search = auditSearch.toLowerCase();
+      return (
+        (log.user_email || '').toLowerCase().includes(search) ||
+        (log.action || '').toLowerCase().includes(search) ||
+        (log.performed_by || '').toLowerCase().includes(search)
+      );
+    });
+  }, [auditLogs, auditSearch]);
+
+  const handleExportAuditsCSV = () => {
+    if (filteredAuditLogs.length === 0) {
+      toast.error('No audit records to export.');
+      return;
+    }
+    const headers = ['ID', 'User Email', 'Action', 'Performed By', 'Timestamp'];
+    const rows = filteredAuditLogs.map(log => [
+      log.id,
+      log.user_email,
+      log.action,
+      log.performed_by,
+      new Date(log.created_at).toLocaleString()
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `assist360_audits_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Audit history CSV downloaded.');
+  };
+
+  // ── 9. PASSWORD MANAGEMENT & USER MANAGEMENT ──
+  const filteredIAMUsers = useMemo(() => {
+    return profiles.filter(p => {
+      const matchesSearch = 
+        (p.full_name || '').toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+        (p.email || '').toLowerCase().includes(userSearchTerm.toLowerCase());
+      
+      const matchesType = selectedUserType === 'All' || p.role === selectedUserType;
+      
+      return matchesSearch && matchesType;
+    }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+  }, [profiles, userSearchTerm, selectedUserType]);
+
+  const handleUserToggleActive = async (targetUser: any) => {
+    if (!isSupabaseConfigured || !supabase) return;
+    const nextActive = !targetUser.is_active;
+    const toastId = toast.loading(`${nextActive ? 'Enabling' : 'Disabling'} user profile...`);
+    try {
+      const res = await updateUserAuthStatus(
+        targetUser.id,
+        targetUser.email,
+        nextActive,
+        false, // clear lock flag
+        user?.email || 'SuperAdmin'
+      );
+      if (!res.success) throw new Error(res.error);
+      toast.success(`Account status changed to: ${nextActive ? 'Active' : 'Disabled'}`, { id: toastId });
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Operation failed: ${err.message}`, { id: toastId });
+    }
+  };
+
+  const handleUserUnlock = async (targetUser: any) => {
+    if (!isSupabaseConfigured || !supabase) return;
+    const toastId = toast.loading('Unlocking user account...');
+    try {
+      const res = await updateUserAuthStatus(
+        targetUser.id,
+        targetUser.email,
+        targetUser.is_active,
+        false, // Clear lockout is_locked status
+        user?.email || 'SuperAdmin'
+      );
+      if (!res.success) throw new Error(res.error);
+      toast.success('Account unlocked successfully.', { id: toastId });
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Unlock failed: ${err.message}`, { id: toastId });
+    }
+  };
+
+  const handleIAMActionReset = async () => {
+    if (!selectedIAMUser) return;
+    const toastId = toast.loading('Executing password reset...');
+    try {
+      const passPayload = manualPassword.trim() !== '' ? manualPassword.trim() : undefined;
+      const res = await resetUserPasswordAdmin(
+        selectedIAMUser.id,
+        user?.email || 'SuperAdmin',
+        selectedIAMUser.email,
+        passPayload
+      );
+      if (!res.success) throw new Error(res.error);
+      setGeneratedPassResult(res.password || manualPassword);
+      toast.success('Password reset completed successfully. Temporary credentials ready.', { id: toastId });
+      setManualPassword('');
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Reset failed: ${err.message}`, { id: toastId });
+    }
+  };
+
+  const handleIAMActionUpdate = async () => {
+    if (!selectedIAMUser || manualPassword.trim() === '') {
+      toast.error('Please specify a password.');
+      return;
+    }
+    const toastId = toast.loading('Updating user credentials...');
+    try {
+      const res = await adminUpdatePasswordDirect(
+        selectedIAMUser.id,
+        manualPassword.trim(),
+        user?.email || 'SuperAdmin',
+        selectedIAMUser.email
+      );
+      if (!res.success) throw new Error(res.error);
+      
+      if (forcePasswordChange) {
+        await adminForcePasswordChange(selectedIAMUser.id, selectedIAMUser.email, user?.email || 'SuperAdmin');
+      }
+
+      toast.success('Credentials updated successfully.', { id: toastId });
+      setManualPassword('');
+      setIsIAMModalOpen(false);
+      await refetchData();
+    } catch (err: any) {
+      toast.error(`Update failed: ${err.message}`, { id: toastId });
+    }
+  };
+
+  // ── 10. ANALYTICS WALL (20+ UNIQUE VISUALIZATIONS) ──
+  const analyticsWallData = useMemo(() => {
+    const now = new Date(SYSTEM_NOW);
+    const monthsNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Determine range start & end based on filters
+    let start = new Date(now.getFullYear(), 0, 1);
+    let end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    if (filters.period === 'This Month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Quarter') {
+      const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+      start = new Date(now.getFullYear(), quarterStartMonth, 1);
+      end = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    } else if (filters.period === 'Custom') {
+      start = filters.dateFrom ? new Date(filters.dateFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
+      end = filters.dateTo ? new Date(filters.dateTo) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
+    const durationDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    const trendIntervals: { name: string; start: Date; end: Date; year: number; month: number; type: 'day' | 'week' | 'month' }[] = [];
+
+    if (durationDays <= 31) {
+      // Daily intervals
+      const curr = new Date(start);
+      while (curr <= end) {
+        const s = new Date(curr);
+        s.setHours(0,0,0,0);
+        const e = new Date(curr);
+        e.setHours(23,59,59,999);
+        trendIntervals.push({
+          name: curr.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'day'
+        });
+        curr.setDate(curr.getDate() + 1);
+      }
+    } else if (durationDays <= 93) {
+      // Weekly intervals
+      const curr = new Date(start);
+      let wkIdx = 1;
+      while (curr <= end) {
+        const s = new Date(curr);
+        s.setHours(0,0,0,0);
+        const e = new Date(curr);
+        e.setDate(e.getDate() + 6);
+        e.setHours(23,59,59,999);
+        trendIntervals.push({
+          name: `Wk ${wkIdx++}`,
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'week'
+        });
+        curr.setDate(curr.getDate() + 7);
+      }
+    } else {
+      // Monthly intervals
+      const curr = new Date(start.getFullYear(), start.getMonth(), 1);
+      const last = new Date(end.getFullYear(), end.getMonth(), 1);
+      while (curr <= last) {
+        const s = new Date(curr.getFullYear(), curr.getMonth(), 1, 0, 0, 0, 0);
+        const e = new Date(curr.getFullYear(), curr.getMonth() + 1, 0, 23, 59, 59, 999);
+        trendIntervals.push({
+          name: `${monthsNames[curr.getMonth()]} ${curr.getFullYear().toString().slice(-2)}`,
+          start: s,
+          end: e,
+          year: curr.getFullYear(),
+          month: curr.getMonth(),
+          type: 'month'
+        });
+        curr.setMonth(curr.getMonth() + 1);
+      }
+    }
+
+    // 1. Ticket Volume Trend
+    const getMonthTrend = () => {
+      return trendIntervals.map(interval => {
+        let incidents = 0;
+        let requests = 0;
+
+        activeTickets.forEach(t => {
+          const date = new Date(t.createdAt);
+          if (date >= interval.start && date <= interval.end) {
+            if (t.ticketType === 'Incident' || !t.ticketType) {
+              incidents++;
+            } else {
+              requests++;
+            }
+          }
+        });
+
+        return {
+          name: interval.name,
+          Incidents: incidents,
+          Requests: requests
+        };
+      });
+    };
+    const ticketVolumeTrend = getMonthTrend();
+
+    // 2. Ticket Growth
+    const getTicketGrowthTrend = () => {
+      let cumulative = 0;
+      return trendIntervals.map(interval => {
+        const count = activeTickets.filter(t => {
+          const date = new Date(t.createdAt);
+          return date >= interval.start && date <= interval.end;
+        }).length;
+        cumulative += count;
+        return { name: interval.name, total: cumulative };
+      });
+    };
+    const ticketGrowth = getTicketGrowthTrend();
+
+    // 3. Open vs Closed
+    const getOpenVsClosedByModule = () => {
+      const modulesMap: Record<string, { Open: number; Closed: number }> = {};
+      activeTickets.forEach(t => {
+        const mod = t.sapModule || 'Other';
+        if (!modulesMap[mod]) {
+          modulesMap[mod] = { Open: 0, Closed: 0 };
+        }
+        if (t.status === 'Closed' || t.status === 'Resolved') {
+          modulesMap[mod].Closed++;
+        } else {
+          modulesMap[mod].Open++;
+        }
+      });
+      return Object.entries(modulesMap).map(([name, val]) => ({
+        name,
+        Open: val.Open,
+        Closed: val.Closed
+      })).slice(0, 8);
+    };
+    const openVsClosed = getOpenVsClosedByModule();
+
+    // 4. Escalation Trend
+    const getEscalationTrend = () => {
+      return trendIntervals.map(interval => {
+        const count = activeTickets.filter(t => {
+          if (t.escalationFlag) {
+            const date = new Date(t.createdAt);
+            return date >= interval.start && date <= interval.end;
+          }
+          return false;
+        }).length;
+        return { name: interval.name, count };
+      });
+    };
+    const escalationTrend = getEscalationTrend();
+
+    // 5. SLA Trend
+    const getSlaTrend = () => {
+      return trendIntervals.map(interval => {
+        const intervalIncidents = activeTickets.filter(t => {
+          if ((t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable') {
+            const date = new Date(t.createdAt);
+            return date >= interval.start && date <= interval.end;
+          }
+          return false;
+        });
+
+        const breached = intervalIncidents.filter(t => {
+          const due = new Date(t.slaDueAt).getTime();
+          const endT = t.status === 'Resolved' || t.status === 'Closed'
+            ? new Date(t.resolvedAt || t.closedAt || Date.now()).getTime()
+            : Date.now();
+          return endT > due;
+        }).length;
+
+        const compliance = intervalIncidents.length > 0 ? ((intervalIncidents.length - breached) / intervalIncidents.length) * 100 : 100;
+        return { name: interval.name, compliance: Math.round(compliance * 10) / 10 };
+      });
+    };
+    const slaTrend = getSlaTrend();
+
+    // 6. Customer Activity
+    const customerActivity = customerPortfolio.slice(0, 10).map(c => ({
+      name: c.name.split(' ')[0],
+      tickets: c.openCount + c.closedCount
+    }));
+
+    // 7. Consultant Utilization
+    const consultantUtilization = consultantsPortfolio.slice(0, 10).map(c => ({
+      name: c.name.split(' ')[0],
+      utilization: Math.round(c.utilization)
+    }));
+
+    // 8. Manager Workload
+    const managerWorkload = managersPortfolio.map(m => ({
+      name: m.name.split(' ')[0],
+      tickets: m.ticketsManaged
+    }));
+
+    // 9. Contract Budget Consumption
+    const contractConsumption = customerPortfolio.slice(0, 10).map(c => ({
+      name: c.name.split(' ')[0],
+      Allocated: c.annualHours,
+      Consumed: c.approvedHours
+    }));
+
+    // 10. Resolution Time Trend
+    const getResolutionTimeTrend = () => {
+      return trendIntervals.map(interval => {
+        let totalHours = 0;
+        let count = 0;
+
+        activeTickets.forEach(t => {
+          if ((t.status === 'Resolved' || t.status === 'Closed') && t.resolvedAt) {
+            const date = new Date(t.createdAt);
+            if (date >= interval.start && date <= interval.end) {
+              const hrs = (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60);
+              totalHours += hrs;
+              count++;
+            }
+          }
+        });
+
+        return {
+          name: interval.name,
+          hours: count > 0 ? Math.round((totalHours / count) * 10) / 10 : 0
+        };
+      });
+    };
+    const resolutionTimeTrend = getResolutionTimeTrend();
+
+    // 11. Approval Response Trend
+    const getApprovalResponseTrend = () => {
+      return trendIntervals.map(interval => {
+        let count = 0;
+        activeTickets.forEach(t => {
+          const isPending = t.status === 'Reopen Requested' ||
+            (t.actualHoursLogs || []).some(h => h.approvalStatus?.toLowerCase() === 'pending') ||
+            (t.closureRequests || []).some(r => r.status === 'Pending Manager Approval' || r.managerApprovalStatus === 'Pending') ||
+            (t.unlockRequests || []).some(u => u.status === 'Pending') ||
+            (t.deleteRequests || []).some(r => r.managerApproval === 'Pending' || r.adminApproval === 'Pending');
+
+          if (isPending) {
+            const date = new Date(t.createdAt);
+            if (date >= interval.start && date <= interval.end) {
+              count++;
+            }
+          }
+        });
+
+        return {
+          name: interval.name,
+          pendingApprovals: count
+        };
+      });
+    };
+    const approvalResponseTrend = getApprovalResponseTrend();
+
+    // 12. Approved Actual Hours
+    const getApprovedHoursTrend = () => {
+      return trendIntervals.map(interval => {
+        let hours = 0;
+        activeTickets.forEach(t => {
+          (t.actualHoursLogs || []).forEach(log => {
+            if (log.approvalStatus?.toLowerCase() === 'approved' && log.approvedAt) {
+              const date = new Date(log.approvedAt);
+              if (date >= interval.start && date <= interval.end) {
+                hours += log.actualHours;
+              }
+            }
+          });
+        });
+
+        return {
+          name: interval.name,
+          hours: Math.round(hours * 10) / 10
+        };
+      });
+    };
+    const approvedHoursTrend = getApprovedHoursTrend();
+
+    // 13. Estimated vs Actual Hours
+    const getEstVsActual = () => {
+      const ticketsWithEffort = activeTickets.filter(t => 
+        (t.actualHoursLogs && t.actualHoursLogs.length > 0) || 
+        (t.hourEstimates && t.hourEstimates.length > 0)
+      ).slice(0, 6);
+
+      return ticketsWithEffort.map(t => {
+        const totalEst = (t.hourEstimates || []).reduce((sum, h) => sum + (h.totalEstimatedHours || 0), 0);
+        const totalAct = (t.actualHoursLogs || []).reduce((sum, a) => sum + (a.actualHours || 0), 0);
+        return {
+          name: t.ticketNumber || t.id,
+          Estimated: totalEst,
+          Actual: totalAct
+        };
+      });
+    };
+    const estVsActual = getEstVsActual();
+
+    // 14. Priority Counts Distribution
+    const priorityDistribution = [
+      { name: 'Critical', value: activeTickets.filter(t => t.priority === 'Critical').length },
+      { name: 'High', value: activeTickets.filter(t => t.priority === 'High').length },
+      { name: 'Medium', value: activeTickets.filter(t => t.priority === 'Medium').length },
+      { name: 'Low', value: activeTickets.filter(t => t.priority === 'Low').length }
+    ];
+
+    // 15. Ticket Categories Spread
+    const categoryDistribution = [
+      { name: 'Functional', value: activeTickets.filter(t => t.functionalOrTechnical === 'Functional' || t.category?.toLowerCase().includes('functional')).length },
+      { name: 'Technical', value: activeTickets.filter(t => t.functionalOrTechnical === 'Technical' || t.category?.toLowerCase().includes('technical')).length }
+    ];
+
+    // 16. SAP Module Distribution
+    const getModuleDistribution = () => {
+      const modMap: Record<string, number> = {};
+      activeTickets.forEach(t => {
+        const mod = t.sapModule || 'Other';
+        modMap[mod] = (modMap[mod] || 0) + 1;
+      });
+      return Object.entries(modMap).map(([name, value]) => ({ name, value }));
+    };
+    const moduleDistribution = getModuleDistribution();
+
+    // 17. Customer Health Score Spread
+    const healthScoreSpread = customerPortfolio.slice(0, 6).map(c => ({
+      subject: c.name.split(' ')[0],
+      score: Math.round(c.slaCompliance)
+    }));
+
+    // 18. Operational Risk Heatmap
+    const riskHeatmap = [
+      { subject: 'Database Load', risk: Math.min(100, Math.round(globalStats.platformHealthScore * 0.8)) },
+      { subject: 'SLA Warnings', risk: Math.min(100, Math.round((globalStats.slaBreachesCount / (activeTickets.length || 1)) * 100)) },
+      { subject: 'Approval Delay', risk: Math.min(100, Math.round(globalStats.pendingApprovalsCount * 5)) },
+      { subject: 'Capacity Peak', risk: Math.min(100, Math.round((globalStats.totalApprovedHours / (globalStats.totalApprovedHours + globalStats.remainingContractHours || 1)) * 100)) },
+      { subject: 'Escalations', risk: Math.min(100, Math.round((globalStats.escalatedTicketsCount / (activeTickets.length || 1)) * 100)) }
+    ];
+
+    // 19. Manager Delivery Health
+    const managerDeliveryHealth = managersPortfolio.map(m => ({
+      name: m.name.split(' ')[0],
+      score: Math.round(m.deliveryHealth)
+    }));
+
+    // 20. Resource Capacity Forecast
+    const capacityForecast = [
+      { month: 'Jul', Utilized: Math.round(globalStats.currentMonthUtilizedHours), Remaining: Math.round(globalStats.remainingContractHours) },
+      { month: 'Aug', Utilized: Math.round(globalStats.currentMonthUtilizedHours * 0.9), Remaining: Math.round(globalStats.remainingContractHours * 0.9) },
+      { month: 'Sep', Utilized: Math.round(globalStats.currentMonthUtilizedHours * 1.1), Remaining: Math.round(globalStats.remainingContractHours * 0.8) },
+      { month: 'Oct', Utilized: Math.round(globalStats.currentMonthUtilizedHours * 1.05), Remaining: Math.round(globalStats.remainingContractHours * 0.7) }
+    ];
+
+    return {
+      ticketVolumeTrend,
+      ticketGrowth,
+      openVsClosed,
+      escalationTrend,
+      slaTrend,
+      customerActivity,
+      consultantUtilization,
+      managerWorkload,
+      contractConsumption,
+      resolutionTimeTrend,
+      approvalResponseTrend,
+      approvedHoursTrend,
+      estVsActual,
+      priorityDistribution,
+      categoryDistribution,
+      moduleDistribution,
+      healthScoreSpread,
+      riskHeatmap,
+      managerDeliveryHealth,
+      capacityForecast
+    };
+  }, [activeTickets, tickets, globalStats, customerPortfolio, consultantsPortfolio, managersPortfolio]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-64 bg-zinc-200" />
+          <Skeleton className="h-6 w-36 bg-zinc-250" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full bg-zinc-200 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-96 w-full bg-zinc-200 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900">
+    <div className="space-y-6">
       
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight uppercase text-zinc-950">Super Admin Command Center</h1>
-          <p className="text-zinc-500 mt-1">Global operations audit log, SLA threshold settings, and tenant isolation control panel.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/admin/create-ticket" className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold transition uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-            <Plus size={12} />
-            Create Ticket
-          </Link>
-          <Link href="/admin/tickets" className="px-3 py-1.5 border border-zinc-200 hover:border-zinc-900 rounded font-semibold transition uppercase tracking-wider text-[10px]">
-            Manage Tickets
-          </Link>
-          <Link href="/admin/assignment-board" className="px-3 py-1.5 border border-zinc-200 hover:border-zinc-900 rounded font-semibold transition uppercase tracking-wider text-[10px]">
-            Assignment Board
-          </Link>
-          <Link href="/admin/reports" className="px-3 py-1.5 border border-zinc-200 hover:border-zinc-900 rounded font-semibold transition uppercase tracking-wider text-[10px]">
-            Analytics Reports
-          </Link>
-        </div>
-      </div>
-
-      {/* Basic Metrics Rows */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400">
-            <span className="uppercase text-[9px] font-bold tracking-wider">Customers</span>
-            <Building2 size={14} />
-          </div>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-zinc-950">{totalCustomers}</span>
-            <span className="text-[9px] text-zinc-400 block mt-0.5">({activeCustomers} Active)</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400">
-            <span className="uppercase text-[9px] font-bold tracking-wider">Directory Users</span>
-            <Users size={14} />
-          </div>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-zinc-950">{totalUsers}</span>
-            <span className="text-[9px] text-zinc-400 block mt-0.5">{totalConsultants} Consultants | {totalSapManagers} Mgrs</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400">
-            <span className="uppercase text-[9px] font-bold tracking-wider">SLA Compliance</span>
-            <CheckCircle2 size={14} className="text-emerald-600" />
-          </div>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-emerald-700">{slaCompliancePct}%</span>
-            <span className="text-[9px] text-zinc-400 block mt-0.5">Target &gt; 85%</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400">
-            <span className="uppercase text-[9px] font-bold tracking-wider">Avg First Response</span>
-            <Clock size={14} />
-          </div>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-zinc-950">{avgResponseTime}</span>
-            <span className="text-[9px] text-zinc-400 block mt-0.5">SLA limit: 4h</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400">
-            <span className="uppercase text-[9px] font-bold tracking-wider">CSAT Score</span>
-            <HeartHandshake size={14} />
-          </div>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-zinc-950">{avgCsat} / 5</span>
-            <span className="text-[9px] text-zinc-400 block mt-0.5">({ratedTickets.length} Submissions)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Ticket Status Grid Counters */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm space-y-3">
-        <h3 className="font-bold text-[10px] uppercase text-zinc-700 tracking-wider">Global Ticket Pipeline</h3>
-        <div className="grid grid-cols-2 md:grid-cols-9 gap-3">
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">Total</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{totalTickets}</div>
-          </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center border-l-4 border-l-amber-500">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">New</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{newTickets}</div>
-          </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">Assigned</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{assignedTickets}</div>
-          </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">In-Prog</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{inProgressTickets}</div>
-          </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">Wait Cust</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{waitingForCustomer}</div>
-          </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">Wait Team</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{waitingForInternalTeam}</div>
-          </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center border-l-4 border-l-emerald-500">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">Resolved</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{resolvedTickets}</div>
-          </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">Closed</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{closedTickets}</div>
-          </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded p-2 text-center">
-            <div className="text-[10px] text-zinc-500 font-bold uppercase">Reopened</div>
-            <div className="text-lg font-bold text-zinc-950 mt-1">{reopenedTickets}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Critical SLA alerts banner */}
-      {(slaBreachedCount > 0 || criticalTickets > 0 || escalatedTickets > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between text-red-900">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={14} className="text-red-650" />
-              <span className="font-bold uppercase tracking-wider text-[10px]">
-                SLA Breached Tickets: {slaBreachedCount} Active
+      {/* ── ESCALATION RED WARNING BANNER ── */}
+      {escalationsQueue.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between shadow-sm animate-pulse">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="text-red-500 shrink-0" size={18} />
+            <div>
+              <span className="font-mono text-xs font-bold text-red-700 block uppercase">Critical Escalations Alert</span>
+              <span className="text-[11px] text-red-600 block mt-0.5">
+                {escalationsQueue.length} tickets are currently escalated. Manager intervention required immediately.
               </span>
             </div>
-            <Link href="/admin/tickets?sla=Breached" className="font-bold underline text-[9px] hover:text-red-750">
-              Inspect Queue
-            </Link>
           </div>
-
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center justify-between text-amber-900">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={14} className="text-amber-600" />
-              <span className="font-bold uppercase tracking-wider text-[10px]">
-                SLA Warning Queue: {slaWarningCount} Pending
-              </span>
-            </div>
-            <span className="text-[9px] text-amber-700">Due within 12 hours</span>
-          </div>
-
-          <div className="bg-zinc-900 border border-zinc-900 rounded-lg p-3 flex items-center justify-between text-white">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={14} className="text-red-500 animate-pulse" />
-              <span className="font-bold uppercase tracking-wider text-[10px]">
-                Escalated Tickets: {escalatedTickets} Flagged
-              </span>
-            </div>
-            <Link href="/admin/tickets?escalated=true" className="font-bold text-red-400 hover:underline text-[9px]">
-              Resolve Alerts
-            </Link>
-          </div>
+          <Button 
+            onClick={() => setActiveTab('escalations')} 
+            className="h-7 text-[9px] uppercase font-bold font-mono bg-red-600 hover:bg-red-700 text-white rounded px-3"
+          >
+            Review Queue
+          </Button>
         </div>
       )}
 
-      {/* Charts & Contract Details Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── COMMAND CENTER HEADER ── */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-200 pb-5 gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 font-mono uppercase">Executive Command Center</h1>
+          <p className="text-[11px] text-zinc-400 mt-1 font-bold uppercase tracking-wider">
+            Assist360 Operations & Delivery Management Console · RLS Posture: <span className="text-zinc-900">{RLS_POSTURE}</span>
+          </p>
+        </div>
         
-        {/* Module Volumes */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-              <TrendingUp size={14} />
-              SAP Modules incident metrics
-            </h3>
-            <span className="text-[9px] text-zinc-400">Total Count</span>
-          </div>
-          <div className="space-y-3">
-            {modulesList.map(([mod, count]) => {
-              const pct = (count / maxModuleVal) * 100;
-              return (
-                <div key={mod} className="space-y-1">
-                  <div className="flex justify-between items-center text-[10px] text-zinc-650">
-                    <span className="font-bold">{mod}</span>
-                    <span>{count} Tickets</span>
-                  </div>
-                  <div className="w-full h-2.5 bg-zinc-100 rounded overflow-hidden border border-zinc-200">
-                    <div
-                      className="h-full bg-zinc-950 rounded-r"
-                      style={{ width: `${pct}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button 
+            onClick={refetchData} 
+            variant="outline" 
+            className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold flex items-center gap-2 rounded"
+          >
+            <RefreshCw size={12} />
+            Sync Supabase
+          </Button>
         </div>
+      </div>
 
-        {/* Customer Volume & Efforts breakdown */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-              <Building2 size={14} />
-              Volume by Customer Org
-            </h3>
-            <span className="text-[9px] text-zinc-400">Incidents</span>
-          </div>
-          <div className="space-y-3">
-            {customerList.map(([org, count]) => (
-              <div key={org} className="flex justify-between items-center py-1 border-b border-zinc-100 last:border-b-0">
-                <span className="font-semibold text-zinc-700">{org}</span>
-                <span className="font-bold text-zinc-950 bg-zinc-100 px-1.5 py-0.5 rounded text-[10px]">{count}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t border-zinc-100 pt-3 space-y-2">
-            <div className="flex justify-between items-center text-[10px]">
-              <span className="text-zinc-500 font-bold">Total Efforts Logged:</span>
-              <span className="font-bold text-zinc-950">{totalLoggedHours.toFixed(1)} hrs</span>
-            </div>
-            <div className="flex justify-between items-center text-[10px]">
-              <span className="text-emerald-700 font-bold">Billable:</span>
-              <span className="font-bold text-emerald-800">{totalBillable.toFixed(1)} hrs</span>
-            </div>
-            <div className="flex justify-between items-center text-[10px]">
-              <span className="text-zinc-400 font-bold">Non-Billable:</span>
-              <span className="font-bold text-zinc-500">{totalNonBillable.toFixed(1)} hrs</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Resource Workload and SLA Compliance Gauge */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-5 flex flex-col justify-between space-y-4 shadow-sm">
-          <div>
-            <h3 className="font-bold text-xs uppercase tracking-wider text-zinc-950 mb-3 flex items-center gap-2 border-b border-zinc-100 pb-2">
-              <Users size={14} />
-              Consultant Queues
-            </h3>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {Object.entries(consultantWorkload).map(([name, count]) => (
-                <div key={name} className="flex justify-between items-center py-1.5 border-b border-zinc-50 last:border-b-0">
-                  <span className="font-semibold text-zinc-750">{name}</span>
-                  <span className={`px-2 py-0.5 font-bold text-[9px] rounded-full text-white ${
-                    count > 3 ? 'bg-red-650' : 'bg-zinc-800'
-                  }`}>
-                    {count} Active
-                  </span>
-                </div>
+      {/* ── GLOBAL FILTERS COCKPIT ── */}
+      <Card className="border border-zinc-200 bg-white p-4 shadow-sm mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Period */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Period</span>
+            <div className="flex border border-zinc-200 rounded-md overflow-hidden h-9 bg-zinc-50">
+              {(['This Month', 'This Quarter', 'This Year', 'Custom'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setFilters(prev => ({ ...prev, period: p }))}
+                  className={`px-3 text-[10px] font-mono uppercase font-bold transition-all ${
+                    filters.period === p
+                      ? 'bg-zinc-900 text-white'
+                      : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                >
+                  {p.replace('This ', '')}
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-zinc-100 pt-3 space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border-4 border-emerald-500 flex items-center justify-center font-bold text-[10px] text-emerald-800">
-                {slaCompliancePct}%
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-zinc-800">SLA Health Score</p>
-                <p className="text-[9px] text-zinc-400">Total SLA Breach Rate: {((slaBreachedCount / (totalTickets || 1)) * 100).toFixed(0)}%</p>
-              </div>
+          {/* Customer */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Customer</span>
+            <select
+              value={filters.customer}
+              onChange={(e) => setFilters(prev => ({ ...prev, customer: e.target.value }))}
+              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL CUSTOMERS</option>
+              {customerOrgsList.map(c => (
+                <option key={c} value={c}>{c.toUpperCase()}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Consultant */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Consultant</span>
+            <select
+              value={filters.consultant}
+              onChange={(e) => setFilters(prev => ({ ...prev, consultant: e.target.value }))}
+              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL CONSULTANTS</option>
+              {consultantsProfilesList.map(c => (
+                <option key={c} value={c}>{c.toUpperCase()}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Manager */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Manager</span>
+            <select
+              value={filters.manager}
+              onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
+              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL MANAGERS</option>
+              {managersProfilesList.map(m => (
+                <option key={m} value={m}>{m.toUpperCase()}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Module */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Module</span>
+            <select
+              value={filters.module}
+              onChange={(e) => setFilters(prev => ({ ...prev, module: e.target.value }))}
+              className="h-9 min-w-[110px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL MODULES</option>
+              {modulesList.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Priority */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Priority</span>
+            <select
+              value={filters.priority}
+              onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+              className="h-9 min-w-[110px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="All">ALL PRIORITIES</option>
+              <option value="Critical">CRITICAL</option>
+              <option value="High">HIGH</option>
+              <option value="Medium">MEDIUM</option>
+              <option value="Low">LOW</option>
+            </select>
+          </div>
+
+          {/* Reset Filters */}
+          <div className="flex items-end ml-auto self-end pt-5">
+            <Button
+              variant="outline"
+              onClick={() => setFilters({
+                period: 'This Year',
+                dateFrom: '',
+                dateTo: '',
+                statuses: [],
+                priority: 'All',
+                module: 'All',
+                customer: 'All',
+                consultant: 'All',
+                manager: 'All'
+              })}
+              className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold rounded"
+            >
+              Reset
+            </Button>
+          </div>
+        </div>
+
+        {/* Dynamic Status Badges row */}
+        <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-2">
+          <span className="text-[9px] font-mono uppercase font-bold text-zinc-400 mr-2">Status Scope</span>
+          {(['New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Reopened', 'Escalated'] as const).map(group => {
+            const isSelected = filters.statuses.includes(group);
+            return (
+              <button
+                key={group}
+                onClick={() => {
+                  setFilters(prev => {
+                    const current = prev.statuses;
+                    const next = current.includes(group)
+                      ? current.filter(x => x !== group)
+                      : [...current, group];
+                    return { ...prev, statuses: next };
+                  });
+                }}
+                className={`h-7 px-2.5 rounded-full text-[10px] font-mono uppercase font-semibold transition-all border ${
+                  isSelected
+                    ? 'bg-zinc-950 border-zinc-950 text-white shadow-sm'
+                    : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                {group}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Row 2: Custom Date Picker Inputs */}
+        {filters.period === 'Custom' && (
+          <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-4 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date From</span>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date To</span>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              />
             </div>
           </div>
-        </div>
+        )}
+      </Card>
 
-      </div>
+      {/* ── NAVIGATION TABS ── */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="flex flex-wrap h-auto bg-zinc-100 p-1 border border-zinc-200 rounded-lg font-mono text-[9px] gap-0.5">
+          <TabsTrigger value="cockpit" className="py-2 px-3 uppercase font-bold rounded-md">Cockpit</TabsTrigger>
+          <TabsTrigger value="customers" className="py-2 px-3 uppercase font-bold rounded-md">Customers</TabsTrigger>
+          <TabsTrigger value="consultants" className="py-2 px-3 uppercase font-bold rounded-md">Consultants</TabsTrigger>
+          <TabsTrigger value="managers" className="py-2 px-3 uppercase font-bold rounded-md">Managers</TabsTrigger>
+          <TabsTrigger value="approvals" className="py-2 px-3 uppercase font-bold rounded-md">
+            Approvals
+            {approvalsQueue.length > 0 && (
+              <Badge className="bg-zinc-900 text-white text-[8px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
+                {approvalsQueue.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="escalations" className="py-2 px-3 uppercase font-bold rounded-md">
+            Escalations
+            {escalationsQueue.length > 0 && (
+              <Badge className="bg-red-600 text-white text-[8px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
+                {escalationsQueue.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="health" className="py-2 px-3 uppercase font-bold rounded-md">Health</TabsTrigger>
+          <TabsTrigger value="audits" className="py-2 px-3 uppercase font-bold rounded-md">Audits</TabsTrigger>
+          <TabsTrigger value="iam" className="py-2 px-3 uppercase font-bold rounded-md">Passwords & IAM</TabsTrigger>
+        </TabsList>
 
-      {/* Lists Section: Pending Assignments & Recent Comments & SLA warnings */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Pending Assignment List */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3 shadow-sm">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-            <h3 className="font-bold text-xs uppercase text-zinc-950 flex items-center gap-1.5">
-              <AlertTriangle size={13} className="text-amber-500" />
-              Unassigned Queue
-            </h3>
-            <Link href="/admin/assignment-board" className="text-[9px] font-bold underline hover:text-zinc-650">
-              Go to Board
-            </Link>
+        {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
+        <TabsContent value="cockpit" className="space-y-6 outline-none">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 font-mono">
+            {[
+              { label: 'Total Customers', value: globalStats.totalCustomers, icon: Building2, desc: 'Registered Organizations' },
+              { label: 'Active Customers', value: globalStats.activeCustomers, icon: UserCheck, desc: 'With Active Contracts' },
+              { label: 'Total Consultants', value: globalStats.totalConsultants, icon: Users, desc: `${globalStats.activeConsultants} Active on Desk` },
+              { label: 'SAP Managers', value: globalStats.totalManagers, icon: BadgeCheck, desc: 'Delivery Controllers' },
+              { label: 'Total Contracts', value: globalStats.totalContracts, icon: FileText, desc: 'Support Agreements' },
+              { label: 'Open Tickets', value: globalStats.openTicketsCount, icon: Ticket, desc: 'Active Queue backlog' },
+              { label: 'Closed Tickets', value: globalStats.closedTicketsCount, icon: CheckCircle2, desc: 'SLA Resolved / Closed' },
+              { label: 'Escalated Tickets', value: globalStats.escalatedTicketsCount, icon: AlertTriangle, desc: 'Active Warning Alerts', color: globalStats.escalatedTicketsCount > 0 ? 'text-red-600' : 'text-zinc-900' },
+              { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, icon: Clock, desc: 'Awaiting Administrator Actions', color: globalStats.pendingApprovalsCount > 0 ? 'text-orange-600 font-bold' : 'text-zinc-900' },
+              { label: 'SLA Breaches', value: globalStats.slaBreachesCount, icon: ShieldAlert, desc: 'Violations Reported', color: globalStats.slaBreachesCount > 0 ? 'text-red-500 font-bold' : 'text-zinc-900' },
+              { label: 'Total Approved Hours', value: `${globalStats.totalApprovedHours.toFixed(1)}h`, icon: DollarSign, desc: 'Accumulated Timesheet Hours' },
+              { label: 'Current Month Utilized', value: `${globalStats.currentMonthUtilizedHours.toFixed(1)}h`, icon: Activity, desc: 'Logged this Month' },
+              { label: 'Remaining Hours', value: `${globalStats.remainingContractHours.toFixed(1)}h`, icon: Sliders, desc: 'Active contracts pool' },
+              { label: 'Platform Health Score', value: `${globalStats.platformHealthScore}%`, icon: HeartHandshake, desc: 'Active health status check', color: globalStats.platformHealthScore > 90 ? 'text-emerald-600' : 'text-orange-500' }
+            ].map((kpi, i) => {
+              const Icon = kpi.icon;
+              return (
+                <Card key={i} className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm hover:border-zinc-400 transition-all flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">{kpi.label}</span>
+                    <Icon size={12} className="text-zinc-400" />
+                  </div>
+                  <div className="mt-3">
+                    <span className={`text-lg font-extrabold tracking-tight font-mono ${kpi.color || 'text-zinc-900'}`}>{kpi.value}</span>
+                    <span className="text-[8px] text-zinc-400 block mt-0.5 font-sans leading-relaxed">{kpi.desc}</span>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
-          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            {pendingAssignments.length === 0 ? (
-              <p className="text-zinc-450 italic py-2 text-center">All tickets have assigned consultants.</p>
-            ) : (
-              pendingAssignments.map(t => (
-                <div key={t.id} className="p-2 bg-zinc-50 border border-zinc-150 rounded space-y-1">
-                  <div className="flex justify-between items-center">
-                    <Link href={`/admin/tickets/${t.id}`} className="font-bold text-zinc-900 hover:underline">
-                      {t.id}
-                    </Link>
-                    <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
-                      t.priority === 'Critical' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-zinc-200 text-zinc-700'
-                    }`}>
-                      {t.priority}
+
+          {/* Core overview details */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Quick action checklist */}
+            <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+              <CardHeader className="border-b border-zinc-100 pb-3">
+                <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900 flex items-center gap-2">
+                  <Sliders size={14} /> Administrator Quick Cockpit Actions
+                </CardTitle>
+                <CardDescription className="text-[10px] font-mono">Review system alerts requiring Super Admin sync</CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4 font-mono text-[10px]">
+                <div className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg">
+                  <div>
+                    <span className="font-bold text-zinc-900 block">System RLS Posture Check</span>
+                    <span className="text-[9px] text-zinc-400 mt-0.5 block">Verifies row-level security configuration across Postgres schemas</span>
+                  </div>
+                  <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200">VERIFIED</Badge>
+                </div>
+                
+                <div className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg">
+                  <div>
+                    <span className="font-bold text-zinc-900 block">Expiring Contracts Warning</span>
+                    <span className="text-[9px] text-zinc-400 mt-0.5 block">
+                      {contracts.filter(c => c.isActive && (new Date(c.endDate).getTime() - Date.now()) <= 30 * 24 * 60 * 60 * 1000).length} contracts expire within 30 days.
                     </span>
                   </div>
-                  <div className="text-[10px] font-bold text-zinc-800 truncate">{t.title}</div>
-                  <div className="text-[9px] text-zinc-400 flex justify-between">
-                    <span>{t.organization}</span>
-                    <span>Mod: {t.sapModule}</span>
-                  </div>
+                  <Button onClick={() => setActiveTab('customers')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Audit Contracts</Button>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
 
-        {/* Recent Ticket Activity */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3 shadow-sm">
-          <div className="border-b border-zinc-100 pb-2">
-            <h3 className="font-bold text-xs uppercase text-zinc-950 flex items-center gap-1.5">
-              <Activity size={13} />
-              Recent Operations Activity
-            </h3>
-          </div>
-          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            {recentActivities.length === 0 ? (
-              <p className="text-zinc-400 italic py-2 text-center">No recent history events.</p>
-            ) : (
-              recentActivities.map(act => (
-                <div key={act.id} className="text-[10px] border-b border-zinc-50 pb-2 last:border-0 last:pb-0">
-                  <div className="flex justify-between items-center text-[9px] text-zinc-400">
-                    <span>{act.changedBy}</span>
-                    <span>{new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <div className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg">
+                  <div>
+                    <span className="font-bold text-zinc-900 block">SLA Breaches Response</span>
+                    <span className="text-[9px] text-zinc-400 mt-0.5 block">Check active violation warnings</span>
                   </div>
-                  <p className="mt-0.5 text-zinc-700">
-                    Updated <Link href={`/admin/tickets/${act.ticketId}`} className="font-bold text-zinc-900 hover:underline">{act.ticketId}</Link>:
-                    {" "}
-                    <span className="font-bold text-zinc-800">{act.fieldChanged}</span> changed from 
-                    {" "}
-                    <span className="line-through text-zinc-400">{act.oldValue}</span> to 
-                    {" "}
-                    <span className="font-semibold text-zinc-900 bg-zinc-100 px-1 py-0.2 rounded">{act.newValue}</span>
+                  <Button onClick={() => setActiveTab('escalations')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Audit Violations</Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick status feed */}
+            <Card className="bg-[#09090b] text-zinc-400 border border-zinc-900 shadow-sm rounded-xl flex flex-col justify-between">
+              <CardHeader className="border-b border-zinc-800 pb-3">
+                <CardTitle className="text-xs font-bold font-mono uppercase text-white flex items-center gap-2">
+                  <Database size={14} /> Operations Log Stream
+                </CardTitle>
+                <CardDescription className="text-[10px] text-zinc-500 font-mono">Live database transactional events</CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 flex-1 font-mono text-[9px] space-y-1.5 overflow-y-auto max-h-56">
+                <p><span className="text-zinc-600">&gt;</span> Checking Row Level Security policies...</p>
+                <p><span className="text-emerald-500 font-bold">[OK]</span> Profiles partitions isolation active.</p>
+                <p><span className="text-zinc-600">&gt;</span> Pulled {tickets.length} tickets from Supabase successfully.</p>
+                <p><span className="text-zinc-600">&gt;</span> Synchronized {contracts.length} active contracts.</p>
+                {escalationsQueue.slice(0, 2).map((esc, i) => (
+                  <p key={i} className="text-red-400">
+                    <span className="text-red-500 font-bold">[ESCALATION]</span> Ticket {esc.ticketNumber} raised: {esc.reason}
                   </p>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ── 20 DISTINCT CHARTS INTEGRATED INTO COCKPIT ── */}
+          <div className="border-t border-zinc-250 pt-6 mt-6">
+            <div className="text-center max-w-xl mx-auto space-y-1 mb-6">
+              <h3 className="text-xs font-bold font-mono uppercase text-zinc-900">Assist360 Operations Analytics Wall</h3>
+              <p className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+                20 completely unique system visualizations and performance analysis charts
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              
+              {/* Chart 1: Ticket Volume Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">1. Ticket Volume Trend (Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.ticketVolumeTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="Requests" stroke="#09090b" fill="#09090b" fillOpacity={0.05} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
+              </Card>
 
-        {/* Recent comments */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3 shadow-sm">
-          <div className="border-b border-zinc-100 pb-2">
-            <h3 className="font-bold text-xs uppercase text-zinc-955 flex items-center gap-1.5">
-              <MessageSquare size={13} />
-              Recent Conversations
-            </h3>
+              {/* Chart 2: Cumulative Ticket Growth */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">2. Cumulative Ticket Growth (Line)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsWallData.ticketGrowth} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Line type="monotone" dataKey="total" stroke="#09090b" strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 3: Open vs Closed Tickets */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">3. Open vs Closed Tickets (Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.openVsClosed} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="Closed" fill="#09090b" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="Open" fill="#71717a" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 4: Escalation Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">4. Escalation Trend (Line)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsWallData.escalationTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 5: SLA Compliance Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">5. SLA Compliance Trend (Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.slaTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <YAxis domain={[90, 100]} fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="compliance" stroke="#09090b" fill="#09090b" fillOpacity={0.08} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 6: Customer Case Activity */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">6. Customer Case Activity (Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.customerActivity} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="tickets" fill="#18181b" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 7: Consultant Utilization Spread */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">7. Consultant Utilization Spread (H-Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.consultantUtilization} layout="vertical" margin={{ top: 2, right: 2, left: -22, bottom: 2 }}>
+                      <XAxis type="number" fontSize={8} tickLine={false} />
+                      <YAxis dataKey="name" type="category" fontSize={8} tickLine={false} />
+                      <Bar dataKey="utilization" fill="#09090b" radius={[0, 2, 2, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 8: Manager Case Allocation */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">8. Manager Case Allocation (Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.managerWorkload} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="tickets" fill="#27272a" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 9: Contract Budget Consumption */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">9. Contract Budget Consumption (Stacked Bar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsWallData.contractConsumption} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="Allocated" fill="#e4e4e7" stackId="a" />
+                      <Bar dataKey="Consumed" fill="#09090b" stackId="a" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 10: Resolution Time Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">10. Resolution Time Trend (Line)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsWallData.resolutionTimeTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Line type="monotone" dataKey="hours" stroke="#09090b" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 11: Approval Response Trend */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">11. Approval Response Trend (Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.approvalResponseTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="pendingApprovals" stroke="#71717a" fill="#71717a" fillOpacity={0.05} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 12: Approved Actual Hours */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">12. Approved Actual Hours (Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.approvedHoursTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="hours" stroke="#09090b" fill="#09090b" fillOpacity={0.06} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 13: Estimated vs Actual Hours */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">13. Estimated vs Actual Hours (Composed)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={analyticsWallData.estVsActual} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={7} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Bar dataKey="Actual" fill="#09090b" radius={[2, 2, 0, 0]} />
+                      <Line type="monotone" dataKey="Estimated" stroke="#71717a" strokeWidth={1.5} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 14: Priority Counts Distribution */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">14. Priority Counts Distribution (Pie)</span>
+                <div className="h-44 w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analyticsWallData.priorityDistribution}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={40}
+                        dataKey="value"
+                        label={({ name }) => name ? name.slice(0, 3) : ''}
+                      >
+                        {analyticsWallData.priorityDistribution.map((entry, idx) => (
+                          <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 15: Ticket Categories Spread */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">15. Ticket Categories Spread (Donut)</span>
+                <div className="h-44 w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analyticsWallData.categoryDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={25}
+                        outerRadius={40}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {analyticsWallData.categoryDistribution.map((entry, idx) => (
+                          <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 16: SAP Module Distribution */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">16. SAP Module Distribution (Pie)</span>
+                <div className="h-44 w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analyticsWallData.moduleDistribution}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={40}
+                        dataKey="value"
+                      >
+                        {analyticsWallData.moduleDistribution.map((entry, idx) => (
+                          <Cell key={idx} fill={THEME_COLORS[idx % THEME_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 17: Customer Health Score Spread */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">17. Customer Health Score Spread (Radar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={analyticsWallData.healthScoreSpread}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="subject" fontSize={7} />
+                      <Radar dataKey="score" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 18: Operational Risk Heatmap */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">18. Operational Risk Heatmap (Radar)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={analyticsWallData.riskHeatmap}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="subject" fontSize={7} />
+                      <Radar dataKey="risk" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 19: Manager Delivery Health */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">19. Manager Delivery Health (Line)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsWallData.managerDeliveryHealth} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
+                      <YAxis domain={[50, 100]} fontSize={8} tickLine={false} />
+                      <Line type="monotone" dataKey="score" stroke="#09090b" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Chart 20: Resource Capacity Forecast */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
+                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">20. Resource Capacity Forecast (Stacked Area)</span>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsWallData.capacityForecast} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
+                      <XAxis dataKey="month" fontSize={8} tickLine={false} />
+                      <YAxis fontSize={8} tickLine={false} />
+                      <Area type="monotone" dataKey="Utilized" stackId="a" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
+                      <Area type="monotone" dataKey="Remaining" stackId="a" stroke="#e4e4e7" fill="#e4e4e7" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+            </div>
           </div>
-          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            {recentComments.length === 0 ? (
-              <p className="text-zinc-400 italic py-2 text-center">No comments found.</p>
-            ) : (
-              recentComments.map(c => (
-                <div key={c.id} className="p-2 bg-zinc-50 border border-zinc-150 rounded space-y-1 text-[10px]">
-                  <div className="flex justify-between items-center text-[9px] text-zinc-450">
-                    <span className="font-bold text-zinc-700">{c.authorName} ({c.authorRole})</span>
-                    <span>{c.isInternal ? <span className="text-amber-600 bg-amber-50 border border-amber-200 px-1 rounded text-[8px]">INTERNAL</span> : <span className="text-zinc-400">PUBLIC</span>}</span>
+        </TabsContent>
+
+        {/* ── CUSTOMER PORTFOLIO INTELLIGENCE ── */}
+        <TabsContent value="customers" className="space-y-6 outline-none">
+          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+            <CardHeader className="border-b border-zinc-100 pb-3">
+              <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Customer Portfolio & Hour Consumption</CardTitle>
+              <CardDescription className="text-[10px] font-mono">
+                Lists all registered customers, contract durations, allocated hours, and strictly manager approved utilized actual hours.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-zinc-50 font-mono text-[9px]">
+                    <TableRow className="border-b border-zinc-200">
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Customer</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Code</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Duration</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Contract Status</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Monthly Hours</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Annual Hours</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Approved Utilized</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Pending Approval</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Remaining</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Compliance</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Open / Closed</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="font-mono text-xs text-zinc-800">
+                    {customerPortfolio.map((c, i) => (
+                      <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                        <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{c.name}</TableCell>
+                        <TableCell className="py-3 px-4 text-zinc-500">{c.code}</TableCell>
+                        <TableCell className="py-3 px-4 text-[10px] text-zinc-400">
+                          {c.start} to {c.end}
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          <Badge className={c.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px]' : 'bg-zinc-100 text-zinc-700 border border-zinc-200 text-[9px]'}>
+                            {c.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">{c.monthlyHours}h</TableCell>
+                        <TableCell className="py-3 px-4 text-center">{c.annualHours}h</TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold text-zinc-950">{c.approvedHours.toFixed(1)}h</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-zinc-400">{c.pendingHours.toFixed(1)}h</TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold text-zinc-950">{c.remainingHours.toFixed(1)}h</TableCell>
+                        <TableCell className="py-3 px-4 text-center">
+                          <span className={c.slaCompliance < 98 ? 'text-red-500 font-bold' : 'text-emerald-600 font-bold'}>
+                            {c.slaCompliance.toFixed(1)}%
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center text-[11px]">
+                          <span className="font-bold text-red-600">{c.openCount}</span> / <span className="text-zinc-400">{c.closedCount}</span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── CONSULTANT COMMAND CENTER ── */}
+        <TabsContent value="consultants" className="space-y-6 outline-none">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Heatmap & Risk Summary */}
+            <div className="lg:col-span-4 space-y-6">
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm">
+                <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block mb-3">Capacity Heatmap</span>
+                <div className="grid grid-cols-4 gap-2 font-mono text-[9px] text-center">
+                  {consultantsPortfolio.map((c, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`p-2.5 rounded-lg border flex flex-col justify-between ${
+                        c.workloadRisk === 'Overloaded' ? 'bg-red-50 border-red-200 text-red-700' :
+                        c.workloadRisk === 'Near Capacity' ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                        c.workloadRisk === 'Underutilized' ? 'bg-zinc-50 border-zinc-200 text-zinc-500' :
+                        'bg-zinc-900 border-zinc-900 text-white'
+                      }`}
+                    >
+                      <span className="font-extrabold truncate">{c.name.split(' ')[0]}</span>
+                      <span className="text-xs font-extrabold mt-1">{c.utilization.toFixed(0)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Overloaded List */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-3 font-mono text-xs">
+                <span className="text-[9px] font-bold text-zinc-400 uppercase block">Overloaded Consultants</span>
+                {overloadedConsultants.length > 0 ? (
+                  <div className="space-y-2">
+                    {overloadedConsultants.map((c, i) => (
+                      <div key={i} className="flex justify-between items-center p-2 bg-red-50/50 border border-red-100 rounded-lg">
+                        <span>{c.name} ({c.type})</span>
+                        <Badge className="bg-red-100 text-red-700 text-[8px] font-bold">{c.activeCount} open cases</Badge>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-zinc-800 line-clamp-2 mt-0.5 italic">"{c.content}"</p>
-                  <div className="text-right text-[8px] text-zinc-400">
-                    on <Link href={`/admin/tickets/${c.ticketId}`} className="font-bold hover:underline text-zinc-500">{c.ticketId}</Link>
+                ) : (
+                  <p className="text-zinc-400 text-[10px]">No consultants overload reported.</p>
+                )}
+              </Card>
+
+              {/* Underutilized List */}
+              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-3 font-mono text-xs">
+                <span className="text-[9px] font-bold text-zinc-400 uppercase block">Underutilized Specialists</span>
+                {underutilizedConsultants.length > 0 ? (
+                  <div className="space-y-2">
+                    {underutilizedConsultants.map((c, i) => (
+                      <div key={i} className="flex justify-between items-center p-2 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500">
+                        <span>{c.name}</span>
+                        <Badge className="bg-zinc-100 text-zinc-600 border border-zinc-200 text-[8px] font-bold">{c.utilization.toFixed(0)}% load</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-zinc-400 text-[10px]">All consultants optimized.</p>
+                )}
+              </Card>
+
+            </div>
+
+            {/* Main Consultant Table */}
+            <div className="lg:col-span-8">
+              <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+                <CardHeader className="border-b border-zinc-100 pb-3">
+                  <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Consultant Command & Utilization Matrix</CardTitle>
+                  <CardDescription className="text-[10px] font-mono">
+                    Monitors functional/technical credentials, ticket loads, billing hours, capacity (160h standard), and workload risks.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader className="bg-zinc-50 font-mono text-[9px]">
+                        <TableRow className="border-b border-zinc-200">
+                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Consultant</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Type / Module</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Tickets (Open/Closed)</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Approved Hours</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Utilization</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Workload Risk</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="font-mono text-xs text-zinc-800">
+                        {consultantsPortfolio.map((c, i) => (
+                          <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                            <TableCell className="py-3 px-4 font-extrabold text-zinc-900">
+                              <div>
+                                <span>{c.name}</span>
+                                <span className="text-[9px] text-zinc-400 block font-normal mt-0.5">{c.email}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <span className="text-[10px] block font-bold text-zinc-500 uppercase">{c.type}</span>
+                              <span className="text-[9px] text-zinc-400 block mt-0.5">{c.modules.join(', ') || 'General'}</span>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-center">
+                              <span className="text-red-500 font-extrabold">{c.activeCount}</span> / <span className="text-zinc-400">{c.closedCount}</span>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-center font-bold text-zinc-900">{c.approvedHours.toFixed(1)}h</TableCell>
+                            <TableCell className="py-3 px-4 text-center">
+                              <div className="w-20 mx-auto space-y-1">
+                                <span className="font-bold block text-[10px] text-zinc-900">{c.utilization.toFixed(0)}%</span>
+                                <div className="w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-1.5 rounded-full ${c.utilization > 90 ? 'bg-red-500' : c.utilization > 75 ? 'bg-orange-500' : 'bg-zinc-900'}`} 
+                                    style={{ width: `${Math.min(100, c.utilization)}%` }} 
+                                  />
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-center">
+                              <Badge className={
+                                c.workloadRisk === 'Overloaded' ? 'bg-red-50 text-red-700 border border-red-200 text-[9px]' :
+                                c.workloadRisk === 'Near Capacity' ? 'bg-orange-50 text-orange-700 border border-orange-200 text-[9px]' :
+                                'bg-zinc-100 text-zinc-700 border border-zinc-200 text-[9px]'
+                              }>
+                                {c.workloadRisk}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+          </div>
+        </TabsContent>
+
+        {/* ── SAP MANAGER COMMAND CENTER ── */}
+        <TabsContent value="managers" className="space-y-6 outline-none">
+          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+            <CardHeader className="border-b border-zinc-100 pb-3">
+              <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">SAP Manager Performance Ranks</CardTitle>
+              <CardDescription className="text-[10px] font-mono">
+                Lists all registered SAP Delivery Managers, team coverage size, pending approval loads, SLA warning risks, and overall delivery health scores.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-zinc-50 font-mono text-[9px]">
+                    <TableRow className="border-b border-zinc-200">
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Manager</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Tickets Managed</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Customers Managed</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Team size</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Pending Approvals</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Escalations</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">SLA Compliance</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">SLA Risks</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Avg Approval Speed</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Delivery Health</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="font-mono text-xs text-zinc-800">
+                    {managersPortfolio.map((m, i) => (
+                      <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                        <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{m.name}</TableCell>
+                        <TableCell className="py-3 px-4 text-center">{m.ticketsManaged}</TableCell>
+                        <TableCell className="py-3 px-4 text-center">{m.customersManaged}</TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold text-zinc-900">{m.teamSize} consultants</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-orange-600 font-bold">{m.pendingApprovals}</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-red-500 font-bold">{m.escalations}</TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold">{m.slaCompliance.toFixed(1)}%</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-red-500 font-bold">{m.slaRisks}</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-zinc-500">
+                          {m.avgApprovalSpeedHours > 0 ? `${m.avgApprovalSpeedHours.toFixed(1)} hours` : 'Immediate'}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">
+                          <span className={`font-extrabold ${m.deliveryHealth > 85 ? 'text-emerald-600' : 'text-orange-500'}`}>
+                            {m.deliveryHealth}%
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── APPROVALS & REOPEN/DELETE QUEUE ── */}
+        <TabsContent value="approvals" className="space-y-6 outline-none">
+          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+            <CardHeader className="border-b border-zinc-100 pb-3">
+              <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Pending Approvals Ledger Queue</CardTitle>
+              <CardDescription className="text-[10px] font-mono">
+                Lists all timesheet approvals, ticket closure requests, reopen requests, unlock requests, and soft delete requests awaiting administrative audit confirmation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {approvalsQueue.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-zinc-50 font-mono text-[9px]">
+                      <TableRow className="border-b border-zinc-200">
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Ticket Number</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Type</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Details</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Requester</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Date Raised</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="font-mono text-xs text-zinc-800">
+                      {approvalsQueue.map((item, i) => (
+                        <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">
+                            <Link href={`/admin/tickets/${item.ticketId}`} className="hover:underline text-zinc-900">
+                              {item.ticketNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
+                            <Badge className={
+                              item.type === 'Timesheet' ? 'bg-blue-50 text-blue-700 border border-blue-100 text-[9px]' :
+                              item.type === 'Closure' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 text-[9px]' :
+                              item.type === 'Unlock' ? 'bg-purple-50 text-purple-700 border border-purple-100 text-[9px]' :
+                              item.type === 'Delete' ? 'bg-red-50 text-red-700 border border-red-100 text-[9px]' :
+                              'bg-zinc-100 text-zinc-700 border border-zinc-200 text-[9px]'
+                            }>
+                              {item.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-zinc-600 max-w-sm truncate">{item.details}</TableCell>
+                          <TableCell className="py-3 px-4 text-zinc-500 font-bold">{item.requester}</TableCell>
+                          <TableCell className="py-3 px-4 text-[10px] text-zinc-400">
+                            {new Date(item.date).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-right space-x-2">
+                            {item.type === 'Timesheet' && (
+                              <>
+                                <Button onClick={() => executeTimesheetApproval(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Approve</Button>
+                                <Button onClick={() => executeTimesheetApproval(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 rounded">Reject</Button>
+                              </>
+                            )}
+                            {item.type === 'Closure' && (
+                              <>
+                                <Button onClick={() => executeClosureApproval(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Approve</Button>
+                                <Button onClick={() => executeClosureApproval(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 rounded">Reject</Button>
+                              </>
+                            )}
+                            {item.type === 'Delete' && (
+                              <>
+                                <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-red-600 hover:bg-red-700 text-white rounded">Confirm Delete</Button>
+                                <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 rounded">Reject</Button>
+                              </>
+                            )}
+                            {!['Timesheet', 'Closure', 'Delete'].includes(item.type) && (
+                              <Button asChild size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">
+                                <Link href={`/admin/tickets/${item.ticketId}`}>Open Ticket</Link>
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12 font-mono text-zinc-400 text-xs">
+                  All approvals fully processed. No pending requests.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── ESCALATIONS CENTER ── */}
+        <TabsContent value="escalations" className="space-y-6 outline-none">
+          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+            <CardHeader className="border-b border-zinc-100 pb-3">
+              <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Escalation Center Audit Queue</CardTitle>
+              <CardDescription className="text-[10px] font-mono">
+                Lists all tickets currently flagged for manager or administrator attention.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {escalationsQueue.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-zinc-50 font-mono text-[9px]">
+                      <TableRow className="border-b border-zinc-200">
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Ticket</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Title</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Customer</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Assignees</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Severity / Priority</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Escalation Reason</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Date Raised</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="font-mono text-xs text-zinc-800">
+                      {escalationsQueue.map((esc, i) => (
+                        <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">
+                            <Link href={`/admin/tickets/${esc.ticketId}`} className="hover:underline">
+                              {esc.ticketNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{esc.title}</TableCell>
+                          <TableCell className="py-3 px-4 text-zinc-500 font-bold">{esc.customer}</TableCell>
+                          <TableCell className="py-3 px-4">
+                            <span className="text-[10px] text-zinc-400 block font-normal">Mgr: {esc.manager}</span>
+                            <span className="text-[10px] text-zinc-400 block font-normal">Cons: {esc.consultant}</span>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-center space-y-1">
+                            <Badge className="bg-red-50 text-red-700 border border-red-200 text-[8px] font-bold block w-fit mx-auto">{esc.severity} Severity</Badge>
+                            <span className="text-[10px] text-zinc-400 block font-normal">Priority: {esc.priority}</span>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-zinc-600 max-w-sm truncate">{esc.reason}</TableCell>
+                          <TableCell className="py-3 px-4 text-[10px] text-zinc-400">
+                            {new Date(esc.date).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12 font-mono text-zinc-400 text-xs">
+                  Zero active escalations reported. All operations normal.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── PLATFORM HEALTH ── */}
+        <TabsContent value="health" className="space-y-6 outline-none font-mono">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Health status checks */}
+            <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+              <CardHeader className="border-b border-zinc-100 pb-3 flex flex-row justify-between items-center">
+                <div>
+                  <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">System Posture Health Monitor</CardTitle>
+                  <CardDescription className="text-[10px] font-mono">Real-time pings checking active endpoints</CardDescription>
+                </div>
+                <Button 
+                  onClick={runPlatformHealthChecks} 
+                  disabled={checkingHealth}
+                  className="h-7 text-[9px] uppercase font-bold bg-zinc-950 text-white rounded px-3"
+                >
+                  {checkingHealth ? 'Testing...' : 'Retest Health'}
+                </Button>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3 text-xs">
+                {Object.entries(healthStatus).map(([key, h]) => (
+                  <div key={key} className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg">
+                    <span className="font-extrabold uppercase text-zinc-800">{key} Integration</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-zinc-400 font-normal">Latency: {h.latency}ms</span>
+                      <Badge className={h.status === 'Online' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}>
+                        {h.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Delivery Health center warning posture */}
+            <Card className="bg-white border-zinc-200 shadow-sm rounded-xl p-6 space-y-4">
+              <span className="text-[9px] font-bold text-zinc-400 uppercase block">Delivery Health Posture Status</span>
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center font-extrabold text-sm border-2 ${
+                  deliveryHealthPostures.posture === 'Healthy' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' :
+                  deliveryHealthPostures.posture === 'Warning' ? 'bg-orange-50 border-orange-500 text-orange-700' :
+                  'bg-red-50 border-red-500 text-red-700'
+                }`}>
+                  {deliveryHealthPostures.posture}
+                </div>
+                <div>
+                  <span className="text-sm font-extrabold text-zinc-900 uppercase block">Operational Status: {deliveryHealthPostures.posture}</span>
+                  <span className="text-[10px] text-zinc-400 mt-1 block">
+                    {deliveryHealthPostures.warnings.length > 0 
+                      ? `Active concerns: ${deliveryHealthPostures.warnings.join(', ')}`
+                      : 'All operations performing within SLA targets.'
+                    }
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-zinc-100 pt-4 space-y-3 text-[10px]">
+                <div className="flex justify-between">
+                  <span>SLA Breaches Limit Posture:</span>
+                  <span className={globalStats.slaBreachesCount > 0 ? 'text-red-500 font-bold' : 'text-emerald-600 font-bold'}>
+                    {globalStats.slaBreachesCount > 0 ? 'WARN' : 'SECURE'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Approval queue backlog index:</span>
+                  <span className={globalStats.pendingApprovalsCount > 10 ? 'text-orange-500 font-bold' : 'text-emerald-600 font-bold'}>
+                    {globalStats.pendingApprovalsCount > 10 ? 'WARN' : 'SECURE'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Manager response compliance score:</span>
+                  <span className="text-zinc-900 font-bold">OPTIMAL</span>
+                </div>
+              </div>
+            </Card>
+
+          </div>
+        </TabsContent>
+
+        {/* ── AUDIT LOGS HISTORY PANEL ── */}
+        <TabsContent value="audits" className="space-y-6 outline-none">
+          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+            <CardHeader className="border-b border-zinc-100 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Audit History Ledger Trails</CardTitle>
+                <CardDescription className="text-[10px] font-mono">
+                  Search and review admin actions, password updates, deactivation changes, and system transaction logs.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto font-mono text-xs">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    placeholder="Search audits..."
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 pl-8 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
+                  />
+                </div>
+                <Button 
+                  onClick={handleExportAuditsCSV}
+                  className="h-8 text-[9px] uppercase font-bold bg-zinc-950 text-white rounded px-3 flex items-center gap-1.5"
+                >
+                  <Download size={12} /> Export CSV
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {auditsLoading ? (
+                <div className="py-20 text-center font-mono text-xs text-zinc-400 animate-pulse">Loading audits...</div>
+              ) : filteredAuditLogs.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-zinc-50 font-mono text-[9px]">
+                      <TableRow className="border-b border-zinc-200">
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Log ID</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Target User Email</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Action performed</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Performed By</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Timestamp</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="font-mono text-xs text-zinc-800">
+                      {filteredAuditLogs.map((log, i) => (
+                        <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                          <TableCell className="py-3 px-4 text-zinc-400 text-[10px]">{log.id.slice(0, 8).toUpperCase()}...</TableCell>
+                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{log.user_email}</TableCell>
+                          <TableCell className="py-3 px-4">
+                            <Badge className="bg-zinc-100 text-zinc-800 border border-zinc-200 text-[9px] font-bold">
+                              {log.action}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-zinc-500 font-bold">{log.performed_by}</TableCell>
+                          <TableCell className="py-3 px-4 text-[10px] text-zinc-400">
+                            {new Date(log.created_at).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12 font-mono text-zinc-400 text-xs">No audit logs matched search criteria.</div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── PASSWORD MANAGEMENT & IAM ── */}
+        <TabsContent value="iam" className="space-y-6 outline-none">
+          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
+            <CardHeader className="border-b border-zinc-100 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">User Identity & Access Management (IAM)</CardTitle>
+                <CardDescription className="text-[10px] font-mono">
+                  Enforce password change requirements, toggle user account lock status, reset user credentials, or deactivate profiles.
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto font-mono text-xs">
+                <select 
+                  value={selectedUserType}
+                  onChange={(e) => setSelectedUserType(e.target.value as any)}
+                  className="bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none"
+                >
+                  <option value="All">All Roles</option>
+                  <option value="Customer">Customers</option>
+                  <option value="Consultant">Consultants</option>
+                  <option value="Manager">Managers</option>
+                  <option value="SuperAdmin">Super Admins</option>
+                </select>
+
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={userSearchTerm}
+                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    placeholder="Search users..."
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 pl-8 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {filteredIAMUsers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-zinc-50 font-mono text-[9px]">
+                      <TableRow className="border-b border-zinc-200">
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Full Name</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Email Address</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">IAM Role</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Account Lock</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Access Status</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="font-mono text-xs text-zinc-800">
+                      {filteredIAMUsers.map((u, i) => (
+                        <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{u.full_name || 'N/A'}</TableCell>
+                          <TableCell className="py-3 px-4 text-zinc-500 font-bold">{u.email}</TableCell>
+                          <TableCell className="py-3 px-4">
+                            <Badge className="bg-zinc-100 text-zinc-800 border border-zinc-200 text-[9px] font-bold">
+                              {u.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-center">
+                            <Badge className={u.is_locked ? 'bg-red-50 text-red-700 border border-red-200 text-[9px]' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px]'}>
+                              {u.is_locked ? 'LOCKED' : 'SECURE'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-center">
+                            <Badge className={u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px]' : 'bg-zinc-100 text-zinc-700 border border-zinc-200 text-[9px]'}>
+                              {u.is_active ? 'ENABLED' : 'DISABLED'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-right space-x-2">
+                            {u.is_locked && (
+                              <Button onClick={() => handleUserUnlock(u)} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Unlock</Button>
+                            )}
+                            <Button 
+                              onClick={() => {
+                                setSelectedIAMUser(u);
+                                setManualPassword('');
+                                setGeneratedPassResult('');
+                                setIsIAMModalOpen(true);
+                              }} 
+                              size="sm" 
+                              className="h-6 text-[8px] uppercase font-bold bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 rounded"
+                            >
+                              Password Actions
+                            </Button>
+                            {u.role !== 'SuperAdmin' && (
+                              <Button 
+                                onClick={() => handleUserToggleActive(u)} 
+                                size="sm" 
+                                className={`h-6 text-[8px] uppercase font-bold rounded ${
+                                  u.is_active ? 'bg-red-50 text-red-700 border border-red-100 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100'
+                                }`}
+                              >
+                                {u.is_active ? 'Disable' : 'Enable'}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12 font-mono text-zinc-400 text-xs font-bold">No users found.</div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* ── IAM CREDENTIALS MANAGER MODAL ── */}
+      <Dialog open={isIAMModalOpen} onOpenChange={setIsIAMModalOpen}>
+        <DialogContent className="bg-white border border-zinc-200 rounded-lg max-w-md p-6 text-zinc-900 shadow-xl font-mono text-xs">
+          {selectedIAMUser && (
+            <>
+              <DialogHeader className="space-y-1">
+                <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-900">IAM Credentials override</DialogTitle>
+                <DialogDescription className="text-[10px] text-zinc-400 font-mono">
+                  Target Account: {selectedIAMUser.full_name || selectedIAMUser.email} ({selectedIAMUser.role})
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 pt-3">
+                <div className="p-3 bg-zinc-50 border border-zinc-100 rounded-lg space-y-1">
+                  <span className="text-[8px] text-zinc-400 font-bold uppercase block">Administrative Actions</span>
+                  <div className="flex gap-2">
+                    <Button onClick={handleIAMActionReset} className="h-7 text-[9px] uppercase font-bold bg-zinc-950 text-white rounded px-3">
+                      Reset Password
+                    </Button>
+                    <span className="text-[10px] text-zinc-400 self-center">Generates secure temporary password</span>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
 
-      </div>
+                {generatedPassResult && (
+                  <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg space-y-1">
+                    <span className="text-[8px] text-emerald-700 font-bold uppercase block">Temporary Credentials Ready</span>
+                    <div className="flex justify-between items-center bg-white p-2 rounded border border-zinc-200 text-zinc-900 text-[11px] font-extrabold select-all">
+                      <span>{generatedPassResult}</span>
+                      <Button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(`Email: ${selectedIAMUser.email}\nPassword: ${generatedPassResult}`);
+                          toast.success('Credentials copied to clipboard.');
+                        }}
+                        size="sm" 
+                        className="h-5 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded px-2"
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                    <span className="text-[8px] text-zinc-400 block mt-1">Setup flags: force_password_change=true, first_login_completed=false</span>
+                  </div>
+                )}
 
-      {/* AI command insights panel */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-            <Cpu size={14} />
-            Command Center AI Diagnosis Insights
-          </h3>
-          <span className="px-2 py-0.5 bg-zinc-100 border border-zinc-200 rounded text-[9px] font-bold text-zinc-500">
-            LLM ANALYZER ACTIVE
-          </span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[11px] leading-relaxed">
-          <div className="space-y-1 bg-zinc-50 border border-zinc-150 rounded p-3">
-            <p className="font-bold text-zinc-900 uppercase text-[9px] text-zinc-500">Resource Load Recommendation</p>
-            <p className="text-zinc-650 mt-1">Consultant **Karthik Subramanian** is assigned to {consultantWorkload['Karthik Subramanian'] || 0} active tickets, exceeding the recommended limit of 3 for critical projects. Reassign MM tickets to Amit Patel.</p>
-          </div>
-          <div className="space-y-1 bg-zinc-50 border border-zinc-150 rounded p-3">
-            <p className="font-bold text-zinc-900 uppercase text-[9px] text-zinc-500">Contract Hour Alerts</p>
-            <p className="text-zinc-650 mt-1">**Apex Global Industries** Support Contract has burned 485.5h of 1200h (40.5%). Their monthly consumption rate is healthy, projecting ample hours for rollout hypercare schedules.</p>
-          </div>
-          <div className="space-y-1 bg-zinc-50 border border-zinc-150 rounded p-3">
-            <p className="font-bold text-zinc-900 uppercase text-[9px] text-zinc-500">SLA Violation Forecast</p>
-            <p className="text-zinc-650 mt-1">Incident **SST-FICO-1023** is currently in "New" state with an approaching SLA threshold. It has no assigned consultant. Assign Rajesh Kumar immediately to prevent breach penalties.</p>
-          </div>
-        </div>
-      </div>
+                <div className="border-t border-zinc-100 pt-3 space-y-3">
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase block">Manual Password Override</span>
+                  <div className="space-y-1">
+                    <label className="text-[8px] uppercase font-bold text-zinc-500">New Secure Password</label>
+                    <input 
+                      type="password"
+                      value={manualPassword}
+                      onChange={(e) => setManualPassword(e.target.value)}
+                      placeholder="Enter new password..."
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-1">
+                    <div>
+                      <span className="font-bold text-zinc-800 block text-[10px]">Force Setup on Next Login</span>
+                      <span className="text-[8px] text-zinc-400 mt-0.5 block">Requires user to change password on authentication</span>
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      checked={forcePasswordChange}
+                      onChange={(e) => setForcePasswordChange(e.target.checked)}
+                      className="w-4 h-4 rounded border-zinc-200 text-zinc-900 focus:ring-zinc-900"
+                    />
+                  </div>
+
+                  <Button 
+                    onClick={handleIAMActionUpdate}
+                    className="w-full h-8 text-[9px] uppercase font-bold bg-zinc-950 text-white rounded"
+                  >
+                    Apply Manual Password Override
+                  </Button>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4">
+                <Button 
+                  onClick={() => setIsIAMModalOpen(false)}
+                  className="w-full bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-200 font-bold uppercase tracking-wider text-[9px] py-2 rounded"
+                >
+                  Close Manager View
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

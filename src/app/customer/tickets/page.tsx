@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import {
   Search,
   SlidersHorizontal,
@@ -20,11 +22,21 @@ import {
   Clock,
   HelpCircle,
   AlertTriangle,
-  FolderOpen
+  FolderOpen,
+  Upload,
+  X,
+  LayoutGrid,
+  List,
+  Building2,
+  Layers,
+  Calendar
 } from 'lucide-react';
 import { Card, CardContent } from '../../../components/ui/card';
+import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { Badge } from '../../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { ToggleGroup, ToggleGroupItem } from '../../../components/ui/toggle-group';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -45,9 +57,17 @@ import {
 } from '../../../components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../../components/ui/tooltip';
 
+interface PendingAttachment {
+  id: string;
+  file: File;
+  progress: number;
+  previewUrl?: string;
+}
+
 export default function CustomerTicketsPage() {
   const { tickets, loading, requestEscalation, requestDelete, updateTicket, addComment } = useTickets();
   const { user } = useAuth();
+  const router = useRouter();
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,6 +76,23 @@ export default function CustomerTicketsPage() {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [scopeFilter, setScopeFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem('customer.ticketView');
+    if (saved === 'card' || saved === 'table') {
+      setViewMode(saved);
+    }
+  }, []);
+
+  const handleViewModeChange = (val: 'table' | 'card') => {
+    setViewMode(val);
+    localStorage.setItem('customer.ticketView', val);
+  };
 
   // Sorting state
   const [sortField, setSortField] = useState<string>('createdAt');
@@ -81,6 +118,7 @@ export default function CustomerTicketsPage() {
   const [isEscalateOpen, setIsEscalateOpen] = useState(false);
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateSeverity, setEscalateSeverity] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  const [escalateFiles, setEscalateFiles] = useState<PendingAttachment[]>([]);
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
@@ -89,6 +127,10 @@ export default function CustomerTicketsPage() {
   const companyTickets = useMemo(() => {
     return tickets.filter(t => t.organization === customerCompany && t.softDeleteStatus !== 'Archived');
   }, [tickets, customerCompany]);
+
+  const activeTicket = useMemo(() => {
+    return companyTickets.find(t => t.id === activeTicketId);
+  }, [companyTickets, activeTicketId]);
 
   const now = Date.now();
 
@@ -126,9 +168,9 @@ export default function CustomerTicketsPage() {
 
   // Helper: Sum Approved efforts hours logged
   const getConsumedHours = (t: any) => {
-    return (t.efforts || [])
-      .filter((e: any) => e.status === 'Approved')
-      .reduce((sum: number, e: any) => sum + e.hoursLogged, 0);
+    return (t.actualHoursLogs || [])
+      .filter((ah: any) => ah.approvalStatus?.toLowerCase() === 'approved')
+      .reduce((sum: number, ah: any) => sum + (ah.actualHours || 0), 0);
   };
 
   // Column Visibility Config - 20 togglable fields + Actions
@@ -181,6 +223,7 @@ export default function CustomerTicketsPage() {
         const q = searchQuery.toLowerCase();
         const matches =
           t.id.toLowerCase().includes(q) ||
+          (t.ticketNumber && t.ticketNumber.toLowerCase().includes(q)) ||
           t.title.toLowerCase().includes(q) ||
           t.description.toLowerCase().includes(q);
         if (!matches) return false;
@@ -210,9 +253,42 @@ export default function CustomerTicketsPage() {
         if (ft !== scopeFilter) return false;
       }
 
+      // Date range filtering
+      if (dateFilter !== 'All') {
+        const created = new Date(t.createdAt);
+        const createdMs = created.getTime();
+        
+        if (dateFilter === 'current-month') {
+          const now = new Date();
+          if (created.getMonth() !== now.getMonth() || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-quarter') {
+          const now = new Date();
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          const createdQuarter = Math.floor(created.getMonth() / 3);
+          if (createdQuarter !== currentQuarter || created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'current-year') {
+          const now = new Date();
+          if (created.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (dateFilter === 'custom') {
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (createdMs < start.getTime()) return false;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            if (createdMs > end.getTime()) return false;
+          }
+        }
+      }
+
       return true;
     });
-  }, [companyTickets, searchQuery, statusFilter, moduleFilter, priorityFilter, typeFilter, scopeFilter]);
+  }, [companyTickets, searchQuery, statusFilter, moduleFilter, priorityFilter, typeFilter, scopeFilter, dateFilter, customStartDate, customEndDate]);
 
   // Sort Data
   const sortedTickets = useMemo(() => {
@@ -463,10 +539,43 @@ export default function CustomerTicketsPage() {
     }, 1200);
   };
 
-  const submitEscalate = () => {
+  const handleEscalateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const selected = Array.from(e.target.files);
+    const newFiles = selected.map(file => {
+      const id = `${Date.now()}-${file.name}`;
+      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+      const pendingFile: PendingAttachment = { id, file, progress: 0, previewUrl };
+      let currentProgress = 0;
+      const interval = setInterval(() => {
+        currentProgress += 10;
+        setEscalateFiles(prev => prev.map(f => f.id === id ? { ...f, progress: currentProgress } : f));
+        if (currentProgress >= 100) clearInterval(interval);
+      }, 50);
+      return pendingFile;
+    });
+    setEscalateFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const removeEscalateFile = (id: string) => {
+    setEscalateFiles(prev => {
+      const target = prev.find(f => f.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter(f => f.id !== id);
+    });
+  };
+
+  const submitEscalate = async () => {
     if (!activeTicketId || !escalateReason.trim() || !user) return;
-    requestEscalation(activeTicketId, escalateReason, escalateSeverity, user.name);
+    const filesToSubmit = escalateFiles.filter(f => f.progress >= 100).map(f => ({
+      fileName: f.file.name,
+      fileSize: f.file.size,
+      fileType: f.file.type || f.file.name.split('.').pop() || 'pdf',
+      fileObj: f.file
+    }));
+    await requestEscalation(activeTicketId, escalateReason, escalateSeverity, user.name, filesToSubmit.length > 0 ? filesToSubmit : undefined);
     setIsEscalateOpen(false);
+    setEscalateFiles([]);
   };
 
   const submitDelete = () => {
@@ -481,7 +590,7 @@ export default function CustomerTicketsPage() {
     const effortsVal = getConsumedHours(ticket).toFixed(1);
     const content = `SAP SUPPORT DESK - TICKET RECORD EXPORT
 ==================================================
-Ticket ID      : ${ticket.id}
+Ticket Number  : ${ticket.ticketNumber}
 Created By     : ${ticket.createdByName || ticket.requestedBy}
 Created At     : ${new Date(ticket.createdAt).toLocaleString()}
 Subject        : ${ticket.title}
@@ -544,460 +653,381 @@ ${ticket.description}
         </div>
 
         {/* Filtering Panel */}
-        <Card className="border-zinc-200 shadow-sm bg-white">
-          <CardContent className="p-4 space-y-4">
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              {/* Search */}
-              <div className="relative w-full md:max-w-md">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                  placeholder="Search by Ticket ID / Subject..."
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-9 pr-4 py-1.5 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
-                />
-              </div>
-
-              {/* Column visibility checkbox menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-8.5 text-[10px] font-mono font-bold uppercase tracking-wider border-zinc-200 flex items-center gap-1 text-zinc-700">
-                    <SlidersHorizontal size={13} />
-                    <span>Toggle Fields</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 font-mono text-[10px] bg-white border border-zinc-200 rounded-lg shadow-md max-h-64 overflow-y-auto">
-                  <DropdownMenuLabel>Visible Table Columns</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {columnsList.map((col) => (
-                    <DropdownMenuCheckboxItem
-                      key={col.key}
-                      checked={visibleColumns[col.key]}
-                      onCheckedChange={() => toggleColumn(col.key)}
-                      className="cursor-pointer hover:bg-zinc-50 py-1"
-                    >
-                      {col.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white border border-zinc-200 rounded-lg p-3 shadow-sm">
+            {/* Search */}
+            <div className="relative w-full md:max-w-md">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                placeholder="Search by Ticket ID / Subject..."
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-9 pr-4 py-1.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+              />
             </div>
 
-            {/* Filters Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 border-t border-zinc-100 pt-4">
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Status</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none focus:border-zinc-950"
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="New">New</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Waiting for Customer">Awaiting Customer</option>
-                  <option value="Waiting for Internal Team">Awaiting Internal</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                  <option value="Reopened">Reopened</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">SAP Module</label>
-                <select
-                  value={moduleFilter}
-                  onChange={(e) => { setModuleFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All Modules</option>
-                  <option value="FICO">FICO</option>
-                  <option value="MM">MM</option>
-                  <option value="SD">SD</option>
-                  <option value="PP">PP</option>
-                  <option value="BASIS">BASIS</option>
-                  <option value="ABAP">ABAP</option>
-                  <option value="SuccessFactors">SuccessFactors</option>
-                  <option value="Security/GRC">Security/GRC</option>
-                  <option value="CPI/Integration">CPI/Integration</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Priority</label>
-                <select
-                  value={priorityFilter}
-                  onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All Priorities</option>
-                  <option value="Critical">Critical</option>
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Ticket Type</label>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All Types</option>
-                  <option value="Incident">Incident</option>
-                  <option value="Service Request">Service Request</option>
-                  <option value="Enhancement Request">Enhancement Request</option>
-                  <option value="Change Request">Change Request</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Classification</label>
-                <select
-                  value={scopeFilter}
-                  onChange={(e) => { setScopeFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none"
-                >
-                  <option value="All">All Scope</option>
-                  <option value="Functional">Functional</option>
-                  <option value="Technical">Technical</option>
-                </select>
-              </div>
+            {/* View Mode */}
+            <div className="flex items-center gap-2">
+              <ToggleGroup type="single" value={viewMode} onValueChange={(val) => { if (val) handleViewModeChange(val as 'table' | 'card'); }}>
+                <ToggleGroupItem value="card" aria-label="Card View" className="h-8 px-2 border border-zinc-200 bg-white text-zinc-700 data-[state=on]:bg-zinc-100 data-[state=on]:text-zinc-900">
+                  <LayoutGrid size={14} />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="table" aria-label="Table View" className="h-8 px-2 border border-zinc-200 bg-white text-zinc-700 data-[state=on]:bg-zinc-100 data-[state=on]:text-zinc-900">
+                  <List size={14} />
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <TicketFilterPanel
+            enabledFilters={['status', 'module', 'priority', 'type', 'scope', 'dateSelect']}
+            statusFilter={statusFilter}
+            setStatusFilter={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+            moduleFilter={moduleFilter}
+            setModuleFilter={(val) => { setModuleFilter(val); setCurrentPage(1); }}
+            priorityFilter={priorityFilter}
+            setPriorityFilter={(val) => { setPriorityFilter(val); setCurrentPage(1); }}
+            typeFilter={typeFilter}
+            setTypeFilter={(val) => { setTypeFilter(val); setCurrentPage(1); }}
+            scopeFilter={scopeFilter}
+            setScopeFilter={(val) => { setScopeFilter(val); setCurrentPage(1); }}
+            dateFilter={dateFilter}
+            setDateFilter={(val) => { setDateFilter(val); setCurrentPage(1); }}
+            startDateFilter={customStartDate}
+            setStartDateFilter={(val) => { setCustomStartDate(val); setCurrentPage(1); }}
+            endDateFilter={customEndDate}
+            setEndDateFilter={(val) => { setCustomEndDate(val); setCurrentPage(1); }}
+            onResetFilters={() => {
+              setStatusFilter('All');
+              setModuleFilter('All');
+              setPriorityFilter('All');
+              setTypeFilter('All');
+              setScopeFilter('All');
+              setDateFilter('All');
+              setCustomStartDate('');
+              setCustomEndDate('');
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+
 
         {/* Data Table Workspace */}
-        <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
-              <Table className="min-w-[1200px]">
-                <TableHeader className="sticky top-0 bg-zinc-50 z-10 border-b border-zinc-200">
-                  <TableRow>
-                    {columnsList.map((col) => {
-                      if (!visibleColumns[col.key]) return null;
-                      const isSortable = ['id', 'createdAt', 'title', 'priority', 'status', 'slaStatus', 'age', 'updatedAt'].includes(col.key);
-                      return (
-                        <TableHead
-                          key={col.key}
-                          onClick={() => isSortable && handleSort(col.key)}
-                          className={`text-[9px] font-bold text-zinc-500 uppercase tracking-wider py-3.5 px-4 cursor-pointer select-none font-mono ${
-                            isSortable ? 'hover:bg-zinc-100 hover:text-zinc-950' : ''
-                          }`}
+        {loading ? (
+          <div className={viewMode === 'card' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "w-full space-y-2"}>
+            {Array.from({ length: 6 }).map((_, idx) => (
+              viewMode === 'card' ? (
+                <Card key={idx} className="border-zinc-200 shadow-sm bg-white overflow-hidden p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-20" />
+                    <div className="flex gap-1.5">
+                      <Skeleton className="h-4 w-12" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-12 w-full" />
+                  <div className="pt-3 border-t border-zinc-100 flex items-center justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                </Card>
+              ) : (
+                <div key={idx} className="flex gap-4 p-3 border-b border-zinc-100 items-center">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              )
+            ))}
+          </div>
+        ) : viewMode === 'card' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentTickets.length === 0 ? (
+              <div className="col-span-full text-center py-12 bg-white border border-zinc-200 rounded-xl space-y-3 shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mx-auto">
+                  <FolderOpen size={20} className="text-zinc-450" />
+                </div>
+                <p className="text-sm font-medium text-zinc-500">No tickets found matching your selection.</p>
+              </div>
+            ) : (
+              currentTickets.map((t: any) => {
+                const actualHours = t.actualHoursLogs ? t.actualHoursLogs.reduce((sum: number, log: any) => sum + (log.actualHours || 0), 0) : 0;
+                const isIncident = t.ticketType === 'Incident' || !t.ticketType;
+                const hasSla = isIncident && t.slaDueAt !== 'SLA Not Applicable';
+                
+                const getSlaStatus = () => {
+                  if (!hasSla) return { label: 'Not Applicable', color: 'bg-zinc-100 text-zinc-500 border-zinc-200', dot: 'bg-zinc-400' };
+                  const nowTime = Date.now();
+                  const due = new Date(t.slaDueAt).getTime();
+                  const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
+                  if (resolved) {
+                    if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-red-650 border-red-200', dot: 'bg-red-500' };
+                    return { label: 'Met', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+                  }
+                  if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-red-650 border-red-200', dot: 'bg-red-500' };
+                  if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-amber-650 border-amber-200', dot: 'bg-amber-500' };
+                  return { label: 'On Track', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+                };
+                const sla = getSlaStatus();
+
+                const getRemainingTimeStr = () => {
+                  if (!hasSla) return 'N/A';
+                  if (t.status === 'Resolved' || t.status === 'Closed') return 'SLA Met';
+                  const due = new Date(t.slaDueAt).getTime();
+                  const diffMs = due - Date.now();
+                  if (diffMs <= 0) return 'Breached';
+                  const diffHrs = diffMs / (1000 * 60 * 60);
+                  const hrs = Math.floor(diffHrs);
+                  const mins = Math.floor((diffHrs - hrs) * 60);
+                  return `${hrs}h ${mins}m left`;
+                };
+                const remainingTimeStr = getRemainingTimeStr();
+
+                const escalationLevel = t.escalations && t.escalations.length > 0
+                  ? t.escalations.length
+                  : (t.escalationFlag ? 1 : 0);
+
+                const createdDate = new Date(t.createdAt);
+                const ageDays = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+                
+                const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
+                                      t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                      t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                      'bg-zinc-100 text-zinc-605 border-zinc-200';
+
+                const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                     (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                     t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                     'bg-indigo-50 text-indigo-700 border-indigo-200';
+
+                return (
+                  <Card key={t.id} className="border-zinc-200 shadow-sm bg-white overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col justify-between">
+                    <div className="p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold text-zinc-400">
+                          {t.ticketNumber}
+                        </span>
+                        <div className="flex gap-1.5">
+                          {t.escalationFlag && t.escalationAcknowledgedAt && (
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 border text-[9px] font-bold uppercase">Priority Handling</Badge>
+                          )}
+                          <Badge className={`${priorityColor} border text-[9px] font-bold uppercase`}>{t.priority}</Badge>
+                          <Badge className={`${statusColor} border text-[9px] font-bold uppercase`}>{t.status}</Badge>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Link
+                          href={`/customer/tickets/${t.id}`}
+                          className="text-sm font-bold text-zinc-900 hover:text-zinc-950 hover:underline transition-all line-clamp-1 block leading-snug"
                         >
-                          <div className="flex items-center gap-1">
-                            <span>{col.label}</span>
-                            {isSortable && <ArrowUpDown size={10} className="text-zinc-450 shrink-0" />}
-                          </div>
-                        </TableHead>
-                      );
-                    })}
-                    <TableHead className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider py-3.5 px-4 text-right font-mono sticky right-0 bg-zinc-50 z-10 border-l border-zinc-200">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    // Skeleton load placeholders
-                    Array.from({ length: 5 }).map((_, rIdx) => (
-                      <TableRow key={rIdx} className="animate-pulse bg-zinc-50/50">
-                        {columnsList.map((col) => {
-                          if (!visibleColumns[col.key]) return null;
-                          return (
-                            <TableCell key={col.key} className="py-4 px-4">
-                              <div className="h-3 bg-zinc-200 rounded w-16"></div>
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="py-4 px-4 sticky right-0 bg-zinc-50/50 border-l border-zinc-200">
-                          <div className="h-6 bg-zinc-200 rounded w-8 ml-auto"></div>
+                          {t.title}
+                        </Link>
+                        <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">
+                          {t.description}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-[10px] text-zinc-500 font-mono">
+                        <span className="flex items-center gap-1">
+                          <Layers size={11} className="text-zinc-400" />
+                          {t.sapModule || 'General'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Building2 size={11} className="text-zinc-400" />
+                          {t.ticketType || 'Incident'}
+                        </span>
+                      </div>
+
+                      {hasSla && (
+                        <div className="text-[10px] font-mono text-zinc-500 grid grid-cols-2 gap-y-1 gap-x-2 bg-zinc-50 p-2 rounded border border-zinc-100 mt-2">
+                          <div>Due: <strong className="text-zinc-800">{new Date(t.slaDueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></div>
+                          <div>Remaining: <strong className={t.status === 'Resolved' || t.status === 'Closed' ? 'text-emerald-600' : 'text-zinc-855'}>{remainingTimeStr}</strong></div>
+                          {escalationLevel > 0 && (
+                            <div className="col-span-2 text-red-650 font-bold flex items-center gap-0.5">
+                              <AlertTriangle size={10} /> Escalation Level {escalationLevel}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${sla.color}`}>
+                            <span className={`w-1 h-1 rounded-full ${sla.dot}`}></span>
+                            SLA: {sla.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-zinc-500 font-mono">
+                          <Clock size={12} className="text-zinc-400" />
+                          <span>Logged: <strong className="text-zinc-800">{actualHours.toFixed(1)}h</strong></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-5 py-3 bg-zinc-50/50 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={11} />
+                        Age: {ageDays === 0 ? 'Today' : `${ageDays} days`}
+                      </span>
+                      <Link
+                        href={`/customer/tickets/${t.id}`}
+                        className="text-[10px] font-bold uppercase tracking-wider text-zinc-700 hover:text-zinc-955 transition flex items-center gap-1"
+                      >
+                        Manage Ticket
+                        <ChevronRight size={12} />
+                      </Link>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto w-full">
+                <Table className="min-w-[800px]">
+                  <TableHeader className="bg-zinc-50 border-b border-zinc-200">
+                    <TableRow>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Ticket #</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono py-3 px-4">Title</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[100px] py-3 px-4">Module</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[100px] py-3 px-4">Priority</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Created</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[110px] py-3 px-4">SLA Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Remaining Time</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[120px] py-3 px-4">Due Date</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase font-mono w-[110px] py-3 px-4">Escalation</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentTickets.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="h-24 text-center text-zinc-500 font-medium">
+                          No records found.
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : currentTickets.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={columnsList.length + 1} className="py-24 text-center text-zinc-400 font-mono italic text-xs">
-                        Zero tickets matched the filtering parameters.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    currentTickets.map((t: any, idx) => {
-                      const serialNumber = indexOfFirstItem + idx + 1;
-                      const ownerName = t.currentOwner || t.assignedConsultant || 'Support Desk';
-                      const isFunc = (t.functionalOrTechnical || 'Functional') === 'Functional';
-                      const isTech = (t.functionalOrTechnical || 'Functional') === 'Technical';
-                      const functionalConsultant = isFunc ? (t.assignedConsultant || 'Unassigned') : '-';
-                      const technicalConsultant = isTech ? (t.assignedConsultant || 'Unassigned') : '-';
+                    ) : (
+                      currentTickets.map((t: any) => {
+                        const isIncident = t.ticketType === 'Incident' || !t.ticketType;
+                        const hasSla = isIncident && t.slaDueAt !== 'SLA Not Applicable';
+                        
+                        const getSlaStatus = () => {
+                          if (!hasSla) return { label: 'N/A', color: 'bg-zinc-100 text-zinc-500 border-zinc-200', dot: 'bg-zinc-400' };
+                          const nowTime = Date.now();
+                          const due = new Date(t.slaDueAt).getTime();
+                          const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
+                          if (resolved) {
+                            if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-red-650 border-red-200', dot: 'bg-red-500' };
+                            return { label: 'Met', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+                          }
+                          if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-red-650 border-red-200', dot: 'bg-red-500' };
+                          if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-amber-650 border-amber-200', dot: 'bg-amber-500' };
+                          return { label: 'On Track', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+                        };
+                        const sla = getSlaStatus();
 
-                      return (
-                        <TableRow key={t.id} className="hover:bg-zinc-50/50 border-b border-zinc-100 transition-colors">
-                          {columnsList.map((col) => {
-                            if (!visibleColumns[col.key]) return null;
+                        const getRemainingTimeStr = () => {
+                          if (!hasSla) return 'N/A';
+                          if (t.status === 'Resolved' || t.status === 'Closed') return 'SLA Met';
+                          const due = new Date(t.slaDueAt).getTime();
+                          const diffMs = due - Date.now();
+                          if (diffMs <= 0) return 'Breached';
+                          const diffHrs = diffMs / (1000 * 60 * 60);
+                          const hrs = Math.floor(diffHrs);
+                          const mins = Math.floor((diffHrs - hrs) * 60);
+                          return `${hrs}h ${mins}m left`;
+                        };
+                        const remainingTimeStr = getRemainingTimeStr();
 
-                            if (col.key === 'sno') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono font-bold text-zinc-500 text-[10px]">
-                                  {serialNumber}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'id') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono font-bold text-zinc-950 text-[11px]">
-                                  <Link href={`/customer/tickets/${t.id}`} className="hover:underline hover:text-zinc-600">
-                                    {t.id}
-                                  </Link>
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'createdBy') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 text-zinc-650 truncate max-w-[120px]" title={t.createdByName || t.requestedBy}>
-                                  {t.createdByName || t.requestedBy || '-'}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'createdAt') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-500 whitespace-nowrap">
-                                  {new Date(t.createdAt).toLocaleDateString()}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'title') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="max-w-[200px] truncate font-semibold text-zinc-900 cursor-help">
-                                        {t.title}
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-xs font-sans text-xs bg-zinc-950 text-white rounded p-2">
-                                      {t.title}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'sapModules') {
-                              const mods = t.sapModules && t.sapModules.length > 0 ? t.sapModules : [t.sapModule || 'FICO'];
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 max-w-[150px]">
-                                  <div className="flex flex-wrap gap-1">
-                                    {mods.map((m: string) => (
-                                      <Badge key={m} variant="outline" className="text-[8px] font-mono bg-zinc-50 text-zinc-700 border-zinc-300 rounded px-1 py-0">
-                                        {m}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'ticketType') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-650 text-[10px]">
-                                  {t.ticketType || 'Incident'}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'functionalOrTechnical') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-[9px] uppercase font-bold text-zinc-500">
-                                  {t.functionalOrTechnical || 'Functional'}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'priority') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  {getPriorityBadge(t.priority)}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'status') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  {getStatusBadge(t.status)}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'slaStatus') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  {getSlaBadge(t)}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'age') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4">
-                                  {getAgeBadge(t)}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'currentOwner') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-medium text-zinc-700 truncate max-w-[120px]" title={ownerName}>
-                                  {ownerName}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'functionalConsultant') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-600 truncate max-w-[120px]" title={functionalConsultant}>
-                                  {functionalConsultant}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'technicalConsultant') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-600 truncate max-w-[120px]" title={technicalConsultant}>
-                                  {technicalConsultant}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'quotedHours') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-950 font-bold text-right">
-                                  {(t.quotedHours || 0).toFixed(1)}h
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'consumedHours') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-950 font-bold text-right">
-                                  {getConsumedHours(t).toFixed(1)}h
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'attachments') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-center font-bold text-zinc-600">
-                                  {t.attachments?.length || 0}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'comments') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-center font-bold text-zinc-600">
-                                  {t.comments?.length || 0}
-                                </TableCell>
-                              );
-                            }
-                            if (col.key === 'updatedAt') {
-                              return (
-                                <TableCell key={col.key} className="py-2.5 px-4 font-mono text-zinc-500 whitespace-nowrap">
-                                  {new Date(t.updatedAt).toLocaleDateString()}
-                                </TableCell>
-                              );
-                            }
+                        const escalationLevel = t.escalations && t.escalations.length > 0
+                          ? t.escalations.length
+                          : (t.escalationFlag ? 1 : 0);
 
-                            return null;
-                          })}
+                        const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
+                                              t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                              t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                              'bg-zinc-100 text-zinc-650 border-zinc-200';
 
-                          {/* Actions Dropdown sticky right cell */}
-                          <TableCell className="py-2.5 px-4 text-right whitespace-nowrap sticky right-0 bg-white z-10 border-l border-zinc-200">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-7 w-7 p-0 hover:bg-zinc-100 border border-zinc-200">
-                                  <SlidersHorizontal size={12} className="text-zinc-600" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-52 font-mono text-[11px] bg-white border border-zinc-200 shadow-md p-1">
-                                <DropdownMenuLabel>Workspace Options</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                
-                                <DropdownMenuItem asChild className="cursor-pointer hover:bg-zinc-50">
-                                  <Link href={`/customer/tickets/${t.id}`} className="flex items-center gap-2 w-full">
-                                    <Eye size={12} className="text-zinc-500" />
-                                    <span>View Workspace</span>
-                                  </Link>
-                                </DropdownMenuItem>
+                        const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                             (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                             t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                             'bg-indigo-50 text-indigo-700 border-indigo-200';
 
-                                {/* Edit Detail (unassigned ticket only) */}
-                                {!t.assignedConsultant && t.status === 'New' && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleTriggerEdit(t)}
-                                    className="cursor-pointer hover:bg-zinc-50 flex items-center gap-2 w-full"
-                                  >
-                                    <SlidersHorizontal size={12} className="text-zinc-500" />
-                                    <span>Edit Description</span>
-                                  </DropdownMenuItem>
+                        return (
+                          <TableRow
+                            key={t.id}
+                            onClick={() => router.push(`/customer/tickets/${t.id}`)}
+                            className="cursor-pointer hover:bg-zinc-50 transition-colors"
+                          >
+                            <TableCell className="font-mono font-bold text-xs text-zinc-500 py-3 px-4">
+                              {t.ticketNumber}
+                            </TableCell>
+                            <TableCell className="font-semibold text-zinc-900 py-3 px-4">
+                              {t.title}
+                            </TableCell>
+                            <TableCell className="font-medium text-zinc-600 font-mono text-[11px] py-3 px-4">
+                              {t.sapModule || 'General'}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <Badge className={`${statusColor} border text-[9px] font-bold uppercase`}>{t.status}</Badge>
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <div className="flex gap-1.5 items-center">
+                                <Badge className={`${priorityColor} border text-[9px] font-bold uppercase`}>{t.priority}</Badge>
+                                {t.escalationFlag && t.escalationAcknowledgedAt && (
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 border text-[9px] font-bold uppercase">Priority Handling</Badge>
                                 )}
-
-                                {/* Add Comment */}
-                                <DropdownMenuItem
-                                  onClick={() => handleTriggerComment(t)}
-                                  className="cursor-pointer hover:bg-zinc-50 flex items-center gap-2 w-full"
-                                >
-                                  <MessageSquare size={12} className="text-zinc-500" />
-                                  <span>Add Comment</span>
-                                </DropdownMenuItem>
-
-                                {/* Add Attachment */}
-                                <DropdownMenuItem
-                                  onClick={() => handleTriggerAttachment(t)}
-                                  className="cursor-pointer hover:bg-zinc-50 flex items-center gap-2 w-full"
-                                >
-                                  <Paperclip size={12} className="text-zinc-500" />
-                                  <span>Add Attachment</span>
-                                </DropdownMenuItem>
-
-                                {/* Export Ticket text report */}
-                                <DropdownMenuItem
-                                  onClick={() => handleExportTextReport(t)}
-                                  className="cursor-pointer hover:bg-zinc-50 flex items-center gap-2 w-full"
-                                >
-                                  <FileSpreadsheet size={12} className="text-zinc-500" />
-                                  <span>Export Ticket</span>
-                                </DropdownMenuItem>
-
-                                {/* Escalate (if active) */}
-                                {t.status !== 'Closed' && t.status !== 'Resolved' && !t.escalationFlag && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleTriggerEscalate(t)}
-                                      className="cursor-pointer hover:bg-red-50 text-red-600 hover:text-red-700 flex items-center gap-2 w-full"
-                                    >
-                                      <Flame size={12} className="text-red-500" />
-                                      <span>Escalate Ticket</span>
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-
-                                {/* Request Delete (if active) */}
-                                {t.softDeleteStatus === 'Active' && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleTriggerDelete(t)}
-                                      className="cursor-pointer hover:bg-red-50 text-red-650 hover:text-red-750 flex items-center gap-2 w-full"
-                                    >
-                                      <Trash2 size={12} className="text-red-500" />
-                                      <span>Request Deletion</span>
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-zinc-500 font-mono text-xs py-3 px-4">
+                              {new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${sla.color}`}>
+                                <span className={`w-1 h-1 rounded-full ${sla.dot}`}></span>
+                                {sla.label}
+                              </span>
+                            </TableCell>
+                            <TableCell className={`font-mono text-xs font-bold py-3 px-4 ${
+                              t.status === 'Resolved' || t.status === 'Closed' ? 'text-emerald-650' :
+                              sla.label === 'Overdue' || sla.label === 'Breached' ? 'text-red-650 animate-pulse' :
+                              sla.label === 'At Risk' ? 'text-amber-655' : 'text-zinc-700'
+                            }`}>
+                              {remainingTimeStr}
+                            </TableCell>
+                            <TableCell className="text-zinc-500 font-mono text-xs py-3 px-4">
+                              {t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable'
+                                ? new Date(t.slaDueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                : 'N/A'}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              {escalationLevel > 0 ? (
+                                <Badge className="bg-red-50 text-red-755 border border-red-200 uppercase font-mono text-[8px] font-black animate-pulse">
+                                  Level {escalationLevel}
+                                </Badge>
+                              ) : (
+                                <span className="text-zinc-400 font-mono text-[10px]">Nominal</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Footer Pagination console */}
         {totalPages > 1 && (
@@ -1039,7 +1069,7 @@ ${ticket.description}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Edit Ticket Details: {activeTicketId}</DialogTitle>
+              <DialogTitle>Edit Ticket Details: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Modify ticket subject or description details before resources are allocated.
               </DialogDescription>
@@ -1083,7 +1113,7 @@ ${ticket.description}
         <Dialog open={isCommentOpen} onOpenChange={setIsCommentOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Add Comment Response: {activeTicketId}</DialogTitle>
+              <DialogTitle>Add Comment Response: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Post a response, validation check feedback, or info request update directly on this ticket.
               </DialogDescription>
@@ -1116,7 +1146,7 @@ ${ticket.description}
         <Dialog open={isAttachmentOpen} onOpenChange={setIsAttachmentOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Upload Ticket Attachment: {activeTicketId}</DialogTitle>
+              <DialogTitle>Upload Ticket Attachment: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Attach screenshot files, log dump texts, or custom configuration documents.
               </DialogDescription>
@@ -1160,7 +1190,7 @@ ${ticket.description}
         <Dialog open={isEscalateOpen} onOpenChange={setIsEscalateOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Submit SLA Escalation: {activeTicketId}</DialogTitle>
+              <DialogTitle>Submit SLA Escalation: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Flag this ticket as an active SLA escalation, alerting SAP Managers immediately.
               </DialogDescription>
@@ -1171,7 +1201,7 @@ ${ticket.description}
                 <select
                   value={escalateSeverity}
                   onChange={(e: any) => setEscalateSeverity(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950"
+                  className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950"
                 >
                   <option value="Medium">Medium Alarm</option>
                   <option value="High">High Severity Alarm</option>
@@ -1187,6 +1217,45 @@ ${ticket.description}
                   onChange={(e) => setEscalateReason(e.target.value)}
                   className="w-full bg-white border border-zinc-200 rounded-lg p-2.5 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider block">Escalation Attachments</label>
+                <div className="relative border-2 border-dashed border-zinc-200 rounded-xl p-4 bg-zinc-50/50 hover:bg-orange-50/30 hover:border-orange-300 transition flex flex-col items-center justify-center gap-1 cursor-pointer group">
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleEscalateFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    accept="image/*,application/pdf,application/zip,application/x-zip-compressed"
+                  />
+                  <Upload size={16} className="text-zinc-400 group-hover:text-orange-500 transition" />
+                  <span className="text-xs text-zinc-650 font-medium">Select files to attach</span>
+                  <span className="text-[10px] text-zinc-400">Max 10MB per file</span>
+                </div>
+
+                {escalateFiles.length > 0 && (
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    {escalateFiles.map((pf) => (
+                      <div key={pf.id} className="relative flex items-center gap-3 p-2 bg-zinc-50 border border-zinc-200 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-zinc-900 truncate pr-6">{pf.file.name}</p>
+                          <p className="text-[10px] text-zinc-450">{(pf.file.size / 1024).toFixed(0)} KB</p>
+                          <div className="w-full bg-zinc-200 rounded-full h-1 mt-1 overflow-hidden">
+                            <div className="bg-orange-500 h-full transition-all duration-300 rounded-full" style={{ width: `${pf.progress}%` }}></div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeEscalateFile(pf.id)}
+                          className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 p-0.5 rounded-full hover:bg-red-50 transition"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter className="gap-2">
@@ -1204,7 +1273,7 @@ ${ticket.description}
         <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-zinc-200 font-mono text-xs">
             <DialogHeader>
-              <DialogTitle>Request Soft-Delete: {activeTicketId}</DialogTitle>
+              <DialogTitle>Request Soft-Delete: {activeTicket?.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Initiate a soft-deletion request workflow. Requires validation approvals from Managers and Admins.
               </DialogDescription>

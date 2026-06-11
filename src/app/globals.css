@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -28,51 +29,143 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  /* Interpolated in-between shades. The codebase uses many nonstandard
+     Tailwind steps (zinc-150, zinc-450, red-655, ...) that Tailwind v4 does
+     not ship - without these @theme entries those utilities emit NO css.
+     Values are sRGB interpolations of the official palette. */
+  --color-amber-105: #fef2c4;
+  --color-amber-250: #fddd6c;
+  --color-amber-255: #fcdc68;
+  --color-amber-550: #e78b09;
+  --color-amber-650: #c76508;
+  --color-amber-655: #c56308;
+  --color-amber-750: #a34a0c;
+  --color-amber-850: #853b0f;
+  --color-blue-150: #cde3fe;
+  --color-blue-250: #a9d0fe;
+  --color-blue-650: #2159e2;
+  --color-emerald-150: #bcf7db;
+  --color-emerald-250: #8bedc4;
+  --color-emerald-650: #058760;
+  --color-emerald-755: #056a4e;
+  --color-green-150: #ccfadc;
+  --color-green-750: #167339;
+  --color-green-955: #052914;
+  --color-indigo-650: #493fd8;
+  --color-red-150: #fed6d6;
+  --color-red-250: #fdb8b8;
+  --color-red-505: #ee4343;
+  --color-red-550: #e63535;
+  --color-red-605: #da2626;
+  --color-red-650: #cb2121;
+  --color-red-655: #c92121;
+  --color-red-750: #a91c1c;
+  --color-red-755: #a71b1b;
+  --color-red-850: #8c1c1c;
+  --color-red-955: #3e0909;
+  --color-slate-105: #f0f4f9;
+  --color-slate-150: #eaeff5;
+  --color-slate-450: #7c8ca2;
+  --color-slate-550: #56657a;
+  --color-slate-650: #3d4b5f;
+  --color-slate-655: #3c4a5e;
+  --color-slate-955: #020515;
+  --color-zinc-105: #f3f3f4;
+  --color-zinc-150: #ececee;
+  --color-zinc-250: #dcdce0;
+  --color-zinc-350: #bbbbc1;
+  --color-zinc-450: #898992;
+  --color-zinc-455: #878790;
+  --color-zinc-550: #62626b;
+  --color-zinc-55: #f9f9fa;
+  --color-zinc-605: #51515a;
+  --color-zinc-650: #494951;
+  --color-zinc-655: #48484f;
+  --color-zinc-750: #333338;
+  --color-zinc-850: #202023;
+  --color-zinc-855: #1f1f22;
+  --color-zinc-905: #171719;
+  --color-zinc-955: #08080a;
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 }
 
 :root {
-  /* Crisp White and Black Theme (shadcn/ui Light Mode) */
+  /* Crisp White and Black Theme with enterprise slate-indigo primary */
   --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
+  --foreground: 222 47% 11%;
 
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+  --card-foreground: 222 47% 11%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
+  --popover-foreground: 222 47% 11%;
 
-  /* High contrast black primary accent */
-  --primary: 240 5.9% 10%;
-  --primary-foreground: 0 0% 98%;
+  /* Confident slate-indigo/deep blue primary */
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
 
-  --secondary: 240 4.8% 96%;
-  --secondary-foreground: 240 5.9% 10%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
 
-  --muted: 240 4.8% 96%;
-  --muted-foreground: 240 3.8% 46%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
 
-  --accent: 240 4.8% 96%;
-  --accent-foreground: 240 5.9% 10%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
 
   --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive-foreground: 210 40% 98%;
 
-  /* Neutral clean borders */
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 240 5.9% 10%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
 
   --radius: 0.5rem;
+}
+
+.dark {
+  --background: 224 71% 4%;
+  --foreground: 213 31% 91%;
+
+  --card: 224 71% 4%;
+  --card-foreground: 213 31% 91%;
+
+  --popover: 224 71% 4%;
+  --popover-foreground: 213 31% 91%;
+
+  /* Confident slate-indigo/deep blue primary dark */
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+
+  --secondary: 222.2 47.4% 11.2%;
+  --secondary-foreground: 217.2 91.2% 59.8%;
+
+  --muted: 223 47% 11%;
+  --muted-foreground: 215.4 16.3% 56.9%;
+
+  --accent: 216 34% 17%;
+  --accent-foreground: 217.2 91.2% 59.8%;
+
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --ring: 217.2 91.2% 59.8%;
 }
 
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
+}
+
+input, button, select, textarea, table, dialog, td, th {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Custom premium elements for the White-and-Black theme */

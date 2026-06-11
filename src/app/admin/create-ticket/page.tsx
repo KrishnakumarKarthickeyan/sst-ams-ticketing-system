@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -8,32 +8,49 @@ import { Check, ArrowLeft, Send, Paperclip, X } from 'lucide-react';
 import Link from 'next/link';
 import { SAPModule, IssueCategory, TicketPriority } from '../../../types/ticket';
 
-// Pre-seeded customer profiles for organizations
-const ORG_CUSTOMERS: Record<string, { name: string; email: string }[]> = {
-  'Apex Global Industries': [
-    { name: 'Sarah Jenkins', email: 'customer@sap.com' },
-    { name: 'John Doe', email: 'johndoe@apexglobal.com' }
-  ],
-  'Titan Energy Corp': [
-    { name: 'David Miller', email: 'david@titanenergy.com' },
-    { name: 'Alice Smith', email: 'alice@titanenergy.com' }
-  ],
-  'Nexa Manufacturing': [
-    { name: 'Nitin Sharma', email: 'nitin@nexamfg.com' },
-    { name: 'Bob Johnson', email: 'bob@nexamfg.com' }
-  ]
-};
-
-const SAP_MANAGERS = ['Marcus Vance', 'Sarah Admin'];
-const SAP_CONSULTANTS = ['Karthik Subramanian', 'Rajesh Kumar', 'Amit Patel'];
-
 export default function AdminCreateTicketPage() {
   const { createTicket } = useTickets();
   const { user } = useAuth();
   const router = useRouter();
 
+  // Dynamic database states
+  const [dbOrganizations, setDbOrganizations] = useState<{ id: string; name: string }[]>([]);
+  const [dbCustomers, setDbCustomers] = useState<any[]>([]);
+  const [dbManagers, setDbManagers] = useState<string[]>([]);
+  const [dbConsultants, setDbConsultants] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadStakeholders = async () => {
+      const { isSupabaseConfigured, supabase } = await import('../../../lib/supabase/client');
+      if (isSupabaseConfigured && supabase) {
+        // Fetch organizations
+        const { data: orgs } = await supabase.from('organizations').select('id, name');
+        if (orgs) setDbOrganizations(orgs);
+
+        // Fetch profiles
+        const { data: profiles } = await supabase.from('profiles').select('id, full_name, email, role, organization_id');
+        if (profiles) {
+          // Customers
+          setDbCustomers(profiles.filter(p => p.role === 'Customer').map(p => ({
+            id: p.id,
+            name: p.full_name,
+            email: p.email,
+            orgId: p.organization_id
+          })));
+
+          // Managers
+          setDbManagers(profiles.filter(p => p.role === 'Manager' || p.role === 'SuperAdmin').map(p => p.full_name));
+
+          // Consultants
+          setDbConsultants(profiles.filter(p => p.role === 'Consultant').map(p => p.full_name));
+        }
+      }
+    };
+    loadStakeholders();
+  }, []);
+
   // Form states
-  const [organization, setOrganization] = useState('Apex Global Industries');
+  const [organization, setOrganization] = useState('');
   const [customerIndex, setCustomerIndex] = useState(0);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -45,8 +62,15 @@ export default function AdminCreateTicketPage() {
   const [assignedManager, setAssignedManager] = useState('');
   const [assignedConsultant, setAssignedConsultant] = useState('');
 
+  // Auto-select first organization once loaded
+  useEffect(() => {
+    if (!organization && dbOrganizations.length > 0) {
+      setOrganization(dbOrganizations[0].name);
+    }
+  }, [dbOrganizations, organization]);
+
   // Attachment states
-  const [attachments, setAttachments] = useState<{ fileName: string; fileSize: number; fileType: string }[]>([]);
+  const [attachments, setAttachments] = useState<{ fileName: string; fileSize: number; fileType: string; fileObj?: File }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -56,36 +80,63 @@ export default function AdminCreateTicketPage() {
     setCustomerIndex(0); // Reset customer index when organization changes
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     setIsUploading(true);
     
-    // Simulate short upload latency
-    setTimeout(() => {
-      const files = Array.from(e.target.files || []);
-      const newAtts = files.map(file => ({
+    const { toast } = await import('sonner');
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    
+    const files = Array.from(e.target.files || []);
+    const validAtts: typeof attachments = [];
+
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File size exceeds 10MB limit: ${file.name}`);
+        continue;
+      }
+      
+      const lastDotIdx = file.name.lastIndexOf('.');
+      const fileExtension = lastDotIdx !== -1 ? file.name.slice(lastDotIdx).toLowerCase() : '';
+      if (blockedExtensions.includes(fileExtension)) {
+        toast.error(`Forbidden file extension: ${file.name}. Executable and script files are blocked.`);
+        continue;
+      }
+      
+      validAtts.push({
         fileName: file.name,
         fileSize: file.size,
-        fileType: file.type
-      }));
-      setAttachments(prev => [...prev, ...newAtts]);
+        fileType: file.type,
+        fileObj: file
+      });
+    }
+
+    if (validAtts.length > 0) {
+      setTimeout(() => {
+        setAttachments(prev => [...prev, ...validAtts]);
+        setIsUploading(false);
+      }, 600);
+    } else {
       setIsUploading(false);
-    }, 600);
+    }
   };
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !user) return;
 
-    // Get selected customer user details
-    const selectedCustomers = ORG_CUSTOMERS[organization] || [];
-    const customerUser = selectedCustomers[customerIndex] || { name: 'Sarah Jenkins', email: 'customer@sap.com' };
+    const selectedOrgObj = dbOrganizations.find(o => o.name === organization);
+    const selectedCustomers = dbCustomers.filter(c => c.orgId === selectedOrgObj?.id);
+    const customerUser = selectedCustomers[customerIndex] || { name: 'Unassigned Customer', email: '' };
 
-    createTicket({
+    const { toast } = await import('sonner');
+    const toastId = toast.loading('Registering support ticket in database...');
+
+    const res = await createTicket({
       title,
       description,
       sapModule,
@@ -100,20 +151,26 @@ export default function AdminCreateTicketPage() {
       attachments: attachments
     });
 
-    setSuccess(true);
-    setTitle('');
-    setDescription('');
-    setAttachments([]);
-    setAssignedManager('');
-    setAssignedConsultant('');
+    if (res.success && res.ticketId) {
+      toast.success('Ticket registered successfully!', { id: toastId });
+      setSuccess(true);
+      setTitle('');
+      setDescription('');
+      setAttachments([]);
+      setAssignedManager('');
+      setAssignedConsultant('');
 
-    setTimeout(() => {
-      setSuccess(false);
-      router.push('/admin/tickets');
-    }, 1500);
+      setTimeout(() => {
+        setSuccess(false);
+        router.push(`/admin/tickets/${res.ticketId}`);
+      }, 1500);
+    } else {
+      toast.error(`Database Error: ${res.error}`, { id: toastId, duration: 8000 });
+    }
   };
 
-  const selectedCustomers = ORG_CUSTOMERS[organization] || [];
+  const selectedOrgObj = dbOrganizations.find(o => o.name === organization);
+  const selectedCustomers = dbCustomers.filter(c => c.orgId === selectedOrgObj?.id);
 
   return (
     <div className="space-y-6 font-mono text-xs text-zinc-900 max-w-2xl mx-auto">
@@ -147,9 +204,9 @@ export default function AdminCreateTicketPage() {
               onChange={handleOrgChange}
               className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
             >
-              <option value="Apex Global Industries">Apex Global Industries</option>
-              <option value="Titan Energy Corp">Titan Energy Corp</option>
-              <option value="Nexa Manufacturing">Nexa Manufacturing</option>
+              {dbOrganizations.map((org) => (
+                <option key={org.id} value={org.name}>{org.name}</option>
+              ))}
             </select>
           </div>
 
@@ -254,7 +311,7 @@ export default function AdminCreateTicketPage() {
               className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
             >
               <option value="">-- Leave Unassigned --</option>
-              {SAP_MANAGERS.map((mgr) => (
+              {dbManagers.map((mgr) => (
                 <option key={mgr} value={mgr}>
                   {mgr}
                 </option>
@@ -270,7 +327,7 @@ export default function AdminCreateTicketPage() {
               className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
             >
               <option value="">-- Leave Unassigned --</option>
-              {SAP_CONSULTANTS.map((c) => (
+              {dbConsultants.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

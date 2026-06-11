@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ import {
   FolderOpen,
   ArrowLeft
 } from 'lucide-react';
-import { SAPModule, TicketPriority, TicketStatus, EffortActivityType, TicketType } from '../../../types/ticket';
+import { SAPModule, TicketPriority, TicketStatus } from '../../../types/ticket';
 import {
   ResponsiveContainer,
   BarChart,
@@ -32,53 +32,61 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
+import { Badge } from '../../../components/ui/badge';
+import { chartColors } from '../../../lib/chart-theme';
 
 type ReportType =
+  | 'monthly_performance'
   | 'ticket_summary'
-  | 'client_report'
-  | 'module_report'
-  | 'priority_report'
-  | 'sla_report'
-  | 'effort_report'
-  | 'rejected_effort'
-  | 'resolved_report'
-  | 'reopened_report'
-  | 'productivity_report';
+  | 'client_summary'
+  | 'hours_summary'
+  | 'billable_hours'
+  | 'closed_tickets'
+  | 'reopened_tickets'
+  | 'sla_compliance';
 
 export default function ConsultantReportsPage() {
   const { tickets } = useTickets();
   const { user } = useAuth();
   const consultantName = user?.name || 'Karthik Subramanian';
 
-  // State for active report tabs
-  const [activeReport, setActiveReport] = useState<ReportType>('ticket_summary');
+  // Active Report Tab State
+  const [activeReport, setActiveReport] = useState<ReportType>('monthly_performance');
 
-  // Filters State
+  // Filters State (Exactly 5 filters)
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [clientFilter, setClientFilter] = useState('All');
   const [moduleFilter, setModuleFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
-  const [effortStatusFilter, setEffortStatusFilter] = useState('All');
-  const [billableFilter, setBillableFilter] = useState('All'); // 'All', 'Billable', 'Non-Billable'
 
-  const myTickets = tickets.filter(t => t.assignedConsultant === consultantName);
+  // Base scope (assigned tickets or where allocated)
+  const myTickets = useMemo(() => {
+    return tickets.filter(t => 
+      t.assignedConsultant === consultantName || 
+      t.consultantEfforts?.some(e => e.consultantName === consultantName && !e.isDeleted)
+    );
+  }, [tickets, consultantName]);
 
-  // Helper lists for filters
-  const clientsList = Array.from(new Set(myTickets.map(t => t.organization)));
-  const modulesList = Array.from(new Set(myTickets.map(t => t.sapModule)));
+  const clientsList = useMemo(() => Array.from(new Set(myTickets.map(t => t.organization))), [myTickets]);
+  const modulesList = useMemo(() => Array.from(new Set(myTickets.map(t => t.sapModule))), [myTickets]);
 
-  // Filter tickets matching criteria
-  const getFilteredTickets = () => {
+  // Apply filters
+  const filteredTickets = useMemo(() => {
     return myTickets.filter(t => {
+      // 1. Client filter
       if (clientFilter !== 'All' && t.organization !== clientFilter) return false;
+      // 2. Module filter
       if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
+      // 3. Priority filter
       if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
+      // 4. Status filter
       if (statusFilter !== 'All' && t.status !== statusFilter) return false;
-      if (typeFilter !== 'All' && t.ticketType !== typeFilter) return false;
-      
+
+      // 5. Date Range filter
       if (startDate && new Date(t.createdAt) < new Date(startDate)) return false;
       if (endDate) {
         const endLimit = new Date(endDate);
@@ -86,90 +94,100 @@ export default function ConsultantReportsPage() {
         if (new Date(t.createdAt) > endLimit) return false;
       }
 
-      // Filter based on active report specifics
-      if (activeReport === 'resolved_report' && t.status !== 'Resolved' && t.status !== 'Closed') return false;
-      if (activeReport === 'reopened_report' && (!t.reopenedCount || t.reopenedCount === 0) && t.status !== 'Reopened') return false;
+      // Filter by active report specifics
+      if (activeReport === 'closed_tickets' && t.status !== 'Closed') return false;
+      if (activeReport === 'reopened_tickets' && (!t.reopenedCount || t.reopenedCount === 0) && t.status !== 'Reopened') return false;
+      if (activeReport === 'billable_hours' && !t.billable) return false;
 
       return true;
     });
-  };
+  }, [myTickets, clientFilter, moduleFilter, priorityFilter, statusFilter, startDate, endDate, activeReport]);
 
-  const filteredTickets = getFilteredTickets();
+  // Dynamic KPI Card Calculations
+  const kpis = useMemo(() => {
+    const total = filteredTickets.length;
+    const closed = filteredTickets.filter(t => t.status === 'Closed').length;
+    const reopened = filteredTickets.filter(t => t.status === 'Reopened' || (t.reopenedCount && t.reopenedCount > 0)).length;
 
-  // Filter efforts matching criteria
-  const getFilteredEfforts = () => {
-    const allEfforts = myTickets.flatMap(t => 
-      (t.efforts || []).map(e => ({
-        ...e,
-        ticketId: t.id,
-        organization: t.organization,
-        sapModule: t.sapModule,
-        priority: t.priority,
-        ticketType: t.ticketType,
-        ticketCreatedAt: t.createdAt
-      }))
-    ).filter(e => e.consultantName === consultantName);
+    let totalEst = 0;
+    let totalAct = 0;
 
-    return allEfforts.filter(e => {
-      if (clientFilter !== 'All' && e.organization !== clientFilter) return false;
-      if (moduleFilter !== 'All' && e.sapModule !== moduleFilter) return false;
-      if (priorityFilter !== 'All' && e.priority !== priorityFilter) return false;
-      if (typeFilter !== 'All' && e.ticketType !== typeFilter) return false;
-      if (effortStatusFilter !== 'All' && e.status !== effortStatusFilter) return false;
-      
-      if (billableFilter === 'Billable' && !e.billable) return false;
-      if (billableFilter === 'Non-Billable' && e.billable) return false;
+    filteredTickets.forEach(t => {
+      // Estimate
+      const latestEst = (t.hourEstimates || [])
+        .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
+        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+      totalEst += latestEst?.totalEstimatedHours || t.quotedHours || 0;
 
-      const dateStr = e.workDate || e.activityDate || '';
-      if (startDate && dateStr < startDate) return false;
-      if (endDate && dateStr > endDate) return false;
-
-      if (activeReport === 'rejected_effort' && e.status !== 'Rejected') return false;
-
-      return true;
+      // Actual
+      const approvedCls = (t.closureRequests || []).find(c => c.status === 'Approved');
+      totalAct += approvedCls?.totalActualHours || 0;
     });
-  };
 
-  const filteredEfforts = getFilteredEfforts();
+    const billableHours = filteredTickets.filter(t => t.billable).reduce((sum, t) => {
+      const cls = (t.closureRequests || []).find(c => c.status === 'Approved');
+      return sum + (cls?.totalActualHours || 0);
+    }, 0);
 
-  // Export CSV Helper
-  const handleCSVExport = () => {
-    let headers: string[] = [];
-    let rows: string[][] = [];
-    let filename = `consultant_${activeReport}_report.csv`;
+    const nonBillableHours = totalAct - billableHours;
 
-    if (activeReport === 'effort_report' || activeReport === 'rejected_effort') {
-      headers = ['Log ID', 'Ticket ID', 'Work Date', 'Hours Worked', 'Activity Type', 'Billing Status', 'Status', 'Description', 'Rejection Reason'];
-      rows = filteredEfforts.map(e => [
-        e.id,
-        e.ticketId,
-        e.workDate || e.activityDate || '',
-        String(e.hoursWorked || e.hoursLogged || 0),
-        e.activityType,
-        e.billable ? 'Billable' : 'Non-Billable',
-        e.status,
-        `"${e.description.replace(/"/g, '""')}"`,
-        e.rejectionReason ? `"${e.rejectionReason.replace(/"/g, '""')}"` : ''
-      ]);
-    } else {
-      headers = ['Ticket ID', 'Client', 'Subject', 'SAP Module', 'Type', 'Priority', 'Status', 'Quoted Hours', 'Created At'];
-      rows = filteredTickets.map(t => [
-        t.id,
+    let compliantCount = 0;
+    filteredTickets.forEach(t => {
+      if (t.status === 'Resolved' || t.status === 'Closed') {
+        if (t.resolvedAt && t.slaDueAt && new Date(t.resolvedAt).getTime() <= new Date(t.slaDueAt).getTime()) {
+          compliantCount++;
+        }
+      } else {
+        if (t.slaDueAt && new Date(t.slaDueAt).getTime() >= Date.now()) {
+          compliantCount++;
+        }
+      }
+    });
+    const complianceRate = total > 0 ? (compliantCount / total) * 100 : 100;
+
+    return {
+      total,
+      closed,
+      reopened,
+      totalEst,
+      totalAct,
+      billableHours,
+      nonBillableHours,
+      complianceRate
+    };
+  }, [filteredTickets]);
+
+  // CSV/Excel Exporter
+  const handleExport = (format: 'CSV' | 'Excel') => {
+    const headers = ['Ticket ID', 'Customer', 'Subject', 'SAP Module', 'Priority', 'Status', 'Quoted/Est Hours', 'Actual Hours', 'Billable', 'Created At'];
+    
+    const rows = filteredTickets.map(t => {
+      const latestEst = (t.hourEstimates || [])
+        .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
+        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+      const approvedCls = (t.closureRequests || []).find(c => c.status === 'Approved');
+
+      return [
+        t.ticketNumber || t.id,
         t.organization,
         `"${t.title.replace(/"/g, '""')}"`,
         t.sapModule,
-        t.ticketType || 'Incident',
         t.priority,
         t.status,
-        String(t.quotedHours || 0),
+        String(latestEst?.totalEstimatedHours || t.quotedHours || 0),
+        String(approvedCls?.totalActualHours || 0),
+        t.billable ? 'Billable' : 'Non-Billable',
         new Date(t.createdAt).toLocaleDateString()
-      ]);
-    }
+      ];
+    });
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    const mimeType = format === 'Excel' ? 'application/vnd.ms-excel;charset=utf-8;' : 'text/csv;charset=utf-8;';
+    const filename = `AMS_${activeReport}_Report_${new Date().toISOString().split('T')[0]}.${format === 'Excel' ? 'xls' : 'csv'}`;
+    
+    const blob = new Blob([csvContent], { type: mimeType });
     const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
     link.setAttribute('href', url);
     link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
@@ -179,204 +197,144 @@ export default function ConsultantReportsPage() {
   };
 
   const handlePDFPlaceholder = () => {
-    alert('PDF compilation engine initiated. Document layout sent to printer queue in background.');
+    alert('PDF Generation Placeholder: Print Layout sent to spool queue in background.');
   };
 
-  // Render KPI summaries depending on report
-  const renderKpis = () => {
-    if (activeReport === 'effort_report' || activeReport === 'rejected_effort') {
-      const totalHrs = filteredEfforts.reduce((sum, e) => sum + (e.hoursWorked || e.hoursLogged || 0), 0);
-      const billableHrs = filteredEfforts.filter(e => e.billable).reduce((sum, e) => sum + (e.hoursWorked || e.hoursLogged || 0), 0);
-      const rejectedCount = filteredEfforts.filter(e => e.status === 'Rejected').length;
-      const pendingCount = filteredEfforts.filter(e => e.status === 'Pending Approval' || e.status === 'Pending').length;
-
-      return (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-zinc-200 p-4 rounded shadow-sm">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase">Filtered Hours Worked</div>
-            <div className="text-xl font-bold text-zinc-950 mt-1">{totalHrs.toFixed(1)} hrs</div>
-          </div>
-          <div className="bg-white border border-zinc-200 p-4 rounded shadow-sm border-l-4 border-l-emerald-500">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase text-emerald-800">Billable Hours</div>
-            <div className="text-xl font-bold text-emerald-700 mt-1">{billableHrs.toFixed(1)} hrs</div>
-          </div>
-          <div className="bg-white border border-zinc-200 p-4 rounded shadow-sm border-l-4 border-l-amber-500">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase text-amber-800">Pending Approval</div>
-            <div className="text-xl font-bold text-amber-600 mt-1">{pendingCount} Logs</div>
-          </div>
-          <div className="bg-white border border-zinc-200 p-4 rounded shadow-sm border-l-4 border-l-red-500">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase text-red-800">Rejected Entries</div>
-            <div className="text-xl font-bold text-red-600 mt-1">{rejectedCount} Logs</div>
-          </div>
-        </div>
-      );
-    } else {
-      const openCount = filteredTickets.filter(t => t.status !== 'Resolved' && t.status !== 'Closed').length;
-      const criticalCount = filteredTickets.filter(t => t.priority === 'Critical').length;
-      const resolvedCount = filteredTickets.filter(t => t.status === 'Resolved').length;
-
-      return (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-zinc-200 p-4 rounded shadow-sm">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase">Total Filtered Tickets</div>
-            <div className="text-xl font-bold text-zinc-950 mt-1">{filteredTickets.length} Items</div>
-          </div>
-          <div className="bg-white border border-zinc-200 p-4 rounded shadow-sm">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase text-zinc-650">Active Open Backlog</div>
-            <div className="text-xl font-bold text-zinc-900 mt-1">{openCount} Items</div>
-          </div>
-          <div className="bg-white border border-zinc-200 p-4 rounded shadow-sm border-l-4 border-l-red-500">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase text-red-800">Critical Priority</div>
-            <div className="text-xl font-bold text-red-600 mt-1">{criticalCount} Items</div>
-          </div>
-          <div className="bg-white border border-zinc-200 p-4 rounded shadow-sm border-l-4 border-l-emerald-500">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase text-emerald-800">Resolved scope</div>
-            <div className="text-xl font-bold text-emerald-700 mt-1">{resolvedCount} Items</div>
-          </div>
-        </div>
-      );
-    }
-  };
-
-  // Generate charts data for Recharts based on report type
-  const getChartData = (): { name: string; value: number }[] => {
-    if (activeReport === 'effort_report' || activeReport === 'rejected_effort') {
-      const activityMap: { [key: string]: number } = {};
-      filteredEfforts.forEach(e => {
-        activityMap[e.activityType] = (activityMap[e.activityType] || 0) + (e.hoursWorked || e.hoursLogged || 0);
-      });
-      return Object.keys(activityMap).map(k => ({ name: k, value: activityMap[k] }));
-    } else if (activeReport === 'client_report') {
-      const clientMap: { [key: string]: number } = {};
+  // Recharts Breakdown Data depending on active report
+  const chartData = useMemo(() => {
+    if (activeReport === 'client_summary') {
+      const clientMap: Record<string, number> = {};
       filteredTickets.forEach(t => {
         clientMap[t.organization] = (clientMap[t.organization] || 0) + 1;
       });
-      return Object.keys(clientMap).map(k => ({ name: k, value: clientMap[k] }));
-    } else if (activeReport === 'module_report') {
-      const moduleMap: { [key: string]: number } = {};
-      filteredTickets.forEach(t => {
-        moduleMap[t.sapModule] = (moduleMap[t.sapModule] || 0) + 1;
-      });
-      return Object.keys(moduleMap).map(k => ({ name: k, value: moduleMap[k] }));
-    } else if (activeReport === 'priority_report') {
-      const pMap: { [key: string]: number } = {};
-      filteredTickets.forEach(t => {
-        pMap[t.priority] = (pMap[t.priority] || 0) + 1;
-      });
-      return Object.keys(pMap).map(k => ({ name: k, value: pMap[k] }));
-    } else {
-      // Default ticket summary status split
-      const sMap: { [key: string]: number } = {};
-      filteredTickets.forEach(t => {
-        sMap[t.status] = (sMap[t.status] || 0) + 1;
-      });
-      return Object.keys(sMap).map(k => ({ name: k, value: sMap[k] }));
+      return Object.entries(clientMap).map(([name, value]) => ({ name, value }));
     }
-  };
 
-  const chartData = getChartData();
+    if (activeReport === 'hours_summary') {
+      return [
+        { name: 'Estimated Hours', value: kpis.totalEst },
+        { name: 'Actual Hours', value: kpis.totalAct }
+      ];
+    }
+
+    if (activeReport === 'billable_hours') {
+      return [
+        { name: 'Billable Hours', value: kpis.billableHours },
+        { name: 'Non-Billable Hours', value: kpis.nonBillableHours }
+      ];
+    }
+
+    // Default status breakdown
+    const statusMap: Record<string, number> = {};
+    filteredTickets.forEach(t => {
+      statusMap[t.status] = (statusMap[t.status] || 0) + 1;
+    });
+    return Object.entries(statusMap).map(([name, value]) => ({ name, value }));
+  }, [filteredTickets, activeReport, kpis]);
 
   return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900">
+    <div className="space-y-6 bg-slate-50 text-slate-900 min-h-screen p-6 md:p-8 font-sans">
       
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
-          <Link href="/consultant/dashboard" className="p-1.5 border border-zinc-200 rounded hover:bg-zinc-100 text-zinc-650 transition">
-            <ArrowLeft size={14} />
+          <Link href="/consultant/dashboard">
+            <Button variant="outline" size="icon" className="h-8 w-8 text-slate-600 bg-white">
+              <ArrowLeft size={16} />
+            </Button>
           </Link>
           <div>
-            <h1 className="text-lg font-black uppercase text-zinc-950">Analytics Reports Desk</h1>
-            <p className="text-zinc-500 mt-1">
-              Select configurations and download CSV timesheets/tickets audits.
+            <h1 className="text-xl font-bold uppercase text-slate-950 font-mono">Analytics Reports Desk</h1>
+            <p className="text-slate-500 text-xs mt-1">
+              Select configurations, filter records, and download operational timesheets.
             </p>
           </div>
         </div>
 
         <div className="flex gap-2">
-          <button
-            onClick={handleCSVExport}
-            className="px-3.5 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[9px] flex items-center gap-1.5 transition shadow"
+          <Button
+            onClick={() => handleExport('CSV')}
+            className="bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase text-[9px] h-8 cursor-pointer shadow font-mono"
           >
-            <Download size={12} />
+            <Download size={12} className="mr-1" />
             Export CSV
-          </button>
-          <button
-            onClick={handlePDFPlaceholder}
-            className="px-3.5 py-1.5 border border-zinc-300 hover:border-zinc-900 bg-white rounded font-bold uppercase text-[9px] flex items-center gap-1.5 transition"
+          </Button>
+          <Button
+            onClick={() => handleExport('Excel')}
+            variant="outline"
+            className="border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold uppercase text-[9px] h-8 cursor-pointer font-mono"
           >
-            <FileText size={12} />
-            Export PDF
-          </button>
+            <FileSpreadsheet size={12} className="mr-1" />
+            Export Excel
+          </Button>
+          <Button
+            onClick={handlePDFPlaceholder}
+            variant="outline"
+            className="border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold uppercase text-[9px] h-8 cursor-pointer font-mono"
+          >
+            <FileText size={12} className="mr-1" />
+            PDF Placeholder
+          </Button>
         </div>
       </div>
 
-      {/* TABS SELECTOR (10 Report types) */}
-      <div className="bg-white border border-zinc-250 rounded p-2 flex flex-wrap gap-1.5 shadow-sm">
+      {/* Tabs Selector (8 Reports) */}
+      <div className="bg-white border border-slate-200 rounded-lg p-2 flex flex-wrap gap-1.5 shadow-sm">
         {[
+          { id: 'monthly_performance', label: 'Monthly Performance' },
           { id: 'ticket_summary', label: 'Ticket Summary' },
-          { id: 'client_report', label: 'Client-wise' },
-          { id: 'module_report', label: 'Module-wise' },
-          { id: 'priority_report', label: 'Priority-wise' },
-          { id: 'sla_report', label: 'SLA Compliances' },
-          { id: 'effort_report', label: 'Logged Timesheet' },
-          { id: 'rejected_effort', label: 'Rejected Efforts' },
-          { id: 'resolved_report', label: 'Resolved Tickets' },
-          { id: 'reopened_report', label: 'Reopened Incidents' },
-          { id: 'productivity_report', label: 'Monthly Productivity' }
-        ].map(r => (
+          { id: 'client_summary', label: 'Client Summary' },
+          { id: 'hours_summary', label: 'Hours Summary' },
+          { id: 'billable_hours', label: 'Billable Hours' },
+          { id: 'closed_tickets', label: 'Closed Tickets' },
+          { id: 'reopened_tickets', label: 'Reopened Tickets' },
+          { id: 'sla_compliance', label: 'SLA Compliance' }
+        ].map(tab => (
           <button
-            key={r.id}
-            onClick={() => {
-              setActiveReport(r.id as ReportType);
-              // reset effort-specific filter when switching back
-              if (r.id !== 'effort_report' && r.id !== 'rejected_effort') {
-                setEffortStatusFilter('All');
-              }
-            }}
-            className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider text-[9px] transition ${
-              activeReport === r.id
-                ? 'bg-zinc-950 text-white'
-                : 'text-zinc-500 bg-zinc-50 hover:bg-zinc-150 border border-zinc-200'
+            key={tab.id}
+            onClick={() => setActiveReport(tab.id as ReportType)}
+            className={`px-3 py-1.5 rounded font-mono font-bold uppercase tracking-wider text-[9px] transition ${
+              activeReport === tab.id
+                ? 'bg-slate-950 text-white'
+                : 'text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200'
             }`}
           >
-            {r.label}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* FILTERS PANEL */}
-      <div className="bg-white border border-zinc-200 rounded p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        
-        {/* Date range start */}
+      {/* Filters Panel (5 filters) */}
+      <Card className="bg-white border border-slate-200 p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+        {/* Date Range Start */}
         <div>
-          <label className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block mb-1">Start Date</label>
+          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">Start Date</label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full bg-zinc-50 border border-zinc-250 rounded p-1 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
           />
         </div>
 
-        {/* Date range end */}
+        {/* Date Range End */}
         <div>
-          <label className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block mb-1">End Date</label>
+          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">End Date</label>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="w-full bg-zinc-50 border border-zinc-250 rounded p-1 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
           />
         </div>
 
         {/* Client */}
         <div>
-          <label className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block mb-1">Client</label>
+          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">Client</label>
           <select
             value={clientFilter}
             onChange={(e) => setClientFilter(e.target.value)}
-            className="w-full bg-zinc-50 border border-zinc-250 rounded p-1.5 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
           >
             <option value="All">All Clients</option>
             {clientsList.map(c => <option key={c} value={c}>{c}</option>)}
@@ -385,11 +343,11 @@ export default function ConsultantReportsPage() {
 
         {/* SAP Module */}
         <div>
-          <label className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block mb-1">SAP Module</label>
+          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">SAP Module</label>
           <select
             value={moduleFilter}
             onChange={(e) => setModuleFilter(e.target.value)}
-            className="w-full bg-zinc-50 border border-zinc-250 rounded p-1.5 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
           >
             <option value="All">All Modules</option>
             {modulesList.map(m => <option key={m} value={m}>{m}</option>)}
@@ -398,11 +356,11 @@ export default function ConsultantReportsPage() {
 
         {/* Priority */}
         <div>
-          <label className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block mb-1">Priority</label>
+          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">Priority</label>
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="w-full bg-zinc-50 border border-zinc-250 rounded p-1.5 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
           >
             <option value="All">All Priorities</option>
             <option value="Critical">Critical</option>
@@ -411,187 +369,115 @@ export default function ConsultantReportsPage() {
             <option value="Low">Low</option>
           </select>
         </div>
+      </Card>
 
-        {/* Ticket Type */}
-        <div>
-          <label className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block mb-1">Ticket Type</label>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="w-full bg-zinc-50 border border-zinc-250 rounded p-1.5 text-xs font-mono focus:outline-none"
-          >
-            <option value="All">All Types</option>
-            <option value="Incident">Incident</option>
-            <option value="Service Request">Service Request</option>
-            <option value="Change Request">Change Request</option>
-            <option value="Enhancement Request">Enhancement Request</option>
-            <option value="Training Request">Training Request</option>
-            <option value="Configuration Request">Configuration Request</option>
-            <option value="Report Request">Report Request</option>
-          </select>
-        </div>
-
-        {(activeReport === 'effort_report' || activeReport === 'rejected_effort') && (
-          <>
-            {/* Effort Approval Status */}
-            <div>
-              <label className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block mb-1">Approval status</label>
-              <select
-                value={effortStatusFilter}
-                onChange={(e) => setEffortStatusFilter(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-250 rounded p-1.5 text-xs font-mono focus:outline-none"
-                disabled={activeReport === 'rejected_effort'}
-              >
-                <option value="All">All status</option>
-                <option value="Pending Approval">Pending Approval</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Resubmitted">Resubmitted</option>
-              </select>
-            </div>
-
-            {/* Billable status */}
-            <div>
-              <label className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block mb-1">Billing filter</label>
-              <select
-                value={billableFilter}
-                onChange={(e) => setBillableFilter(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-250 rounded p-1.5 text-xs font-mono focus:outline-none"
-              >
-                <option value="All">All Billing</option>
-                <option value="Billable">Billable Only</option>
-                <option value="Non-Billable">Non-Billable Only</option>
-              </select>
-            </div>
-          </>
-        )}
+      {/* KPI Cards section */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+          <span className="text-[9px] font-bold text-slate-400 uppercase font-mono">Filtered Scope Tickets</span>
+          <span className="text-xl font-bold font-mono text-slate-900 mt-1">{kpis.total} Items</span>
+        </Card>
+        <Card className="bg-white border border-slate-200 p-4 shadow-sm border-l-2 border-l-emerald-500 flex flex-col justify-between">
+          <span className="text-[9px] font-bold text-slate-400 uppercase text-emerald-800 font-mono">Approved Actual Hours</span>
+          <span className="text-xl font-bold font-mono text-emerald-600 mt-1">{kpis.totalAct.toFixed(1)} h</span>
+        </Card>
+        <Card className="bg-white border border-slate-200 p-4 shadow-sm border-l-2 border-l-indigo-500 flex flex-col justify-between">
+          <span className="text-[9px] font-bold text-indigo-800 uppercase font-mono">Billable Hours Log</span>
+          <span className="text-xl font-bold font-mono text-indigo-700 mt-1">{kpis.billableHours.toFixed(1)} h</span>
+        </Card>
+        <Card className="bg-white border border-slate-200 p-4 shadow-sm border-l-2 border-l-emerald-500 flex flex-col justify-between">
+          <span className="text-[9px] font-bold text-emerald-800 uppercase font-mono">SLA Compliance Rate</span>
+          <span className="text-xl font-bold font-mono text-emerald-600 mt-1">{kpis.complianceRate.toFixed(1)}%</span>
+        </Card>
       </div>
 
-      {/* KPI Stats overview */}
-      {renderKpis()}
-
-      {/* Preview Grid: Left table, right charts summary */}
+      {/* Output preview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Table Preview */}
-        <div className="lg:col-span-2 bg-white border border-zinc-200 rounded shadow-sm overflow-hidden flex flex-col justify-between">
-          <span className="font-bold text-[9px] text-zinc-450 uppercase tracking-widest p-4 border-b border-zinc-100 block bg-zinc-50/50">Report Preview Table</span>
-          
+        <Card className="lg:col-span-2 bg-white border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+          <span className="font-bold text-[9px] text-slate-450 uppercase tracking-widest p-4 border-b border-slate-100 block bg-slate-50/50 font-mono">
+            Report Data Preview Table
+          </span>
+
           <div className="overflow-x-auto">
-            {activeReport === 'effort_report' || activeReport === 'rejected_effort' ? (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-zinc-100 border-b border-zinc-200 text-zinc-500 font-bold uppercase text-[9px] tracking-wider">
-                    <th className="py-2.5 px-3">Ticket ID</th>
-                    <th className="py-2.5 px-3">Work Date</th>
-                    <th className="py-2.5 px-3">Activity</th>
-                    <th className="py-2.5 px-3 text-center">Hours</th>
-                    <th className="py-2.5 px-3">Billing</th>
-                    <th className="py-2.5 px-3">Approval status</th>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[9px] tracking-wider font-mono">
+                  <th className="py-2.5 px-3">Ticket ID</th>
+                  <th className="py-2.5 px-3">Customer</th>
+                  <th className="py-2.5 px-3">Subject</th>
+                  <th className="py-2.5 px-3">SAP Module</th>
+                  <th className="py-2.5 px-3 text-center">Est Hours</th>
+                  <th className="py-2.5 px-3 text-center">Actual Hours</th>
+                  <th className="py-2.5 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-[11px] font-mono">
+                {filteredTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400 italic">No records match configuration filters.</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 text-[11px]">
-                  {filteredEfforts.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-zinc-400 italic">No effort log records matching filters.</td>
-                    </tr>
-                  ) : (
-                    filteredEfforts.map(log => (
-                      <tr key={log.id} className="hover:bg-zinc-50/50">
-                        <td className="py-3 px-3 font-bold text-zinc-950">{log.ticketId}</td>
-                        <td className="py-3 px-3 text-zinc-500">{log.workDate || log.activityDate}</td>
+                ) : (
+                  filteredTickets.map(t => {
+                    const latestEst = (t.hourEstimates || [])
+                      .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
+                      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+                    const approvedCls = (t.closureRequests || []).find(c => c.status === 'Approved');
+
+                    return (
+                      <tr key={t.id} className="hover:bg-slate-50/50">
+                        <td className="py-3 px-3 font-bold text-slate-955">{t.ticketNumber || t.id}</td>
+                        <td className="py-3 px-3 font-semibold text-slate-655">{t.organization}</td>
+                        <td className="py-3 px-3 text-slate-900 truncate max-w-[150px]" title={t.title}>{t.title}</td>
                         <td className="py-3 px-3">
-                          <span className="px-1.5 py-0.2 bg-zinc-100 border rounded font-mono text-[9px] uppercase font-bold">{log.activityType}</span>
+                          <Badge variant="outline" className="text-[8px] uppercase">{t.sapModule}</Badge>
                         </td>
-                        <td className="py-3 px-3 text-center font-bold">{log.hoursWorked || log.hoursLogged}h</td>
-                        <td className="py-3 px-3 font-bold text-zinc-650">{log.billable ? 'Billable' : 'Non-Billable'}</td>
+                        <td className="py-3 px-3 text-center font-bold">{latestEst?.totalEstimatedHours || t.quotedHours || 0}h</td>
+                        <td className="py-3 px-3 text-center font-bold text-emerald-600">{approvedCls?.totalActualHours || 0}h</td>
                         <td className="py-3 px-3">
                           <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[9px] ${
-                            log.status === 'Approved' ? 'text-emerald-700 bg-emerald-50' :
-                            log.status === 'Rejected' ? 'text-red-700 bg-red-50' :
-                            log.status === 'Resubmitted' ? 'text-blue-700 bg-blue-50' :
-                            'text-amber-700 bg-amber-50'
-                          }`}>{log.status}</span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-zinc-100 border-b border-zinc-200 text-zinc-500 font-bold uppercase text-[9px] tracking-wider">
-                    <th className="py-2.5 px-3">Ticket ID</th>
-                    <th className="py-2.5 px-3">Client</th>
-                    <th className="py-2.5 px-3 font-bold">Subject</th>
-                    <th className="py-2.5 px-3">Module</th>
-                    <th className="py-2.5 px-3">Priority</th>
-                    <th className="py-2.5 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 text-[11px]">
-                  {filteredTickets.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-zinc-400 italic">No tickets found matching filters.</td>
-                    </tr>
-                  ) : (
-                    filteredTickets.map(t => (
-                      <tr key={t.id} className="hover:bg-zinc-50/50">
-                        <td className="py-3 px-3 font-bold text-zinc-955">{t.id}</td>
-                        <td className="py-3 px-3 text-zinc-700 font-bold truncate max-w-[100px]" title={t.organization}>{t.organization}</td>
-                        <td className="py-3 px-3 font-bold text-zinc-950 truncate max-w-[150px]" title={t.title}>{t.title}</td>
-                        <td className="py-3 px-3">
-                          <span className="px-1.5 py-0.2 bg-zinc-100 border border-zinc-200 rounded font-mono text-[9px] uppercase font-bold">{t.sapModule}</span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-0.2 rounded-full font-bold text-[9px] ${
-                            t.priority === 'Critical' ? 'bg-red-50 text-red-600 border border-red-200' :
-                            t.priority === 'High' ? 'bg-orange-50 text-orange-600' :
-                            t.priority === 'Medium' ? 'bg-amber-50 text-amber-600' :
-                            'bg-zinc-150 text-zinc-600'
-                          }`}>{t.priority}</span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-0.2 rounded font-bold uppercase text-[9px] ${
-                            t.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600' :
-                            t.status === 'In Progress' ? 'bg-zinc-950 text-white' :
-                            t.status === 'Reopened' ? 'bg-red-50 text-red-600' :
-                            'bg-zinc-100 text-zinc-650'
+                            t.status === 'Closed' ? 'text-emerald-700 bg-emerald-50' :
+                            t.status === 'Request for Closure' ? 'text-blue-700 bg-blue-50' :
+                            'text-slate-700 bg-slate-50'
                           }`}>{t.status}</span>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
 
-          <div className="bg-zinc-50 p-3 border-t border-zinc-200 text-right text-zinc-500 font-bold uppercase text-[9px]">
-            Previewing up to {activeReport === 'effort_report' || activeReport === 'rejected_effort' ? filteredEfforts.length : filteredTickets.length} rows
+          <div className="bg-slate-50 p-3 border-t border-slate-200 text-right text-slate-500 font-bold uppercase text-[9px] font-mono">
+            Previewing {filteredTickets.length} matching incidents rows
           </div>
-        </div>
+        </Card>
 
-        {/* Chart summary */}
-        <div className="bg-white border border-zinc-200 rounded shadow-sm p-4 flex flex-col justify-between h-[380px]">
-          <span className="font-bold text-[9px] text-zinc-450 uppercase tracking-widest block border-b border-zinc-100 pb-2">Chart Summary breakdown</span>
-          
+        {/* Chart breakdown panel */}
+        <Card className="bg-white border border-slate-200 shadow-sm p-4 flex flex-col justify-between h-[380px]">
+          <span className="font-bold text-[9px] text-slate-450 uppercase tracking-widest block border-b border-slate-100 pb-2 font-mono">
+            Chart breakdown distribution
+          </span>
+
           <div className="w-full h-72 mt-4">
             {chartData.length === 0 ? (
-              <p className="text-zinc-400 italic text-center py-20">No data available for charting.</p>
+              <div className="flex items-center justify-center h-full text-slate-400 text-xs italic font-mono">
+                No data available for charting
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-                  <XAxis dataKey="name" stroke="#71717a" style={{ fontSize: 8 }} />
-                  <YAxis stroke="#71717a" style={{ fontSize: 8 }} />
-                  <RechartsTooltip />
-                  <Bar dataKey="value" fill="#09090b" barSize={15} />
+                  <XAxis dataKey="name" stroke="#94a3b8" tick={{ fill: '#64748b', fontSize: 8 }} />
+                  <YAxis stroke="#94a3b8" tick={{ fill: '#64748b', fontSize: 8 }} />
+                  <RechartsTooltip contentStyle={{ fontSize: 10 }} />
+                  <Bar dataKey="value" fill={chartColors.categorical[0]} barSize={14} radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
-        </div>
+        </Card>
 
       </div>
 

@@ -112,7 +112,7 @@ export default function AdminSlaPage() {
         <div className="space-y-1.5 leading-relaxed">
           <h4 className="font-bold text-zinc-900">Automatic Breach Warnings</h4>
           <p className="text-zinc-500">
-            SST SLA monitoring triggers warnings inside manager dashboards at warning threshold ratios. If a P1 Critical ticket remains open past 3 hours (75% threshold), the system issues active warnings.
+            Assist360 SLA monitoring triggers warnings inside manager dashboards at warning threshold ratios. If a P1 Critical ticket remains open past 3 hours (75% threshold), the system issues active warnings.
           </p>
         </div>
       </div>

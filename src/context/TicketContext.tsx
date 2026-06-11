@@ -1,6 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   Ticket,
   TicketStatus,
@@ -41,6 +43,59 @@ import {
   MOCK_CONTACTS
 } from '../utils/mockData';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
+import { useAuth } from './AuthContext';
+import { getOrganizationMap, getOrganizationShortCodeMap } from '../app/actions/auth';
+
+export const addSlaHours = (startDate: Date | string, hours: number): string => {
+  const date = new Date(startDate);
+  let remainingHours = hours;
+  while (remainingHours > 0) {
+    date.setTime(date.getTime() + 60 * 60 * 1000);
+    const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+    if (day !== 5 && day !== 6) {
+      remainingHours--;
+    }
+  }
+  return date.toISOString();
+};
+
+// Query retry and timeout helpers
+const fetchWithRetryAndTimeout = async <T,>(
+  queryFn: () => Promise<T>,
+  retries = 1,
+  timeoutMs = 8000
+): Promise<T> => {
+  let attempt = 0;
+  while (true) {
+    try {
+      const promise = queryFn();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Database query timed out')), timeoutMs)
+      );
+      return await Promise.race([promise, timeoutPromise]);
+    } catch (error: any) {
+      attempt++;
+      if (attempt > retries) {
+        throw error;
+      }
+      console.warn(`Database query failed (attempt ${attempt}/${retries + 1}). Retrying in 1s...`, error);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+};
+
+const wrapQuery = async <T,>(
+  queryFn: () => PromiseLike<{ data: T | null; error: any }>
+): Promise<T | null> => {
+  return fetchWithRetryAndTimeout(async () => {
+    const res = await queryFn();
+    if (res.error) {
+      throw new Error(res.error.message || JSON.stringify(res.error));
+    }
+    return res.data;
+  }, 1, 8000);
+};
+
 
 interface TicketContextType {
   tickets: Ticket[];
@@ -49,14 +104,18 @@ interface TicketContextType {
   kbArticles: KnowledgebaseArticle[];
   kbCategories: KnowledgebaseCategory[];
   notifications: Notification[];
+  profiles: any[];
+  orgMap: Record<string, string>;
+  orgShortCodeMap: Record<string, string>;
   loading: boolean;
+  slaConfigurations: any[];
   
   // Ticket Operations
   createTicket: (data: {
     title: string;
     description: string;
     sapModule: SAPModule;
-    category: IssueCategory;
+    category: string;
     priority: TicketPriority;
     organization: string;
     requestedBy: string;
@@ -64,16 +123,25 @@ interface TicketContextType {
     assignedManager?: string;
     assignedConsultant?: string;
     source?: 'Created by Client' | 'Created by Super Admin';
-    attachments?: { fileName: string; fileSize: number; fileType: string }[];
-    ticketType?: TicketType;
-    functionalOrTechnical?: FunctionalOrTechnical;
+    attachments?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
+    ticketType?: string;
+    functionalOrTechnical?: string;
+    classification?: string;
     businessImpact?: string;
+    businessImpactLevel?: string;
+    businessJustification?: string;
     expectedResolutionDate?: string;
     sapModules?: SAPModule[];
-  }) => void;
+  }) => Promise<{ success: boolean; error?: string; ticketId?: string; ticketNumber?: string }>;
   updateTicket: (ticketId: string, data: Partial<Ticket>) => void;
   requestDelete: (ticketId: string, reason: string, requester: string) => void;
-  requestEscalation: (ticketId: string, reason: string, severity: 'Low' | 'Medium' | 'High', actorName: string) => void;
+  requestEscalation: (
+    ticketId: string,
+    reason: string,
+    severity: 'Low' | 'Medium' | 'High',
+    actorName: string,
+    files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[]
+  ) => Promise<{ success: boolean; error?: string }>;
   assignTicket: (ticketId: string, managerName?: string, consultantName?: string, actorName?: string) => void;
   updateTicketStatus: (ticketId: string, status: TicketStatus, actorName: string) => void;
   addComment: (
@@ -83,9 +151,9 @@ interface TicketContextType {
     authorEmail: string,
     authorRole: Comment['authorRole'],
     isInternal: boolean,
-    attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string }[],
+    attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string; fileObj?: File }[],
     mentions?: string[]
-  ) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
   logEffort: (data: {
     ticketId: string;
     hours: number;
@@ -147,8 +215,10 @@ interface TicketContextType {
       resolutionSummary: string;
       pendingItems?: string;
       requestedBy: string;
+      actualHours?: { consultantId: string; hours: number }[];
+      files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
-  ) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
   resubmitClosureRequest: (
     ticketId: string,
     requestId: string,
@@ -160,10 +230,23 @@ interface TicketContextType {
       resolutionSummary: string;
       pendingItems?: string;
       requestedBy: string;
+      actualHours?: { consultantId: string; hours: number }[];
+      files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
-  ) => void;
-  approveClosureRequest: (ticketId: string, requestId: string, managerName: string) => void;
-  rejectClosureRequest: (ticketId: string, requestId: string, managerName: string, rejectionReason: string) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
+  approveClosureRequest: (
+    ticketId: string,
+    requestId: string,
+    managerName: string,
+    score?: number,
+    feedback?: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  rejectClosureRequest: (
+    ticketId: string,
+    requestId: string,
+    managerName: string,
+    rejectionReason: string
+  ) => Promise<{ success: boolean; error?: string }>;
   updateConsultantEfforts: (ticketId: string, efforts: TicketConsultantEffort[]) => void;
   requestUnlock: (
     ticketId: string,
@@ -192,6 +275,19 @@ interface TicketContextType {
   // Notifications
   markNotificationRead: (notificationId: string) => void;
   createSystemNotification: (userId: string, title: string, message: string, ticketId?: string) => void;
+  createDBNotification: (data: {
+    userId: string;
+    type: string;
+    title: string;
+    message: string;
+    ticketId?: string;
+    linkPath?: string;
+  }) => Promise<void>;
+  acknowledgeEscalation: (
+    ticketId: string,
+    actorId: string,
+    actorName: string
+  ) => Promise<{ success: boolean; error?: string }>;
 
   // AI Chatbot Interface
   getChatResponse: (sapModule: SAPModule, userMessage: string) => Promise<{
@@ -202,166 +298,453 @@ interface TicketContextType {
     suggestedArticle?: KnowledgebaseArticle;
   }>;
   resetMockData: () => void;
+  fetchTicketById: (ticketId: string) => Promise<Ticket | null>;
+  refetchData: () => Promise<void>;
+  addAttachment: (
+    ticketId: string,
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+    fileObj?: File,
+    visibility?: 'public' | 'internal'
+  ) => Promise<{ success: boolean; error?: string; attachment?: Attachment }>;
+  deleteAttachment: (ticketId: string, attachmentId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
 
 export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  // SECURITY: never attribute writes to a fabricated identity. If the session user id
+  // cannot be resolved, the action must fail loudly instead of writing as a ghost user.
+  const requireUserId = (): string => {
+    if (user?.id) return user.id;
+    throw new Error('Could not verify your identity. Please log out and log in again.');
+  };
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [contracts, setContracts] = useState<CustomerContract[]>([]);
   const [contacts, setContacts] = useState<CustomerContact[]>([]);
   const [kbArticles, setKbArticles] = useState<KnowledgebaseArticle[]>([]);
   const [kbCategories, setKbCategories] = useState<KnowledgebaseCategory[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orgMap, setOrgMap] = useState<Record<string, string>>({});
+  const [orgShortCodeMap, setOrgShortCodeMap] = useState<Record<string, string>>({});
+  const [slaConfigurations, setSlaConfigurations] = useState<any[]>([]);
 
-  // Sync data on startup
-  useEffect(() => {
-    const fetchData = async () => {
-      if (isSupabaseConfigured && supabase) {
-        // Fetch from Supabase tables
-        try {
-          const { data: dbTickets } = await supabase.from('tickets').select('*, comments(*), efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_consultant_efforts(*), ticket_unlock_requests(*), ticket_comment_attachments(*)');
-          const { data: dbContracts } = await supabase.from('customer_contracts').select('*');
-          const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
-          const { data: dbArticles } = await supabase.from('knowledgebase_articles').select('*');
-          const { data: dbCategories } = await supabase.from('knowledgebase_categories').select('*');
-          const { data: dbNotifications } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
-
-          if (dbTickets && dbTickets.length > 0) {
-            setTickets(dbTickets.map(mapDbTicket));
-          } else {
-            loadMockTickets();
-          }
-
-          if (dbContracts && dbContracts.length > 0) {
-            setContracts(dbContracts.map(c => ({
-              id: c.id,
-              organizationName: c.organization_id,
-              contractType: c.contract_type as SupportContractType,
-              startDate: c.start_date,
-              endDate: c.end_date,
-              totalHours: Number(c.total_hours),
-              usedHours: Number(c.used_hours),
-              monthlyBudgetHours: Number(c.monthly_budget_hours),
-              isActive: c.is_active
-            })));
-          } else {
-            setContracts(MOCK_CONTRACTS);
-          }
-
-          if (dbContacts && dbContacts.length > 0) {
-            setContacts(dbContacts.map(c => ({
-              id: c.id,
-              organizationName: c.organization_name || c.organization_id || '',
-              name: c.name,
-              designation: c.designation,
-              email: c.email,
-              phone: c.phone || undefined,
-              isPrimary: c.is_primary,
-              isSecondary: c.is_secondary
-            })));
-          } else {
-            setContacts(MOCK_CONTACTS);
-          }
-
-          if (dbArticles && dbArticles.length > 0) {
-            setKbArticles(dbArticles.map(a => ({
-              id: a.id,
-              categoryId: a.category_id,
-              categoryName: 'General Guides',
-              title: a.title,
-              slug: a.slug,
-              content: a.content,
-              sapModule: a.sap_module as SAPModule,
-              isInternal: a.is_internal,
-              authorName: a.author_id,
-              ratingsCount: a.ratings_count || 0,
-              ratingsSum: a.ratings_sum || 0,
-              createdAt: a.created_at,
-              updatedAt: a.updated_at
-            })));
-          } else {
-            setKbArticles(MOCK_ARTICLES);
-          }
-
-          setKbCategories(dbCategories && dbCategories.length > 0 ? dbCategories : MOCK_CATEGORIES);
-          setNotifications(dbNotifications && dbNotifications.length > 0 ? dbNotifications.map(n => ({
-            id: n.id,
-            userId: n.user_id,
-            title: n.title,
-            message: n.message,
-            ticketId: n.ticket_id,
-            isRead: n.is_read,
-            createdAt: n.created_at
-          })) : MOCK_NOTIFICATIONS);
-
-        } catch (err) {
-          console.error('Supabase fetch failed, falling back to local mock data.', err);
-          loadLocalFallback();
+  const resolveSlaHours = async (priority: TicketPriority, organizationId: string): Promise<number> => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('sla_critical_hours, sla_high_hours, sla_medium_hours, sla_low_hours')
+          .eq('id', organizationId)
+          .maybeSingle();
+        if (orgData) {
+          if (priority === 'Critical' && orgData.sla_critical_hours != null) return Number(orgData.sla_critical_hours);
+          if (priority === 'High' && orgData.sla_high_hours != null) return Number(orgData.sla_high_hours);
+          if (priority === 'Medium' && orgData.sla_medium_hours != null) return Number(orgData.sla_medium_hours);
+          if (priority === 'Low' && orgData.sla_low_hours != null) return Number(orgData.sla_low_hours);
         }
-      } else {
-        loadLocalFallback();
+      } catch (e) {
+        console.warn('Error fetching organization SLA override:', e);
       }
-      setLoading(false);
-    };
+      
+      try {
+        const { data: slaData } = await supabase
+          .from('sla_configuration')
+          .select('resolution_hours')
+          .eq('priority', priority)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (slaData && slaData.resolution_hours != null) {
+          return Number(slaData.resolution_hours);
+        }
+      } catch (e) {
+        console.warn('Error fetching global SLA configuration:', e);
+      }
+    }
 
-    fetchData();
+    // fallback
+    if (priority === 'Critical') return 8;
+    if (priority === 'High') return 16;
+    if (priority === 'Medium') return 32;
+    return 64;
+  };
+
+  const calculateContractUtilization = (c: any, mappedTickets: Ticket[], orgName: string) => {
+    const orgId = c.organization_id || c.customer_id;
+    const contractTickets = mappedTickets.filter(t => t.organizationId === orgId || t.organization === orgName);
+
+    // Get all approved closure requests for this contract's tickets
+    const approvedClosures = contractTickets.flatMap(t => 
+      (t.closureRequests || []).filter((r: any) => r.status === 'Approved')
+    );
+
+    // Total dynamic used hours (approved only)
+    const dynamicUsedHours = approvedClosures.reduce((sum, r) => sum + Number(r.totalActualHours || 0), 0);
+
+    // Current date parameters
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+
+    // Monthly consumption (approved in the current month)
+    const monthlyUsedHours = approvedClosures
+      .filter(r => {
+        const appDate = new Date(r.managerApprovedAt || r.createdAt);
+        return appDate.getFullYear() === currentYear && appDate.getMonth() === currentMonth;
+      })
+      .reduce((sum, r) => sum + Number(r.totalActualHours || 0), 0);
+
+    // Annual consumption (approved in the current year)
+    const annualUsedHours = approvedClosures
+      .filter(r => {
+        const appDate = new Date(r.managerApprovedAt || r.createdAt);
+        return appDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, r) => sum + Number(r.totalActualHours || 0), 0);
+
+    const totalHours = Number(c.total_contract_hours != null ? c.total_contract_hours : c.total_hours || 0);
+    const remainingHours = Math.max(0, totalHours - dynamicUsedHours);
+
+    const monthlyBudgetHours = Number(c.monthly_allocated_hours != null ? c.monthly_allocated_hours : c.monthly_budget_hours || 0);
+    const monthlyUtilizationPct = monthlyBudgetHours > 0 ? (monthlyUsedHours / monthlyBudgetHours) * 100 : 0;
+    const annualUtilizationPct = totalHours > 0 ? (annualUsedHours / totalHours) * 100 : 0;
+
+    // Projected contract exhaustion date
+    let projectedExhaustion = 'Never';
+    const startDateStr = c.contract_start_date || c.start_date;
+    if (startDateStr) {
+      const startDate = new Date(startDateStr);
+      const timeDiffMs = now.getTime() - startDate.getTime();
+      // Calculate elapsed months (min 1)
+      const monthsElapsed = Math.max(1, timeDiffMs / (1000 * 60 * 60 * 24 * 30.44));
+      const averageMonthlyBurn = dynamicUsedHours / monthsElapsed;
+
+      if (averageMonthlyBurn > 0.1 && remainingHours > 0) {
+        const remainingMonths = remainingHours / averageMonthlyBurn;
+        const exhaustionDate = new Date(now.getTime() + remainingMonths * 30.44 * 24 * 60 * 60 * 1000);
+        projectedExhaustion = exhaustionDate.toISOString().split('T')[0];
+      } else if (remainingHours === 0) {
+        projectedExhaustion = 'Exhausted';
+      }
+    }
+
+    return {
+      dynamicUsedHours,
+      monthlyUsedHours,
+      annualUsedHours,
+      remainingHours,
+      monthlyUtilizationPct,
+      annualUtilizationPct,
+      projectedExhaustion
+    };
+  };
+
+  const fetchData = async () => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+    if (!user) {
+      setTickets([]);
+      setContracts([]);
+      setContacts([]);
+      setKbArticles([]);
+      setKbCategories([]);
+      setNotifications([]);
+      setProfiles([]);
+      setLoading(false);
+      return;
+    }
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const [
+          organizationMap,
+          organizationShortCodeMap,
+          dbProfiles,
+          dbTickets,
+          dbContracts,
+          dbContacts,
+          dbArticles,
+          dbCategories,
+          dbNotifications,
+          dbSlaConfigurations
+        ] = await Promise.all([
+          getOrganizationMap(),
+          getOrganizationShortCodeMap(),
+          wrapQuery(() => supabase.from('profiles').select('*')),
+          wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, ticket_id, created_at, author_id, content, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, ticket_id, file_name, file_url, file_type, file_size, uploaded_by, created_at), ticket_attachments(id, ticket_id, file_name, file_path, mime_type, file_size, uploaded_by, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)').order('created_at', { ascending: false })),
+          wrapQuery(() => supabase.from('customer_contracts').select('*')),
+          wrapQuery(() => supabase.from('customer_contacts').select('*')),
+          Promise.resolve(null), // knowledgebase removed from UI — do not query
+          Promise.resolve(null), // knowledgebase removed from UI — do not query
+          wrapQuery(() => supabase.from('notifications').select('*').order('created_at', { ascending: false })),
+          wrapQuery(() => supabase.from('sla_configuration').select('*'))
+        ]);
+
+        setOrgMap(organizationMap);
+        setOrgShortCodeMap(organizationShortCodeMap);
+
+        const profilesList = dbProfiles || [];
+        setProfiles(profilesList);
+
+        const mappedTickets = dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList, dbContacts || [], organizationMap)) : [];
+        mappedTickets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setTickets(mappedTickets);
+
+        setSlaConfigurations(dbSlaConfigurations || [
+          { priority: 'Critical', resolution_hours: 8, response_hours: 1, escalation_hours: 8, is_active: true },
+          { priority: 'High', resolution_hours: 16, response_hours: 2, escalation_hours: 16, is_active: true },
+          { priority: 'Medium', resolution_hours: 32, response_hours: 8, escalation_hours: 32, is_active: true },
+          { priority: 'Low', resolution_hours: 64, response_hours: 24, escalation_hours: 64, is_active: true }
+        ]);
+
+        setContracts(dbContracts ? dbContracts.map(c => {
+          const orgName = organizationMap[c.customer_id || c.organization_id] || (c.organizations as any)?.name || c.customer_id || c.organization_id;
+          const utils = calculateContractUtilization(c, mappedTickets, orgName);
+          return {
+            id: c.id,
+            organizationName: orgName,
+            contractType: c.contract_type as SupportContractType,
+            startDate: c.contract_start_date || c.start_date,
+            endDate: c.contract_end_date || c.end_date,
+            totalHours: Number(c.total_contract_hours !== undefined && c.total_contract_hours !== null ? c.total_contract_hours : c.total_hours),
+            usedHours: utils.dynamicUsedHours,
+            monthlyBudgetHours: Number(c.monthly_allocated_hours !== undefined && c.monthly_allocated_hours !== null ? c.monthly_allocated_hours : c.monthly_budget_hours),
+            isActive: c.status !== undefined && c.status !== null ? c.status === 'Active' : c.is_active,
+            customerId: c.customer_id || c.organization_id,
+            status: c.status || (c.is_active ? 'Active' : 'Inactive'),
+            contractValue: c.contract_value ? Number(c.contract_value) : 0,
+            monthlyUsedHours: utils.monthlyUsedHours,
+            annualUsedHours: utils.annualUsedHours,
+            remainingHours: utils.remainingHours,
+            monthlyUtilizationPct: utils.monthlyUtilizationPct,
+            annualUtilizationPct: utils.annualUtilizationPct,
+            projectedExhaustion: utils.projectedExhaustion
+          };
+        }) : []);
+
+        setContacts(dbContacts ? dbContacts.map(c => ({
+          id: c.id,
+          organizationName: c.organization_name || organizationMap[c.organization_id] || c.organization_id || '',
+          name: c.name,
+          designation: c.designation,
+          email: c.email,
+          phone: c.phone || undefined,
+          isPrimary: c.is_primary,
+          isSecondary: c.is_secondary
+        })) : []);
+
+        // Knowledge base was removed from the UI — keep state empty, no queries issued.
+        setKbArticles([]);
+        setKbCategories([]);
+
+        setNotifications(dbNotifications ? dbNotifications.map(n => ({
+          id: n.id,
+          userId: n.user_id,
+          title: n.title,
+          message: n.message,
+          ticketId: n.ticket_id,
+          isRead: n.read_at ? true : (n.is_read || false),
+          createdAt: n.created_at,
+          type: n.type || 'system',
+          linkPath: n.link_path || (n.ticket_id ? `/tickets/${n.ticket_id}` : ''),
+          readAt: n.read_at
+        })) : []);
+
+        setLoading(false);
+      } catch (err: any) {
+        console.error('Fatal fetchData error:', err);
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
+  };
+
+  const fetchDataRef = useRef(fetchData);
+  useEffect(() => {
+    fetchDataRef.current = fetchData;
+  }, [fetchData]);
+
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedRefetch = () => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      try {
+        router.refresh();
+      } catch (e) {
+        console.warn('router.refresh() call warning:', e);
+      }
+      fetchDataRef.current();
+    }, 800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
   }, []);
 
-  const loadMockTickets = () => {
-    setTickets(MOCK_TICKETS);
-    localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
+  useEffect(() => {
+    fetchData();
+  }, [user, authLoading]);
+
+  // Targeted realtime: surgically refresh ONE ticket on changes to it (or its child rows),
+  // and append notifications for the current user. Never refetch the entire dataset from
+  // realtime — the previous schema-wide '*' subscription caused constant full refetches
+  // that blocked navigation while users were inside a ticket.
+  const ticketRefetchTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const fetchTicketByIdRef = useRef<(id: string) => Promise<any>>(async () => null);
+
+  const scheduleTicketRefetch = (ticketId: string) => {
+    if (!ticketId) return;
+    const timers = ticketRefetchTimersRef.current;
+    const existing = timers.get(ticketId);
+    if (existing) clearTimeout(existing);
+    timers.set(
+      ticketId,
+      setTimeout(() => {
+        timers.delete(ticketId);
+        fetchTicketByIdRef.current(ticketId).catch((e: any) =>
+          console.warn('Realtime single-ticket refresh failed:', e?.message || e)
+        );
+      }, 600)
+    );
   };
 
-  const loadLocalFallback = () => {
-    const t = localStorage.getItem('sst_tickets');
-    const c = localStorage.getItem('sst_contracts');
-    const co = localStorage.getItem('sst_contacts');
-    const a = localStorage.getItem('sst_articles');
-    const cat = localStorage.getItem('sst_categories');
-    const n = localStorage.getItem('sst_notifications');
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
 
-    setTickets(t ? JSON.parse(t) : MOCK_TICKETS);
-    setContracts(c ? JSON.parse(c) : MOCK_CONTRACTS);
-    setContacts(co ? JSON.parse(co) : MOCK_CONTACTS);
-    setKbArticles(a ? JSON.parse(a) : MOCK_ARTICLES);
-    setKbCategories(cat ? JSON.parse(cat) : MOCK_CATEGORIES);
-    setNotifications(n ? JSON.parse(n) : MOCK_NOTIFICATIONS);
-  };
+    const ticketChildTables = [
+      'ticket_comments',
+      'ticket_comment_attachments',
+      'ticket_attachments',
+      'ticket_actual_hours',
+      'ticket_closure_requests',
+      'ticket_assignments',
+      'ticket_estimates',
+      'ticket_hour_estimates',
+      'ticket_efforts',
+      'ticket_history',
+      'ticket_unlock_requests',
+      'ticket_reopen_requests'
+    ];
 
-  const resetMockData = () => {
-    setTickets(MOCK_TICKETS);
-    setContracts(MOCK_CONTRACTS);
-    setContacts(MOCK_CONTACTS);
-    setKbArticles(MOCK_ARTICLES);
-    setKbCategories(MOCK_CATEGORIES);
-    setNotifications(MOCK_NOTIFICATIONS);
-    
-    localStorage.setItem('sst_tickets', JSON.stringify(MOCK_TICKETS));
-    localStorage.setItem('sst_contracts', JSON.stringify(MOCK_CONTRACTS));
-    localStorage.setItem('sst_contacts', JSON.stringify(MOCK_CONTACTS));
-    localStorage.setItem('sst_articles', JSON.stringify(MOCK_ARTICLES));
-    localStorage.setItem('sst_categories', JSON.stringify(MOCK_CATEGORIES));
-    localStorage.setItem('sst_notifications', JSON.stringify(MOCK_NOTIFICATIONS));
-  };
+    let channel = supabase
+      .channel('targeted-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tickets' },
+        (payload: any) => {
+          const id = payload?.new?.id || payload?.old?.id;
+          if (id) scheduleTicketRefetch(id);
+        }
+      );
+
+    for (const table of ticketChildTables) {
+      channel = channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table },
+        (payload: any) => {
+          const ticketId = payload?.new?.ticket_id || payload?.old?.ticket_id;
+          if (ticketId) scheduleTicketRefetch(ticketId);
+        }
+      );
+    }
+
+    channel = channel.on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'notifications' },
+      (payload: any) => {
+        const n = payload?.new;
+        if (!n || !user?.id || n.user_id !== user.id) return;
+        setNotifications(prev => {
+          if (prev.some(x => x.id === n.id)) return prev;
+          return [
+            {
+              id: n.id,
+              userId: n.user_id,
+              title: n.title,
+              message: n.message,
+              ticketId: n.ticket_id,
+              isRead: n.read_at ? true : (n.is_read || false),
+              createdAt: n.created_at,
+              type: n.type || 'system',
+              linkPath: n.link_path || (n.ticket_id ? `/tickets/${n.ticket_id}` : ''),
+              readAt: n.read_at
+            },
+            ...prev
+          ];
+        });
+      }
+    );
+
+    channel.subscribe((status) => {
+      if (status === 'CHANNEL_ERROR') {
+        console.error('Realtime subscription failed to connect.');
+      }
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+      const timers = ticketRefetchTimersRef.current;
+      timers.forEach(t => clearTimeout(t));
+      timers.clear();
+    };
+  }, [user?.id]);
 
   // Helper mapper for Supabase format
-  const mapDbTicket = (t: any): Ticket => {
+  const mapDbTicket = (t: any, dbProfiles: any[], dbContacts: any[] = [], currentOrgMap?: Record<string, string>): Ticket => {
+    const activeOrgMap = currentOrgMap || orgMap;
+    const getProfile = (id: string) => dbProfiles.find(p => p.id === id || p.full_name === id || p.email === id);
+    const reqProfile = t.requested_by_profile || getProfile(t.requested_by);
+    const createdProfile = t.created_by_profile || getProfile(t.created_by_user);
+    const consultant = getProfile(t.assigned_consultant_id);
+    const manager = getProfile(t.assigned_manager_id);
+
+    let requestedByPhone = reqProfile?.phone_number || undefined;
+    if (!requestedByPhone && dbContacts) {
+      const contact = dbContacts.find((c: any) => 
+        (c.name && reqProfile?.full_name && c.name.toLowerCase() === reqProfile.full_name.toLowerCase()) || 
+        (c.email && reqProfile?.email && c.email.toLowerCase() === reqProfile.email.toLowerCase()) ||
+        (c.name && t.created_by_name && c.name.toLowerCase() === t.created_by_name.toLowerCase())
+      );
+      if (contact) {
+        requestedByPhone = contact.phone || undefined;
+      }
+    }
+
     return {
       id: t.id,
+      ticketNumber: t.ticket_number || t.id,
       title: t.title,
       description: t.description,
-      organization: t.organization_id,
-      requestedBy: t.requested_by,
-      requestedByEmail: '',
+      organization: (t.organization_id ? activeOrgMap[t.organization_id] : null) || (t.organizations as any)?.name || t.organization_id, // Organization Name
+      organizationId: t.organization_id,
+      requestedBy: reqProfile?.full_name || t.created_by_name || t.requested_by,
+      requestedByEmail: reqProfile?.email || '',
+      requestedByPhone: requestedByPhone,
       sapModule: t.sap_module as SAPModule,
       category: t.category as IssueCategory,
       priority: t.priority as TicketPriority,
       status: t.status as TicketStatus,
-      assignedManager: t.assigned_manager_id,
-      assignedConsultant: t.assigned_consultant_id,
-      slaDueAt: t.sla_due_at,
+      assignedManager: manager?.full_name || undefined,
+      assignedConsultant: consultant?.full_name || undefined,
+      assignedConsultantId: t.assigned_consultant_id || undefined,
+      assignedManagerId: t.assigned_manager_id || undefined,
+      slaDueAt: (t.sla_due_at === '9999-12-31T23:59:59.999Z' || t.sla_due_at?.startsWith('9999-12-31')) ? 'SLA Not Applicable' : (t.sla_due_at || 'SLA Not Applicable'),
       resolvedAt: t.resolved_at,
       closedAt: t.closed_at,
       createdAt: t.created_at,
@@ -373,16 +756,123 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       approvalRequiredFlag: t.approval_required,
       transportRequest: t.transport_request,
       source: t.source || 'Created by Client',
-      comments: t.comments || [],
-      attachments: t.attachments || [],
-      efforts: t.efforts || [],
-      history: t.history || [],
-      rating: t.satisfaction_ratings ? t.satisfaction_ratings[0] : undefined,
+      primaryConsultantId: t.primary_consultant_id,
+      leadConsultantId: t.lead_consultant_id,
+      closureStatus: t.closure_status || 'Pending',
+      closedBy: t.closed_by,
       
-      // Extended properties
+      comments: (t.ticket_comments || t.comments) ? (t.ticket_comments || t.comments).map((c: any) => {
+        const commentAuthor = getProfile(c.author_id);
+        return {
+          id: c.id,
+          ticketId: c.ticket_id,
+          authorName: commentAuthor?.full_name || 'System',
+          authorEmail: commentAuthor?.email || '',
+          authorRole: commentAuthor?.role || 'Customer',
+          content: c.content,
+          isInternal: c.is_internal,
+          createdAt: c.created_at,
+          attachments: t.ticket_comment_attachments 
+            ? t.ticket_comment_attachments
+                .filter((a: any) => a.comment_id === c.id)
+                .map((a: any) => ({
+                  id: a.id,
+                  ticketId: a.ticket_id,
+                  commentId: a.comment_id,
+                  fileName: a.file_name,
+                  filePath: a.file_url,
+                  fileUrl: a.file_url,
+                  fileType: a.file_type || '',
+                  fileSize: a.file_size || 0,
+                  uploadedBy: a.uploaded_by,
+                  visibility: c.is_internal ? 'internal' : 'public',
+                  createdAt: a.created_at
+                }))
+            : []
+        };
+      }) : [],
+
+      attachments: [
+        ...(t.ticket_attachments ? t.ticket_attachments.map((a: any) => ({
+          id: a.id,
+          ticketId: a.ticket_id,
+          commentId: a.comment_id || undefined,
+          closureRequestId: a.closure_request_id || undefined,
+          escalationId: a.escalation_id || undefined,
+          fileName: a.file_name,
+          filePath: a.file_path,
+          fileUrl: a.file_path,
+          fileType: a.mime_type || '',
+          fileSize: a.file_size || 0,
+          uploadedBy: getProfile(a.uploaded_by)?.full_name || a.uploaded_by,
+          visibility: 'public',
+          createdAt: a.created_at
+        })) : []),
+        ...(t.ticket_comment_attachments ? t.ticket_comment_attachments.map((a: any) => {
+          const comment = (t.ticket_comments || t.comments || []).find((c: any) => c.id === a.comment_id);
+          return {
+            id: a.id,
+            ticketId: a.ticket_id,
+            commentId: a.comment_id,
+            fileName: a.file_name,
+            filePath: a.file_url,
+            fileUrl: a.file_url,
+            fileType: a.file_type || '',
+            fileSize: a.file_size || 0,
+            uploadedBy: getProfile(a.uploaded_by)?.full_name || a.uploaded_by,
+            visibility: comment?.is_internal ? 'internal' : 'public',
+            createdAt: a.created_at
+          };
+        }) : [])
+      ],
+
+      efforts: (t.ticket_efforts || t.efforts) ? (t.ticket_efforts || t.efforts).map((e: any) => {
+        const effortConsultant = getProfile(e.consultant_id);
+        return {
+          id: e.id,
+          ticketId: e.ticket_id,
+          consultantId: e.consultant_id,
+          consultantName: effortConsultant?.full_name || 'Consultant',
+          hoursWorked: Number(e.hours_logged),
+          workDate: e.activity_date,
+          description: e.description,
+          activityType: e.activity_type || 'Analysis',
+          billable: e.billable,
+          status: e.status || 'Approved',
+          rejectionReason: e.rejection_reason,
+          createdAt: e.created_at,
+          hoursLogged: Number(e.hours_logged),
+          activityDate: e.activity_date
+        };
+      }) : [],
+
+      history: t.ticket_history ? t.ticket_history.map((h: any) => {
+        const historyActor = getProfile(h.changed_by);
+        return {
+          id: h.id,
+          ticketId: h.ticket_id,
+          changedBy: historyActor?.full_name || h.changed_by,
+          fieldChanged: h.field_changed,
+          oldValue: h.old_value || '',
+          newValue: h.new_value || '',
+          createdAt: h.created_at
+        };
+      }).sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) : [],
+
+      rating: t.satisfaction_ratings && t.satisfaction_ratings.length > 0 ? {
+        id: t.satisfaction_ratings[0].id,
+        ticketId: t.satisfaction_ratings[0].ticket_id,
+        score: t.satisfaction_ratings[0].score,
+        feedback: t.satisfaction_ratings[0].feedback,
+        createdAt: t.satisfaction_ratings[0].created_at
+      } : undefined,
+
       ticketType: t.ticket_type as TicketType,
       functionalOrTechnical: t.functional_or_technical as FunctionalOrTechnical,
+      classification: t.classification || t.functional_or_technical,
       businessImpact: t.business_impact,
+      businessImpactLevel: t.business_impact_level || t.business_impact,
+      businessJustification: t.business_justification,
       expectedResolutionDate: t.expected_resolution_date,
       quotedHours: t.quoted_hours ? Number(t.quoted_hours) : undefined,
       raisedToSap: t.raised_to_sap,
@@ -390,108 +880,228 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       customerActionRequired: t.customer_action_required,
       currentOwner: t.current_owner,
       nextActionOwner: t.next_action_owner,
-      escalations: t.ticket_escalations || [],
+      escalations: t.ticket_escalations ? t.ticket_escalations.map((esc: any) => {
+        const escActor = getProfile(esc.escalated_by);
+        return {
+          id: esc.id,
+          ticketId: esc.ticket_id,
+          escalatedBy: escActor?.full_name || esc.escalated_by,
+          reason: esc.reason,
+          severity: esc.severity,
+          status: esc.status,
+          createdAt: esc.created_at
+        };
+      }) : [],
 
-      // Rework mapped fields
-      createdByName: t.created_by_name || t.requested_by,
+      createdByName: t.created_by_name || createdProfile?.full_name || reqProfile?.full_name || t.requested_by,
       createdByUser: t.created_by_user,
       softDeleteStatus: (t.soft_delete_status as 'Active' | 'Pending Delete' | 'Archived') || 'Active',
+      escalationAcknowledgedAt: t.escalation_acknowledged_at,
+      escalationAcknowledgedBy: t.escalation_acknowledged_by,
+      escalationAcknowledgedByName: getProfile(t.escalation_acknowledged_by)?.full_name || undefined,
+      isEscalated: !!t.is_escalated,
+      escalatedAt: t.escalated_at,
+      escalatedBy: t.escalated_by,
+      escalationReason: t.escalation_reason,
       sapModules: t.ticket_modules && t.ticket_modules.length > 0
         ? t.ticket_modules.map((m: any) => m.module_id as SAPModule)
         : (t.sap_module ? [t.sap_module as SAPModule] : []),
-      deleteRequests: t.ticket_delete_requests ? t.ticket_delete_requests.map((r: any) => ({
-        id: r.id,
-        ticketId: r.ticket_id,
-        requestedBy: r.requested_by,
-        requestedAt: r.requested_at,
-        reason: r.reason,
-        managerApproval: r.manager_approval as 'Pending' | 'Approved' | 'Rejected',
-        managerApprovedBy: r.manager_approved_by,
-        managerApprovedAt: r.manager_approved_at,
-        adminApproval: r.admin_approval as 'Pending' | 'Approved' | 'Rejected',
-        adminApprovedBy: r.admin_approved_by,
-        adminApprovedAt: r.admin_approved_at,
-        finalStatus: r.final_status as 'Pending' | 'Approved' | 'Rejected',
-        createdAt: r.created_at,
-        updatedAt: r.updated_at
-      })) : [],
+        
+      deleteRequests: t.ticket_delete_requests ? t.ticket_delete_requests.map((r: any) => {
+        const reqActor = getProfile(r.requested_by);
+        return {
+          id: r.id,
+          ticketId: r.ticket_id,
+          requestedBy: reqActor?.full_name || r.requested_by,
+          requestedAt: r.requested_at,
+          reason: r.reason,
+          managerApproval: r.manager_approval as 'Pending' | 'Approved' | 'Rejected',
+          managerApprovedBy: r.manager_approved_by,
+          managerApprovedAt: r.manager_approved_at,
+          adminApproval: r.admin_approval as 'Pending' | 'Approved' | 'Rejected',
+          adminApprovedBy: r.admin_approved_by,
+          adminApprovedAt: r.admin_approved_at,
+          finalStatus: r.final_status as 'Pending' | 'Approved' | 'Rejected',
+          createdAt: r.created_at,
+          updatedAt: r.updated_at
+        };
+      }) : [],
 
-      // Consultant workflows
-      hourEstimates: t.ticket_hour_estimates ? t.ticket_hour_estimates.map((e: any) => ({
+      hourEstimates: t.ticket_hour_estimates ? t.ticket_hour_estimates.map((e: any) => {
+        const estActor = getProfile(e.consultant_id);
+        return {
+          id: e.id,
+          ticketId: e.ticket_id,
+          consultantId: estActor?.full_name || e.consultant_id,
+          functionalEstimatedHours: Number(e.functional_estimated_hours),
+          technicalEstimatedHours: Number(e.technical_estimated_hours),
+          totalEstimatedHours: Number(e.total_estimated_hours),
+          remarks: e.remarks,
+          status: e.status,
+          submittedAt: e.submitted_at,
+          approvedBy: e.approved_by,
+          approvedAt: e.approved_at,
+          rejectedBy: e.rejected_by,
+          rejectedAt: e.rejected_at,
+          rejectionReason: e.rejection_reason,
+          createdAt: e.created_at,
+          updatedAt: e.updated_at
+        };
+      }) : [],
+
+      closureRequests: t.ticket_closure_requests ? t.ticket_closure_requests.map((r: any) => {
+        const reqActor = getProfile(r.requested_by);
+        
+        // Sum actual hours by type for this specific closure request across all consultants
+        const requestLogs = (t.ticket_actual_hours || []).filter((ah: any) => ah.closure_request_id === r.id);
+        const hasLogs = requestLogs.length > 0;
+        
+        const functionalActualHours = hasLogs
+          ? requestLogs.filter((ah: any) => ah.consultant_type === 'Functional').reduce((sum: number, ah: any) => sum + Number(ah.actual_hours), 0)
+          : Number(r.functional_actual_hours || 0);
+          
+        const technicalActualHours = hasLogs
+          ? requestLogs.filter((ah: any) => ah.consultant_type === 'Technical').reduce((sum: number, ah: any) => sum + Number(ah.actual_hours), 0)
+          : Number(r.technical_actual_hours || 0);
+          
+        const totalActualHours = hasLogs
+          ? (functionalActualHours + technicalActualHours)
+          : Number(r.total_actual_hours || 0);
+
+        return {
+          id: r.id,
+          ticketId: r.ticket_id,
+          requestedBy: reqActor?.full_name || r.requested_by,
+          functionalActualHours,
+          technicalActualHours,
+          totalActualHours,
+          workCompletedSummary: r.work_completed_summary,
+          rootCause: r.root_cause,
+          resolutionSummary: r.resolution_summary,
+          pendingItems: r.pending_items,
+          status: r.status,
+          managerApprovalStatus: r.manager_approval_status,
+          managerApprovedBy: r.manager_approved_by,
+          managerApprovedAt: r.manager_approved_at,
+          managerRejectedBy: r.manager_rejected_by,
+          managerRejectedAt: r.manager_rejected_at,
+          rejectionReason: r.rejection_reason,
+          resubmittedFromId: r.resubmitted_from_id,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at
+        };
+      }) : [],
+
+      assignments: t.ticket_assignments ? t.ticket_assignments.map((a: any) => {
+        const profile = getProfile(a.consultant_id);
+        return {
+          ticketId: a.ticket_id,
+          consultantId: a.consultant_id,
+          consultantName: profile?.full_name || 'Consultant',
+          consultantType: a.consultant_type,
+          isPrimary: a.is_primary,
+          active: a.active,
+          assignedBy: a.assigned_by,
+          assignedAt: a.assigned_at
+        };
+      }) : [],
+
+      estimates: t.ticket_estimates ? t.ticket_estimates.map((e: any) => ({
         id: e.id,
         ticketId: e.ticket_id,
         consultantId: e.consultant_id,
-        functionalEstimatedHours: Number(e.functional_estimated_hours),
-        technicalEstimatedHours: Number(e.technical_estimated_hours),
-        totalEstimatedHours: Number(e.total_estimated_hours),
-        remarks: e.remarks,
-        status: e.status,
-        submittedAt: e.submitted_at,
-        approvedBy: e.approved_by,
-        approvedAt: e.approved_at,
-        rejectedBy: e.rejected_by,
-        rejectedAt: e.rejected_at,
-        rejectionReason: e.rejection_reason,
-        createdAt: e.created_at,
-        updatedAt: e.updated_at
+        consultantType: e.consultant_type,
+        estimatedHours: Number(e.estimated_hours),
+        remarks: e.remarks || '',
+        submittedAt: e.submitted_at
       })) : [],
-      closureRequests: t.ticket_closure_requests ? t.ticket_closure_requests.map((r: any) => ({
-        id: r.id,
-        ticketId: r.ticket_id,
-        requestedBy: r.requested_by,
-        functionalActualHours: Number(r.functional_actual_hours),
-        technicalActualHours: Number(r.technical_actual_hours),
-        totalActualHours: Number(r.total_actual_hours),
-        workCompletedSummary: r.work_completed_summary,
-        rootCause: r.root_cause,
-        resolutionSummary: r.resolution_summary,
-        pendingItems: r.pending_items,
-        status: r.status,
-        managerApprovalStatus: r.manager_approval_status,
-        managerApprovedBy: r.manager_approved_by,
-        managerApprovedAt: r.manager_approved_at,
-        managerRejectedBy: r.manager_rejected_by,
-        managerRejectedAt: r.manager_rejected_at,
-        rejectionReason: r.rejection_reason,
-        resubmittedFromId: r.resubmitted_from_id,
-        createdAt: r.created_at,
-        updatedAt: r.updated_at
+
+      actualHoursLogs: t.ticket_actual_hours ? t.ticket_actual_hours.map((ah: any) => ({
+        id: ah.id,
+        closureRequestId: ah.closure_request_id,
+        ticketId: ah.ticket_id,
+        consultantId: ah.consultant_id,
+        consultantType: ah.consultant_type,
+        actualHours: Number(ah.actual_hours),
+        billable: ah.billable !== false,
+        approvalStatus: ah.approval_status || 'pending',
+        approvedBy: ah.approved_by,
+        approvedAt: ah.approved_at,
+        createdAt: ah.created_at
       })) : [],
-      consultantEfforts: t.ticket_consultant_efforts ? t.ticket_consultant_efforts
-        .filter((e: any) => !e.is_deleted)
-        .map((e: any) => ({
-          id: e.id,
-          ticketId: e.ticket_id,
-          consultantId: e.consultant_id,
-          consultantName: e.consultant_name || e.consultant_id,
-          consultantType: e.consultant_type,
-          estimatedHours: Number(e.estimated_hours),
-          actualHours: Number(e.actual_hours),
-          remarks: e.remarks,
-          createdAt: e.created_at,
-          updatedAt: e.updated_at,
-          isDeleted: e.is_deleted,
-          deletedAt: e.deleted_at,
-          deletedBy: e.deleted_by
-        })) : [],
-      unlockRequests: t.ticket_unlock_requests ? t.ticket_unlock_requests.map((u: any) => ({
-        id: u.id,
-        ticketId: u.ticket_id,
-        closureRequestId: u.closure_request_id,
-        requestedBy: u.requested_by,
-        reason: u.reason,
-        requestedChange: u.requested_change,
-        remarks: u.remarks,
-        attachmentUrl: u.attachment_url,
-        status: u.status,
-        managerApprovedBy: u.manager_approved_by,
-        managerApprovedAt: u.manager_approved_at,
-        managerRejectedBy: u.manager_rejected_by,
-        managerRejectedAt: u.manager_rejected_at,
-        rejectionReason: u.rejection_reason,
-        createdAt: u.created_at,
-        updatedAt: u.updated_at
-      })) : [],
+
+      consultantEfforts: (() => {
+        const assignments = t.ticket_assignments || [];
+        const estimates = t.ticket_estimates || [];
+        const actualHoursLogs = t.ticket_actual_hours || [];
+        const closureRequests = t.ticket_closure_requests || [];
+ 
+        // Find the latest active closure request to read actual hours from
+        const latestRequest = closureRequests.length > 0 
+          ? [...closureRequests].sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime())[0]
+          : null;
+ 
+        const mapped = assignments.map((a: any) => {
+          const profile = getProfile(a.consultant_id);
+          const est = estimates.find((e: any) => e.consultant_id === a.consultant_id);
+          
+          // Actual hours are retrieved from ticket_actual_hours table for this consultant under the latest request
+          const actLog = latestRequest 
+            ? actualHoursLogs.find((ah: any) => ah.closure_request_id === latestRequest.id && ah.consultant_id === a.consultant_id)
+            : null;
+ 
+          return {
+            id: `synthesized-${a.consultant_id}-${t.id}`,
+            ticketId: t.id,
+            consultantId: a.consultant_id,
+            consultantName: profile?.full_name || 'Consultant',
+            consultantType: a.consultant_type as 'Functional' | 'Technical',
+            estimatedHours: est ? Number(est.estimated_hours) : 0,
+            actualHours: actLog ? Number(actLog.actual_hours) : 0,
+            remarks: est?.remarks || '',
+            createdAt: a.assigned_at,
+            updatedAt: a.assigned_at,
+            isDeleted: !a.active,
+            isPrimary: a.is_primary,
+            closureStatus: latestRequest 
+              ? (latestRequest.status === 'Approved' ? 'Approved' : 'Submitted') 
+              : 'Pending',
+            workSummary: latestRequest?.work_completed_summary || '',
+            resolutionNotes: latestRequest?.resolution_summary || ''
+          };
+        });
+
+        return mapped
+          .filter((eff: any) => !eff.isDeleted)
+          .sort((x: any, y: any) => {
+            if (x.isPrimary && !y.isPrimary) return -1;
+            if (!x.isPrimary && y.isPrimary) return 1;
+            return new Date(x.createdAt || 0).getTime() - new Date(y.createdAt || 0).getTime();
+          });
+      })(),
+
+      unlockRequests: t.ticket_unlock_requests ? t.ticket_unlock_requests.map((u: any) => {
+        const unlockActor = getProfile(u.requested_by);
+        return {
+          id: u.id,
+          ticketId: u.ticket_id,
+          closureRequestId: u.closure_request_id,
+          requestedBy: unlockActor?.full_name || u.requested_by,
+          reason: u.reason,
+          requestedChange: u.requested_change,
+          remarks: u.remarks,
+          attachmentUrl: u.attachment_url,
+          status: u.status,
+          managerApprovedBy: u.manager_approved_by,
+          managerApprovedAt: u.manager_approved_at,
+          managerRejectedBy: u.manager_rejected_by,
+          managerRejectedAt: u.manager_rejected_at,
+          rejectionReason: u.rejection_reason,
+          createdAt: u.created_at,
+          updatedAt: u.updated_at
+        };
+      }) : [],
+
       commentAttachments: t.ticket_comment_attachments ? t.ticket_comment_attachments.map((a: any) => ({
         id: a.id,
         commentId: a.comment_id,
@@ -506,14 +1116,67 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   };
 
+  const fetchTicketById = async (ticketId: string): Promise<Ticket | null> => {    if (isSupabaseConfigured && supabase) {
+      try {
+        const organizationMap = await getOrganizationMap();
+        const dbProfiles = await wrapQuery(() => supabase.from('profiles').select('*'));
+        const profilesList = dbProfiles || [];
+        const dbContacts = await wrapQuery(() => supabase.from('customer_contacts').select('*'));
+
+        const ticketRow = await wrapQuery(() =>
+          supabase
+            .from('tickets')
+            .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
+            .eq('id', ticketId)
+            .maybeSingle()
+        );
+
+        if (!ticketRow) return null;
+
+        const mapped = mapDbTicket(ticketRow, profilesList, dbContacts || [], organizationMap);
+        
+        // Cache/update it in local state
+        setTickets(prev => {
+          const index = prev.findIndex(t => t.id === mapped.id);
+          let next;
+          if (index >= 0) {
+            next = [...prev];
+            next[index] = mapped;
+          } else {
+            next = [...prev, mapped];
+          }
+          return next.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        });
+
+        return mapped;
+      } catch (err: any) {
+        console.error('Fatal fetchTicketById error:', err);
+        throw err;
+      }
+    } else {
+      const t = tickets.find(x => x.id === ticketId);
+      return t || null;
+    }
+  };
+
+  // Keep the realtime handler pointed at the latest fetchTicketById closure
+  fetchTicketByIdRef.current = fetchTicketById;
+
+  const resetMockData = () => {
+    console.log('resetMockData is a no-op when Supabase is configured.');
+  };
+
   const syncTickets = (updated: Ticket[]) => {
-    setTickets(updated);
-    localStorage.setItem('sst_tickets', JSON.stringify(updated));
+    const sorted = [...updated].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setTickets(sorted);
+    localStorage.setItem('sst_tickets', JSON.stringify(sorted));
+    debouncedRefetch();
   };
 
   const syncNotifications = (updated: Notification[]) => {
     setNotifications(updated);
     localStorage.setItem('sst_notifications', JSON.stringify(updated));
+    debouncedRefetch();
   };
 
   const syncKbArticles = (updated: KnowledgebaseArticle[]) => {
@@ -521,167 +1184,599 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem('sst_articles', JSON.stringify(updated));
   };
 
+  const uploadAttachmentToSupabase = async (
+    ticketId: string,
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+    fileObj?: File,
+    fileUrlOrData?: string
+  ): Promise<string> => {
+    // 1. File size limit validation (10MB)
+    if (fileSize > 10 * 1024 * 1024) {
+      throw new Error(`File size exceeds 10MB limit: ${fileName}`);
+    }
+
+    // 2. File extension validation (block executables and script files)
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.msi', '.dll', '.scr', '.com', '.bin', '.cgi', '.py', '.php', '.phtml', '.pl', '.jsp', '.asp', '.aspx'];
+    const lastDotIdx = fileName.lastIndexOf('.');
+    if (lastDotIdx !== -1) {
+      const fileExtension = fileName.slice(lastDotIdx).toLowerCase();
+      if (blockedExtensions.includes(fileExtension)) {
+        throw new Error(`Forbidden file extension: ${fileName}. Executable and script files are blocked for security.`);
+      }
+    }
+
+    if (fileUrlOrData && (fileUrlOrData.includes('supabase.co/storage/v1/object/public/sap-tickets/') || fileUrlOrData.includes('supabase.co/storage/v1/object/sign/sap-tickets/'))) {
+      return fileUrlOrData;
+    }
+    if (isSupabaseConfigured && supabase) {
+      try {
+        try {
+          await supabase.storage.createBucket('sap-tickets', {
+            public: false, // Make the storage bucket private/secure
+            fileSizeLimit: 10485760
+          });
+        } catch (e) {
+          // ignore
+        }
+
+        const uniqueName = `${Date.now()}_${fileName}`;
+        const storagePath = `${ticketId}/${uniqueName}`;
+
+        let finalFileObj = fileObj;
+        if (!finalFileObj) {
+          const fileContent = `Simulated support file upload for ${fileName}. Size: ${fileSize} bytes. Path: ${storagePath}`;
+          const blob = new Blob([fileContent], { type: fileType || 'text/plain' });
+          finalFileObj = new File([blob], fileName, { type: fileType || 'text/plain' });
+        }
+
+        const { error: uploadErr } = await supabase.storage
+          .from('sap-tickets')
+          .upload(storagePath, finalFileObj, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadErr) {
+          console.error('Supabase storage upload error:', uploadErr);
+          throw uploadErr;
+        }
+
+        // Return the relative storage path (not a public URL) so createSignedUrl works
+        return storagePath;
+      } catch (err: any) {
+        console.error('Error in uploadAttachmentToSupabase:', err);
+        throw err;
+      }
+    }
+    return fileUrlOrData || `/files/${fileName}`;
+  };
+
   // --- TICKET ACTIONS ---
 
-  const createTicket = (data: {
+  const createTicket = async (data: {
     title: string;
     description: string;
     sapModule: SAPModule;
-    category: IssueCategory;
+    category: string;
     priority: TicketPriority;
-    organization: string;
+    organization: string; // Organization Name
     requestedBy: string;
     requestedByEmail: string;
     assignedManager?: string;
     assignedConsultant?: string;
     source?: 'Created by Client' | 'Created by Super Admin';
-    attachments?: { fileName: string; fileSize: number; fileType: string }[];
-    ticketType?: TicketType;
-    functionalOrTechnical?: FunctionalOrTechnical;
+    attachments?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
+    ticketType?: string;
+    functionalOrTechnical?: string;
+    classification?: string;
     businessImpact?: string;
+    businessImpactLevel?: string;
+    businessJustification?: string;
     expectedResolutionDate?: string;
     sapModules?: SAPModule[];
-  }) => {
+  }): Promise<{ success: boolean; error?: string; ticketId?: string; ticketNumber?: string }> => {
     const tType = data.ticketType || 'Incident';
+    const classification = data.classification || data.functionalOrTechnical || 'Functional';
+
+    // 1. Mandatory Fields Validation
+    const missingFields: string[] = [];
+    if (!data.title?.trim()) missingFields.push('title');
+    if (!data.description?.trim()) missingFields.push('description');
+    if (!data.sapModule) missingFields.push('sapModule');
+    if (!data.category) missingFields.push('category');
+    if (!data.priority) missingFields.push('priority');
+    if (!data.organization?.trim()) missingFields.push('organization');
+    if (!data.requestedBy?.trim()) missingFields.push('requestedBy');
+    if (!data.requestedByEmail?.trim()) missingFields.push('requestedByEmail');
+    if (!tType) missingFields.push('ticketType');
+    if (!classification) missingFields.push('classification');
+
+    if (missingFields.length > 0) {
+      const errorMsg = `Validation Error: Missing required registry fields: ${missingFields.join(', ')}`;
+      console.error(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+
     const isIncident = tType === 'Incident';
-    
-    let slaHours = 48;
-    if (data.priority === 'Critical') slaHours = 4;
-    else if (data.priority === 'High') slaHours = 8;
-    else if (data.priority === 'Low') slaHours = 120;
+    let slaHours = 32;
+    if (data.priority === 'Critical') slaHours = 8;
+    else if (data.priority === 'High') slaHours = 16;
+    else if (data.priority === 'Low') slaHours = 64;
 
-    const nextIdNum = tickets.reduce((max, t) => {
-      const num = parseInt(t.id.split('-').pop() || '1000');
-      return num > max ? num : max;
-    }, 1000) + 1;
+    const ticketId = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
 
-    const ticketId = `SST-${data.sapModule}-${nextIdNum}`;
-
-    // Map Attachments
-    const newAttachments: Attachment[] = (data.attachments || []).map((att, idx) => ({
-      id: `a-${Date.now()}-${idx}`,
-      ticketId,
-      fileName: att.fileName,
-      filePath: `/files/${att.fileName}`,
-      fileUrl: `/files/${att.fileName}`,
-      fileType: att.fileType,
-      fileSize: att.fileSize,
-      uploadedBy: data.requestedBy,
-      visibility: 'public',
-      createdAt: new Date().toISOString()
-    }));
+    // Map Attachments local objects (will link to secure bucket files on upload)
+    const newAttachments: Attachment[] = [];
+    try {
+      for (let idx = 0; idx < (data.attachments || []).length; idx++) {
+        const att = data.attachments![idx];
+        const fileUrl = await uploadAttachmentToSupabase(ticketId, att.fileName, att.fileSize, att.fileType, att.fileObj);
+        newAttachments.push({
+          id: `a-${Date.now()}-${idx}`,
+          ticketId,
+          fileName: att.fileName,
+          filePath: fileUrl,
+          fileUrl: fileUrl,
+          fileType: att.fileType,
+          fileSize: att.fileSize,
+          uploadedBy: data.requestedBy,
+          visibility: 'public',
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (err: any) {
+      console.error('Attachment upload failed during ticket creation:', err);
+      return { success: false, error: err.message };
+    }
 
     const ticketSource = data.source || 'Created by Client';
-    
-    // Auto status determination: If consultant is assigned, mark as Assigned
     const initialStatus: TicketStatus = data.assignedConsultant ? 'Assigned' : 'New';
 
-    const newTicket: Ticket = {
-      id: ticketId,
-      title: data.title,
-      description: data.description,
-      organization: data.organization,
-      requestedBy: data.requestedBy,
-      requestedByEmail: data.requestedByEmail,
-      sapModule: data.sapModule,
-      category: data.category,
-      priority: data.priority,
-      status: initialStatus,
-      assignedManager: data.assignedManager || undefined,
-      assignedConsultant: data.assignedConsultant || undefined,
-      slaDueAt: isIncident ? getFutureDate(slaHours) : 'SLA Not Applicable',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      billable: true,
-      escalationFlag: false,
-      approvalRequiredFlag: data.priority === 'Critical',
-      source: ticketSource,
-      comments: [],
-      attachments: newAttachments,
-      efforts: [],
-      history: [
-        {
-          id: `h-init-${Date.now()}`,
-          ticketId,
-          changedBy: data.requestedBy,
-          fieldChanged: 'Ticket',
-          oldValue: 'Created',
-          newValue: initialStatus,
-          createdAt: new Date().toISOString()
+    // SUPABASE DB CREATION
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let orgId = '';
+        const { data: orgData, error: orgFindErr } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('name', data.organization.trim())
+          .maybeSingle();
+
+        if (orgFindErr) {
+          console.error('[DATABASE SELECT ERROR] organization query:', {
+            message: orgFindErr.message,
+            code: orgFindErr.code,
+            context: { organization: data.organization },
+            userId: user?.id
+          });
+          return { success: false, error: `Organization lookup failed: [${orgFindErr.code}] ${orgFindErr.message}` };
         }
-      ],
-      ticketType: tType,
-      functionalOrTechnical: data.functionalOrTechnical || 'Functional',
-      businessImpact: data.businessImpact || '',
-      expectedResolutionDate: data.expectedResolutionDate || undefined,
-      quotedHours: undefined,
-      raisedToSap: false,
-      reopenedCount: 0,
-      customerActionRequired: false,
-      currentOwner: data.assignedConsultant || undefined,
-      nextActionOwner: data.assignedConsultant ? data.assignedConsultant : 'Support Desk',
-      escalations: [],
-      
-      // Rework columns
-      sapModules: data.sapModules || [data.sapModule],
-      createdByName: data.requestedBy,
-      softDeleteStatus: 'Active',
-      deleteRequests: []
-    };
 
-    // If initial assignment is present, store in history
-    if (data.assignedConsultant) {
-      newTicket.history.push({
-        id: `h-init-consultant-${Date.now()}`,
-        ticketId,
-        changedBy: data.requestedBy,
-        fieldChanged: 'Assigned Consultant',
-        oldValue: 'Unassigned',
-        newValue: data.assignedConsultant,
-        createdAt: new Date().toISOString()
-      });
+        if (orgData) {
+          orgId = orgData.id;
+        } else {
+          // Managers can provision a new company if missing
+          if (user?.role !== 'Manager' && user?.role !== 'SuperAdmin') {
+            return { success: false, error: `Validation Error: Organization "${data.organization}" not registered in the system.` };
+          }
+          const { data: newOrg, error: orgInsErr } = await supabase
+            .from('organizations')
+            .insert({ name: data.organization.trim() })
+            .select('id')
+            .single();
+
+          if (orgInsErr) {
+            console.error('[DATABASE INSERT ERROR] organization creation:', {
+              message: orgInsErr.message,
+              code: orgInsErr.code,
+              context: { organization: data.organization },
+              userId: user?.id
+            });
+            return { success: false, error: `Organization registration failed: [${orgInsErr.code}] ${orgInsErr.message}` };
+          }
+          if (newOrg) orgId = newOrg.id;
+        }
+
+        if (!orgId) {
+          return { success: false, error: 'Validation Error: Target organization could not be resolved.' };
+        }
+
+        if (isIncident) {
+          slaHours = await resolveSlaHours(data.priority, orgId);
+        }
+
+        let requestorId = user?.id || '';
+        // If created by manager on behalf of customer, resolve requestor's profile id
+        if (data.requestedByEmail && (user?.role === 'Manager' || user?.role === 'SuperAdmin')) {
+          const { data: profData, error: profErr } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('email', data.requestedByEmail.trim())
+            .maybeSingle();
+
+          if (profErr) {
+            console.error('[DATABASE SELECT ERROR] profiles query:', {
+              message: profErr.message,
+              code: profErr.code,
+              context: { email: data.requestedByEmail },
+              userId: user?.id
+            });
+            return { success: false, error: `Customer profile check failed: [${profErr.code}] ${profErr.message}` };
+          }
+          if (profData) {
+            requestorId = profData.id;
+          } else {
+            return { success: false, error: `Validation Error: Profile with email ${data.requestedByEmail} does not exist.` };
+          }
+        }
+
+        if (!requestorId) {
+          return { success: false, error: 'Validation Error: Unable to resolve ticket requested_by client.' };
+        }
+
+        let consultantId = null;
+        if (data.assignedConsultant) {
+          const { data: consData, error: consErr } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('full_name', data.assignedConsultant.trim())
+            .maybeSingle();
+
+          if (consErr) {
+            console.error('[DATABASE SELECT ERROR] profiles query (consultant):', {
+              message: consErr.message,
+              code: consErr.code,
+              context: { name: data.assignedConsultant }
+            });
+            return { success: false, error: `Consultant lookup failed: ${consErr.message}` };
+          }
+          if (consData) consultantId = consData.id;
+        }
+
+        let managerId = null;
+        if (data.assignedManager) {
+          const { data: mgrData, error: mgrErr } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('full_name', data.assignedManager.trim())
+            .maybeSingle();
+
+          if (mgrErr) {
+            console.error('[DATABASE SELECT ERROR] profiles query (manager):', {
+              message: mgrErr.message,
+              code: mgrErr.code,
+              context: { name: data.assignedManager }
+            });
+            return { success: false, error: `Manager lookup failed: ${mgrErr.message}` };
+          }
+          if (mgrData) managerId = mgrData.id;
+        }
+
+        const primaryModule = data.sapModules && data.sapModules.length > 0
+          ? data.sapModules[0]
+          : (data.sapModule || 'FICO').split(',')[0].trim().toUpperCase() || 'FICO';
+
+        // Insert ticket registry entry using select().single() for transactional validation
+        const ticketPayload = {
+          id: ticketId,
+          organization_id: orgId,
+          requested_by: requestorId,
+          sap_module: data.sapModule,
+          primary_module: primaryModule,
+          category: data.category,
+          priority: data.priority,
+          status: initialStatus,
+          assigned_manager_id: managerId,
+          assigned_consultant_id: consultantId,
+          sla_due_at: isIncident ? addSlaHours(new Date(), slaHours) : '9999-12-31T23:59:59.999Z',
+          description: data.description,
+          title: data.title,
+          billable: true,
+          escalation_flag: false,
+          approval_required: data.priority === 'Critical',
+          ticket_type: tType,
+          functional_or_technical: classification,
+          classification: classification,
+          business_impact: data.businessImpactLevel || data.businessImpact || null,
+          business_impact_level: data.businessImpactLevel || data.businessImpact || null,
+          business_justification: data.businessJustification || null,
+          expected_resolution_date: data.expectedResolutionDate || null,
+          current_owner: data.assignedConsultant || null,
+          next_action_owner: data.assignedConsultant || 'Support Desk',
+          created_by_name: data.requestedBy,
+          created_by_user: requestorId,
+          soft_delete_status: 'Active'
+        };
+
+        const { data: insertedTicket, error: ticketInsErr } = await supabase
+          .from('tickets')
+          .insert(ticketPayload)
+          .select()
+          .single();
+
+        if (ticketInsErr) {
+          console.error('[DATABASE INSERT ERROR] tickets insertion:', {
+            message: ticketInsErr.message,
+            code: ticketInsErr.code,
+            context: ticketPayload,
+            userId: user?.id,
+            ticketId
+          });
+          return { success: false, error: `Supabase ticket registry insert failed: [${ticketInsErr.code}] ${ticketInsErr.message}` };
+        }
+
+        if (!insertedTicket) {
+          return { success: false, error: 'Database transaction returned empty response.' };
+        }
+
+        // Create ticket module links
+        if (data.sapModules && data.sapModules.length > 0) {
+          for (const m of data.sapModules) {
+            const { error: modErr } = await supabase.from('ticket_modules').insert({
+              ticket_id: ticketId,
+              module_id: m
+            });
+            if (modErr) {
+              console.error('[DATABASE INSERT ERROR] ticket_modules scope:', { message: modErr.message, code: modErr.code, ticketId });
+              return { success: false, error: `Module scoping error: ${modErr.message}` };
+            }
+          }
+        } else {
+          const { error: modErr } = await supabase.from('ticket_modules').insert({
+            ticket_id: ticketId,
+            module_id: data.sapModule
+          });
+          if (modErr) {
+            console.error('[DATABASE INSERT ERROR] primary ticket_module:', { message: modErr.message, code: modErr.code, ticketId });
+            return { success: false, error: `Primary module link error: ${modErr.message}` };
+          }
+        }
+
+        // Upload attachment records
+        for (const att of newAttachments) {
+          const { error: attErr } = await supabase.from('ticket_attachments').insert({
+            ticket_id: ticketId,
+            uploaded_by: requestorId,
+            file_name: att.fileName,
+            file_path: att.filePath,
+            file_size: att.fileSize,
+            mime_type: att.fileType
+          });
+          if (attErr) {
+            console.error('[DATABASE INSERT ERROR] ticket_attachments registration:', { message: attErr.message, code: attErr.code, ticketId });
+            return { success: false, error: `Attachment linking error: ${attErr.message}` };
+          }
+        }
+
+        // Write initial history log
+        const { error: histErr } = await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: requestorId,
+          field_changed: 'Ticket',
+          old_value: 'Created',
+          new_value: initialStatus
+        });
+        if (histErr) {
+          console.error('[DATABASE INSERT ERROR] ticket_history entry:', { message: histErr.message, code: histErr.code, ticketId });
+          return { success: false, error: `History audit failed: ${histErr.message}` };
+        }
+
+        // Write consultant assignment history & roster if assigned
+        if (data.assignedConsultant) {
+          const { error: histConsErr } = await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: requestorId,
+            field_changed: 'Assigned Consultant',
+            old_value: 'Unassigned',
+            new_value: data.assignedConsultant
+          });
+          if (histConsErr) console.error('[DATABASE INSERT ERROR] consultant history entry:', histConsErr.message);
+
+          if (consultantId) {
+            const { error: effortErr } = await supabase.from('ticket_consultant_efforts').insert({
+              ticket_id: ticketId,
+              consultant_id: consultantId,
+              consultant_type: (classification === 'Technical') ? 'Technical' : 'Functional',
+              estimated_hours: 0,
+              actual_hours: 0
+            });
+            if (effortErr) console.error('[DATABASE INSERT ERROR] consultant efforts registry:', effortErr.message);
+          }
+        }
+
+        // Hydrate newly created ticket from the database with joins
+        const { data: dbProfiles } = await supabase.from('profiles').select('*');
+        const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
+        const { data: dbTicket, error: selectErr } = await supabase
+          .from('tickets')
+          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
+          .eq('id', ticketId)
+          .single();
+
+        if (selectErr) {
+          console.error('[DATABASE SELECT ERROR] ticket hydration query:', {
+            message: selectErr.message,
+            code: selectErr.code,
+            ticketId
+          });
+          return { success: false, error: `Hydration select query failed: [${selectErr.code}] ${selectErr.message}` };
+        }
+
+        if (dbTicket) {
+          const mappedTicket = mapDbTicket(dbTicket, dbProfiles || [], dbContacts || [], orgMap);
+          setTickets(prev => [mappedTicket, ...prev]);
+
+          // Send asynchronous background notifications
+          const managers = (profiles || []).filter(p => p.role === 'Manager');
+          for (const mgr of managers) {
+            await createDBNotification({
+              userId: mgr.id,
+              type: 'ticket_created',
+              title: `New Ticket Created`,
+              message: `Ticket #${mappedTicket.ticketNumber || ticketId.slice(0, 8)}: "${data.title}" has been created.`,
+              ticketId: ticketId,
+              linkPath: `/manager/tickets/${ticketId}`
+            });
+          }
+          if (consultantId) {
+            await createDBNotification({
+              userId: consultantId,
+              type: 'assigned_lead',
+              title: 'New Ticket Assigned',
+              message: `You have been assigned to ticket #${mappedTicket.ticketNumber || ticketId.slice(0, 8)} during creation.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
+            });
+          }
+
+          debouncedRefetch();
+          return { success: true, ticketId: mappedTicket.id, ticketNumber: mappedTicket.ticketNumber };
+        }
+
+      } catch (err: any) {
+        console.error('[TICKET CREATION FATAL RUNTIME ERROR]:', err);
+        return { success: false, error: err.message || 'Fatal database transaction error' };
+      }
     }
 
-    const updated = [newTicket, ...tickets];
-    syncTickets(updated);
-
-    // Notify Managers/Consultants
-    createSystemNotification(
-      'manager@sap.com',
-      `New Ticket: ${ticketId}`,
-      `Ticket "${data.title}" was submitted. Source: ${ticketSource}`,
-      ticketId
-    );
-
-    if (data.assignedConsultant) {
-      createSystemNotification(
-        'consultant@sap.com',
-        'New Ticket Assigned',
-        `You have been assigned to ${ticketId} during creation.`,
-        ticketId
-      );
-    }
+    return { success: false, error: 'Database connection is not configured.' };
   };
 
-  const requestEscalation = (
+  const requestEscalation = async (
     ticketId: string,
     reason: string,
     severity: 'Low' | 'Medium' | 'High',
-    actorName: string
-  ) => {
+    actorName: string,
+    files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[]
+  ): Promise<{ success: boolean; error?: string }> => {
+    let escalationId = `esc-${Date.now()}`;
+    const nowStr = new Date().toISOString();
+    
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
+        const actorId = prof ? prof.id : (requireUserId());
+        
+        const { data: insertedEsc, error: escErr } = await supabase.from('ticket_escalations').insert({
+          ticket_id: ticketId,
+          escalated_by: actorId,
+          reason,
+          severity,
+          status: 'Pending'
+        }).select('id');
+        
+        if (escErr) throw escErr;
+        const escId = insertedEsc && insertedEsc.length > 0 ? insertedEsc[0].id : null;
+        if (escId) {
+          escalationId = escId;
+        }
+
+        // Upload attachment records linked to the escalation
+        if (escId && files && files.length > 0) {
+          for (const f of files) {
+            const fileUrl = await uploadAttachmentToSupabase(ticketId, f.fileName, f.fileSize, f.fileType, f.fileObj);
+            const { error: attErr } = await supabase.from('ticket_attachments').insert({
+              ticket_id: ticketId,
+              uploaded_by: actorId,
+              file_name: f.fileName,
+              file_path: fileUrl,
+              file_size: f.fileSize,
+              mime_type: f.fileType,
+              escalation_id: escId
+            });
+            if (attErr) {
+              console.error('[DATABASE INSERT ERROR] ticket_attachments registration for escalation:', attErr);
+            }
+          }
+        }
+
+        const currentTicket = tickets.find(t => t.id === ticketId);
+        const currentPriority = currentTicket?.priority || 'Medium';
+        const nextPriority = (currentPriority === 'High' || currentPriority === 'Critical') ? 'Critical' : 'High';
+
+        await supabase.from('tickets').update({
+          escalation_flag: true,
+          is_escalated: true,
+          escalated_at: nowStr,
+          escalated_by: actorId,
+          escalation_reason: reason,
+          status: 'Escalated',
+          priority: nextPriority,
+          updated_at: nowStr
+        }).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Ticket Escalated',
+          old_value: 'None',
+          new_value: `${severity} Severity Escalation`
+        });
+
+        // Notify all managers and super-admins
+        const managersAndAdmins = (profiles || []).filter(p => p.role === 'Manager' || p.role === 'SuperAdmin');
+        for (const target of managersAndAdmins) {
+          await createDBNotification({
+            userId: target.id,
+            type: 'escalation_raised',
+            title: 'Ticket Escalated by Customer',
+            message: `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}". Reason: "${reason}"`,
+            ticketId: ticketId,
+            linkPath: `/manager/tickets/${ticketId}`
+          });
+        }
+
+        await fetchData();
+        return { success: true };
+      } catch (err: any) {
+        console.error('Error in requestEscalation Supabase update:', err);
+        return { success: false, error: err.message || 'Database error occurred' };
+      }
+    }
+
+    // Local state fallback
+    const currentTicket = tickets.find(t => t.id === ticketId);
+    const actorId = requireUserId();
     const newEscalation: TicketEscalation = {
-      id: `esc-${Date.now()}`,
+      id: escalationId,
       ticketId,
       escalatedBy: actorName,
       reason,
       severity,
       status: 'Pending',
-      createdAt: new Date().toISOString()
+      createdAt: nowStr
     };
 
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const currentEscalations = t.escalations || [];
+        const localAttachments = [...(t.attachments || [])];
+
+        if (files && files.length > 0) {
+          files.forEach((f, idx) => {
+            localAttachments.push({
+              id: `att-esc-${Date.now()}-${idx}`,
+              ticketId,
+              escalationId,
+              fileName: f.fileName,
+              filePath: `/files/${f.fileName}`,
+              fileUrl: `/files/${f.fileName}`,
+              fileType: f.fileType || '',
+              fileSize: f.fileSize || 0,
+              uploadedBy: actorName,
+              visibility: 'public',
+              createdAt: nowStr
+            });
+          });
+        }
+
         const hist = [
           ...t.history,
           {
@@ -691,14 +1786,23 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             fieldChanged: 'Ticket Escalated',
             oldValue: 'None',
             newValue: `${severity} Severity Escalation`,
-            createdAt: new Date().toISOString()
+            createdAt: nowStr
           }
         ];
+        const currentPriority = t.priority || 'Medium';
+        const nextPriority = (currentPriority === 'High' || currentPriority === 'Critical') ? 'Critical' : 'High';
         return {
           ...t,
           escalationFlag: true,
+          isEscalated: true,
+          escalatedAt: nowStr,
+          escalatedBy: actorId,
+          escalationReason: reason,
+          status: 'Escalated' as any,
+          priority: nextPriority as any,
           escalations: [...currentEscalations, newEscalation],
-          updatedAt: new Date().toISOString(),
+          attachments: localAttachments,
+          updatedAt: nowStr,
           history: hist
         };
       }
@@ -707,80 +1811,240 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     syncTickets(updated);
 
-    createSystemNotification(
-      'manager@sap.com',
-      `Ticket Escalated: ${ticketId}`,
-      `A ${severity} severity escalation was requested by ${actorName}. Reason: ${reason}`,
-      ticketId
-    );
+    const managersAndAdmins = (profiles || []).filter(p => p.role === 'Manager' || p.role === 'SuperAdmin');
+    managersAndAdmins.forEach(target => {
+      createSystemNotification(
+        target.id,
+        `Ticket Escalated: ${currentTicket?.ticketNumber || ticketId}`,
+        `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}". Reason: "${reason}"`,
+        ticketId
+      );
+    });
+
+    return { success: true };
   };
 
-  const assignTicket = (ticketId: string, managerName?: string, consultantName?: string, actorName?: string) => {
-    const updated = tickets.map(t => {
-      if (t.id === ticketId) {
-        const hist: AuditHistory[] = [...t.history];
-        const updates: Partial<Ticket> = { updatedAt: new Date().toISOString() };
-        const changeActor = actorName || 'System';
+  const assignTicket = async (ticketId: string, managerName?: string, consultantName?: string, actorName?: string) => {
+    const changeActor = actorName || 'System';
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: profActor } = await supabase.from('profiles').select('id').eq('full_name', changeActor).maybeSingle();
+        const actorId = profActor ? profActor.id : (requireUserId());
 
+        const ticketObj = tickets.find(t => t.id === ticketId);
+        const dbData: any = {};
+        
         if (managerName !== undefined) {
-          hist.push({
-            id: `h-mgr-${Date.now()}`,
-            ticketId,
-            changedBy: changeActor,
-            fieldChanged: 'Assigned Manager',
-            oldValue: t.assignedManager || 'None',
-            newValue: managerName || 'None',
-            createdAt: new Date().toISOString()
+          const { data: mgr } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
+          dbData.assigned_manager_id = mgr ? mgr.id : null;
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Assigned Manager',
+            old_value: ticketObj?.assignedManager || 'None',
+            new_value: managerName || 'None'
           });
-          updates.assignedManager = managerName || undefined;
         }
 
         if (consultantName !== undefined) {
-          hist.push({
-            id: `h-cons-${Date.now()}`,
-            ticketId,
-            changedBy: changeActor,
-            fieldChanged: 'Assigned Consultant',
-            oldValue: t.assignedConsultant || 'Unassigned',
-            newValue: consultantName || 'Unassigned',
-            createdAt: new Date().toISOString()
-          });
-          updates.assignedConsultant = consultantName || undefined;
+          const { data: cons } = await supabase.from('profiles').select('id, consultant_type').eq('full_name', consultantName).maybeSingle();
+          const consultantId = cons ? cons.id : null;
+          dbData.assigned_consultant_id = consultantId;
+          dbData.primary_consultant_id = consultantId;
           
-          // Auto transition status from New -> Assigned
-          if (consultantName && t.status === 'New') {
-            hist.push({
-              id: `h-status-auto-${Date.now()}`,
-              ticketId,
-              changedBy: changeActor,
-              fieldChanged: 'Status',
-              oldValue: t.status,
-              newValue: 'Assigned',
-              createdAt: new Date().toISOString()
+          const oldPrimaryName = ticketObj?.assignedConsultant || 'Unassigned';
+          
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Assigned Lead Consultant',
+            old_value: oldPrimaryName,
+            new_value: consultantName || 'Unassigned'
+          });
+
+          // Set all assignments to is_primary = false first
+          await supabase.from('ticket_assignments')
+            .update({ is_primary: false })
+            .eq('ticket_id', ticketId);
+
+          if (consultantId) {
+            // Check if this assignment already exists
+            const { data: existingAsg } = await supabase.from('ticket_assignments')
+              .select('ticket_id')
+              .eq('ticket_id', ticketId)
+              .eq('consultant_id', consultantId)
+              .maybeSingle();
+
+            if (existingAsg) {
+              await supabase.from('ticket_assignments')
+                .update({ is_primary: true, active: true })
+                .eq('ticket_id', ticketId)
+                .eq('consultant_id', consultantId);
+            } else {
+              await supabase.from('ticket_assignments').insert({
+                ticket_id: ticketId,
+                consultant_id: consultantId,
+                consultant_type: cons?.consultant_type || 'Functional',
+                is_primary: true,
+                active: true,
+                assigned_by: actorId
+              });
+            }
+
+            // Sync ticket status if New -> Assigned
+            if (ticketObj?.status === 'New') {
+              dbData.status = 'Assigned';
+              await supabase.from('ticket_history').insert({
+                ticket_id: ticketId,
+                changed_by: actorId,
+                field_changed: 'Status',
+                old_value: 'New',
+                new_value: 'Assigned'
+              });
+            }
+
+            // Send notification to the new primary consultant
+            await createDBNotification({
+              userId: consultantId || '',
+              type: 'assigned_lead',
+              title: 'Assigned as Primary Lead',
+              message: `You have been designated as the Primary Lead Consultant for ticket #${ticketObj?.ticketNumber || ticketId.slice(0, 8)} by ${changeActor}.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
             });
-            updates.status = 'Assigned';
           }
 
-          // Notify Consultant if a consultant is assigned
-          if (consultantName) {
-            createSystemNotification(
-              'consultant@sap.com',
-              'Ticket Assigned',
-              `You have been assigned to ${t.id} by ${changeActor}.`,
-              ticketId
-            );
+          // Send notification to the old primary consultant (if any)
+          if (ticketObj?.primaryConsultantId && ticketObj.primaryConsultantId !== consultantId) {
+            await createDBNotification({
+              userId: ticketObj.primaryConsultantId,
+              type: 'lead_changed',
+              title: 'Lead Assignment Changed',
+              message: `The Lead Consultant assignment for ticket #${ticketObj?.ticketNumber || ticketId.slice(0, 8)} has been changed. You are now a secondary resource.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
+            });
           }
         }
 
-        return { ...t, ...updates, history: hist };
+        await supabase.from('tickets').update(dbData).eq('id', ticketId);
+        try {
+          router.refresh();
+        } catch (e) {
+          console.warn('router.refresh warning:', e);
+        }
+        await fetchData();
+      } catch (err) {
+        console.error('Error in assignTicket Supabase update:', err);
       }
-      return t;
-    });
+    } else {
+      // Local fallback mode
+      const updated = tickets.map(t => {
+        if (t.id === ticketId) {
+          const hist: AuditHistory[] = [...t.history];
+          const updates: Partial<Ticket> = { updatedAt: new Date().toISOString() };
 
-    syncTickets(updated);
+          if (managerName !== undefined) {
+            updates.assignedManager = managerName || undefined;
+            hist.push({
+              id: `h-mgr-${Date.now()}`,
+              ticketId,
+              changedBy: changeActor,
+              fieldChanged: 'Assigned Manager',
+              oldValue: t.assignedManager || 'None',
+              newValue: managerName || 'None',
+              createdAt: new Date().toISOString()
+            });
+          }
+
+          if (consultantName !== undefined) {
+            updates.assignedConsultant = consultantName || undefined;
+            updates.primaryConsultantId = consultantName ? (consultantName.toLowerCase() === 'keerthana' ? '7408c315-ab62-475d-af67-6471b926efbc' : 'fe03e764-f139-4739-a0f7-44a966c1840a') : undefined;
+            
+            hist.push({
+              id: `h-cons-${Date.now()}`,
+              ticketId,
+              changedBy: changeActor,
+              fieldChanged: 'Assigned Lead Consultant',
+              oldValue: t.assignedConsultant || 'Unassigned',
+              newValue: consultantName || 'Unassigned',
+              createdAt: new Date().toISOString()
+            });
+
+            if (consultantName && t.status === 'New') {
+              updates.status = 'Assigned';
+              hist.push({
+                id: `h-status-${Date.now()}`,
+                ticketId,
+                changedBy: changeActor,
+                fieldChanged: 'Status',
+                oldValue: 'New',
+                newValue: 'Assigned',
+                createdAt: new Date().toISOString()
+              });
+            }
+
+            // Update local assignments array
+            const newAsgs = (t.assignments || []).map(a => ({
+              ...a,
+              isPrimary: a.consultantName === consultantName
+            }));
+
+            if (consultantName && !newAsgs.some(a => a.consultantName === consultantName)) {
+              newAsgs.push({
+                ticketId,
+                consultantId: updates.primaryConsultantId || `cons-${Date.now()}`,
+                consultantName: consultantName,
+                consultantType: consultantName.toLowerCase() === 'keerthana' ? 'Technical' : 'Functional',
+                isPrimary: true,
+                active: true,
+                assignedAt: new Date().toISOString()
+              });
+            }
+            updates.assignments = newAsgs;
+          }
+
+          return { ...t, ...updates, history: hist };
+        }
+        return t;
+      });
+      syncTickets(updated);
+    }
   };
 
-  const updateTicketStatus = (ticketId: string, status: TicketStatus, actorName: string) => {
+
+  const updateTicketStatus = async (ticketId: string, status: TicketStatus, actorName: string) => {
+    const currentTicket = tickets.find(t => t.id === ticketId);
+    let targetStatus = status;
+    let incrementReopened = false;
+
+    if (currentTicket?.status === 'Reopen Requested' && (status === 'In Progress' || status === 'Assigned' || status === 'Reopened')) {
+      targetStatus = 'Reopened';
+      incrementReopened = true;
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
+        const actorId = prof ? prof.id : (requireUserId());
+
+        const dbUpdate: any = { status: targetStatus, updated_at: new Date().toISOString() };
+        if (incrementReopened) {
+          dbUpdate.reopened_count = (currentTicket?.reopenedCount || 0) + 1;
+        }
+        await supabase.from('tickets').update(dbUpdate).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Status',
+          old_value: currentTicket?.status || 'New',
+          new_value: targetStatus
+        });
+      } catch (err) {
+        console.error('Error in updateTicketStatus Supabase update:', err);
+      }
+    }
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const hist: AuditHistory[] = [
@@ -791,13 +2055,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             changedBy: actorName,
             fieldChanged: 'Status',
             oldValue: t.status,
-            newValue: status,
+            newValue: targetStatus,
             createdAt: new Date().toISOString()
           }
         ];
         return {
           ...t,
-          status,
+          status: targetStatus,
+          reopenedCount: incrementReopened ? (t.reopenedCount || 0) + 1 : t.reopenedCount,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -805,34 +2070,59 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return t;
     });
     syncTickets(updated);
+
+    if (incrementReopened) {
+      createSystemNotification(
+        'customer@supportstudio.com',
+        'Ticket Reopen Approved',
+        `Your reopen request for ticket ${ticketId} has been approved by ${actorName}.`,
+        ticketId
+      );
+      createSystemNotification(
+        'consultant@supportstudio.com',
+        'Ticket Reopened',
+        `Ticket ${ticketId} has been reopened and assigned back to you for resolution.`,
+        ticketId
+      );
+    }
   };
 
-  const addComment = (
+  const addComment = async (
     ticketId: string,
     content: string,
     authorName: string,
     authorEmail: string,
     authorRole: Comment['authorRole'],
     isInternal: boolean,
-    attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string }[],
+    attachments?: { fileName: string; fileSize: number; fileType: string; fileUrl?: string; fileObj?: File }[],
     mentions?: string[]
-  ) => {
+  ): Promise<{ success: boolean; error?: string }> => {
     const commentId = `c-${Date.now()}`;
     
     // Build attachments
-    const newAttachments: Attachment[] = (attachments || []).map((att, idx) => ({
-      id: `a-comment-${Date.now()}-${idx}`,
-      ticketId,
-      commentId,
-      fileName: att.fileName,
-      filePath: att.fileUrl || `/files/${att.fileName}`,
-      fileUrl: att.fileUrl || `/files/${att.fileName}`,
-      fileType: att.fileType,
-      fileSize: att.fileSize,
-      uploadedBy: authorName,
-      visibility: isInternal ? 'internal' : 'public',
-      createdAt: new Date().toISOString()
-    }));
+    const newAttachments: Attachment[] = [];
+    try {
+      for (let idx = 0; idx < (attachments || []).length; idx++) {
+        const att = attachments![idx];
+        const fileUrl = await uploadAttachmentToSupabase(ticketId, att.fileName, att.fileSize, att.fileType, att.fileObj, att.fileUrl);
+        newAttachments.push({
+          id: `a-comment-${Date.now()}-${idx}`,
+          ticketId,
+          commentId,
+          fileName: att.fileName,
+          filePath: fileUrl,
+          fileUrl: fileUrl,
+          fileType: att.fileType,
+          fileSize: att.fileSize,
+          uploadedBy: authorName,
+          visibility: isInternal ? 'internal' : 'public',
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (err: any) {
+      console.error('Attachment upload failed during addComment:', err);
+      return { success: false, error: err.message };
+    }
 
     const commentAttachments: TicketCommentAttachment[] = newAttachments.map(att => ({
       id: att.id,
@@ -866,6 +2156,87 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       createdAt: new Date().toISOString(),
       attachments: newAttachments
     };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('email', authorEmail).maybeSingle();
+        const authorId = prof ? prof.id : (requireUserId());
+
+        const { data: commData, error: insertError } = await supabase.from('ticket_comments').insert({
+          ticket_id: ticketId,
+          author_id: authorId,
+          content: content,
+          is_internal: isInternal
+        }).select('id').single();
+
+        if (insertError) {
+          console.error('[COMMENT INSERT ERROR]', insertError);
+          return { success: false, error: `Failed to save comment: ${insertError.message}` };
+        }
+
+        const dbCommentId = commData ? commData.id : commentId;
+
+        if (newAttachments && newAttachments.length > 0) {
+          for (const att of newAttachments) {
+            await supabase.from('ticket_comment_attachments').insert({
+              comment_id: dbCommentId,
+              ticket_id: ticketId,
+              file_name: att.fileName,
+              file_url: att.fileUrl,
+              file_type: att.fileType,
+              file_size: att.fileSize,
+              uploaded_by: authorId
+            });
+          }
+        }
+
+        if (mentions && mentions.length > 0) {
+          for (const mEmail of mentions) {
+            const { data: mProf } = await supabase.from('profiles').select('id').eq('email', mEmail).maybeSingle();
+            if (mProf) {
+              await supabase.from('ticket_mentions').insert({
+                ticket_id: ticketId,
+                comment_id: dbCommentId,
+                mentioned_user_id: mProf.id,
+                mentioned_by: authorId
+              });
+            }
+          }
+        }
+
+        const t = tickets.find(x => x.id === ticketId);
+        if (t) {
+          let nextStatus = t.status;
+          if (authorRole === 'Customer' && t.status === 'Waiting for Customer') {
+            nextStatus = 'In Progress';
+          } else if ((authorRole === 'Consultant' || authorRole === 'Manager') && !isInternal && t.status === 'In Progress') {
+            nextStatus = 'Waiting for Customer';
+          }
+
+          if (nextStatus !== t.status) {
+            await supabase.from('tickets').update({ status: nextStatus, updated_at: new Date().toISOString() }).eq('id', ticketId);
+            await supabase.from('ticket_history').insert({
+              ticket_id: ticketId,
+              changed_by: authorId,
+              field_changed: 'Status',
+              old_value: t.status,
+              new_value: nextStatus
+            });
+          }
+
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: authorId,
+            field_changed: 'Comment Added',
+            old_value: '',
+            new_value: `${isInternal ? 'Internal note' : 'Public comment'} added by ${authorName}`
+          });
+        }
+      } catch (err: any) {
+        console.error('Error in addComment Supabase update:', err);
+        return { success: false, error: err.message || 'Database error adding comment.' };
+      }
+    }
 
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
@@ -920,14 +2291,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Notifications
     if (authorRole === 'Customer') {
       createSystemNotification(
-        'consultant@sap.com',
+        'consultant@supportstudio.com',
         'Customer Comment Added',
         `${authorName} commented on ${ticketId}.`,
         ticketId
       );
     } else if (!isInternal) {
       createSystemNotification(
-        'customer@sap.com',
+        'customer@supportstudio.com',
         'Consultant Response',
         `${authorName} posted a reply on ${ticketId}.`,
         ticketId
@@ -943,9 +2314,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ticketId
       );
     });
+
+    return { success: true };
   };
 
-  const logEffort = (data: {
+  const logEffort = async (data: {
     ticketId: string;
     hours: number;
     description: string;
@@ -976,6 +2349,26 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       endTime: data.endTime || '17:00'
     };
 
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', data.consultantName).maybeSingle();
+        const consultantId = prof ? prof.id : (requireUserId());
+
+        await supabase.from('ticket_efforts').insert({
+          id: newEffort.id.startsWith('e-') && newEffort.id.length < 25 ? undefined : newEffort.id,
+          ticket_id: data.ticketId,
+          consultant_id: consultantId,
+          hours_logged: data.hours,
+          activity_date: data.workDate || todayStr,
+          description: data.description,
+          billable: data.billable,
+          status: 'Pending Approval'
+        });
+      } catch (err) {
+        console.error('Error in logEffort Supabase update:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === data.ticketId) {
         return {
@@ -990,20 +2383,61 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Effort Approval Required',
       `${data.consultantName} logged ${data.hours}h on ${data.ticketId}.`,
       data.ticketId
     );
   };
 
-  const approveEffortLog = (
+  const approveEffortLog = async (
     ticketId: string,
     logId: string,
     action: 'Approved' | 'Rejected',
     actorName: string,
     rejectionReason?: string
   ) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
+        const actorId = prof ? prof.id : (requireUserId());
+        const dbStatus = action === 'Approved' ? 'Approved' : 'Rejected';
+
+        const updateData: any = {
+          status: dbStatus,
+          rejection_reason: action === 'Rejected' ? rejectionReason : null
+        };
+        if (action === 'Approved') {
+          updateData.approved_by = actorName;
+          updateData.approved_at = new Date().toISOString();
+        } else {
+          updateData.rejected_by = actorName;
+          updateData.rejected_at = new Date().toISOString();
+        }
+
+        await supabase.from('ticket_efforts').update(updateData).eq('id', logId);
+
+        if (action === 'Approved') {
+          const { data: effortObj } = await supabase.from('ticket_efforts').select('hours_logged').eq('id', logId).maybeSingle();
+          const loggedHours = effortObj ? Number(effortObj.hours_logged) : 0;
+
+          if (loggedHours > 0) {
+            const ticketObj = tickets.find(t => t.id === ticketId);
+            if (ticketObj && ticketObj.organizationId) {
+              const { data: contr } = await supabase.from('customer_contracts').select('id, used_hours').eq('organization_id', ticketObj.organizationId).maybeSingle();
+              if (contr) {
+                await supabase.from('customer_contracts').update({
+                  used_hours: Number(contr.used_hours) + loggedHours
+                }).eq('id', contr.id);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error in approveEffortLog Supabase update:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         let loggedHours = 0;
@@ -1052,14 +2486,14 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       `Effort log ${action}`,
       `Your timesheet entry for ${ticketId} has been ${action.toLowerCase()} by ${actorName}.${action === 'Rejected' && rejectionReason ? ' Reason: ' + rejectionReason : ''}`,
       ticketId
     );
   };
 
-  const resubmitEffortLog = (
+  const resubmitEffortLog = async (
     ticketId: string,
     logId: string,
     data: {
@@ -1070,6 +2504,30 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       billable: boolean;
     }
   ) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const newLogId = `e-${Date.now()}`;
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: orig } = await supabase.from('ticket_efforts').select('*').eq('id', logId).maybeSingle();
+        if (orig) {
+          await supabase.from('ticket_efforts').update({ status: 'Resubmitted' }).eq('id', logId);
+          await supabase.from('ticket_efforts').insert({
+            id: newLogId,
+            ticket_id: ticketId,
+            consultant_id: orig.consultant_id,
+            hours_logged: data.hoursWorked,
+            activity_date: data.workDate,
+            description: data.description,
+            billable: data.billable,
+            status: 'Pending Approval'
+          });
+        }
+      } catch (err) {
+        console.error('Error in resubmitEffortLog Supabase update:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const originalLog = t.efforts.find(e => e.id === logId);
@@ -1087,7 +2545,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
 
         const newVersionLog: EffortLog = {
-          id: `e-${Date.now()}`,
+          id: newLogId,
           ticketId,
           consultantName: originalLog.consultantName,
           consultantId: originalLog.consultantId,
@@ -1118,19 +2576,45 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Effort Log Resubmitted',
       `Consultant has resubmitted effort log ${logId} for ticket ${ticketId}.`,
       ticketId
     );
   };
 
-  const resolveTicket = (
+  const resolveTicket = async (
     ticketId: string,
     rootCause: string,
     resolutionSummary: string,
     actorName: string
   ) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
+        const actorId = prof ? prof.id : (requireUserId());
+        const currentTicket = tickets.find(t => t.id === ticketId);
+
+        await supabase.from('tickets').update({
+          status: 'Resolved',
+          root_cause: rootCause,
+          resolution_summary: resolutionSummary,
+          resolved_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Status',
+          old_value: currentTicket?.status || 'New',
+          new_value: 'Resolved'
+        });
+      } catch (err) {
+        console.error('Error resolving ticket in Supabase:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const hist = [
@@ -1161,7 +2645,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'customer@sap.com',
+      'customer@supportstudio.com',
       'Ticket Resolved',
       `Incidents ${ticketId} has been resolved. Validation required.`,
       ticketId
@@ -1177,14 +2661,16 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             id: `h-closure-approval-${Date.now()}`,
             ticketId,
             changedBy: actorName,
-            fieldChanged: 'Closure Approved',
-            oldValue: 'Approval Pending',
-            newValue: 'Approved',
+            fieldChanged: 'Status',
+            oldValue: t.status,
+            newValue: 'Closed',
             createdAt: new Date().toISOString()
           }
         ];
         return {
           ...t,
+          status: 'Closed' as TicketStatus,
+          closureStatus: 'Approved',
           approvalRequiredFlag: false,
           updatedAt: new Date().toISOString(),
           history: hist
@@ -1195,14 +2681,66 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
   };
 
-  const closeTicket = (ticketId: string, score: number, feedback: string, actorName: string) => {
+  const closeTicket = async (ticketId: string, score?: number, feedback?: string, actorName?: string) => {
+    const tObj = tickets.find(t => t.id === ticketId);
+    if (!tObj) return;
+
+    const finalScore = score !== undefined && score > 0 ? score : 5;
+    const finalFeedback = feedback || 'Closed';
+    const finalActorName = actorName || user?.name || 'Customer Client';
+
+    // Check if resources are allocated (consultantEfforts is non-empty)
+    const hasAllocatedResources = tObj.consultantEfforts && tObj.consultantEfforts.length > 0;
+    if (hasAllocatedResources) {
+      // The status must be 'Awaiting Closure', or there must be an approved closure request
+      const hasApprovedClosureReq = tObj.closureRequests && tObj.closureRequests.some(r => r.status === 'Approved');
+      if (tObj.status !== 'Awaiting Closure' && !hasApprovedClosureReq) {
+        toast.error('Cannot close ticket: Actual hours have not been approved yet.');
+        return;
+      }
+    }
+
     const newRating: SatisfactionRating = {
       id: `r-${Date.now()}`,
       ticketId,
-      score,
-      feedback,
+      score: finalScore,
+      feedback: finalFeedback,
       createdAt: new Date().toISOString()
     };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', finalActorName).maybeSingle();
+        const actorId = prof ? prof.id : (requireUserId());
+
+        await supabase.from('tickets').update({
+          status: 'Closed',
+          closed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        await supabase.from('satisfaction_ratings').insert({
+          id: newRating.id.startsWith('r-') && newRating.id.length < 25 ? undefined : newRating.id,
+          ticket_id: ticketId,
+          score: finalScore,
+          feedback: finalFeedback,
+          created_at: newRating.createdAt
+        });
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Status',
+          old_value: tObj.status,
+          new_value: 'Closed'
+        });
+
+        await fetchData();
+        return;
+      } catch (err) {
+        console.error('Error closing ticket in Supabase:', err);
+      }
+    }
 
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
@@ -1211,7 +2749,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           {
             id: `h-close-${Date.now()}`,
             ticketId,
-            changedBy: actorName,
+            changedBy: finalActorName,
             fieldChanged: 'Status',
             oldValue: t.status,
             newValue: 'Closed',
@@ -1233,14 +2771,45 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Ticket Closed by Client',
-      `Sarah Jenkins closed ${ticketId} with score ${score}/5.`,
+      `${finalActorName} closed ${ticketId} with score ${finalScore}/5.`,
       ticketId
     );
   };
 
-  const reopenTicket = (ticketId: string, reason: string, actorName: string) => {
+  const reopenTicket = async (ticketId: string, reason: string, actorName: string) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
+        const actorId = prof ? prof.id : (requireUserId());
+        const currentTicket = tickets.find(t => t.id === ticketId);
+
+        await supabase.from('tickets').update({
+          status: 'Reopen Requested',
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Status',
+          old_value: currentTicket?.status || 'Closed',
+          new_value: 'Reopen Requested'
+        });
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Reopen Reason',
+          old_value: '',
+          new_value: reason
+        });
+      } catch (err) {
+        console.error('Error reopening ticket in Supabase:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const hist = [
@@ -1251,16 +2820,24 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             changedBy: actorName,
             fieldChanged: 'Status',
             oldValue: t.status,
-            newValue: 'Reopened',
+            newValue: 'Reopen Requested',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: `h-reopen-reason-${Date.now()}`,
+            ticketId,
+            changedBy: actorName,
+            fieldChanged: 'Reopen Reason',
+            oldValue: '',
+            newValue: reason,
             createdAt: new Date().toISOString()
           }
         ];
         return {
           ...t,
-          status: 'Reopened' as TicketStatus,
+          status: 'Reopen Requested' as TicketStatus,
           resolvedAt: undefined,
           closedAt: undefined,
-          reopenedCount: (t.reopenedCount || 0) + 1,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -1271,9 +2848,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
-      'Ticket Reopened',
-      `Ticket ${ticketId} has been reopened. Reason: ${reason}`,
+      'manager@supportstudio.com',
+      'Ticket Reopen Requested',
+      `Ticket ${ticketId} reopen has been requested by ${actorName}. Reason: ${reason}`,
       ticketId
     );
   };
@@ -1306,7 +2883,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Ticket Escalation Alarm',
       `${actorName} escalated ticket ${ticketId}.`,
       ticketId
@@ -1391,28 +2968,242 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // --- SYSTEM NOTIFICATIONS ---
 
-  const markNotificationRead = (notificationId: string) => {
+  const markNotificationRead = async (notificationId: string) => {
+    const nowStr = new Date().toISOString();
+    // Optimistic local state update
     const updated = notifications.map(n => {
       if (n.id === notificationId) {
-        return { ...n, isRead: true };
+        return { ...n, isRead: true, readAt: nowStr };
       }
       return n;
     });
     syncNotifications(updated);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('notifications').update({ read_at: nowStr }).eq('id', notificationId);
+        if (error) {
+          // Fallback if read_at column is not in DB yet
+          await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
+        }
+      } catch (err) {
+        console.error('Error marking notification read in DB:', err);
+      }
+    }
   };
 
-  const createSystemNotification = (userId: string, title: string, message: string, ticketId?: string) => {
+  const createDBNotification = async (data: {
+    userId: string;
+    type: string;
+    title: string;
+    message: string;
+    ticketId?: string;
+    linkPath?: string;
+  }) => {
+    let resolvedUuid = data.userId;
+    if (data.userId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.userId)) {
+      const match = (profiles || []).find(p => 
+        p.email?.toLowerCase() === data.userId.toLowerCase() || 
+        p.full_name?.toLowerCase() === data.userId.toLowerCase()
+      );
+      if (match) {
+        resolvedUuid = match.id;
+      }
+    }
+
     const newNotif: Notification = {
       id: `n-${Date.now()}`,
-      userId,
-      title,
-      message,
-      ticketId,
+      userId: resolvedUuid || data.userId,
+      title: data.title,
+      message: data.message,
+      ticketId: data.ticketId,
       isRead: false,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      type: data.type,
+      linkPath: data.linkPath,
     };
-    const updated = [newNotif, ...notifications];
-    syncNotifications(updated);
+    
+    setNotifications(prev => [newNotif, ...prev]);
+
+    if (isSupabaseConfigured && supabase && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
+      try {
+        // Inserts go through a SECURITY DEFINER RPC: direct INSERT is admin-only
+        // since the notification-spoofing hardening (20260611000002).
+        const { error } = await supabase.rpc('create_notification', {
+          p_user_id: resolvedUuid,
+          p_title: data.title,
+          p_message: data.message,
+          p_ticket_id: data.ticketId ?? null,
+          p_type: data.type ?? 'system',
+          p_link_path: data.linkPath ?? null
+        });
+        if (error) {
+          console.warn('create_notification RPC failed:', error.message);
+        }
+      } catch (err) {
+        console.error('Error creating database notification:', err);
+      }
+    }
+  };
+
+  const acknowledgeEscalation = async (ticketId: string, actorId: string, actorName: string): Promise<{ success: boolean; error?: string }> => {
+    const ticketObj = tickets.find(t => t.id === ticketId);
+    if (!ticketObj) return { success: false, error: 'Ticket not found' };
+
+    const nowStr = new Date().toISOString();
+
+    setTickets(prev => prev.map(t => {
+      if (t.id === ticketId) {
+        return {
+          ...t,
+          escalationAcknowledgedAt: nowStr,
+          escalationAcknowledgedBy: actorId,
+          escalationAcknowledgedByName: actorName,
+          updatedAt: nowStr
+        };
+      }
+      return t;
+    }));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error: ticketError } = await supabase
+          .from('tickets')
+          .update({
+            escalation_acknowledged_at: nowStr,
+            escalation_acknowledged_by: actorId
+          })
+          .eq('id', ticketId);
+          
+        if (ticketError) {
+          console.error('Error updating ticket acknowledgment:', ticketError);
+        }
+
+        const customerProfile = profiles.find(p => p.full_name === ticketObj.requestedBy || p.email === ticketObj.requestedByEmail);
+        const customerUserId = customerProfile?.id || ticketObj.createdByUser;
+        
+        const consultantsToNotify = new Set<string>();
+        if (ticketObj.primaryConsultantId) consultantsToNotify.add(ticketObj.primaryConsultantId);
+        if (ticketObj.leadConsultantId) consultantsToNotify.add(ticketObj.leadConsultantId);
+        (ticketObj.assignments || []).forEach(a => {
+          if (a.active && a.consultantId) {
+            consultantsToNotify.add(a.consultantId);
+          }
+        });
+
+        if (customerUserId) {
+          await createDBNotification({
+            userId: customerUserId,
+            type: 'escalation_acknowledged',
+            title: 'Escalation Acknowledged',
+            message: `Your escalation for ticket ${ticketObj.ticketNumber || ticketObj.id} has been acknowledged. Your support team is actively working on this as a top priority.`,
+            ticketId: ticketId,
+            linkPath: `/customer/tickets/${ticketId}`
+          });
+        }
+
+        for (const consId of consultantsToNotify) {
+          if (consId !== customerUserId) {
+            await createDBNotification({
+              userId: consId,
+              type: 'escalation_acknowledged',
+              title: '🚨 ESCALATED · TOP PRIORITY — Action Required',
+              message: `Ticket ${ticketObj.ticketNumber || ticketObj.id} has been escalated and acknowledged by ${actorName}. Prioritise this immediately.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
+            });
+          }
+        }
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Escalation Acknowledgment',
+          old_value: 'Pending',
+          new_value: 'Acknowledged'
+        });
+
+        await fetchData();
+        return { success: true };
+      } catch (err: any) {
+        console.error('Error in acknowledgeEscalation:', err);
+        return { success: false, error: err.message };
+      }
+    } else {
+      return { success: true };
+    }
+  };
+
+  const createSystemNotification = async (userId: string, title: string, message: string, ticketId?: string) => {
+    // 1. Trigger toast locally
+    toast(title, {
+      description: message,
+      action: ticketId ? {
+        label: 'View Ticket',
+        onClick: () => {
+          // Detect user role to route correctly
+          const userRole = user?.role;
+          if (userRole === 'Customer') {
+            window.location.href = `/customer/tickets/${ticketId}`;
+          } else if (userRole === 'Consultant') {
+            window.location.href = `/consultant/tickets/${ticketId}`;
+          } else {
+            window.location.href = `/manager/tickets/${ticketId}`;
+          }
+        }
+      } : undefined
+    });
+
+    // Resolve email or name to UUID
+    let resolvedUuid = userId;
+    if (userId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+      const match = (profiles || []).find(p => 
+        p.email?.toLowerCase() === userId.toLowerCase() || 
+        p.full_name?.toLowerCase() === userId.toLowerCase()
+      );
+      if (match) {
+        resolvedUuid = match.id;
+      } else {
+        // If not found, check if it's manager or consultant default emails
+        if (userId === 'manager@supportstudio.com') {
+          const mgr = (profiles || []).find(p => p.role === 'Manager');
+          if (mgr) resolvedUuid = mgr.id;
+        } else if (userId === 'consultant@supportstudio.com') {
+          const cons = (profiles || []).find(p => p.role === 'Consultant');
+          if (cons) resolvedUuid = cons.id;
+        } else if (userId === 'customer@supportstudio.com') {
+          const cust = (profiles || []).find(p => p.role === 'Customer');
+          if (cust) resolvedUuid = cust.id;
+        }
+      }
+    }
+
+    // 2. Insert into Supabase
+    if (isSupabaseConfigured && supabase && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
+      try {
+        await supabase.rpc('create_notification', {
+          p_user_id: resolvedUuid,
+          p_title: title,
+          p_message: message,
+          p_ticket_id: ticketId ?? null
+        });
+      } catch (err) {
+        console.error('Error creating database notification:', err);
+      }
+    } else {
+      // Fallback to local storage/state
+      const newNotif: Notification = {
+        id: `n-${Date.now()}`,
+        userId: resolvedUuid || userId,
+        title,
+        message,
+        ticketId,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      };
+      const updated = [newNotif, ...notifications];
+      syncNotifications(updated);
+    }
   };
 
   // --- AI CHATBOT / ADVISOR PLACEHOLDER LOGIC ---
@@ -1473,15 +3264,112 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     };
   };
 
-  const updateTicket = (ticketId: string, data: Partial<Ticket>) => {
+  const updateTicket = async (ticketId: string, data: Partial<Ticket>) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const currentTicket = tickets.find(t => t.id === ticketId);
+        const changedBy = data.requestedBy || 'System';
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', changedBy).maybeSingle();
+        const actorId = prof ? prof.id : (requireUserId());
+
+        const dbUpdate: any = {};
+        if (data.title !== undefined) dbUpdate.title = data.title;
+        if (data.description !== undefined) dbUpdate.description = data.description;
+        if (data.status !== undefined) dbUpdate.status = data.status;
+        if (data.sapModule !== undefined) dbUpdate.sap_module = data.sapModule;
+        if (data.category !== undefined) dbUpdate.category = data.category;
+        if (data.ticketType !== undefined) dbUpdate.ticket_type = data.ticketType;
+        if (data.functionalOrTechnical !== undefined) dbUpdate.functional_or_technical = data.functionalOrTechnical;
+        if (data.businessImpact !== undefined) dbUpdate.business_impact = data.businessImpact;
+        if (data.expectedResolutionDate !== undefined) dbUpdate.expected_resolution_date = data.expectedResolutionDate;
+        
+        if (data.priority !== undefined) {
+          dbUpdate.priority = data.priority;
+          if (data.priority !== currentTicket?.priority) {
+            const isIncident = (data.ticketType || currentTicket?.ticketType || 'Incident') === 'Incident';
+            if (isIncident) {
+              const orgId = currentTicket?.organizationId || '';
+              const slaHours = await resolveSlaHours(data.priority, orgId);
+              const originalCreatedDate = currentTicket?.createdAt || new Date().toISOString();
+              const newSlaDueAt = addSlaHours(originalCreatedDate, slaHours);
+              dbUpdate.sla_due_at = newSlaDueAt;
+              data.slaDueAt = newSlaDueAt;
+            }
+          }
+        }
+
+        dbUpdate.updated_at = new Date().toISOString();
+
+        await supabase.from('tickets').update(dbUpdate).eq('id', ticketId);
+
+        if (data.title && data.title !== currentTicket?.title) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Title',
+            old_value: currentTicket?.title || '',
+            new_value: data.title
+          });
+        }
+        if (data.description && data.description !== currentTicket?.description) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Description',
+            old_value: currentTicket?.description || '',
+            new_value: data.description
+          });
+        }
+        if (data.status && data.status !== currentTicket?.status) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Status',
+            old_value: currentTicket?.status || '',
+            new_value: data.status
+          });
+        }
+        if (data.priority && data.priority !== currentTicket?.priority) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Priority',
+            old_value: currentTicket?.priority || '',
+            new_value: data.priority
+          });
+        }
+        if (data.sapModule && data.sapModule !== currentTicket?.sapModule) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'SAP Module',
+            old_value: currentTicket?.sapModule || '',
+            new_value: data.sapModule
+          });
+        }
+        if (data.ticketType && data.ticketType !== currentTicket?.ticketType) {
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: actorId,
+            field_changed: 'Ticket Type',
+            old_value: currentTicket?.ticketType || '',
+            new_value: data.ticketType
+          });
+        }
+      } catch (err) {
+        console.error('Error updating ticket in Supabase:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const hist = [...t.history];
+        const changedBy = data.requestedBy || 'Customer';
         if (data.title && data.title !== t.title) {
           hist.push({
             id: `h-edit-title-${Date.now()}`,
             ticketId,
-            changedBy: data.requestedBy || 'Customer',
+            changedBy,
             fieldChanged: 'Title',
             oldValue: t.title,
             newValue: data.title,
@@ -1492,10 +3380,54 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           hist.push({
             id: `h-edit-desc-${Date.now()}`,
             ticketId,
-            changedBy: data.requestedBy || 'Customer',
+            changedBy,
             fieldChanged: 'Description',
             oldValue: t.description,
             newValue: data.description,
+            createdAt: new Date().toISOString()
+          });
+        }
+        if (data.status && data.status !== t.status) {
+          hist.push({
+            id: `h-edit-status-${Date.now()}`,
+            ticketId,
+            changedBy,
+            fieldChanged: 'Status',
+            oldValue: t.status,
+            newValue: data.status,
+            createdAt: new Date().toISOString()
+          });
+        }
+        if (data.priority && data.priority !== t.priority) {
+          hist.push({
+            id: `h-edit-priority-${Date.now()}`,
+            ticketId,
+            changedBy,
+            fieldChanged: 'Priority',
+            oldValue: t.priority || '',
+            newValue: data.priority || '',
+            createdAt: new Date().toISOString()
+          });
+        }
+        if (data.sapModule && data.sapModule !== t.sapModule) {
+          hist.push({
+            id: `h-edit-sapmodule-${Date.now()}`,
+            ticketId,
+            changedBy,
+            fieldChanged: 'SAP Module',
+            oldValue: t.sapModule || '',
+            newValue: data.sapModule || '',
+            createdAt: new Date().toISOString()
+          });
+        }
+        if (data.ticketType && data.ticketType !== t.ticketType) {
+          hist.push({
+            id: `h-edit-tickettype-${Date.now()}`,
+            ticketId,
+            changedBy,
+            fieldChanged: 'Ticket Type',
+            oldValue: t.ticketType || '',
+            newValue: data.ticketType || '',
             createdAt: new Date().toISOString()
           });
         }
@@ -1511,7 +3443,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
   };
 
-  const requestDelete = (ticketId: string, reason: string, requester: string) => {
+  const requestDelete = async (ticketId: string, reason: string, requester: string) => {
     const newDeleteRequest = {
       id: `dr-${Date.now()}`,
       ticketId,
@@ -1524,6 +3456,38 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', requester).maybeSingle();
+        const actorId = prof ? prof.id : (requireUserId());
+
+        await supabase.from('ticket_delete_requests').insert({
+          id: newDeleteRequest.id.startsWith('dr-') && newDeleteRequest.id.length < 25 ? undefined : newDeleteRequest.id,
+          ticket_id: ticketId,
+          requested_by: actorId,
+          reason,
+          manager_approval: 'Pending',
+          admin_approval: 'Pending',
+          final_status: 'Pending'
+        });
+
+        await supabase.from('tickets').update({
+          soft_delete_status: 'Pending Delete',
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: actorId,
+          field_changed: 'Soft Delete Status',
+          old_value: 'Active',
+          new_value: 'Pending Delete'
+        });
+      } catch (err) {
+        console.error('Error requesting delete in Supabase:', err);
+      }
+    }
 
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
@@ -1554,14 +3518,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       `Soft Delete Request: ${ticketId}`,
       `A soft delete request was submitted by ${requester}. Reason: ${reason}`,
       ticketId
     );
   };
 
-  const quoteEstimatedHours = (
+  const quoteEstimatedHours = async (
     ticketId: string,
     data: {
       functionalEstimatedHours: number;
@@ -1571,6 +3535,21 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     }
   ) => {
     const total = data.functionalEstimatedHours + data.technicalEstimatedHours;
+    let consultantUUID = requireUserId();
+    let consultantType: 'Functional' | 'Technical' = 'Functional';
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id, consultant_type').eq('full_name', data.submittedBy).maybeSingle();
+        if (prof) {
+          consultantUUID = prof.id;
+          consultantType = (prof.consultant_type as any) || 'Functional';
+        }
+      } catch (err) {
+        console.error('Error resolving profile for estimate:', err);
+      }
+    }
+
     const newEstimate: TicketHourEstimate = {
       id: `est-${Date.now()}`,
       ticketId,
@@ -1579,7 +3558,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       technicalEstimatedHours: data.technicalEstimatedHours,
       totalEstimatedHours: total,
       remarks: data.remarks,
-      status: 'Submitted',
+      status: 'Revision Approved',
       submittedAt: new Date().toISOString(),
       approvedBy: 'Auto-Approved',
       approvedAt: new Date().toISOString(),
@@ -1592,7 +3571,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       newEfforts.push({
         id: `eff-${Date.now()}-f`,
         ticketId,
-        consultantId: data.submittedBy,
+        consultantId: consultantUUID,
         consultantName: data.submittedBy,
         consultantType: 'Functional',
         estimatedHours: data.functionalEstimatedHours,
@@ -1606,7 +3585,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       newEfforts.push({
         id: `eff-${Date.now()}-t`,
         ticketId,
-        consultantId: data.submittedBy,
+        consultantId: consultantUUID,
         consultantName: data.submittedBy,
         consultantType: 'Technical',
         estimatedHours: data.technicalEstimatedHours,
@@ -1617,19 +3596,88 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       });
     }
 
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // 1. Insert into new ticket_estimates table
+        await supabase.from('ticket_estimates').upsert({
+          ticket_id: ticketId,
+          consultant_id: consultantUUID,
+          consultant_type: consultantType,
+          estimated_hours: total,
+          remarks: data.remarks || 'Consultant Estimate',
+          submitted_at: new Date().toISOString()
+        }, {
+          onConflict: 'ticket_id,consultant_id'
+        });
+
+        // 2. Insert/update legacy tables for safety
+        await supabase.from('ticket_hour_estimates').insert({
+          id: newEstimate.id.startsWith('est-') && newEstimate.id.length < 25 ? undefined : newEstimate.id,
+          ticket_id: ticketId,
+          consultant_id: consultantUUID,
+          functional_estimated_hours: consultantType === 'Functional' ? data.functionalEstimatedHours : null,
+          technical_estimated_hours: consultantType === 'Technical' ? data.technicalEstimatedHours : null,
+          total_estimated_hours: total,
+          remarks: data.remarks,
+          status: 'Revision Approved',
+          submitted_at: newEstimate.submittedAt,
+          approved_by: null,
+          approved_at: newEstimate.approvedAt
+        });
+
+        for (const eff of newEfforts) {
+          const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
+            .select('id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', consultantUUID)
+            .eq('consultant_type', eff.consultantType)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (existingEff) {
+            await supabase.from('ticket_consultant_efforts').update({
+              estimated_hours: eff.estimatedHours,
+              remarks: 'Initial quote',
+              updated_at: new Date().toISOString()
+            }).eq('id', existingEff.id);
+          } else {
+            await supabase.from('ticket_consultant_efforts').insert({
+              id: eff.id.startsWith('eff-') && eff.id.length < 25 ? undefined : eff.id,
+              ticket_id: ticketId,
+              consultant_id: consultantUUID,
+              consultant_type: eff.consultantType,
+              estimated_hours: eff.estimatedHours,
+              actual_hours: 0,
+              remarks: 'Initial quote'
+            });
+          }
+        }
+
+        // 3. Recalculate aggregate estimated hours for this ticket
+        const { data: ests } = await supabase.from('ticket_estimates').select('estimated_hours').eq('ticket_id', ticketId);
+        const aggregateTotal = ests ? ests.reduce((sum, curr) => sum + Number(curr.estimated_hours || 0), 0) : total;
+
+        await supabase.from('tickets').update({
+          quoted_hours: aggregateTotal,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantUUID,
+          field_changed: 'Estimated Hours Quoted',
+          old_value: '0',
+          new_value: `${total} (Func: ${data.functionalEstimatedHours}, Tech: ${data.technicalEstimatedHours})`
+        });
+      } catch (err) {
+        console.error('Error quoting hours in Supabase:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const hist = [
           ...t.history,
-          {
-            id: `h-est-${Date.now()}`,
-            ticketId,
-            changedBy: data.submittedBy,
-            fieldChanged: 'Status',
-            oldValue: t.status,
-            newValue: 'Waiting for Hours Approval',
-            createdAt: new Date().toISOString()
-          },
           {
             id: `h-est-quote-${Date.now()}`,
             ticketId,
@@ -1640,12 +3688,49 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             createdAt: new Date().toISOString()
           }
         ];
+
+        // Update local estimates array
+        const newEstRecord = {
+          id: `est-${Date.now()}`,
+          ticketId,
+          consultantId: consultantUUID,
+          consultantType,
+          estimatedHours: total,
+          remarks: data.remarks,
+          submittedAt: new Date().toISOString()
+        };
+
+        const newEstimates = [...(t.estimates || [])];
+        const estIdx = newEstimates.findIndex(e => e.consultantId === consultantUUID);
+        if (estIdx >= 0) {
+          newEstimates[estIdx] = newEstRecord;
+        } else {
+          newEstimates.push(newEstRecord);
+        }
+
+        const aggregateTotal = newEstimates.reduce((sum, est) => sum + est.estimatedHours, 0);
+
+        let mergedEfforts = [...(t.consultantEfforts || [])];
+        newEfforts.forEach(ne => {
+          const idx = mergedEfforts.findIndex(e => e.consultantId === ne.consultantId && e.consultantType === ne.consultantType && !e.isDeleted);
+          if (idx >= 0) {
+            mergedEfforts[idx] = {
+              ...mergedEfforts[idx],
+              estimatedHours: ne.estimatedHours,
+              updatedAt: new Date().toISOString()
+            };
+          } else {
+            mergedEfforts.push(ne);
+          }
+        });
+
         return {
           ...t,
-          status: 'Waiting for Hours Approval' as TicketStatus,
-          quotedHours: total,
+          status: t.status,
+          quotedHours: aggregateTotal,
           hourEstimates: [...(t.hourEstimates || []), newEstimate],
-          consultantEfforts: [...(t.consultantEfforts || []), ...newEfforts],
+          estimates: newEstimates,
+          consultantEfforts: mergedEfforts,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -1656,14 +3741,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Initial Estimate Submitted',
       `Consultant ${data.submittedBy} submitted initial estimate of ${total} hrs for ticket ${ticketId}.`,
       ticketId
     );
   };
 
-  const requestEstimateRevision = (
+  const requestEstimateRevision = async (
     ticketId: string,
     data: {
       functionalEstimatedHours: number;
@@ -1673,6 +3758,21 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     }
   ) => {
     const total = data.functionalEstimatedHours + data.technicalEstimatedHours;
+    let consultantUUID = requireUserId();
+    let consultantType: 'Functional' | 'Technical' = 'Functional';
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id, consultant_type').eq('full_name', data.submittedBy).maybeSingle();
+        if (prof) {
+          consultantUUID = prof.id;
+          consultantType = (prof.consultant_type as any) || 'Functional';
+        }
+      } catch (err) {
+        console.error('Error resolving profile for estimate revision:', err);
+      }
+    }
+
     const newEstimate: TicketHourEstimate = {
       id: `est-${Date.now()}`,
       ticketId,
@@ -1681,11 +3781,117 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       technicalEstimatedHours: data.technicalEstimatedHours,
       totalEstimatedHours: total,
       remarks: data.remarks,
-      status: 'Revision Requested',
+      status: 'Revision Approved',
       submittedAt: new Date().toISOString(),
+      approvedBy: 'Auto-Approved',
+      approvedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    const newEfforts: TicketConsultantEffort[] = [];
+    if (data.functionalEstimatedHours > 0) {
+      newEfforts.push({
+        id: `eff-${Date.now()}-f`,
+        ticketId,
+        consultantId: consultantUUID,
+        consultantName: data.submittedBy,
+        consultantType: 'Functional',
+        estimatedHours: data.functionalEstimatedHours,
+        actualHours: 0,
+        remarks: 'Revised quote',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+    if (data.technicalEstimatedHours > 0) {
+      newEfforts.push({
+        id: `eff-${Date.now()}-t`,
+        ticketId,
+        consultantId: consultantUUID,
+        consultantName: data.submittedBy,
+        consultantType: 'Technical',
+        estimatedHours: data.technicalEstimatedHours,
+        actualHours: 0,
+        remarks: 'Revised quote',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // 1. Insert/upsert into new ticket_estimates table
+        await supabase.from('ticket_estimates').upsert({
+          ticket_id: ticketId,
+          consultant_id: consultantUUID,
+          consultant_type: consultantType,
+          estimated_hours: total,
+          remarks: data.remarks || 'Consultant Revision Estimate',
+          submitted_at: new Date().toISOString()
+        }, {
+          onConflict: 'ticket_id,consultant_id'
+        });
+
+        // 2. Insert into legacy tables for safety
+        await supabase.from('ticket_hour_estimates').insert({
+          id: newEstimate.id.startsWith('est-') && newEstimate.id.length < 25 ? undefined : newEstimate.id,
+          ticket_id: ticketId,
+          consultant_id: consultantUUID,
+          functional_estimated_hours: consultantType === 'Functional' ? data.functionalEstimatedHours : null,
+          technical_estimated_hours: consultantType === 'Technical' ? data.technicalEstimatedHours : null,
+          total_estimated_hours: total,
+          remarks: data.remarks,
+          status: 'Revision Approved',
+          submitted_at: newEstimate.submittedAt,
+          approved_by: null,
+          approved_at: newEstimate.approvedAt
+        });
+
+        await supabase.from('tickets').update({
+          quoted_hours: total,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantUUID,
+          field_changed: 'Estimated Hours Quoted',
+          old_value: `${tickets.find(t => t.id === ticketId)?.quotedHours || 0}`,
+          new_value: `${total} (Func: ${data.functionalEstimatedHours}, Tech: ${data.technicalEstimatedHours})`
+        });
+
+        for (const eff of newEfforts) {
+          const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
+            .select('id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', consultantUUID)
+            .eq('consultant_type', eff.consultantType)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (existingEff) {
+            await supabase.from('ticket_consultant_efforts').update({
+              estimated_hours: eff.estimatedHours,
+              remarks: 'Revised quote',
+              updated_at: new Date().toISOString()
+            }).eq('id', existingEff.id);
+          } else {
+            await supabase.from('ticket_consultant_efforts').insert({
+              id: eff.id.startsWith('eff-') && eff.id.length < 25 ? undefined : eff.id,
+              ticket_id: ticketId,
+              consultant_id: consultantUUID,
+              consultant_type: eff.consultantType,
+              estimated_hours: eff.estimatedHours,
+              actual_hours: 0,
+              remarks: 'Revised quote'
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error requesting estimate revision in Supabase:', err);
+      }
+    }
 
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
@@ -1695,16 +3901,33 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             id: `h-est-rev-req-${Date.now()}`,
             ticketId,
             changedBy: data.submittedBy,
-            fieldChanged: 'Estimate Revision Requested',
+            fieldChanged: 'Estimated Hours Quoted',
             oldValue: `${t.quotedHours || 0}`,
             newValue: `${total} (Func: ${data.functionalEstimatedHours}, Tech: ${data.technicalEstimatedHours})`,
             createdAt: new Date().toISOString()
           }
         ];
+
+        let mergedEfforts = [...(t.consultantEfforts || [])];
+        newEfforts.forEach(ne => {
+          const idx = mergedEfforts.findIndex(e => e.consultantId === ne.consultantId && e.consultantType === ne.consultantType && !e.isDeleted);
+          if (idx >= 0) {
+            mergedEfforts[idx] = {
+              ...mergedEfforts[idx],
+              estimatedHours: ne.estimatedHours,
+              updatedAt: new Date().toISOString()
+            };
+          } else {
+            mergedEfforts.push(ne);
+          }
+        });
+
         return {
           ...t,
+          status: t.status,
+          quotedHours: total,
           hourEstimates: [...(t.hourEstimates || []), newEstimate],
-          status: 'Waiting for Hours Approval' as TicketStatus,
+          consultantEfforts: mergedEfforts,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -1715,20 +3938,120 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
-      'Estimate Revision Requested',
-      `Consultant ${data.submittedBy} requested estimate revision for ticket ${ticketId} to ${total} hrs.`,
+      'manager@supportstudio.com',
+      'Estimate Revision Submitted',
+      `Consultant ${data.submittedBy} updated estimate revision for ticket ${ticketId} to ${total} hrs.`,
       ticketId
     );
   };
 
-  const approveRevisionRequest = (ticketId: string, estimateId: string, managerName: string) => {
+  const approveRevisionRequest = async (ticketId: string, estimateId: string, managerName: string) => {
+    const currentTicket = tickets.find(t => t.id === ticketId);
+    const targetStatus: TicketStatus = currentTicket?.functionalOrTechnical === 'Technical' ? 'In Progress - Technical' : 'In Progress - Functional';
+
+    let revisedTotal = currentTicket?.quotedHours || 0;
+    let revisedFunc = 0;
+    let revisedTech = 0;
+    let consultantName = 'Consultant';
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
+        const managerId = prof ? prof.id : (requireUserId());
+
+        const estObj = currentTicket?.hourEstimates?.find(e => e.id === estimateId);
+        if (estObj) {
+          revisedTotal = estObj.totalEstimatedHours;
+          revisedFunc = estObj.functionalEstimatedHours;
+          revisedTech = estObj.technicalEstimatedHours;
+          consultantName = estObj.consultantId;
+
+          await supabase.from('ticket_hour_estimates').update({
+            status: 'Revision Approved',
+            approved_by: managerId,
+            approved_at: new Date().toISOString()
+          }).eq('id', estimateId);
+
+          await supabase.from('tickets').update({
+            status: targetStatus,
+            quoted_hours: revisedTotal,
+            updated_at: new Date().toISOString()
+          }).eq('id', ticketId);
+
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: managerId,
+            field_changed: 'Status',
+            old_value: currentTicket?.status || 'Waiting for Hours Approval',
+            new_value: targetStatus
+          });
+
+          await supabase.from('ticket_history').insert({
+            ticket_id: ticketId,
+            changed_by: managerId,
+            field_changed: 'Estimate Revision Approved',
+            old_value: `${currentTicket?.quotedHours || 0}`,
+            new_value: `${revisedTotal}`
+          });
+
+          const { data: consProf } = await supabase.from('profiles').select('id').eq('full_name', consultantName).maybeSingle();
+          const consultantUUID = consProf ? consProf.id : consultantName;
+
+          if (revisedFunc > 0) {
+            const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
+              .select('id')
+              .eq('ticket_id', ticketId)
+              .eq('consultant_id', consultantUUID)
+              .eq('consultant_type', 'Functional')
+              .maybeSingle();
+
+            if (existingEff) {
+              await supabase.from('ticket_consultant_efforts').update({
+                estimated_hours: revisedFunc,
+                updated_at: new Date().toISOString()
+              }).eq('id', existingEff.id);
+            } else {
+              await supabase.from('ticket_consultant_efforts').insert({
+                ticket_id: ticketId,
+                consultant_id: consultantUUID,
+                consultant_type: 'Functional',
+                estimated_hours: revisedFunc,
+                actual_hours: 0
+              });
+            }
+          }
+
+          if (revisedTech > 0) {
+            const { data: existingEff } = await supabase.from('ticket_consultant_efforts')
+              .select('id')
+              .eq('ticket_id', ticketId)
+              .eq('consultant_id', consultantUUID)
+              .eq('consultant_type', 'Technical')
+              .maybeSingle();
+
+            if (existingEff) {
+              await supabase.from('ticket_consultant_efforts').update({
+                estimated_hours: revisedTech,
+                updated_at: new Date().toISOString()
+              }).eq('id', existingEff.id);
+            } else {
+              await supabase.from('ticket_consultant_efforts').insert({
+                ticket_id: ticketId,
+                consultant_id: consultantUUID,
+                consultant_type: 'Technical',
+                estimated_hours: revisedTech,
+                actual_hours: 0
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error approving estimate revision in Supabase:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
-        let revisedTotal = t.quotedHours || 0;
-        let revisedFunc = 0;
-        let revisedTech = 0;
-        
         const hourEstimates = (t.hourEstimates || []).map(est => {
           if (est.id === estimateId) {
             revisedTotal = est.totalEstimatedHours;
@@ -1745,10 +4068,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return est;
         });
 
-        // Add or update consultant efforts based on the approved revision
         const currentEfforts = t.consultantEfforts || [];
         const updatedEfforts = [...currentEfforts];
-        
         const consultantId = hourEstimates.find(e => e.id === estimateId)?.consultantId || 'Consultant';
         
         if (revisedFunc > 0) {
@@ -1800,6 +4121,15 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         const hist = [
           ...t.history,
           {
+            id: `h-est-rev-app-status-${Date.now()}`,
+            ticketId,
+            changedBy: managerName,
+            fieldChanged: 'Status',
+            oldValue: t.status,
+            newValue: targetStatus,
+            createdAt: new Date().toISOString()
+          },
+          {
             id: `h-est-rev-app-${Date.now()}`,
             ticketId,
             changedBy: managerName,
@@ -1812,6 +4142,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         return {
           ...t,
+          status: targetStatus,
           quotedHours: revisedTotal,
           hourEstimates,
           consultantEfforts: updatedEfforts,
@@ -1825,14 +4156,54 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Estimate Revision Approved',
       `Your estimate revision request has been approved by ${managerName}.`,
       ticketId
     );
   };
 
-  const rejectRevisionRequest = (ticketId: string, estimateId: string, managerName: string, rejectionReason: string) => {
+  const rejectRevisionRequest = async (ticketId: string, estimateId: string, managerName: string, rejectionReason: string) => {
+    const currentTicket = tickets.find(t => t.id === ticketId);
+    const targetStatus: TicketStatus = currentTicket?.functionalOrTechnical === 'Technical' ? 'In Progress - Technical' : 'In Progress - Functional';
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
+        const managerId = prof ? prof.id : (requireUserId());
+
+        await supabase.from('ticket_hour_estimates').update({
+          status: 'Revision Rejected',
+          rejected_by: managerName,
+          rejected_at: new Date().toISOString(),
+          rejection_reason: rejectionReason
+        }).eq('id', estimateId);
+
+        await supabase.from('tickets').update({
+          status: targetStatus,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: managerId,
+          field_changed: 'Status',
+          old_value: currentTicket?.status || 'Waiting for Hours Approval',
+          new_value: targetStatus
+        });
+
+        await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: managerId,
+          field_changed: 'Estimate Revision Rejected',
+          old_value: '',
+          new_value: rejectionReason
+        });
+      } catch (err) {
+        console.error('Error rejecting estimate revision in Supabase:', err);
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const hourEstimates = (t.hourEstimates || []).map(est => {
@@ -1852,6 +4223,15 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         const hist = [
           ...t.history,
           {
+            id: `h-est-rev-rej-status-${Date.now()}`,
+            ticketId,
+            changedBy: managerName,
+            fieldChanged: 'Status',
+            oldValue: t.status,
+            newValue: targetStatus,
+            createdAt: new Date().toISOString()
+          },
+          {
             id: `h-est-rev-rej-${Date.now()}`,
             ticketId,
             changedBy: managerName,
@@ -1864,6 +4244,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         return {
           ...t,
+          status: targetStatus,
           hourEstimates,
           updatedAt: new Date().toISOString(),
           history: hist
@@ -1875,14 +4256,14 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Estimate Revision Rejected',
       `Your estimate revision request was rejected by ${managerName}. Reason: ${rejectionReason}`,
       ticketId
     );
   };
 
-  const raiseClosureRequest = (
+  const raiseClosureRequest = async (
     ticketId: string,
     data: {
       functionalActualHours: number;
@@ -1892,18 +4273,78 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       resolutionSummary: string;
       pendingItems?: string;
       requestedBy: string;
+      actualHours?: { consultantId: string; hours: number }[];
+      files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
-  ) => {
-    const total = data.functionalActualHours + data.technicalActualHours;
+  ): Promise<{ success: boolean; error?: string }> => {
+    const consultantId = requireUserId();
+    const consultantName = user?.name || data.requestedBy;
+
+    const currentTicket = tickets.find(t => t.id === ticketId);
+
+    // Classify actual hours by functional or technical type
+    let totalFuncActual = 0;
+    let totalTechActual = 0;
+    const actualHoursList = data.actualHours || [];
+
+    // Fallback: if actualHoursList is empty, try to construct it from functionalActualHours and technicalActualHours for the primary consultant
+    if (actualHoursList.length === 0) {
+      const isFunctional = currentTicket?.assignments?.find(a => a.consultantId === consultantId)?.consultantType !== 'Technical';
+      actualHoursList.push({
+        consultantId: consultantId,
+        hours: isFunctional ? data.functionalActualHours : data.technicalActualHours
+      });
+    }
+
+    // In local fallback or DB, we want to calculate the sums
+    const resolvedHoursList: { consultantId: string; consultantName: string; consultantType: 'Functional' | 'Technical'; hours: number }[] = [];
+
+    for (const ah of actualHoursList) {
+      let type: 'Functional' | 'Technical' = 'Functional';
+      let name = 'Consultant';
+      const asg = currentTicket?.assignments?.find(a => a.consultantId === ah.consultantId);
+      if (asg) {
+        type = asg.consultantType;
+        name = asg.consultantName;
+      } else {
+        if (isSupabaseConfigured && supabase) {
+          try {
+            const { data: prof } = await supabase.from('profiles').select('full_name, consultant_type').eq('id', ah.consultantId).maybeSingle();
+            if (prof) {
+              type = (prof.consultant_type as any) || 'Functional';
+              name = prof.full_name;
+            }
+          } catch (e) {
+            console.error('Error resolving profile for actual hours entry:', e);
+          }
+        }
+      }
+      resolvedHoursList.push({
+        consultantId: ah.consultantId,
+        consultantName: name,
+        consultantType: type,
+        hours: ah.hours
+      });
+
+      if (type === 'Functional') {
+        totalFuncActual += ah.hours;
+      } else {
+        totalTechActual += ah.hours;
+      }
+    }
+
+    const grandTotal = totalFuncActual + totalTechActual;
+    let closureRequestId = `cls-${Date.now()}`;
+
     const newRequest: TicketClosureRequest = {
-      id: `cls-${Date.now()}`,
+      id: closureRequestId,
       ticketId,
-      requestedBy: data.requestedBy,
-      functionalActualHours: data.functionalActualHours,
-      technicalActualHours: data.technicalActualHours,
-      totalActualHours: total,
+      requestedBy: consultantName,
+      functionalActualHours: totalFuncActual,
+      technicalActualHours: totalTechActual,
+      totalActualHours: grandTotal,
       workCompletedSummary: data.workCompletedSummary,
-      rootCause: data.rootCause,
+      rootCause: data.rootCause || 'SAP Configuration/Process Alignment',
       resolutionSummary: data.resolutionSummary,
       pendingItems: data.pendingItems,
       status: 'Pending Manager Approval',
@@ -1912,35 +4353,299 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       updatedAt: new Date().toISOString()
     };
 
+    if (isSupabaseConfigured && supabase) {
+      // Keep track of what we insert for rollback
+      let dbClosureReqId: string | null = null;
+      let previousTicketState: any = null;
+
+      console.log(`[CLOSURE WORKFLOW] Initiating closure request for ticket: ${ticketId} by consultant: ${consultantName}`);
+
+      try {
+        // Save previous ticket state for rollback
+        const { data: oldTicket, error: fetchOldErr } = await supabase
+          .from('tickets')
+          .select('status, closure_status, root_cause, resolution_summary')
+          .eq('id', ticketId)
+          .single();
+        if (fetchOldErr) {
+          console.error('[CLOSURE WORKFLOW] Error fetching current ticket state:', fetchOldErr);
+          throw fetchOldErr;
+        }
+        previousTicketState = oldTicket;
+        console.log('[CLOSURE WORKFLOW] Previous ticket state saved for rollback safety:', previousTicketState);
+
+        let consultantType: 'Functional' | 'Technical' = 'Functional';
+        try {
+          const { data: prof } = await supabase.from('profiles').select('consultant_type').eq('id', consultantId).maybeSingle();
+          if (prof && prof.consultant_type) {
+            consultantType = prof.consultant_type as 'Functional' | 'Technical';
+          }
+        } catch (e) {
+          console.error('Error fetching consultant type for closure request:', e);
+        }
+
+        // 1. Insert closure request
+        console.log('[CLOSURE WORKFLOW] Step 1: Inserting ticket_closure_requests record...');
+        const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
+          ticket_id: ticketId,
+          requested_by: consultantId,
+          functional_actual_hours: consultantType === 'Functional' ? totalFuncActual : null,
+          technical_actual_hours: consultantType === 'Technical' ? totalTechActual : null,
+          total_actual_hours: grandTotal,
+          work_completed_summary: data.workCompletedSummary,
+          root_cause: data.rootCause || 'SAP Configuration/Process Alignment',
+          resolution_summary: data.resolutionSummary,
+          pending_items: data.pendingItems || null,
+          status: 'Pending Manager Approval',
+          manager_approval_status: 'Pending'
+        }).select('id');
+
+        if (reqErr) {
+          console.error('[CLOSURE WORKFLOW] Step 1 Failed (ticket_closure_requests insert):', reqErr);
+          throw reqErr;
+        }
+        const insertedReqRow = Array.isArray(insertedReq) ? insertedReq[0] : insertedReq;
+        dbClosureReqId = insertedReqRow.id;
+        if (dbClosureReqId) {
+          closureRequestId = dbClosureReqId;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 1 Succeeded. Closure Request ID:', dbClosureReqId);
+
+        // 2. Upload and insert files linked to this closure request
+        if (dbClosureReqId && data.files && data.files.length > 0) {
+          console.log(`[CLOSURE WORKFLOW] Step 2: Uploading ${data.files.length} attachments...`);
+          for (const f of data.files) {
+            const fileUrl = await uploadAttachmentToSupabase(ticketId, f.fileName, f.fileSize, f.fileType, f.fileObj);
+            const { error: attErr } = await supabase.from('ticket_attachments').insert({
+              ticket_id: ticketId,
+              uploaded_by: consultantId,
+              file_name: f.fileName,
+              file_path: fileUrl,
+              file_size: f.fileSize,
+              mime_type: f.fileType,
+              closure_request_id: dbClosureReqId
+            });
+            if (attErr) {
+              console.error('[DATABASE INSERT ERROR] ticket_attachments registration for closure:', attErr);
+              throw attErr;
+            }
+          }
+          console.log('[CLOSURE WORKFLOW] Step 2 Succeeded. Attachments registered.');
+        }
+
+        // 3. Insert actual hours logs for each consultant
+        console.log('[CLOSURE WORKFLOW] Step 3: Inserting actual hours and syncing legacy consultant efforts...');
+        for (const rh of resolvedHoursList) {
+          const { error: actErr } = await supabase.from('ticket_actual_hours').insert({
+            closure_request_id: dbClosureReqId,
+            ticket_id: ticketId,
+            consultant_id: rh.consultantId,
+            consultant_type: rh.consultantType,
+            actual_hours: rh.hours,
+            billable: true,
+            approval_status: 'pending'
+          });
+          if (actErr) {
+            console.error(`[CLOSURE WORKFLOW] Step 3 Failed to insert actual hours for ${rh.consultantId}:`, actErr);
+            throw actErr;
+          }
+
+          // Also update ticket_consultant_efforts for backwards compatibility
+          const { data: existingEff, error: effFetchErr } = await supabase.from('ticket_consultant_efforts')
+            .select('id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', rh.consultantId)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (effFetchErr) throw effFetchErr;
+
+          if (existingEff) {
+            const { error: effUpdErr } = await supabase.from('ticket_consultant_efforts').update({
+              actual_hours: rh.hours,
+              closure_status: 'Submitted',
+              work_summary: data.workCompletedSummary,
+              resolution_notes: data.resolutionSummary,
+              updated_at: new Date().toISOString()
+            }).eq('id', existingEff.id);
+            if (effUpdErr) throw effUpdErr;
+          } else {
+            const { error: effInsErr } = await supabase.from('ticket_consultant_efforts').insert({
+              ticket_id: ticketId,
+              consultant_id: rh.consultantId,
+              consultant_type: rh.consultantType,
+              estimated_hours: 0,
+              actual_hours: rh.hours,
+              closure_status: 'Submitted',
+              work_summary: data.workCompletedSummary,
+              resolution_notes: data.resolutionSummary
+            });
+            if (effInsErr) throw effInsErr;
+          }
+        }
+        console.log('[CLOSURE WORKFLOW] Step 3 Succeeded.');
+
+        // 4. Update ticket status
+        console.log('[CLOSURE WORKFLOW] Step 4: Updating ticket status to Request for Closure...');
+        const { error: ticketUpdErr } = await supabase.from('tickets').update({
+          status: 'Request for Closure',
+          closure_status: 'Awaiting Manager Approval',
+          root_cause: data.rootCause || null,
+          resolution_summary: data.resolutionSummary,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+        if (ticketUpdErr) {
+          console.error('[CLOSURE WORKFLOW] Step 4 Failed (tickets update):', ticketUpdErr);
+          throw ticketUpdErr;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 4 Succeeded.');
+
+        // 5. Log history
+        console.log('[CLOSURE WORKFLOW] Step 5: Recording history transitions...');
+        const { error: histErr1 } = await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantId,
+          field_changed: 'Status',
+          old_value: previousTicketState.status || 'In Progress',
+          new_value: 'Request for Closure'
+        });
+        if (histErr1) {
+          console.error('[CLOSURE WORKFLOW] Step 5 Failed to log history transition:', histErr1);
+          throw histErr1;
+        }
+
+        const { error: histErr2 } = await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantId,
+          field_changed: 'Actual Hours Submitted',
+          old_value: '0',
+          new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
+        });
+        if (histErr2) {
+          console.error('[CLOSURE WORKFLOW] Step 5 Failed to log actual hours history entry:', histErr2);
+          throw histErr2;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 5 Succeeded.');
+
+        // 6. Refetch verification check to confirm details exist in Supabase
+        console.log('[CLOSURE WORKFLOW] Step 6: Querying database to confirm records exist...');
+        const { data: verifyReq, error: verifyErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('id')
+          .eq('id', dbClosureReqId)
+          .single();
+
+        if (verifyErr || !verifyReq) {
+          console.error('[CLOSURE WORKFLOW] Step 6 Verification Failed (record not found or error):', verifyErr);
+          throw new Error(verifyErr?.message || 'Verification failed: inserted closure request could not be retrieved from Supabase.');
+        }
+        console.log('[CLOSURE WORKFLOW] Step 6 Succeeded. DB sync confirmed. Performing full refetch...');
+
+        // Perform full refresh of client context datasets
+        await fetchData();
+
+        return { success: true };
+
+      } catch (err: any) {
+        console.error('[CLOSURE WORKFLOW] Error raising closure request in Supabase (initiating rollback):', err);
+        // ROLLBACK
+        if (dbClosureReqId) {
+          await supabase.from('ticket_attachments').delete().eq('closure_request_id', dbClosureReqId);
+          await supabase.from('ticket_actual_hours').delete().eq('closure_request_id', dbClosureReqId);
+          await supabase.from('ticket_closure_requests').delete().eq('id', dbClosureReqId);
+        }
+        if (previousTicketState) {
+          await supabase.from('tickets').update({
+            status: previousTicketState.status,
+            closure_status: previousTicketState.closure_status,
+            root_cause: previousTicketState.root_cause,
+            resolution_summary: previousTicketState.resolution_summary,
+            updated_at: new Date().toISOString()
+          }).eq('id', ticketId);
+        }
+        // Rollback legacy efforts values
+        for (const rh of resolvedHoursList) {
+          await supabase.from('ticket_consultant_efforts').update({
+            actual_hours: 0,
+            closure_status: 'Pending',
+            updated_at: new Date().toISOString()
+          }).eq('ticket_id', ticketId).eq('consultant_id', rh.consultantId);
+        }
+        return { success: false, error: err.message || 'Database transaction failed' };
+      }
+    }
+
+    // Local state fallback update
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
-        const hist = [
-          ...t.history,
-          {
-            id: `h-cls-req-${Date.now()}`,
-            ticketId,
-            changedBy: data.requestedBy,
-            fieldChanged: 'Status',
-            oldValue: t.status,
-            newValue: 'Request for Closure',
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: `h-cls-hours-${Date.now()}`,
-            ticketId,
-            changedBy: data.requestedBy,
-            fieldChanged: 'Actual Hours Submitted',
-            oldValue: '0',
-            newValue: `${total} (Func: ${data.functionalActualHours}, Tech: ${data.technicalActualHours})`,
-            createdAt: new Date().toISOString()
+        // Construct synthesized efforts
+        const updatedEfforts = (t.consultantEfforts || []).map(eff => {
+          const rh = resolvedHoursList.find(x => x.consultantId === eff.consultantId);
+          if (rh) {
+            return {
+              ...eff,
+              actualHours: rh.hours,
+              closureStatus: 'Submitted' as const,
+              workSummary: data.workCompletedSummary,
+              resolutionNotes: data.resolutionSummary,
+              updatedAt: new Date().toISOString()
+            };
           }
-        ];
+          return eff;
+        });
+
+        // Add actual hours logs
+        const localActualHoursLogs = [...(t.actualHoursLogs || [])];
+        resolvedHoursList.forEach(rh => {
+          localActualHoursLogs.push({
+            id: `act-${Date.now()}-${Math.random()}`,
+            closureRequestId,
+            ticketId,
+            consultantId: rh.consultantId,
+            consultantType: rh.consultantType,
+            actualHours: rh.hours
+          });
+        });
+
+        // Add attachments locally
+        const localAttachments = [...(t.attachments || [])];
+        if (data.files && data.files.length > 0) {
+          data.files.forEach((f, idx) => {
+            localAttachments.push({
+              id: `att-cls-${Date.now()}-${idx}`,
+              ticketId,
+              closureRequestId,
+              fileName: f.fileName,
+              filePath: `/files/${f.fileName}`,
+              fileUrl: `/files/${f.fileName}`,
+              fileType: f.fileType || '',
+              fileSize: f.fileSize || 0,
+              uploadedBy: consultantName,
+              visibility: 'public',
+              createdAt: new Date().toISOString()
+            });
+          });
+        }
+
+        const hist = [...t.history];
+        hist.push({
+          id: `h-cls-log-${Date.now()}`,
+          ticketId,
+          changedBy: consultantName,
+          fieldChanged: 'Status',
+          oldValue: t.status,
+          newValue: 'Request for Closure',
+          createdAt: new Date().toISOString()
+        });
+
         return {
           ...t,
           status: 'Request for Closure' as TicketStatus,
-          rootCause: data.rootCause,
-          resolutionSummary: data.resolutionSummary,
+          closureStatus: 'Awaiting Manager Approval',
+          consultantEfforts: updatedEfforts,
+          actualHoursLogs: localActualHoursLogs,
           closureRequests: [...(t.closureRequests || []), newRequest],
+          attachments: localAttachments,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -1951,14 +4656,16 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Closure Request Raised',
-      `Consultant ${data.requestedBy} raised a closure request with ${total} actual hours for ${ticketId}.`,
+      `Primary consultant ${consultantName} has submitted actual hours and requested closure for ticket ${ticketId}. Awaiting Manager Approval.`,
       ticketId
     );
+
+    return { success: true };
   };
 
-  const resubmitClosureRequest = (
+  const resubmitClosureRequest = async (
     ticketId: string,
     requestId: string,
     data: {
@@ -1969,18 +4676,88 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       resolutionSummary: string;
       pendingItems?: string;
       requestedBy: string;
+      actualHours?: { consultantId: string; hours: number }[];
+      files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
-  ) => {
-    const total = data.functionalActualHours + data.technicalActualHours;
+  ): Promise<{ success: boolean; error?: string }> => {
+    let consultantId = requireUserId();
+    let consultantName = data.requestedBy;
+
+    const currentTicket = tickets.find(t => t.id === ticketId);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id, full_name').eq('full_name', data.requestedBy).maybeSingle();
+        if (prof) {
+          consultantId = prof.id;
+          consultantName = prof.full_name;
+        }
+      } catch (err) {
+        console.error('Error resolving profile:', err);
+      }
+    }
+
+    // Classify actual hours by functional or technical type
+    let totalFuncActual = 0;
+    let totalTechActual = 0;
+    const actualHoursList = data.actualHours || [];
+
+    if (actualHoursList.length === 0) {
+      const isFunctional = currentTicket?.assignments?.find(a => a.consultantId === consultantId)?.consultantType !== 'Technical';
+      actualHoursList.push({
+        consultantId: consultantId,
+        hours: isFunctional ? data.functionalActualHours : data.technicalActualHours
+      });
+    }
+
+    const resolvedHoursList: { consultantId: string; consultantName: string; consultantType: 'Functional' | 'Technical'; hours: number }[] = [];
+
+    for (const ah of actualHoursList) {
+      let type: 'Functional' | 'Technical' = 'Functional';
+      let name = 'Consultant';
+      const asg = currentTicket?.assignments?.find(a => a.consultantId === ah.consultantId);
+      if (asg) {
+        type = asg.consultantType;
+        name = asg.consultantName;
+      } else {
+        if (isSupabaseConfigured && supabase) {
+          try {
+            const { data: prof } = await supabase.from('profiles').select('full_name, consultant_type').eq('id', ah.consultantId).maybeSingle();
+            if (prof) {
+              type = (prof.consultant_type as any) || 'Functional';
+              name = prof.full_name;
+            }
+          } catch (e) {
+            console.error('Error resolving profile for actual hours entry:', e);
+          }
+        }
+      }
+      resolvedHoursList.push({
+        consultantId: ah.consultantId,
+        consultantName: name,
+        consultantType: type,
+        hours: ah.hours
+      });
+
+      if (type === 'Functional') {
+        totalFuncActual += ah.hours;
+      } else {
+        totalTechActual += ah.hours;
+      }
+    }
+
+    const grandTotal = totalFuncActual + totalTechActual;
+    let closureRequestId = `cls-${Date.now()}`;
+
     const newRequest: TicketClosureRequest = {
-      id: `cls-${Date.now()}`,
+      id: closureRequestId,
       ticketId,
-      requestedBy: data.requestedBy,
-      functionalActualHours: data.functionalActualHours,
-      technicalActualHours: data.technicalActualHours,
-      totalActualHours: total,
+      requestedBy: consultantName,
+      functionalActualHours: totalFuncActual,
+      technicalActualHours: totalTechActual,
+      totalActualHours: grandTotal,
       workCompletedSummary: data.workCompletedSummary,
-      rootCause: data.rootCause,
+      rootCause: data.rootCause || 'SAP Configuration/Process Alignment',
       resolutionSummary: data.resolutionSummary,
       pendingItems: data.pendingItems,
       status: 'Pending Manager Approval',
@@ -1990,8 +4767,272 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       updatedAt: new Date().toISOString()
     };
 
+    if (isSupabaseConfigured && supabase) {
+      let dbClosureReqId: string | null = null;
+      let previousTicketState: any = null;
+      let previousRequestState: any = null;
+
+      console.log(`[CLOSURE WORKFLOW] Initiating resubmit closure request for ticket: ${ticketId} by consultant: ${consultantName}`);
+
+      try {
+        // Save previous ticket and closure request state
+        console.log('[CLOSURE WORKFLOW] Step 0: Saving previous ticket and request state for rollback...');
+        const { data: oldTicket, error: fetchOldErr } = await supabase
+          .from('tickets')
+          .select('status, closure_status, root_cause, resolution_summary')
+          .eq('id', ticketId)
+          .single();
+        if (fetchOldErr) throw fetchOldErr;
+        previousTicketState = oldTicket;
+
+        const { data: oldRequest, error: fetchOldReqErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('status')
+          .eq('id', requestId)
+          .single();
+        if (fetchOldReqErr) throw fetchOldReqErr;
+        previousRequestState = oldRequest;
+
+        // 1. Update previous request status to Resubmitted
+        console.log(`[CLOSURE WORKFLOW] Step 1: Updating previous request ${requestId} status to Resubmitted...`);
+        const { error: oldReqUpdErr } = await supabase.from('ticket_closure_requests').update({
+          status: 'Resubmitted'
+        }).eq('id', requestId);
+        if (oldReqUpdErr) throw oldReqUpdErr;
+
+        let consultantType: 'Functional' | 'Technical' = 'Functional';
+        try {
+          const { data: prof } = await supabase.from('profiles').select('consultant_type').eq('id', consultantId).maybeSingle();
+          if (prof && prof.consultant_type) {
+            consultantType = prof.consultant_type as 'Functional' | 'Technical';
+          }
+        } catch (e) {
+          console.error('Error fetching consultant type for resubmit closure request:', e);
+        }
+
+        // 2. Insert resubmitted request
+        console.log('[CLOSURE WORKFLOW] Step 2: Inserting resubmitted ticket_closure_requests record...');
+        const { data: insertedReq, error: reqErr } = await supabase.from('ticket_closure_requests').insert({
+          ticket_id: ticketId,
+          requested_by: consultantId,
+          functional_actual_hours: consultantType === 'Functional' ? totalFuncActual : null,
+          technical_actual_hours: consultantType === 'Technical' ? totalTechActual : null,
+          total_actual_hours: grandTotal,
+          work_completed_summary: data.workCompletedSummary,
+          root_cause: data.rootCause || 'SAP Configuration/Process Alignment',
+          resolution_summary: data.resolutionSummary,
+          pending_items: data.pendingItems || null,
+          status: 'Pending Manager Approval',
+          manager_approval_status: 'Pending',
+          resubmitted_from_id: requestId
+        }).select('id').single();
+
+        if (reqErr) {
+          console.error('[CLOSURE WORKFLOW] Step 2 Failed (ticket_closure_requests insert):', reqErr);
+          throw reqErr;
+        }
+        dbClosureReqId = insertedReq.id;
+        if (dbClosureReqId) {
+          closureRequestId = dbClosureReqId;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 2 Succeeded. Closure Request ID:', dbClosureReqId);
+
+        // 2.5. Upload and insert files linked to this closure request
+        if (dbClosureReqId && data.files && data.files.length > 0) {
+          console.log(`[CLOSURE WORKFLOW] Step 2.5: Uploading ${data.files.length} attachments...`);
+          for (const f of data.files) {
+            const fileUrl = await uploadAttachmentToSupabase(ticketId, f.fileName, f.fileSize, f.fileType, f.fileObj);
+            const { error: attErr } = await supabase.from('ticket_attachments').insert({
+              ticket_id: ticketId,
+              uploaded_by: consultantId,
+              file_name: f.fileName,
+              file_path: fileUrl,
+              file_size: f.fileSize,
+              mime_type: f.fileType,
+              closure_request_id: dbClosureReqId
+            });
+            if (attErr) {
+              console.error('[DATABASE INSERT ERROR] ticket_attachments registration for resubmitted closure:', attErr);
+              throw attErr;
+            }
+          }
+          console.log('[CLOSURE WORKFLOW] Step 2.5 Succeeded. Attachments registered.');
+        }
+
+        // 3. Insert actual hours logs for each consultant
+        console.log('[CLOSURE WORKFLOW] Step 3: Inserting actual hours and syncing legacy consultant efforts...');
+        for (const rh of resolvedHoursList) {
+          const { error: actErr } = await supabase.from('ticket_actual_hours').insert({
+            closure_request_id: dbClosureReqId,
+            ticket_id: ticketId,
+            consultant_id: rh.consultantId,
+            consultant_type: rh.consultantType,
+            actual_hours: rh.hours,
+            billable: true,
+            approval_status: 'pending'
+          });
+          if (actErr) {
+            console.error(`[CLOSURE WORKFLOW] Step 3 Failed to insert actual hours for ${rh.consultantId}:`, actErr);
+            throw actErr;
+          }
+
+          const { data: existingEff, error: effFetchErr } = await supabase.from('ticket_consultant_efforts')
+            .select('id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', rh.consultantId)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (effFetchErr) throw effFetchErr;
+
+          if (existingEff) {
+            const { error: effUpdErr } = await supabase.from('ticket_consultant_efforts').update({
+              actual_hours: rh.hours,
+              closure_status: 'Submitted',
+              work_summary: data.workCompletedSummary,
+              resolution_notes: data.resolutionSummary,
+              updated_at: new Date().toISOString()
+            }).eq('id', existingEff.id);
+            if (effUpdErr) throw effUpdErr;
+          } else {
+            const { error: effInsErr } = await supabase.from('ticket_consultant_efforts').insert({
+              ticket_id: ticketId,
+              consultant_id: rh.consultantId,
+              consultant_type: rh.consultantType,
+              estimated_hours: 0,
+              actual_hours: rh.hours,
+              closure_status: 'Submitted',
+              work_summary: data.workCompletedSummary,
+              resolution_notes: data.resolutionSummary
+            });
+            if (effInsErr) throw effInsErr;
+          }
+        }
+        console.log('[CLOSURE WORKFLOW] Step 3 Succeeded.');
+
+        // 4. Update ticket status
+        console.log('[CLOSURE WORKFLOW] Step 4: Updating ticket status to Request for Closure...');
+        const { error: ticketUpdErr } = await supabase.from('tickets').update({
+          status: 'Request for Closure',
+          closure_status: 'Awaiting Manager Approval',
+          root_cause: data.rootCause || null,
+          resolution_summary: data.resolutionSummary,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+        if (ticketUpdErr) {
+          console.error('[CLOSURE WORKFLOW] Step 4 Failed (tickets update):', ticketUpdErr);
+          throw ticketUpdErr;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 4 Succeeded.');
+
+        // 5. Log history
+        console.log('[CLOSURE WORKFLOW] Step 5: Recording history transitions...');
+        const { error: histErr1 } = await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantId,
+          field_changed: 'Status',
+          old_value: previousTicketState.status || 'In Progress',
+          new_value: 'Request for Closure'
+        });
+        if (histErr1) {
+          console.error('[CLOSURE WORKFLOW] Step 5 Failed to log history transition:', histErr1);
+          throw histErr1;
+        }
+
+        const { error: histErr2 } = await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: consultantId,
+          field_changed: 'Actual Hours Resubmitted',
+          old_value: '0',
+          new_value: `${grandTotal} (Func: ${totalFuncActual}, Tech: ${totalTechActual})`
+        });
+        if (histErr2) {
+          console.error('[CLOSURE WORKFLOW] Step 5 Failed to log actual hours history entry:', histErr2);
+          throw histErr2;
+        }
+        console.log('[CLOSURE WORKFLOW] Step 5 Succeeded.');
+
+        // 6. Refetch verification check to confirm details exist in Supabase
+        console.log('[CLOSURE WORKFLOW] Step 6: Querying database to confirm records exist...');
+        const { data: verifyReq, error: verifyErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('id')
+          .eq('id', dbClosureReqId)
+          .single();
+
+        if (verifyErr || !verifyReq) {
+          console.error('[CLOSURE WORKFLOW] Step 6 Verification Failed (record not found or error):', verifyErr);
+          throw new Error(verifyErr?.message || 'Verification failed: inserted closure request could not be retrieved from Supabase.');
+        }
+        console.log('[CLOSURE WORKFLOW] Step 6 Succeeded. DB sync confirmed. Performing full refetch...');
+
+        // Perform full refresh of client context datasets
+        await fetchData();
+
+        return { success: true };
+
+      } catch (err: any) {
+        console.error('[CLOSURE WORKFLOW] Error resubmitting closure request in Supabase (initiating rollback):', err);
+        // ROLLBACK
+        if (dbClosureReqId) {
+          await supabase.from('ticket_attachments').delete().eq('closure_request_id', dbClosureReqId);
+          await supabase.from('ticket_actual_hours').delete().eq('closure_request_id', dbClosureReqId);
+          await supabase.from('ticket_closure_requests').delete().eq('id', dbClosureReqId);
+        }
+        if (previousRequestState) {
+          await supabase.from('ticket_closure_requests').update({
+            status: previousRequestState.status
+          }).eq('id', requestId);
+        }
+        if (previousTicketState) {
+          await supabase.from('tickets').update({
+            status: previousTicketState.status,
+            closure_status: previousTicketState.closure_status,
+            root_cause: previousTicketState.root_cause,
+            resolution_summary: previousTicketState.resolution_summary,
+            updated_at: new Date().toISOString()
+          }).eq('id', ticketId);
+        }
+        for (const rh of resolvedHoursList) {
+          await supabase.from('ticket_consultant_efforts').update({
+            actual_hours: 0,
+            closure_status: 'Pending',
+            updated_at: new Date().toISOString()
+          }).eq('ticket_id', ticketId).eq('consultant_id', rh.consultantId);
+        }
+        return { success: false, error: err.message || 'Database transaction failed' };
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
+        const updatedEfforts = (t.consultantEfforts || []).map(eff => {
+          const rh = resolvedHoursList.find(x => x.consultantId === eff.consultantId);
+          if (rh) {
+            return {
+              ...eff,
+              actualHours: rh.hours,
+              closureStatus: 'Submitted' as const,
+              workSummary: data.workCompletedSummary,
+              resolutionNotes: data.resolutionSummary,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return eff;
+        });
+
+        const localActualHoursLogs = [...(t.actualHoursLogs || [])];
+        resolvedHoursList.forEach(rh => {
+          localActualHoursLogs.push({
+            id: `act-${Date.now()}-${Math.random()}`,
+            closureRequestId,
+            ticketId,
+            consultantId: rh.consultantId,
+            consultantType: rh.consultantType,
+            actualHours: rh.hours
+          });
+        });
+
         const closureRequests = (t.closureRequests || []).map(r => {
           if (r.id === requestId) {
             return {
@@ -2003,25 +5044,45 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return r;
         });
 
-        const hist = [
-          ...t.history,
-          {
-            id: `h-cls-resub-${Date.now()}`,
-            ticketId,
-            changedBy: data.requestedBy,
-            fieldChanged: 'Closure Request Resubmitted',
-            oldValue: '',
-            newValue: `${total} hrs`,
-            createdAt: new Date().toISOString()
-          }
-        ];
+        // Add attachments locally
+        const localAttachments = [...(t.attachments || [])];
+        if (data.files && data.files.length > 0) {
+          data.files.forEach((f, idx) => {
+            localAttachments.push({
+              id: `att-cls-${Date.now()}-${idx}`,
+              ticketId,
+              closureRequestId,
+              fileName: f.fileName,
+              filePath: `/files/${f.fileName}`,
+              fileUrl: `/files/${f.fileName}`,
+              fileType: f.fileType || '',
+              fileSize: f.fileSize || 0,
+              uploadedBy: consultantName,
+              visibility: 'public',
+              createdAt: new Date().toISOString()
+            });
+          });
+        }
+
+        const hist = [...t.history];
+        hist.push({
+          id: `h-cls-resub-${Date.now()}`,
+          ticketId,
+          changedBy: consultantName,
+          fieldChanged: 'Closure Request Resubmitted',
+          oldValue: '',
+          newValue: `${grandTotal} hrs`,
+          createdAt: new Date().toISOString()
+        });
 
         return {
           ...t,
           status: 'Request for Closure' as TicketStatus,
-          rootCause: data.rootCause,
-          resolutionSummary: data.resolutionSummary,
+          closureStatus: 'Awaiting Manager Approval',
+          consultantEfforts: updatedEfforts,
+          actualHoursLogs: localActualHoursLogs,
           closureRequests: [...closureRequests, newRequest],
+          attachments: localAttachments,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -2032,27 +5093,233 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Closure Request Resubmitted',
-      `Consultant ${data.requestedBy} resubmitted a closure request for ${ticketId} with ${total} actual hours.`,
+      `Primary consultant ${consultantName} has resubmitted closure details for ticket ${ticketId}.`,
       ticketId
     );
+
+    return { success: true };
   };
 
-  const approveClosureRequest = (ticketId: string, requestId: string, managerName: string) => {
+  const approveClosureRequest = async (
+    ticketId: string,
+    requestId: string,
+    managerName: string,
+    score?: number,
+    feedback?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    let actualFunc = 0;
+    let actualTech = 0;
+    let actualTotal = 0;
+    let requester = 'Consultant';
+
+    const currentTicket = tickets.find(t => t.id === ticketId);
+    const reqObj = currentTicket?.closureRequests?.find(r => r.id === requestId);
+    if (reqObj) {
+      actualFunc = reqObj.functionalActualHours;
+      actualTech = reqObj.technicalActualHours;
+      actualTotal = reqObj.totalActualHours;
+      requester = reqObj.requestedBy;
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      let previousTicketState: any = null;
+      let previousRequestState: any = null;
+      let satisfactionRatingId: string | null = null;
+
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
+        const managerId = prof ? prof.id : (requireUserId());
+
+        // 0. Validate actual hours exist
+        const { data: dbActuals, error: dbActualsErr } = await supabase
+          .from('ticket_actual_hours')
+          .select('id')
+          .eq('closure_request_id', requestId);
+
+        if (dbActualsErr) throw dbActualsErr;
+        if (!dbActuals || dbActuals.length === 0) {
+          throw new Error('Closure approval blocked: No actual hours logs found for this closure request. Re-submit closure or check resource efforts.');
+        }
+
+        // Save states for rollback
+        const { data: oldTicket, error: fetchOldErr } = await supabase
+          .from('tickets')
+          .select('status, closure_status, closed_by, closed_at, resolved_at, updated_at')
+          .eq('id', ticketId)
+          .single();
+        if (fetchOldErr) throw fetchOldErr;
+        previousTicketState = oldTicket;
+
+        const { data: oldReq, error: fetchOldReqErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('status, manager_approval_status, manager_approved_by, manager_approved_at')
+          .eq('id', requestId)
+          .single();
+        if (fetchOldReqErr) throw fetchOldReqErr;
+        previousRequestState = oldReq;
+
+        // 1. Update closure request status to Approved
+        const { error: reqUpdErr } = await supabase.from('ticket_closure_requests').update({
+          status: 'Approved',
+          manager_approval_status: 'Approved',
+          manager_approved_by: managerId,
+          manager_approved_at: new Date().toISOString()
+        }).eq('id', requestId);
+        if (reqUpdErr) throw reqUpdErr;
+
+        // 2. Automatically close the ticket directly
+        const { error: ticketUpdErr } = await supabase.from('tickets').update({
+          status: 'Closed',
+          closure_status: 'Approved',
+          closed_by: managerId,
+          closed_at: new Date().toISOString(),
+          resolved_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+        if (ticketUpdErr) throw ticketUpdErr;
+
+        // 3. Log to ticket history
+        const { error: histErr } = await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: managerId,
+          field_changed: 'Status',
+          old_value: 'Request for Closure',
+          new_value: 'Closed'
+        });
+        if (histErr) throw histErr;
+
+        // 4. Update legacy ticket_consultant_efforts closure status
+        const { error: effUpdErr } = await supabase.from('ticket_consultant_efforts')
+          .update({ closure_status: 'Approved', updated_at: new Date().toISOString() })
+          .eq('ticket_id', ticketId);
+        if (effUpdErr) throw effUpdErr;
+
+        // 4.5. Update actual hours approval status in database
+        const { error: actUpdErr } = await supabase
+          .from('ticket_actual_hours')
+          .update({
+            approval_status: 'approved',
+            approved_by: managerId,
+            approved_at: new Date().toISOString()
+          })
+          .eq('closure_request_id', requestId);
+        if (actUpdErr) throw actUpdErr;
+
+        // 4.6. Update contract utilized hours in Supabase
+        if (currentTicket && currentTicket.organizationId) {
+          const { data: contr } = await supabase
+            .from('customer_contracts')
+            .select('id, used_hours')
+            .eq('organization_id', currentTicket.organizationId)
+            .maybeSingle();
+
+          if (contr) {
+            const newUsedHours = Number(contr.used_hours) + Number(actualTotal);
+            await supabase
+              .from('customer_contracts')
+              .update({ used_hours: newUsedHours })
+              .eq('id', contr.id);
+          }
+        }
+
+        // 5. Save satisfaction rating
+        const finalScore = score !== undefined && score > 0 ? score : 5;
+        const finalFeedback = feedback || 'Closed';
+        const { data: insRating, error: ratingErr } = await supabase.from('satisfaction_ratings').insert({
+          ticket_id: ticketId,
+          score: finalScore,
+          feedback: finalFeedback
+        }).select('id').maybeSingle();
+
+        if (ratingErr) throw ratingErr;
+        if (insRating) satisfactionRatingId = insRating.id;
+
+        // Force refetch to sync all data across the dashboard
+        await fetchData();
+
+        // Notify customer + primary/lead consultant
+        if (currentTicket) {
+          const customerTarget = currentTicket.createdByUser || currentTicket.requestedByEmail;
+          if (customerTarget) {
+            await createDBNotification({
+              userId: customerTarget,
+              type: 'ticket_closed',
+              title: 'Ticket Closed',
+              message: `Ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} has been closed by manager ${managerName}.`,
+              ticketId: ticketId,
+              linkPath: `/customer/tickets/${ticketId}`
+            });
+          }
+          if (currentTicket.assignedConsultantId) {
+            await createDBNotification({
+              userId: currentTicket.assignedConsultantId,
+              type: 'ticket_closed',
+              title: 'Ticket Closed',
+              message: `Ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} has been approved for closure.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
+            });
+          }
+          if (currentTicket.leadConsultantId && currentTicket.leadConsultantId !== currentTicket.assignedConsultantId) {
+            await createDBNotification({
+              userId: currentTicket.leadConsultantId,
+              type: 'ticket_closed',
+              title: 'Ticket Closed',
+              message: `Ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} has been approved for closure.`,
+              ticketId: ticketId,
+              linkPath: `/consultant/tickets/${ticketId}`
+            });
+          }
+        }
+
+        return { success: true };
+
+      } catch (err: any) {
+        console.error('Error approving closure request in Supabase (initiating rollback):', err);
+        // ROLLBACK
+        if (previousRequestState) {
+          await supabase.from('ticket_closure_requests').update({
+            status: previousRequestState.status,
+            manager_approval_status: previousRequestState.manager_approval_status,
+            manager_approved_by: previousRequestState.manager_approved_by,
+            manager_approved_at: previousRequestState.manager_approved_at
+          }).eq('id', requestId);
+        }
+        if (previousTicketState) {
+          await supabase.from('tickets').update({
+            status: previousTicketState.status,
+            closure_status: previousTicketState.closure_status,
+            closed_by: previousTicketState.closed_by,
+            closed_at: previousTicketState.closed_at,
+            resolved_at: previousTicketState.resolved_at,
+            updated_at: previousTicketState.updated_at
+          }).eq('id', ticketId);
+        }
+        await supabase.from('ticket_consultant_efforts').update({
+          closure_status: 'Submitted',
+          updated_at: new Date().toISOString()
+        }).eq('ticket_id', ticketId);
+        await supabase.from('ticket_actual_hours').update({
+          approval_status: 'pending',
+          approved_by: null,
+          approved_at: null
+        }).eq('closure_request_id', requestId);
+
+        if (satisfactionRatingId) {
+          await supabase.from('satisfaction_ratings').delete().eq('id', satisfactionRatingId);
+        }
+
+        return { success: false, error: err.message || 'Database transaction failed' };
+      }
+    }
+
+    // Local fallback update
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
-        let actualFunc = 0;
-        let actualTech = 0;
-        let actualTotal = 0;
-        let requester = 'Consultant';
-
         const closureRequests = (t.closureRequests || []).map(r => {
           if (r.id === requestId) {
-            actualFunc = r.functionalActualHours;
-            actualTech = r.technicalActualHours;
-            actualTotal = r.totalActualHours;
-            requester = r.requestedBy;
             return {
               ...r,
               status: 'Approved' as const,
@@ -2065,54 +5332,23 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return r;
         });
 
-        const currentEfforts = t.consultantEfforts || [];
-        const updatedEfforts = [...currentEfforts];
+        const updatedEfforts = (t.consultantEfforts || []).map(eff => ({
+          ...eff,
+          closureStatus: 'Approved' as const,
+          updatedAt: new Date().toISOString()
+        }));
 
-        if (actualFunc > 0) {
-          const fEffortIdx = updatedEfforts.findIndex(e => e.consultantId === requester && e.consultantType === 'Functional');
-          if (fEffortIdx > -1) {
-            updatedEfforts[fEffortIdx] = {
-              ...updatedEfforts[fEffortIdx],
-              actualHours: actualFunc,
-              updatedAt: new Date().toISOString()
+        const updatedActualHours = (t.actualHoursLogs || []).map(ah => {
+          if (ah.closureRequestId === requestId) {
+            return {
+              ...ah,
+              approvalStatus: 'approved',
+              approvedBy: managerName,
+              approvedAt: new Date().toISOString()
             };
-          } else {
-            updatedEfforts.push({
-              id: `eff-${Date.now()}-f`,
-              ticketId,
-              consultantId: requester,
-              consultantName: requester,
-              consultantType: 'Functional',
-              estimatedHours: 0,
-              actualHours: actualFunc,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            });
           }
-        }
-
-        if (actualTech > 0) {
-          const tEffortIdx = updatedEfforts.findIndex(e => e.consultantId === requester && e.consultantType === 'Technical');
-          if (tEffortIdx > -1) {
-            updatedEfforts[tEffortIdx] = {
-              ...updatedEfforts[tEffortIdx],
-              actualHours: actualTech,
-              updatedAt: new Date().toISOString()
-            };
-          } else {
-            updatedEfforts.push({
-              id: `eff-${Date.now()}-t`,
-              ticketId,
-              consultantId: requester,
-              consultantName: requester,
-              consultantType: 'Technical',
-              estimatedHours: 0,
-              actualHours: actualTech,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
+          return ah;
+        });
 
         const hist = [
           ...t.history,
@@ -2127,15 +5363,43 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           }
         ];
 
+        let ratingObj = t.rating;
+        if (score !== undefined && score > 0 && feedback) {
+          ratingObj = {
+            id: `r-${Date.now()}`,
+            ticketId,
+            score,
+            feedback,
+            createdAt: new Date().toISOString()
+          };
+        }
+
+        // Update contracts locally
+        const updatedContracts = contracts.map(c => {
+          if (c.organizationName === t.organization || (t.organizationId && c.customerId === t.organizationId)) {
+            return {
+              ...c,
+              usedHours: Number(c.usedHours) + Number(actualTotal)
+            };
+          }
+          return c;
+        });
+        setContracts(updatedContracts);
+        localStorage.setItem('sst_contracts', JSON.stringify(updatedContracts));
+
         return {
           ...t,
           status: 'Closed' as TicketStatus,
+          closureStatus: 'Approved',
+          closedBy: managerName,
           closedAt: new Date().toISOString(),
           resolvedAt: new Date().toISOString(),
           closureRequests,
           consultantEfforts: updatedEfforts,
+          actualHoursLogs: updatedActualHours,
           updatedAt: new Date().toISOString(),
-          history: hist
+          history: hist,
+          rating: ratingObj
         };
       }
       return t;
@@ -2144,14 +5408,130 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Closure Request Approved',
-      `Your closure request for ${ticketId} has been approved. Ticket is now Closed.`,
+      `Closure request for ${ticketId} has been approved. Ticket status is now Closed.`,
       ticketId
     );
+
+    return { success: true };
   };
 
-  const rejectClosureRequest = (ticketId: string, requestId: string, managerName: string, rejectionReason: string) => {
+  const rejectClosureRequest = async (
+    ticketId: string,
+    requestId: string,
+    managerName: string,
+    rejectionReason: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const currentTicket = tickets.find(t => t.id === ticketId);
+    const revertedStatus: TicketStatus = 'In Progress';
+
+    if (isSupabaseConfigured && supabase) {
+      let previousTicketState: any = null;
+      let previousRequestState: any = null;
+
+      try {
+        const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
+        const managerId = prof ? prof.id : (requireUserId());
+
+        // Save states for rollback
+        const { data: oldTicket, error: fetchOldErr } = await supabase
+          .from('tickets')
+          .select('status, closure_status, updated_at')
+          .eq('id', ticketId)
+          .single();
+        if (fetchOldErr) throw fetchOldErr;
+        previousTicketState = oldTicket;
+
+        const { data: oldReq, error: fetchOldReqErr } = await supabase
+          .from('ticket_closure_requests')
+          .select('status, manager_approval_status, manager_rejected_by, manager_rejected_at, rejection_reason')
+          .eq('id', requestId)
+          .single();
+        if (fetchOldReqErr) throw fetchOldReqErr;
+        previousRequestState = oldReq;
+
+        // 1. Update closure request status to Rejected
+        const { error: reqUpdErr } = await supabase.from('ticket_closure_requests').update({
+          status: 'Rejected',
+          manager_approval_status: 'Rejected',
+          manager_rejected_by: managerId,
+          manager_rejected_at: new Date().toISOString(),
+          rejection_reason: rejectionReason
+        }).eq('id', requestId);
+        if (reqUpdErr) throw reqUpdErr;
+
+        // 2. Revert legacy consultant efforts closure status
+        const { error: effUpdErr } = await supabase.from('ticket_consultant_efforts').update({
+          closure_status: 'Pending',
+          updated_at: new Date().toISOString()
+        }).eq('ticket_id', ticketId);
+        if (effUpdErr) throw effUpdErr;
+
+        // 2.5. Update actual hours approval status to rejected in database
+        const { error: actUpdErr } = await supabase
+          .from('ticket_actual_hours')
+          .update({
+            approval_status: 'rejected'
+          })
+          .eq('closure_request_id', requestId);
+        if (actUpdErr) throw actUpdErr;
+
+        // 3. Update ticket status
+        const { error: ticketUpdErr } = await supabase.from('tickets').update({
+          status: revertedStatus,
+          closure_status: 'Pending',
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+        if (ticketUpdErr) throw ticketUpdErr;
+
+        // 4. Log to history
+        const { error: histErr1 } = await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: managerId,
+          field_changed: 'Status',
+          old_value: 'Request for Closure',
+          new_value: revertedStatus
+        });
+        if (histErr1) throw histErr1;
+
+        const { error: histErr2 } = await supabase.from('ticket_history').insert({
+          ticket_id: ticketId,
+          changed_by: managerId,
+          field_changed: 'Closure Request Rejected',
+          old_value: '',
+          new_value: rejectionReason
+        });
+        if (histErr2) throw histErr2;
+
+      } catch (err: any) {
+        console.error('Error rejecting closure request in Supabase (initiating rollback):', err);
+        // ROLLBACK
+        if (previousRequestState) {
+          await supabase.from('ticket_closure_requests').update({
+            status: previousRequestState.status,
+            manager_approval_status: previousRequestState.manager_approval_status,
+            manager_rejected_by: previousRequestState.manager_rejected_by,
+            manager_rejected_at: previousRequestState.manager_rejected_at,
+            rejection_reason: previousRequestState.rejection_reason
+          }).eq('id', requestId);
+        }
+        if (previousTicketState) {
+          await supabase.from('tickets').update({
+            status: previousTicketState.status,
+            closure_status: previousTicketState.closure_status,
+            updated_at: previousTicketState.updated_at
+          }).eq('id', ticketId);
+        }
+        await supabase.from('ticket_consultant_efforts').update({
+          closure_status: 'Submitted',
+          updated_at: new Date().toISOString()
+        }).eq('ticket_id', ticketId);
+
+        return { success: false, error: err.message || 'Database transaction failed' };
+      }
+    }
+
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
         const closureRequests = (t.closureRequests || []).map(r => {
@@ -2169,7 +5549,21 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return r;
         });
 
-        const revertedStatus: TicketStatus = t.functionalOrTechnical === 'Technical' ? 'In Progress - Technical' : 'In Progress - Functional';
+        const updatedEfforts = (t.consultantEfforts || []).map(eff => ({
+          ...eff,
+          closureStatus: 'Pending' as const,
+          updatedAt: new Date().toISOString()
+        }));
+
+        const updatedActualHours = (t.actualHoursLogs || []).map(ah => {
+          if (ah.closureRequestId === requestId) {
+            return {
+              ...ah,
+              approvalStatus: 'rejected'
+            };
+          }
+          return ah;
+        });
 
         const hist = [
           ...t.history,
@@ -2196,7 +5590,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         return {
           ...t,
           status: revertedStatus,
+          closureStatus: 'Pending',
           closureRequests,
+          consultantEfforts: updatedEfforts,
+          actualHoursLogs: updatedActualHours,
           updatedAt: new Date().toISOString(),
           history: hist
         };
@@ -2206,89 +5603,366 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
     syncTickets(updated);
 
+    // Notify primary consultant
+    if (currentTicket) {
+      if (currentTicket.assignedConsultantId) {
+        await createDBNotification({
+          userId: currentTicket.assignedConsultantId,
+          type: 'closure_rejected',
+          title: 'Closure Request Rejected',
+          message: `Closure request for ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} was rejected. Reason: ${rejectionReason}`,
+          ticketId: ticketId,
+          linkPath: `/consultant/tickets/${ticketId}`
+        });
+      }
+      if (currentTicket.leadConsultantId && currentTicket.leadConsultantId !== currentTicket.assignedConsultantId) {
+        await createDBNotification({
+          userId: currentTicket.leadConsultantId,
+          type: 'closure_rejected',
+          title: 'Closure Request Rejected',
+          message: `Closure request for ticket #${currentTicket.ticketNumber || currentTicket.id.slice(0, 8)} was rejected. Reason: ${rejectionReason}`,
+          ticketId: ticketId,
+          linkPath: `/consultant/tickets/${ticketId}`
+        });
+      }
+    }
+
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Closure Request Rejected',
       `Your closure request for ${ticketId} was rejected by ${managerName}. Reason: ${rejectionReason}`,
       ticketId
     );
+
+    return { success: true };
   };
 
   const updateConsultantEfforts = async (ticketId: string, efforts: TicketConsultantEffort[]) => {
     const currentTicket = tickets.find(t => t.id === ticketId);
-    const existingEfforts = currentTicket?.consultantEfforts || [];
-    const updatedEfforts: TicketConsultantEffort[] = [];
+    if (!currentTicket) return;
+    
+    const existingAssignments = currentTicket.assignments || [];
+    const existingActiveAsgs = existingAssignments.filter(a => a.active);
 
-    existingEfforts.forEach(e => {
-      if (e.isDeleted) {
-        updatedEfforts.push(e);
-      }
-    });
+    const addedConsultants = efforts.filter(e => !existingActiveAsgs.some(x => x.consultantId === e.consultantId));
+    const removedConsultants = existingActiveAsgs.filter(a => !efforts.some(x => x.consultantId === a.consultantId));
 
-    efforts.forEach(e => {
-      if (!updatedEfforts.some(x => x.id === e.id)) {
-        updatedEfforts.push(e);
-      }
-    });
-
-    existingEfforts.forEach(e => {
-      if (!e.isDeleted && !efforts.some(x => x.id === e.id)) {
-        updatedEfforts.push({
-          ...e,
-          isDeleted: true,
-          deletedAt: new Date().toISOString(),
-          deletedBy: 'System'
-        });
-      }
-    });
+    const actorName = user?.name || 'System';
+    const actorEmail = user?.email || 'manager@supportstudio.com';
 
     if (isSupabaseConfigured && supabase) {
       try {
-        for (const e of updatedEfforts) {
-          const { error } = await supabase.from('ticket_consultant_efforts').upsert({
-            id: (e.id.startsWith('eff-') || e.id.startsWith('mock-')) && e.id.length < 25 ? undefined : e.id,
-            ticket_id: ticketId,
-            consultant_id: e.consultantId,
-            consultant_name: e.consultantName,
-            consultant_type: e.consultantType,
-            estimated_hours: e.estimatedHours,
-            actual_hours: e.actualHours,
-            remarks: e.remarks || null,
-            is_deleted: e.isDeleted || false,
-            deleted_at: e.deletedAt || null,
-            deleted_by: e.deletedBy || null
-          });
-          if (error) console.error('Error syncing consultant effort:', error);
-        }
+        const { data: profActor } = await supabase.from('profiles').select('id').eq('email', actorEmail).maybeSingle();
+        const actorId = profActor ? profActor.id : (requireUserId());
+
+        // 1. Process active assignments and estimates in parallel
+        await Promise.all(efforts.map(async (e) => {
+          let consultantUUID = e.consultantId;
+          const { data: consProf } = await supabase.from('profiles').select('id, consultant_type').eq('full_name', e.consultantName).maybeSingle();
+          if (consProf) {
+            consultantUUID = consProf.id;
+          }
+
+          const promises: Promise<any>[] = [];
+
+          // Check if this assignment exists
+          const { data: existingAsg } = await supabase.from('ticket_assignments')
+            .select('ticket_id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', consultantUUID)
+            .maybeSingle();
+
+          if (existingAsg) {
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_assignments')
+                  .update({ active: true })
+                  .eq('ticket_id', ticketId)
+                  .eq('consultant_id', consultantUUID)
+              )
+            );
+          } else {
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_assignments').insert({
+                  ticket_id: ticketId,
+                  consultant_id: consultantUUID,
+                  consultant_type: e.consultantType,
+                  is_primary: false,
+                  active: true,
+                  assigned_by: actorId
+                })
+              )
+            );
+          }
+
+          // Upsert estimate
+          if (e.estimatedHours >= 0) {
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_estimates').upsert({
+                  ticket_id: ticketId,
+                  consultant_id: consultantUUID,
+                  consultant_type: e.consultantType,
+                  estimated_hours: e.estimatedHours,
+                  remarks: e.remarks || 'Updated by Manager',
+                  submitted_at: new Date().toISOString()
+                }, {
+                  onConflict: 'ticket_id,consultant_id'
+                })
+              )
+            );
+          }
+
+          // For legacy compatibility, also upsert into ticket_consultant_efforts
+          const { data: legacyEff } = await supabase.from('ticket_consultant_efforts')
+            .select('id')
+            .eq('ticket_id', ticketId)
+            .eq('consultant_id', consultantUUID)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (legacyEff) {
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_consultant_efforts').update({
+                  estimated_hours: e.estimatedHours,
+                  remarks: e.remarks || 'Updated by Manager',
+                  updated_at: new Date().toISOString()
+                }).eq('id', legacyEff.id)
+              )
+            );
+          } else {
+            promises.push(
+              Promise.resolve(
+                supabase.from('ticket_consultant_efforts').insert({
+                  ticket_id: ticketId,
+                  consultant_id: consultantUUID,
+                  consultant_type: e.consultantType,
+                  estimated_hours: e.estimatedHours,
+                  actual_hours: 0,
+                  remarks: e.remarks || 'Updated by Manager'
+                })
+              )
+            );
+          }
+
+          await Promise.all(promises);
+        }));
+
+        // 2. Mark removed consultants as inactive in parallel
+        await Promise.all(removedConsultants.map(async (r) => {
+          const promises = [
+            Promise.resolve(
+              supabase.from('ticket_assignments')
+                .update({ active: false })
+                .eq('ticket_id', ticketId)
+                .eq('consultant_id', r.consultantId)
+            ),
+            
+            Promise.resolve(
+              supabase.from('ticket_consultant_efforts')
+                .update({
+                  is_deleted: true,
+                  deleted_at: new Date().toISOString(),
+                  deleted_by: actorId
+                })
+                .eq('ticket_id', ticketId)
+                .eq('consultant_id', r.consultantId)
+            )
+          ];
+          await Promise.all(promises);
+        }));
+
+        // 3. Log history and send notifications for added consultants in parallel
+        await Promise.all(addedConsultants.map(async (added) => {
+          let targetUUID = added.consultantId;
+          const { data: consProf } = await supabase.from('profiles').select('id').eq('full_name', added.consultantName).maybeSingle();
+          if (consProf) targetUUID = consProf.id;
+
+          const promises = [
+            Promise.resolve(
+              supabase.from('ticket_history').insert({
+                ticket_id: ticketId,
+                changed_by: actorId,
+                field_changed: 'Resource Assigned',
+                old_value: 'None',
+                new_value: `${added.consultantName} (${added.consultantType})`
+              })
+            ),
+            
+            Promise.resolve(
+              supabase.rpc('create_notification', {
+                p_user_id: targetUUID,
+                p_title: 'Resource Assigned',
+                p_message: `You have been assigned to ticket ${ticketId} as a ${added.consultantType} resource by ${actorName}.`,
+                p_ticket_id: ticketId
+              })
+            )
+          ];
+          await Promise.all(promises);
+        }));
+
+        // 4. Log history and send notifications for removed consultants in parallel
+        await Promise.all(removedConsultants.map(async (removed) => {
+          const promises = [
+            Promise.resolve(
+              supabase.from('ticket_history').insert({
+                ticket_id: ticketId,
+                changed_by: actorId,
+                field_changed: 'Resource Removed',
+                old_value: `${removed.consultantName} (${removed.consultantType})`,
+                new_value: 'None'
+              })
+            ),
+            
+            Promise.resolve(
+              supabase.rpc('create_notification', {
+                p_user_id: removed.consultantId,
+                p_title: 'Resource Removed',
+                p_message: `You have been removed from ticket ${ticketId} by ${actorName}.`,
+                p_ticket_id: ticketId
+              })
+            )
+          ];
+          await Promise.all(promises);
+        }));
+
+        await fetchData();
       } catch (err) {
         console.error('Supabase updateConsultantEfforts failed:', err);
       }
-    }
+    } else {
+      // Local fallback mode
+      const localHistories: AuditHistory[] = [];
+      const updatedAssignments = [...(currentTicket.assignments || [])];
+      const updatedEstimates = [...(currentTicket.estimates || [])];
 
-    const updated = tickets.map(t => {
-      if (t.id === ticketId) {
-        const hist = [
-          ...t.history,
-          {
-            id: `h-efforts-update-${Date.now()}`,
+      // Mark removed active assignments as active = false
+      removedConsultants.forEach((removed, idx) => {
+        const asgIdx = updatedAssignments.findIndex(a => a.consultantId === removed.consultantId && a.active);
+        if (asgIdx >= 0) {
+          updatedAssignments[asgIdx] = { ...updatedAssignments[asgIdx], active: false };
+        }
+
+        localHistories.push({
+          id: `h-rem-res-${Date.now()}-${idx}`,
+          ticketId,
+          changedBy: actorName,
+          fieldChanged: 'Resource Removed',
+          oldValue: `${removed.consultantName} (${removed.consultantType})`,
+          newValue: 'None',
+          createdAt: new Date().toISOString()
+        });
+
+        createSystemNotification(
+          removed.consultantId,
+          'Resource Removed',
+          `You have been removed from ticket ${ticketId} by ${actorName}.`,
+          ticketId
+        );
+      });
+
+      // Update/add new assignments and estimates
+      efforts.forEach((e) => {
+        const asgIdx = updatedAssignments.findIndex(a => a.consultantId === e.consultantId);
+        if (asgIdx >= 0) {
+          updatedAssignments[asgIdx] = { ...updatedAssignments[asgIdx], active: true };
+        } else {
+          updatedAssignments.push({
             ticketId,
-            changedBy: 'System',
-            fieldChanged: 'Consultant Efforts Breakdown',
-            oldValue: 'Updated breakdown',
-            newValue: 'New breakdown',
-            createdAt: new Date().toISOString()
-          }
-        ];
+            consultantId: e.consultantId,
+            consultantName: e.consultantName,
+            consultantType: e.consultantType,
+            isPrimary: false,
+            active: true,
+            assignedAt: new Date().toISOString()
+          });
+        }
+
+        const estIdx = updatedEstimates.findIndex(est => est.consultantId === e.consultantId);
+        if (estIdx >= 0) {
+          updatedEstimates[estIdx] = {
+            ...updatedEstimates[estIdx],
+            estimatedHours: e.estimatedHours,
+            remarks: e.remarks || 'Updated by Manager',
+            submittedAt: new Date().toISOString()
+          };
+        } else {
+          updatedEstimates.push({
+            id: `est-${Date.now()}-${Math.random()}`,
+            ticketId,
+            consultantId: e.consultantId,
+            consultantType: e.consultantType,
+            estimatedHours: e.estimatedHours,
+            remarks: e.remarks || 'Updated by Manager',
+            submittedAt: new Date().toISOString()
+          });
+        }
+      });
+
+      addedConsultants.forEach((added, idx) => {
+        localHistories.push({
+          id: `h-add-res-${Date.now()}-${idx}`,
+          ticketId,
+          changedBy: actorName,
+          fieldChanged: 'Resource Assigned',
+          oldValue: 'None',
+          newValue: `${added.consultantName} (${added.consultantType})`,
+          createdAt: new Date().toISOString()
+        });
+
+        createSystemNotification(
+          added.consultantId,
+          'Resource Assigned',
+          `You have been assigned to ticket ${ticketId} as a ${added.consultantType} resource by ${actorName}.`,
+          ticketId
+        );
+      });
+
+      // Synthesize consultantEfforts locally
+      const synthesizedEfforts = updatedAssignments.map(a => {
+        const est = updatedEstimates.find(est => est.consultantId === a.consultantId);
         return {
-          ...t,
-          consultantEfforts: updatedEfforts.filter(e => !e.isDeleted),
-          updatedAt: new Date().toISOString(),
-          history: hist
+          id: `synthesized-${a.consultantId}-${ticketId}`,
+          ticketId,
+          consultantId: a.consultantId,
+          consultantName: a.consultantName,
+          consultantType: a.consultantType,
+          estimatedHours: est ? est.estimatedHours : 0,
+          actualHours: 0,
+          remarks: est?.remarks || '',
+          createdAt: a.assignedAt,
+          updatedAt: a.assignedAt,
+          isDeleted: !a.active,
+          isPrimary: a.isPrimary,
+          closureStatus: 'Pending' as const,
+          workSummary: '',
+          resolutionNotes: ''
         };
-      }
-      return t;
-    });
-    syncTickets(updated);
+      }).filter(eff => !eff.isDeleted)
+        .sort((x, y) => {
+          if (x.isPrimary && !y.isPrimary) return -1;
+          if (!x.isPrimary && y.isPrimary) return 1;
+          return new Date(x.createdAt || 0).getTime() - new Date(y.createdAt || 0).getTime();
+        });
+
+      const updated = tickets.map(t => {
+        if (t.id === ticketId) {
+          return {
+            ...t,
+            assignments: updatedAssignments,
+            estimates: updatedEstimates,
+            consultantEfforts: synthesizedEfforts,
+            updatedAt: new Date().toISOString(),
+            history: [...t.history, ...localHistories]
+          };
+        }
+        return t;
+      });
+
+      syncTickets(updated);
+    }
   };
 
   const requestUnlock = async (
@@ -2356,7 +6030,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'manager@sap.com',
+      'manager@supportstudio.com',
       'Ticket Unlock Requested',
       `Consultant ${data.requestedBy} requested unlock/change for locked ticket ${ticketId}.`,
       ticketId
@@ -2434,7 +6108,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Ticket Unlock Approved',
       `Your unlock request for ${ticketId} has been approved. The ticket is now unlocked for updates.`,
       ticketId
@@ -2497,11 +6171,123 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     syncTickets(updated);
 
     createSystemNotification(
-      'consultant@sap.com',
+      'consultant@supportstudio.com',
       'Ticket Unlock Rejected',
       `Your unlock request for ${ticketId} was rejected. Reason: ${rejectionReason}`,
       ticketId
     );
+  };
+
+  const addAttachment = async (
+    ticketId: string,
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+    fileObj?: File,
+    visibility: 'public' | 'internal' = 'public'
+  ): Promise<{ success: boolean; error?: string; attachment?: Attachment }> => {
+    try {
+      const fileUrl = await uploadAttachmentToSupabase(ticketId, fileName, fileSize, fileType, fileObj);
+
+      const attId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `att-${Date.now()}`;
+      
+      const newAttachment: Attachment = {
+        id: attId,
+        ticketId,
+        fileName,
+        filePath: fileUrl,
+        fileUrl,
+        fileType,
+        fileSize,
+        uploadedBy: user?.name || 'System',
+        visibility: visibility as any,
+        createdAt: new Date().toISOString()
+      };
+
+      if (isSupabaseConfigured && supabase) {
+        const { error: insertErr } = await supabase
+          .from('ticket_attachments')
+          .insert({
+            id: attId,
+            ticket_id: ticketId,
+            uploaded_by: requireUserId(),
+            file_name: fileName,
+            file_path: fileUrl,
+            file_size: fileSize,
+            mime_type: fileType
+          });
+
+        if (insertErr) {
+          console.error('[DATABASE INSERT ERROR] ticket_attachments registration:', insertErr);
+          return { success: false, error: `Database insert error: ${insertErr.message}` };
+        }
+      }
+
+      setTickets(prev => prev.map(t => {
+        if (t.id === ticketId) {
+          return {
+            ...t,
+            attachments: [...(t.attachments || []), newAttachment]
+          };
+        }
+        return t;
+      }));
+
+      debouncedRefetch();
+
+      return { success: true, attachment: newAttachment };
+    } catch (err: any) {
+      console.error('Error in addAttachment:', err);
+      return { success: false, error: err.message || 'Failed to add attachment' };
+    }
+  };
+
+  const deleteAttachment = async (
+    ticketId: string,
+    attachmentId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const currentTicket = tickets.find(t => t.id === ticketId);
+        const att = currentTicket?.attachments?.find(a => a.id === attachmentId);
+
+        if (att && att.filePath) {
+          let relativePath = att.filePath;
+          if (att.filePath.includes('/sap-tickets/')) {
+            const parts = att.filePath.split('/sap-tickets/');
+            relativePath = parts[parts.length - 1];
+          }
+          await supabase.storage.from('sap-tickets').remove([relativePath]);
+        }
+
+        const { error: deleteErr } = await supabase
+          .from('ticket_attachments')
+          .delete()
+          .eq('id', attachmentId);
+
+        if (deleteErr) {
+          console.error('[DATABASE DELETE ERROR] ticket_attachments deletion:', deleteErr);
+          return { success: false, error: `Database delete error: ${deleteErr.message}` };
+        }
+      }
+
+      setTickets(prev => prev.map(t => {
+        if (t.id === ticketId) {
+          return {
+            ...t,
+            attachments: (t.attachments || []).filter(a => a.id !== attachmentId)
+          };
+        }
+        return t;
+      }));
+
+      debouncedRefetch();
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error in deleteAttachment:', err);
+      return { success: false, error: err.message || 'Failed to delete attachment' };
+    }
   };
 
   return (
@@ -2513,6 +6299,9 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         kbArticles,
         kbCategories,
         notifications,
+        profiles,
+        orgMap,
+        orgShortCodeMap,
         loading,
         createTicket,
         updateTicket,
@@ -2546,8 +6335,15 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         rateKbArticle,
         markNotificationRead,
         createSystemNotification,
+        createDBNotification,
+        acknowledgeEscalation,
         getChatResponse,
-        resetMockData
+        resetMockData,
+        fetchTicketById,
+        refetchData: fetchData,
+        addAttachment,
+        deleteAttachment,
+        slaConfigurations
       }}
     >
       {children}

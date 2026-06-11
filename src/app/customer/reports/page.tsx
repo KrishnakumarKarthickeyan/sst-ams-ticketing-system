@@ -3,12 +3,14 @@
 import React, { useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
+import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '../../../components/ui/chart';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import {
   FileText,
   Download,
@@ -23,46 +25,125 @@ import {
   FolderLock,
   Layers,
   Wrench,
-  ChevronDown
+  ChevronDown,
+  RotateCcw
 } from 'lucide-react';
 
 export default function CustomerReportsPage() {
   const { tickets, contracts } = useTickets();
   const { user } = useAuth();
   
-  // Interactive Report Filters
-  const [timeRange, setTimeRange] = useState<'30' | '90' | '365' | 'YTD'>('90');
-  const [moduleFilter, setModuleFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
-
-  const customerCompany = user?.company || 'Apex Global Industries';
-  const companyTickets = tickets.filter(t => t.organization === customerCompany);
-
-  // Apply time range filter helper
-  const filterByDate = (dateStr: string) => {
-    const ticketDate = new Date(dateStr);
-    const now = new Date();
-    
-    if (timeRange === 'YTD') {
-      return ticketDate.getFullYear() === now.getFullYear();
-    }
-    
-    const days = parseInt(timeRange);
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    return ticketDate >= cutoff;
-  };
-
-  // Filtered tickets based on parameters
-  const filteredTickets = companyTickets.filter(t => {
-    if (!filterByDate(t.createdAt)) return false;
-    if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
-    if (typeFilter !== 'All') {
-      const type = t.ticketType || 'Incident';
-      if (type !== typeFilter) return false;
-    }
-    return true;
+  // Interactive Report Filters (Canonical Layout)
+  const [filters, setFilters] = useState({
+    period: 'This Year',
+    dateFrom: '',
+    dateTo: '',
+    status: 'All',
+    priority: 'All',
+    module: 'All',
+    type: 'All'
   });
+
+  const SYSTEM_NOW = React.useMemo(() => new Date('2026-06-07T08:00:00Z').getTime(), []);
+  const customerCompany = user?.company || 'Apex Global Industries';
+  
+  const companyTickets = React.useMemo(() => {
+    return tickets.filter(t => t.organization === customerCompany);
+  }, [tickets, customerCompany]);
+
+  const distinctModules = React.useMemo(() => {
+    const mods = companyTickets.map(t => t.sapModule).filter(Boolean);
+    return Array.from(new Set(mods)).sort();
+  }, [companyTickets]);
+
+  const distinctTypes = React.useMemo(() => {
+    const types = companyTickets.map(t => t.ticketType || 'Incident').filter(Boolean);
+    return Array.from(new Set(types)).sort();
+  }, [companyTickets]);
+
+  const filteredTickets = React.useMemo(() => {
+    return companyTickets.filter(t => {
+      // Date period filter
+      const ticketDate = new Date(t.createdAt);
+      let passDate = true;
+      const baseDate = new Date(SYSTEM_NOW);
+
+      if (filters.period === 'This Month') {
+        const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+        const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (filters.period === 'This Quarter') {
+        const quarterStartMonth = Math.floor(baseDate.getMonth() / 3) * 3;
+        const start = new Date(baseDate.getFullYear(), quarterStartMonth, 1);
+        const end = new Date(baseDate.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (filters.period === 'This Year') {
+        const start = new Date(baseDate.getFullYear(), 0, 1);
+        const end = new Date(baseDate.getFullYear(), 11, 31, 23, 59, 59, 999);
+        passDate = ticketDate >= start && ticketDate <= end;
+      } else if (filters.period === 'Custom') {
+        if (filters.dateFrom) {
+          const start = new Date(filters.dateFrom);
+          start.setHours(0, 0, 0, 0);
+          passDate = passDate && (ticketDate >= start);
+        }
+        if (filters.dateTo) {
+          const end = new Date(filters.dateTo);
+          end.setHours(23, 59, 59, 999);
+          passDate = passDate && (ticketDate <= end);
+        }
+      }
+
+      if (!passDate) return false;
+
+      // Status filter
+      if (filters.status && filters.status !== 'All') {
+        let simplifiedStatus = '';
+        if (t.status === 'New') {
+          simplifiedStatus = 'New';
+        } else if (t.status === 'Assigned') {
+          simplifiedStatus = 'Assigned';
+        } else if (
+          ['In Progress', 'In Progress - Functional', 'Awaiting Functional Submission', 'In Progress - Technical', 'Awaiting Technical Submission', 'Requirement Gathering'].includes(t.status)
+        ) {
+          simplifiedStatus = 'In Progress';
+        } else if (
+          ['Awaiting Closure', 'Request for Closure', 'Awaiting Manager Approval', 'Waiting for Hours Approval'].includes(t.status)
+        ) {
+          simplifiedStatus = 'Pending Closure';
+        } else if (t.status === 'Closed' || t.status === 'Resolved') {
+          simplifiedStatus = 'Closed';
+        } else if (t.status === 'Reopened') {
+          simplifiedStatus = 'Reopened';
+        }
+
+        const isEscalatedMatch = filters.status === 'Escalated' && (t.escalationFlag || t.status === 'Raised to SAP');
+        const isStatusMatch = filters.status === simplifiedStatus;
+
+        if (!isStatusMatch && !isEscalatedMatch) {
+          return false;
+        }
+      }
+
+      // Priority filter
+      if (filters.priority && filters.priority !== 'All') {
+        if (t.priority !== filters.priority) return false;
+      }
+
+      // Module filter
+      if (filters.module && filters.module !== 'All') {
+        if (t.sapModule !== filters.module) return false;
+      }
+
+      // Type filter
+      if (filters.type && filters.type !== 'All') {
+        const type = t.ticketType || 'Incident';
+        if (type !== filters.type) return false;
+      }
+
+      return true;
+    });
+  }, [companyTickets, filters, SYSTEM_NOW]);
 
   // --- STATS CALCULATION (13 distinct metrics) ---
   
@@ -117,9 +198,9 @@ export default function CustomerReportsPage() {
 
   // 11. Approved Timesheet Hours Logged
   const m11_approvedHours = filteredTickets.reduce((sum, t) => {
-    const hours = (t.efforts || [])
-      .filter(e => e.status === 'Approved')
-      .reduce((s, e) => s + e.hoursLogged, 0);
+    const hours = (t.actualHoursLogs || [])
+      .filter((ah: any) => ah.approvalStatus?.toLowerCase() === 'approved')
+      .reduce((s: number, ah: any) => s + ah.actualHours, 0);
     return sum + hours;
   }, 0);
 
@@ -127,10 +208,7 @@ export default function CustomerReportsPage() {
   const activeContract = contracts.find(c => c.organizationName === customerCompany && c.isActive);
   const m12_remainingBudget = activeContract ? Math.max(0, activeContract.totalHours - activeContract.usedHours) : 0;
 
-  // 13. Average Satisfaction Score (CSAT)
-  const ratedTickets = filteredTickets.filter(t => t.rating);
-  const csatSum = ratedTickets.reduce((sum, t) => sum + (t.rating?.score || 0), 0);
-  const m13_avgCsat = ratedTickets.length > 0 ? (csatSum / ratedTickets.length).toFixed(2) : '5.00';
+
 
 
   // --- CHART DATA PREPARATIONS ---
@@ -151,20 +229,7 @@ export default function CustomerReportsPage() {
     { name: 'SLA Breached', value: m6_slaBreached, fill: '#ef4444' }
   ].filter(item => item.value > 0);
 
-  // Chart C: CSAT Star Distribution
-  const csatDistribution = { '5★': 0, '4★': 0, '3★': 0, '2★': 0, '1★': 0 };
-  ratedTickets.forEach(t => {
-    if (t.rating) {
-      const star = `${t.rating.score}★`;
-      if (csatDistribution[star as keyof typeof csatDistribution] !== undefined) {
-        csatDistribution[star as keyof typeof csatDistribution]++;
-      }
-    }
-  });
-  const csatChartData = Object.entries(csatDistribution).map(([star, count]) => ({
-    star,
-    count
-  })).reverse();
+
 
   // Excel/CSV spreadsheet preview data (first 5 items)
   const spreadsheetPreview = filteredTickets.slice(0, 5);
@@ -189,14 +254,13 @@ export default function CustomerReportsPage() {
       'Quoted Hours',
       'Attachment Count',
       'Reopen Count',
-      'Escalation Count',
-      'CSAT Score'
+      'Escalation Count'
     ];
 
     const rows = filteredTickets.map((t: any) => {
-      const approvedHours = (t.efforts || [])
-        .filter((e: any) => e.status === 'Approved')
-        .reduce((sum: number, e: any) => sum + e.hoursLogged, 0);
+      const approvedHours = (t.actualHoursLogs || [])
+        .filter((ah: any) => ah.approvalStatus?.toLowerCase() === 'approved')
+        .reduce((sum: number, ah: any) => sum + ah.actualHours, 0);
 
       const modules = t.sapModules && t.sapModules.length > 0 
         ? t.sapModules.join('; ') 
@@ -217,7 +281,7 @@ export default function CustomerReportsPage() {
       const escalationCount = t.escalations ? t.escalations.length : (t.escalationFlag ? 1 : 0);
 
       return [
-        t.id,
+        t.ticketNumber || t.id,
         t.title,
         createdBy,
         t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '',
@@ -235,8 +299,7 @@ export default function CustomerReportsPage() {
         (t.quotedHours || 0).toFixed(1),
         attachmentCount,
         reopenCount,
-        escalationCount,
-        t.rating ? t.rating.score : 'Unrated'
+        escalationCount
       ];
     });
 
@@ -275,80 +338,158 @@ export default function CustomerReportsPage() {
         </Button>
       </div>
 
-      {/* Advanced Interactive Filters */}
-      <Card className="border-zinc-200 shadow-sm bg-white">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4 items-center">
-            {/* Time frame */}
-            <div className="space-y-1">
-              <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Date Cutoff Range</label>
-              <div className="flex bg-zinc-100 p-1 border border-zinc-200 rounded-lg font-mono text-[10px] w-auto h-8">
+      {/* ── CUSTOMER DYNAMIC FILTER BAR ── */}
+      <Card className="border border-zinc-200 bg-white p-4 shadow-sm mb-6 rounded-lg">
+        <div className="flex flex-wrap items-end gap-3 md:flex-nowrap">
+          {/* 1. PERIOD */}
+          <div className="flex flex-col flex-1 min-w-[260px] max-w-[320px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
+            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 h-9">
+              {(['This Month', 'This Quarter', 'This Year', 'Custom'] as const).map((p) => (
                 <button
-                  onClick={() => setTimeRange('30')}
-                  className={`px-3.5 rounded text-[10px] font-bold transition-all ${timeRange === '30' ? 'bg-white text-zinc-950' : 'text-zinc-500'}`}
+                  key={p}
+                  type="button"
+                  onClick={() => setFilters(prev => ({ ...prev, period: p }))}
+                  className={`flex-1 h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
+                    filters.period === p
+                      ? 'bg-white text-zinc-955 shadow-sm border border-zinc-200/50'
+                      : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
                 >
-                  Last 30 Days
+                  {p.replace('This ', '')}
                 </button>
-                <button
-                  onClick={() => setTimeRange('90')}
-                  className={`px-3.5 rounded text-[10px] font-bold transition-all ${timeRange === '90' ? 'bg-white text-zinc-950' : 'text-zinc-500'}`}
-                >
-                  Last 90 Days
-                </button>
-                <button
-                  onClick={() => setTimeRange('365')}
-                  className={`px-3.5 rounded text-[10px] font-bold transition-all ${timeRange === '365' ? 'bg-white text-zinc-950' : 'text-zinc-500'}`}
-                >
-                  1 Year
-                </button>
-                <button
-                  onClick={() => setTimeRange('YTD')}
-                  className={`px-3.5 rounded text-[10px] font-bold transition-all ${timeRange === 'YTD' ? 'bg-white text-zinc-950' : 'text-zinc-500'}`}
-                >
-                  YTD
-                </button>
-              </div>
-            </div>
-
-            {/* Module Filter */}
-            <div className="space-y-1">
-              <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">SAP Module</label>
-              <select
-                value={moduleFilter}
-                onChange={(e) => setModuleFilter(e.target.value)}
-                className="bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none focus:border-zinc-950 h-8 w-36"
-              >
-                <option value="All">All Modules</option>
-                <option value="FICO">FICO</option>
-                <option value="MM">MM</option>
-                <option value="SD">SD</option>
-                <option value="PP">PP</option>
-                <option value="BASIS">BASIS</option>
-                <option value="ABAP">ABAP</option>
-              </select>
-            </div>
-
-            {/* Type Filter */}
-            <div className="space-y-1">
-              <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider font-mono">Request Type</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="bg-white border border-zinc-200 rounded-lg p-1.5 text-[11px] font-mono text-zinc-800 focus:outline-none focus:border-zinc-950 h-8 w-44"
-              >
-                <option value="All">All Types</option>
-                <option value="Incident">Incident</option>
-                <option value="Service Request">Service Request</option>
-                <option value="Enhancement Request">Enhancement Request</option>
-                <option value="Change Request">Change Request</option>
-              </select>
+              ))}
             </div>
           </div>
-        </CardContent>
+
+          {/* 2. STATUS */}
+          <div className="flex flex-col flex-1 min-w-[130px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
+            <Select
+              value={filters.status}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, status: val }))}
+            >
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Statuses</SelectItem>
+                <SelectItem value="New">New</SelectItem>
+                <SelectItem value="Assigned">Assigned</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="Pending Closure">Pending Closure</SelectItem>
+                <SelectItem value="Closed">Closed</SelectItem>
+                <SelectItem value="Reopened">Reopened</SelectItem>
+                <SelectItem value="Escalated">Escalated</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 3. PRIORITY */}
+          <div className="flex flex-col flex-1 min-w-[130px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
+            <Select
+              value={filters.priority}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
+            >
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Priorities</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 4. MODULE */}
+          <div className="flex flex-col flex-1 min-w-[130px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">SAP Module</span>
+            <Select
+              value={filters.module}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
+            >
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+                <SelectValue placeholder="Module" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Modules</SelectItem>
+                {distinctModules.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 5. TYPE */}
+          <div className="flex flex-col flex-1 min-w-[140px]">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Request Type</span>
+            <Select
+              value={filters.type}
+              onValueChange={(val) => setFilters(prev => ({ ...prev, type: val }))}
+            >
+              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="All">All Types</SelectItem>
+                {distinctTypes.map(t => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 6. RESET BUTTON */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFilters({
+              period: 'This Year',
+              dateFrom: '',
+              dateTo: '',
+              status: 'All',
+              priority: 'All',
+              module: 'All',
+              type: 'All'
+            })}
+            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200 shadow-sm"
+          >
+            <RotateCcw size={14} />
+            Reset
+          </Button>
+        </div>
+
+        {/* Row 2: Custom Date Picker Inputs */}
+        {filters.period === 'Custom' && (
+          <div className="border-t border-zinc-200 mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex flex-col flex-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-955 w-full cursor-pointer font-sans"
+              />
+            </div>
+            <div className="flex flex-col flex-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-955 w-full cursor-pointer font-sans"
+              />
+            </div>
+          </div>
+        )}
       </Card>
 
-      {/* 13 Performance Metric KPI Cards (Unified Grid Layout) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 gap-4">
+      {/* 12 Performance Metric KPI Cards (Unified Grid Layout) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         {/* Card 1: Total Volume */}
         <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
           <div className="text-zinc-400 flex items-center justify-between">
@@ -493,21 +634,10 @@ export default function CustomerReportsPage() {
           </div>
         </Card>
 
-        {/* Card 13: CSAT */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">13. CSAT Index</span>
-            <Award size={12} className="text-zinc-950" />
-          </div>
-          <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-zinc-950">{m13_avgCsat} ★</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Satisfaction score</span>
-          </div>
-        </Card>
       </div>
 
       {/* Visual Analytics Tabular Diagrams */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Chart A: Status distribution */}
         <Card className="border-zinc-200 bg-white shadow-sm">
           <CardHeader className="pb-2 border-b border-zinc-50 bg-zinc-50/50">
@@ -525,7 +655,10 @@ export default function CustomerReportsPage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-zinc-400 italic text-[10px]">No records found.</div>
+              <div className="text-zinc-400 italic text-[10px] flex flex-col items-center justify-center space-y-2 py-8">
+                <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-40" />
+                <span>No records found.</span>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -557,29 +690,13 @@ export default function CustomerReportsPage() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-zinc-400 italic text-[10px]">No Incidents recorded in time frame.</div>
+              <div className="text-zinc-400 italic text-[10px] flex flex-col items-center justify-center space-y-2 py-8">
+                <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-40" />
+                <span>No Incidents recorded in time frame.</span>
+              </div>
             )}
           </CardContent>
-        </Card>
-
-        {/* Chart C: CSAT distributions */}
-        <Card className="border-zinc-200 bg-white shadow-sm">
-          <CardHeader className="pb-2 border-b border-zinc-50 bg-zinc-50/50">
-            <CardTitle className="text-[10px] uppercase font-mono text-zinc-650 tracking-wider">Chart 3: CSAT feedback scores ratio</CardTitle>
-          </CardHeader>
-          <CardContent className="h-60 pt-4 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={csatChartData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                <XAxis type="number" stroke="#71717a" fontSize={9} className="font-mono" />
-                <YAxis dataKey="star" type="category" stroke="#71717a" fontSize={9} className="font-mono" width={30} />
-                <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                <Bar dataKey="count" fill="#3f3f46" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+        </Card>      </div>
 
       {/* CSV Spreadsheet Preview (Details table grid) */}
       <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
@@ -614,14 +731,13 @@ export default function CustomerReportsPage() {
                   <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Soft Delete</TableHead>
                   <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-right">Efforts (Approved/Quoted)</TableHead>
                   <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-center">Attachments</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-right">CSAT Rating</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="text-[11px]">
                 {spreadsheetPreview.map((t: any) => {
-                  const approvedHours = (t.efforts || [])
-                    .filter((e: any) => e.status === 'Approved')
-                    .reduce((sum: number, e: any) => sum + e.hoursLogged, 0);
+                  const approvedHours = (t.actualHoursLogs || [])
+                    .filter((ah: any) => ah.approvalStatus?.toLowerCase() === 'approved')
+                    .reduce((sum: number, ah: any) => sum + ah.actualHours, 0);
 
                   const modulesText = t.sapModules && t.sapModules.length > 0 
                     ? t.sapModules.join(', ') 
@@ -641,7 +757,7 @@ export default function CustomerReportsPage() {
 
                   return (
                     <TableRow key={t.id} className="hover:bg-zinc-50/50 border-b border-zinc-100 transition-colors">
-                      <TableCell className="py-2.5 px-4 font-bold text-zinc-950">{t.id}</TableCell>
+                      <TableCell className="py-2.5 px-4 font-bold text-zinc-955">{t.ticketNumber || t.id}</TableCell>
                       <TableCell className="py-2.5 px-4 font-semibold text-zinc-850 max-w-[180px] truncate">{t.title}</TableCell>
                       <TableCell className="py-2.5 px-4 text-zinc-650">{createdBy}</TableCell>
                       <TableCell className="py-2.5 px-4 font-mono text-zinc-650">{ageInDays}d</TableCell>
@@ -668,16 +784,16 @@ export default function CustomerReportsPage() {
                         {approvedHours.toFixed(1)}h / {(t.quotedHours || 0).toFixed(1)}h
                       </TableCell>
                       <TableCell className="py-2.5 px-4 font-mono text-zinc-600 text-center">{attachmentCount}</TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-950 font-bold text-right">
-                        {t.rating ? `${t.rating.score} ★` : '-'}
-                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {spreadsheetPreview.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-10 text-center text-zinc-400 font-mono italic">
-                      No records matched. Check filter ranges.
+                    <TableCell colSpan={12} className="py-12 text-center text-zinc-400 font-mono italic">
+                      <div className="flex flex-col items-center justify-center space-y-2 py-4">
+                        <BrandedLogo width={24} height={24} iconOnly={true} className="opacity-40" />
+                        <span>No records matched. Check filter ranges.</span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}

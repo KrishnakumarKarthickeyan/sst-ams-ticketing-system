@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
+import { BrandedLogo } from '../ui/BrandedLogo';
+import { BRAND_CONFIG } from '../../config/branding';
 import {
   LayoutDashboard,
   Building2,
@@ -24,7 +26,8 @@ import {
   UserCheck,
   CheckSquare,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  User
 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../ui/tooltip';
 
@@ -64,36 +67,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
   // Custom menu definitions per role
   const adminMenu: MenuItem[] = [
     { title: 'Dashboard', href: '/admin/dashboard', icon: <LayoutDashboard size={16} /> },
-    { title: 'Create Ticket', href: '/admin/create-ticket', icon: <FileCode2 size={16} /> },
-    { title: 'Organizations', href: '/admin/organizations', icon: <Building2 size={16} /> },
-    { title: 'Users', href: '/admin/users', icon: <Users size={16} /> },
-    { title: 'Tickets', href: '/admin/tickets', icon: <Ticket size={16} /> },
-    { title: 'SLA Engine', href: '/admin/sla', icon: <Clock size={16} /> },
-    { title: 'Contracts', href: '/admin/contracts', icon: <FolderLock size={16} /> },
-    { title: 'Consultant Efforts', href: '/admin/effort-logs', icon: <Activity size={16} /> },
+    { title: 'Service Desk', href: '/admin/tickets', icon: <Ticket size={16} /> },
+    { title: 'SAP Managers', href: '/admin/managers', icon: <UserCheck size={16} /> },
+    { title: 'Consultants', href: '/admin/consultants', icon: <Users size={16} /> },
+    { title: 'Customers 360', href: '/admin/organizations', icon: <Building2 size={16} /> },
     { title: 'Global Reports', href: '/admin/reports', icon: <FileSpreadsheet size={16} /> },
     { title: 'Audit Logs', href: '/admin/audit-logs', icon: <History size={16} /> },
-    { title: 'Settings', href: '/admin/settings', icon: <Settings size={16} /> }
+    { title: 'Settings', href: '/admin/settings', icon: <Settings size={16} /> },
+    { title: 'Contacts Directory', href: '/admin/contacts', icon: <Users size={16} /> },
+    { title: 'Profile Settings', href: '/admin/profile', icon: <User size={16} /> }
   ];
 
   const managerMenu: MenuItem[] = [
     { title: 'Dashboard', href: '/manager/dashboard', icon: <LayoutDashboard size={16} /> },
-    { title: 'Tickets Desk', href: '/manager/tickets', icon: <Ticket size={16} /> },
-    { title: 'Assignment Board', href: '/manager/assignment-board', icon: <KanbanSquare size={16} /> },
-    { title: 'Timesheet Approvals', href: '/manager/effort-approvals', icon: <CheckSquare size={16} /> },
-    { title: 'Consultants Workload', href: '/manager/consultants', icon: <UserCheck size={16} /> },
+    { title: 'Tickets', href: '/manager/tickets', icon: <Ticket size={16} /> },
+    { title: 'Approvals', href: '/manager/effort-approvals', icon: <CheckSquare size={16} /> },
+    { title: 'Users', href: '/manager/users', icon: <Users size={16} /> },
+    { title: 'Workload Analytics', href: '/manager/workload', icon: <Activity size={16} /> },
     { title: 'SLA Monitoring', href: '/manager/sla-monitoring', icon: <Clock size={16} /> },
-    { title: 'Knowledgebase', href: '/manager/knowledgebase', icon: <Bookmark size={16} /> },
-    { title: 'Performance Reports', href: '/manager/reports', icon: <FileSpreadsheet size={16} /> }
+    { title: 'Performance Reports', href: '/manager/reports', icon: <FileSpreadsheet size={16} /> },
+    { title: 'Profile Settings', href: '/manager/profile', icon: <User size={16} /> }
   ];
 
   const consultantMenu: MenuItem[] = [
     { title: 'Dashboard', href: '/consultant/dashboard', icon: <LayoutDashboard size={16} /> },
     { title: 'My Tickets', href: '/consultant/my-tickets', icon: <Ticket size={16} /> },
-    { title: 'Priority Queue', href: '/consultant/priority-queue', icon: <Clock size={16} /> },
-    { title: 'Effort Logger', href: '/consultant/effort-logs', icon: <Activity size={16} /> },
-    { title: 'My Performance', href: '/consultant/performance', icon: <UserCheck size={16} /> },
-    { title: 'My Reports', href: '/consultant/reports', icon: <FileSpreadsheet size={16} /> }
+    { title: 'My Reports', href: '/consultant/reports', icon: <FileSpreadsheet size={16} /> },
+    { title: 'Profile Settings', href: '/consultant/profile', icon: <User size={16} /> }
   ];
 
   const customerMenu: MenuItem[] = [
@@ -102,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
     { title: 'Create Ticket', href: '/customer/create-ticket', icon: <FileCode2 size={16} /> },
     { title: 'Support Reports', href: '/customer/reports', icon: <FileText size={16} /> },
     { title: 'Contacts', href: '/customer/contacts', icon: <Users size={16} /> },
-    { title: 'Profile Settings', href: '/customer/profile', icon: <Settings size={16} /> }
+    { title: 'Profile Settings', href: '/customer/profile', icon: <User size={16} /> }
   ];
 
   let activeMenu: MenuItem[] = [];
@@ -135,19 +135,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
       {/* Brand Header */}
       {effectiveCollapsed ? (
         <div className="h-16 border-b border-zinc-200 flex items-center justify-center">
-          <Link href="/dashboard" className="w-8 h-8 rounded bg-zinc-950 flex items-center justify-center text-white font-mono font-bold text-base">
-            SST
+          <Link href="/dashboard" className="flex items-center justify-center">
+            <BrandedLogo width={24} height={24} iconOnly={true} />
           </Link>
         </div>
       ) : (
         <div className="h-16 px-6 border-b border-zinc-200 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded bg-zinc-950 flex items-center justify-center text-white font-mono font-bold text-base">
-              SST
-            </div>
+          <Link href="/dashboard" className="flex items-center gap-2.5">
+            <BrandedLogo width={28} height={28} />
             <div>
-              <span className="font-bold tracking-tight text-xs text-zinc-900 block font-mono">SAP Support Desk</span>
-              <span className="text-[9px] font-bold text-zinc-400 block tracking-wider uppercase">{roleLabel}</span>
+              <span className="font-bold tracking-tight text-xs text-zinc-900 block font-mono leading-tight">{BRAND_CONFIG.shortName}</span>
+              <span className="text-[9px] font-bold text-zinc-400 block tracking-wider uppercase leading-none mt-0.5">{roleLabel}</span>
             </div>
           </Link>
         </div>
