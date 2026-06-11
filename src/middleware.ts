@@ -46,7 +46,18 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(new URL('/login', request.url));
+  if (!user) {
+    // Session invalid (e.g. revoked after a password reset) but stale auth cookies
+    // may remain — delete them on the redirect so the client can't keep hydrating
+    // a dead session and ping-ponging between /login and the dashboard.
+    const redirect = NextResponse.redirect(new URL('/login', request.url));
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith('sb-')) {
+        redirect.cookies.delete(cookie.name);
+      }
+    }
+    return redirect;
+  }
 
   // First-login forced password reset (from JWT metadata)
   const isFirstLogin =

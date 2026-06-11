@@ -118,6 +118,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { data: { session } } = await supabase.auth.getSession();
           if (activeRef.current) {
             if (session) {
+              // getSession() trusts local cookies, which can be stale after a
+              // password reset / token revocation. Verify against the auth server
+              // before trusting it — otherwise /login redirects to the dashboard,
+              // middleware bounces back, and the page loops forever.
+              const { data: verified, error: verifyErr } = await supabase.auth.getUser();
+              if (verifyErr || !verified?.user) {
+                await supabase.auth.signOut(); // purge dead cookies, break the loop
+                setUser(null);
+                setLoading(false);
+                return;
+              }
               await fetchAndSetProfile(session);
             } else {
               setUser(null);
