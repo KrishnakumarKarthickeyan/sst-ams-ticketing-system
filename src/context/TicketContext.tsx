@@ -316,6 +316,14 @@ const TicketContext = createContext<TicketContextType | undefined>(undefined);
 export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+
+  // SECURITY: never attribute writes to a fabricated identity. If the session user id
+  // cannot be resolved, the action must fail loudly instead of writing as a ghost user.
+  const requireUserId = (): string => {
+    if (user?.id) return user.id;
+    throw new Error('Could not verify your identity. Please log out and log in again.');
+  };
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [contracts, setContracts] = useState<CustomerContract[]>([]);
   const [contacts, setContacts] = useState<CustomerContact[]>([]);
@@ -474,8 +482,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, ticket_id, created_at, author_id, content, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, ticket_id, file_name, file_url, file_type, file_size, uploaded_by, created_at), ticket_attachments(id, ticket_id, file_name, file_path, mime_type, file_size, uploaded_by, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)').order('created_at', { ascending: false })),
           wrapQuery(() => supabase.from('customer_contracts').select('*')),
           wrapQuery(() => supabase.from('customer_contacts').select('*')),
-          wrapQuery(() => supabase.from('knowledgebase_articles').select('*')),
-          wrapQuery(() => supabase.from('knowledgebase_categories').select('*')),
+          Promise.resolve(null), // knowledgebase removed from UI — do not query
+          Promise.resolve(null), // knowledgebase removed from UI — do not query
           wrapQuery(() => supabase.from('notifications').select('*').order('created_at', { ascending: false })),
           wrapQuery(() => supabase.from('sla_configuration').select('*'))
         ]);
@@ -533,23 +541,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           isSecondary: c.is_secondary
         })) : []);
 
-        setKbArticles(dbArticles ? dbArticles.map(a => ({
-          id: a.id,
-          categoryId: a.category_id,
-          categoryName: 'General Guides',
-          title: a.title,
-          slug: a.slug,
-          content: a.content,
-          sapModule: a.sap_module as SAPModule,
-          isInternal: a.is_internal,
-          authorName: a.author_id,
-          ratingsCount: a.ratings_count || 0,
-          ratingsSum: a.ratings_sum || 0,
-          createdAt: a.created_at,
-          updatedAt: a.updated_at
-        })) : []);
-
-        setKbCategories(dbCategories || []);
+        // Knowledge base was removed from the UI — keep state empty, no queries issued.
+        setKbArticles([]);
+        setKbCategories([]);
 
         setNotifications(dbNotifications ? dbNotifications.map(n => ({
           id: n.id,
@@ -607,34 +601,109 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     fetchData();
   }, [user, authLoading]);
 
+  // Targeted realtime: surgically refresh ONE ticket on changes to it (or its child rows),
+  // and append notifications for the current user. Never refetch the entire dataset from
+  // realtime — the previous schema-wide '*' subscription caused constant full refetches
+  // that blocked navigation while users were inside a ticket.
+  const ticketRefetchTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const fetchTicketByIdRef = useRef<(id: string) => Promise<any>>(async () => null);
+
+  const scheduleTicketRefetch = (ticketId: string) => {
+    if (!ticketId) return;
+    const timers = ticketRefetchTimersRef.current;
+    const existing = timers.get(ticketId);
+    if (existing) clearTimeout(existing);
+    timers.set(
+      ticketId,
+      setTimeout(() => {
+        timers.delete(ticketId);
+        fetchTicketByIdRef.current(ticketId).catch((e: any) =>
+          console.warn('Realtime single-ticket refresh failed:', e?.message || e)
+        );
+      }, 600)
+    );
+  };
+
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
 
-    // Subscribing to public schema changes resolves sync delays across all tables
-    const channel = supabase
-      .channel('schema-db-changes')
+    const ticketChildTables = [
+      'ticket_comments',
+      'ticket_comment_attachments',
+      'ticket_attachments',
+      'ticket_actual_hours',
+      'ticket_closure_requests',
+      'ticket_assignments',
+      'ticket_estimates',
+      'ticket_hour_estimates',
+      'ticket_efforts',
+      'ticket_history',
+      'ticket_unlock_requests',
+      'ticket_reopen_requests'
+    ];
+
+    let channel = supabase
+      .channel('targeted-db-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public' },
-        (payload) => {
-          console.log('Realtime DB change detected:', payload);
-          debouncedRefetch();
+        { event: '*', schema: 'public', table: 'tickets' },
+        (payload: any) => {
+          const id = payload?.new?.id || payload?.old?.id;
+          if (id) scheduleTicketRefetch(id);
         }
       );
 
+    for (const table of ticketChildTables) {
+      channel = channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table },
+        (payload: any) => {
+          const ticketId = payload?.new?.ticket_id || payload?.old?.ticket_id;
+          if (ticketId) scheduleTicketRefetch(ticketId);
+        }
+      );
+    }
+
+    channel = channel.on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'notifications' },
+      (payload: any) => {
+        const n = payload?.new;
+        if (!n || !user?.id || n.user_id !== user.id) return;
+        setNotifications(prev => {
+          if (prev.some(x => x.id === n.id)) return prev;
+          return [
+            {
+              id: n.id,
+              userId: n.user_id,
+              title: n.title,
+              message: n.message,
+              ticketId: n.ticket_id,
+              isRead: n.read_at ? true : (n.is_read || false),
+              createdAt: n.created_at,
+              type: n.type || 'system',
+              linkPath: n.link_path || (n.ticket_id ? `/tickets/${n.ticket_id}` : ''),
+              readAt: n.read_at
+            },
+            ...prev
+          ];
+        });
+      }
+    );
+
     channel.subscribe((status) => {
-      console.log('Realtime subscription status:', status);
-      if (status === 'SUBSCRIBED') {
-        console.log('Realtime successfully connected to public schema.');
-      } else if (status === 'CHANNEL_ERROR') {
+      if (status === 'CHANNEL_ERROR') {
         console.error('Realtime subscription failed to connect.');
       }
     });
 
     return () => {
       supabase.removeChannel(channel);
+      const timers = ticketRefetchTimersRef.current;
+      timers.forEach(t => clearTimeout(t));
+      timers.clear();
     };
-  }, []);
+  }, [user?.id]);
 
   // Helper mapper for Supabase format
   const mapDbTicket = (t: any, dbProfiles: any[], dbContacts: any[] = [], currentOrgMap?: Record<string, string>): Ticket => {
@@ -1047,8 +1116,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   };
 
-  const fetchTicketById = async (ticketId: string): Promise<Ticket | null> => {
-    if (isSupabaseConfigured && supabase) {
+  const fetchTicketById = async (ticketId: string): Promise<Ticket | null> => {    if (isSupabaseConfigured && supabase) {
       try {
         const organizationMap = await getOrganizationMap();
         const dbProfiles = await wrapQuery(() => supabase.from('profiles').select('*'));
@@ -1090,6 +1158,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return t || null;
     }
   };
+
+  // Keep the realtime handler pointed at the latest fetchTicketById closure
+  fetchTicketByIdRef.current = fetchTicketById;
 
   const resetMockData = () => {
     console.log('resetMockData is a no-op when Supabase is configured.');
@@ -1591,7 +1662,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
-        const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = prof ? prof.id : (requireUserId());
         
         const { data: insertedEsc, error: escErr } = await supabase.from('ticket_escalations').insert({
           ticket_id: ticketId,
@@ -1672,7 +1743,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     // Local state fallback
     const currentTicket = tickets.find(t => t.id === ticketId);
-    const actorId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
+    const actorId = requireUserId();
     const newEscalation: TicketEscalation = {
       id: escalationId,
       ticketId,
@@ -1758,7 +1829,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: profActor } = await supabase.from('profiles').select('id').eq('full_name', changeActor).maybeSingle();
-        const actorId = profActor ? profActor.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = profActor ? profActor.id : (requireUserId());
 
         const ticketObj = tickets.find(t => t.id === ticketId);
         const dbData: any = {};
@@ -1955,7 +2026,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
-        const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = prof ? prof.id : (requireUserId());
 
         const dbUpdate: any = { status: targetStatus, updated_at: new Date().toISOString() };
         if (incrementReopened) {
@@ -2089,7 +2160,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('email', authorEmail).maybeSingle();
-        const authorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const authorId = prof ? prof.id : (requireUserId());
 
         const { data: commData, error: insertError } = await supabase.from('ticket_comments').insert({
           ticket_id: ticketId,
@@ -2281,7 +2352,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', data.consultantName).maybeSingle();
-        const consultantId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const consultantId = prof ? prof.id : (requireUserId());
 
         await supabase.from('ticket_efforts').insert({
           id: newEffort.id.startsWith('e-') && newEffort.id.length < 25 ? undefined : newEffort.id,
@@ -2329,7 +2400,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
-        const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = prof ? prof.id : (requireUserId());
         const dbStatus = action === 'Approved' ? 'Approved' : 'Rejected';
 
         const updateData: any = {
@@ -2521,7 +2592,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
-        const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = prof ? prof.id : (requireUserId());
         const currentTicket = tickets.find(t => t.id === ticketId);
 
         await supabase.from('tickets').update({
@@ -2640,7 +2711,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', finalActorName).maybeSingle();
-        const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = prof ? prof.id : (requireUserId());
 
         await supabase.from('tickets').update({
           status: 'Closed',
@@ -2711,7 +2782,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', actorName).maybeSingle();
-        const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = prof ? prof.id : (requireUserId());
         const currentTicket = tickets.find(t => t.id === ticketId);
 
         await supabase.from('tickets').update({
@@ -3207,7 +3278,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         const currentTicket = tickets.find(t => t.id === ticketId);
         const changedBy = data.requestedBy || 'System';
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', changedBy).maybeSingle();
-        const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = prof ? prof.id : (requireUserId());
 
         const dbUpdate: any = {};
         if (data.title !== undefined) dbUpdate.title = data.title;
@@ -3397,7 +3468,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', requester).maybeSingle();
-        const actorId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = prof ? prof.id : (requireUserId());
 
         await supabase.from('ticket_delete_requests').insert({
           id: newDeleteRequest.id.startsWith('dr-') && newDeleteRequest.id.length < 25 ? undefined : newDeleteRequest.id,
@@ -3472,7 +3543,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     }
   ) => {
     const total = data.functionalEstimatedHours + data.technicalEstimatedHours;
-    let consultantUUID = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
+    let consultantUUID = requireUserId();
     let consultantType: 'Functional' | 'Technical' = 'Functional';
 
     if (isSupabaseConfigured && supabase) {
@@ -3695,7 +3766,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     }
   ) => {
     const total = data.functionalEstimatedHours + data.technicalEstimatedHours;
-    let consultantUUID = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
+    let consultantUUID = requireUserId();
     let consultantType: 'Functional' | 'Technical' = 'Functional';
 
     if (isSupabaseConfigured && supabase) {
@@ -3894,7 +3965,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
-        const managerId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const managerId = prof ? prof.id : (requireUserId());
 
         const estObj = currentTicket?.hourEstimates?.find(e => e.id === estimateId);
         if (estObj) {
@@ -4107,7 +4178,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
-        const managerId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const managerId = prof ? prof.id : (requireUserId());
 
         await supabase.from('ticket_hour_estimates').update({
           status: 'Revision Rejected',
@@ -4214,7 +4285,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
   ): Promise<{ success: boolean; error?: string }> => {
-    const consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
+    const consultantId = requireUserId();
     const consultantName = user?.name || data.requestedBy;
 
     const currentTicket = tickets.find(t => t.id === ticketId);
@@ -4617,7 +4688,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       files?: { fileName: string; fileSize: number; fileType: string; fileObj?: File }[];
     }
   ): Promise<{ success: boolean; error?: string }> => {
-    let consultantId = user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5';
+    let consultantId = requireUserId();
     let consultantName = data.requestedBy;
 
     const currentTicket = tickets.find(t => t.id === ticketId);
@@ -5067,7 +5138,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
-        const managerId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const managerId = prof ? prof.id : (requireUserId());
 
         // 0. Validate actual hours exist
         const { data: dbActuals, error: dbActualsErr } = await supabase
@@ -5369,7 +5440,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
       try {
         const { data: prof } = await supabase.from('profiles').select('id').eq('full_name', managerName).maybeSingle();
-        const managerId = prof ? prof.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const managerId = prof ? prof.id : (requireUserId());
 
         // Save states for rollback
         const { data: oldTicket, error: fetchOldErr } = await supabase
@@ -5590,7 +5661,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: profActor } = await supabase.from('profiles').select('id').eq('email', actorEmail).maybeSingle();
-        const actorId = profActor ? profActor.id : (user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5');
+        const actorId = profActor ? profActor.id : (requireUserId());
 
         // 1. Process active assignments and estimates in parallel
         await Promise.all(efforts.map(async (e) => {
@@ -6147,7 +6218,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           .insert({
             id: attId,
             ticket_id: ticketId,
-            uploaded_by: user?.id || 'd3b07384-d113-4ec6-a558-7e30773d57d5',
+            uploaded_by: requireUserId(),
             file_name: fileName,
             file_path: fileUrl,
             file_size: fileSize,

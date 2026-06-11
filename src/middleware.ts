@@ -3,6 +3,22 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/', '/login', '/forgot-password'];
 
+// Role → home dashboard
+const ROLE_HOME: Record<string, string> = {
+  SuperAdmin: '/admin/dashboard',
+  Manager: '/manager/dashboard',
+  Consultant: '/consultant/dashboard',
+  Customer: '/customer/dashboard',
+};
+
+// Route prefix → roles allowed to enter it
+const PROTECTED_PREFIXES: { prefix: string; roles: string[] }[] = [
+  { prefix: '/admin', roles: ['SuperAdmin'] },
+  { prefix: '/manager', roles: ['Manager', 'SuperAdmin'] },
+  { prefix: '/consultant', roles: ['Consultant'] },
+  { prefix: '/customer', roles: ['Customer'] },
+];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (
@@ -32,10 +48,34 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL('/login', request.url));
 
-  // Use user_metadata values from JWT session payload to decide first-login force password reset redirections
-  const isFirstLogin = user.user_metadata?.first_login_completed === false || user.user_metadata?.force_password_change === true;
+  // First-login forced password reset (from JWT metadata)
+  const isFirstLogin =
+    user.user_metadata?.first_login_completed === false ||
+    user.user_metadata?.force_password_change === true;
   if (isFirstLogin && pathname !== '/first-login-reset') {
     return NextResponse.redirect(new URL('/first-login-reset', request.url));
+  }
+
+  // Role enforcement per route segment. Prefer role from JWT metadata (no DB hit);
+  // fall back to a single profiles lookup when metadata is absent.
+  const matched = PROTECTED_PREFIXES.find(p => pathname.startsWith(p.prefix));
+  if (matched) {
+    let role: string | undefined =
+      (user.app_metadata as any)?.role || (user.user_metadata as any)?.role;
+
+    if (!role) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      role = prof?.role;
+    }
+
+    if (!role || !matched.roles.includes(role)) {
+      const home = role && ROLE_HOME[role] ? ROLE_HOME[role] : '/login';
+      return NextResponse.redirect(new URL(home, request.url));
+    }
   }
 
   return response;

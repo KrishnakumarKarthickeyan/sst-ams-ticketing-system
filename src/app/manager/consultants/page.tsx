@@ -129,7 +129,7 @@ export default function ManagerConsultantsPage() {
   const [formHours, setFormHours] = useState('160');
   const [formPassword, setFormPassword] = useState('');
   const [formPwdOption, setFormPwdOption] = useState<'auto' | 'manual'>('auto');
-  const [passwordResetValue, setPasswordResetValue] = useState('password123');
+  const [passwordResetValue, setPasswordResetValue] = useState('');
   const [resetPwdOption, setResetPwdOption] = useState<'auto' | 'manual'>('auto');
   const [generatedPassResult, setGeneratedPassResult] = useState('');
   const [creationSuccessModal, setCreationSuccessModal] = useState<{ email: string; tempPass: string } | null>(null);
@@ -793,7 +793,7 @@ export default function ManagerConsultantsPage() {
     setFormContract('');
     setFormHours('160');
     setFormPassword('');
-    setPasswordResetValue('password123');
+    setPasswordResetValue('');
     setGeneratedPassResult('');
     setFormShortCode('');
     setFormAddress('');
