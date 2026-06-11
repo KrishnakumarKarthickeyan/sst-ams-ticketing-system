@@ -51,3 +51,6 @@ scratch/
 /scratch/
 query_*.js
 
+
+# CodeGraph local index (per-machine, rebuilt via codegraph index)
+.codegraph/
