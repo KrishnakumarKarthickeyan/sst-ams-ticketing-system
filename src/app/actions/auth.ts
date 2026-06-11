@@ -312,21 +312,38 @@ export async function provisionUser(params: {
 
       // Upsert customer contract
       const contractHours = params.contractHours || 160.00;
-      const { error: contractErr } = await client.from('customer_contracts').insert({
+      const contractStatus = params.contractStatus || 'Active';
+      const { data: insertedContract, error: contractErr } = await client.from('customer_contracts').insert({
         organization_id: orgId,
+        customer_id: orgId,
         contract_type: (params.contractType || 'AMS') as any,
         start_date: params.contractStartDate || new Date().toISOString().split('T')[0],
+        contract_start_date: params.contractStartDate || new Date().toISOString().split('T')[0],
         end_date: params.contractEndDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        contract_end_date: params.contractEndDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         total_hours: contractHours,
+        total_contract_hours: contractHours,
         used_hours: 0.00,
         monthly_budget_hours: params.monthlyAllocatedHours || Math.round(contractHours / 12) || 15.00,
-        is_active: params.contractStatus ? (params.contractStatus === 'Active') : true,
-        status: params.contractStatus || 'Active',
+        monthly_allocated_hours: params.monthlyAllocatedHours || Math.round(contractHours / 12) || 15.00,
+        is_active: contractStatus === 'Active',
+        status: contractStatus,
         contract_value: params.contractValue != null ? params.contractValue : 0.00
-      });
+      }).select('id').maybeSingle();
 
       if (contractErr) {
         console.warn('Non-blocking contract error:', contractErr.message);
+      } else if (contractStatus === 'Active' && insertedContract) {
+        // Enforce one active contract per organization
+        const { error: expireErr } = await client
+          .from('customer_contracts')
+          .update({ status: 'Expired', is_active: false })
+          .eq('organization_id', orgId)
+          .eq('status', 'Active')
+          .neq('id', insertedContract.id);
+        if (expireErr) {
+          console.warn('Failed to expire older contracts:', expireErr.message);
+        }
       }
 
       // Insert primary contact into organization_contacts
@@ -851,6 +868,185 @@ export async function getUserProfileServer(userId: string) {
   } catch (e: any) {
     console.error('getUserProfileServer error:', e);
     return { success: false, error: e.message || 'Failed to fetch user profile' };
+  }
+}
+
+export async function updateUserRoster(params: {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: 'SuperAdmin' | 'Manager' | 'Consultant' | 'Customer';
+  phone?: string;
+  isActive?: boolean;
+  performedBy?: string;
+  // Consultant specific fields
+  consultantType?: 'Functional' | 'Technical';
+  specialization?: string;
+  sapModules?: string[];
+  employeeId?: string;
+  // Customer specific fields
+  organizationId?: string;
+  designation?: string;
+  // Contract specific fields
+  contractType?: string;
+  contractStartDate?: string;
+  contractEndDate?: string;
+  monthlyAllocatedHours?: number;
+  contractHours?: number;
+  contractStatus?: string;
+}) {
+  const cookieStore = await cookies();
+  const supabaseClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {}
+        },
+      },
+    }
+  );
+
+  const { data: { user: requester }, error: authErr } = await supabaseClient.auth.getUser();
+  if (authErr || !requester) {
+    return { success: false, error: 'Unauthorized session.' };
+  }
+
+  // Verify requester is a SuperAdmin or Manager
+  const { data: requesterProfile, error: reqProfErr } = await supabaseClient
+    .from('profiles')
+    .select('role, email')
+    .eq('id', requester.id)
+    .single();
+
+  const allowedRequesterRoles = ['SuperAdmin', 'Manager'];
+  if (reqProfErr || !requesterProfile || !allowedRequesterRoles.includes(requesterProfile.role)) {
+    return { success: false, error: 'Access denied. Privileged role required.' };
+  }
+
+  const client = getAdminClient();
+  if (!client) {
+    return { success: false, error: 'NO_SERVICE_KEY' };
+  }
+
+  const userId = params.userId;
+  const role = params.role;
+  const performedBy = params.performedBy || 'Admin';
+
+  try {
+    // 1. Update Auth email if changed (SuperAdmin only)
+    const { data: currentAuthUser } = await client.auth.admin.getUserById(userId);
+    if (currentAuthUser?.user?.email !== params.email.trim().toLowerCase()) {
+      if (requesterProfile.role !== 'SuperAdmin') {
+        return { success: false, error: 'Email modification is restricted to SuperAdministrators.' };
+      }
+      const { error: authEmailErr } = await client.auth.admin.updateUserById(userId, {
+        email: params.email.trim().toLowerCase()
+      });
+      if (authEmailErr) throw authEmailErr;
+    }
+
+    // 2. Update profiles table
+    const profilePayload: any = {
+      full_name: params.fullName.trim(),
+      phone_number: params.phone?.trim() || null,
+      is_active: params.isActive !== undefined ? params.isActive : true
+    };
+
+    if (role === 'Consultant') {
+      profilePayload.consultant_type = params.consultantType;
+      profilePayload.specialization = params.specialization?.trim() || null;
+      profilePayload.sap_modules = params.sapModules || [];
+      profilePayload.employee_id = params.employeeId?.trim() || null;
+      profilePayload.organization_id = null; // internal org resolved dynamically
+    } else if (role === 'Customer') {
+      profilePayload.organization_id = params.organizationId || null;
+      profilePayload.employee_id = params.designation?.trim() || null; // designation
+    }
+
+    const { error: profErr } = await client
+      .from('profiles')
+      .update(profilePayload)
+      .eq('id', userId);
+
+    if (profErr) throw profErr;
+
+    // 3. Client Contract updates (Stage 5c)
+    if (role === 'Customer' && params.organizationId && params.contractStartDate) {
+      // Find existing active contract or insert
+      const { data: existingContract, error: contractFetchErr } = await client
+        .from('customer_contracts')
+        .select('id')
+        .eq('organization_id', params.organizationId)
+        .eq('status', 'Active')
+        .maybeSingle();
+
+      if (contractFetchErr) throw contractFetchErr;
+
+      const contractStatus = params.contractStatus || 'Active';
+      const contractHours = params.contractHours || 160.00;
+      
+      const contractPayload = {
+        organization_id: params.organizationId,
+        customer_id: params.organizationId,
+        contract_type: (params.contractType || 'AMS') as any,
+        start_date: params.contractStartDate,
+        contract_start_date: params.contractStartDate,
+        end_date: params.contractEndDate,
+        contract_end_date: params.contractEndDate,
+        total_hours: contractHours,
+        total_contract_hours: contractHours,
+        monthly_budget_hours: params.monthlyAllocatedHours || Math.round(contractHours / 12) || 15.00,
+        monthly_allocated_hours: params.monthlyAllocatedHours || Math.round(contractHours / 12) || 15.00,
+        is_active: contractStatus === 'Active',
+        status: contractStatus
+      };
+
+      let targetContractId = '';
+
+      if (existingContract) {
+        targetContractId = existingContract.id;
+        const { error: contractUpdErr } = await client
+          .from('customer_contracts')
+          .update(contractPayload)
+          .eq('id', targetContractId);
+        if (contractUpdErr) throw contractUpdErr;
+      } else {
+        const { data: newContract, error: contractInsErr } = await client
+          .from('customer_contracts')
+          .insert(contractPayload)
+          .select('id')
+          .single();
+        if (contractInsErr) throw contractInsErr;
+        targetContractId = newContract.id;
+      }
+
+      // One active contract per organization (Stage 5d)
+      if (contractStatus === 'Active' && targetContractId) {
+        const { error: expireErr } = await client
+          .from('customer_contracts')
+          .update({ status: 'Expired', is_active: false })
+          .eq('organization_id', params.organizationId)
+          .eq('status', 'Active')
+          .neq('id', targetContractId);
+        if (expireErr) {
+          console.warn('Failed to expire older contracts:', expireErr.message);
+        }
+      }
+    }
+
+    await logUserAuditAction(params.email, `Profile updated by Manager`, performedBy);
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || 'Update failed' };
   }
 }
 

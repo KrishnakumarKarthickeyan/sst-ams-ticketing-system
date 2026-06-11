@@ -12,7 +12,8 @@ import {
   updateUserAuthStatus,
   deleteAuthUser,
   logUserAuditAction,
-  resetUserPasswordAdmin
+  resetUserPasswordAdmin,
+  updateUserRoster
 } from '@/app/actions/auth';
 
 // UI Components
@@ -610,93 +611,45 @@ export default function UserManagementPage() {
   // Submit Edit Details (Stage 4)
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser || !isSupabaseConfigured || !supabase) return;
+    if (!selectedUser) return;
     
     setEditLoading(true);
     const toastId = toast.loading('Updating user profile...');
 
     try {
-      // 1. Verify and update email in Auth if modified and requester is SuperAdmin
-      if (editEmail.trim().toLowerCase() !== selectedUser.email && user?.role === 'SuperAdmin') {
-        const { error: authEmailErr } = await supabase.auth.admin.updateUserById(selectedUser.id, {
-          email: editEmail.trim().toLowerCase()
-        });
-        if (authEmailErr) throw authEmailErr;
+      const res = await updateUserRoster({
+        userId: selectedUser.id,
+        fullName: editName.trim(),
+        email: editEmail.trim().toLowerCase(),
+        role: selectedUser.role,
+        phone: editPhone.trim() || undefined,
+        isActive: editIsActive,
+        performedBy: user?.email || 'Manager',
+        // Consultant
+        consultantType: editConsType,
+        specialization: editSpecialization.trim() || undefined,
+        sapModules: editSapModules,
+        employeeId: editStaffId.trim() || undefined,
+        // Customer
+        organizationId: editOrgId || undefined,
+        designation: editDesignation.trim() || undefined,
+        // Contract details
+        contractType: editContractType,
+        contractStartDate: editStartDate || undefined,
+        contractEndDate: editEndDate || undefined,
+        monthlyAllocatedHours: Number(editMonthlyHours) || 0,
+        contractHours: Number(editAnnualHours) || 0,
+        contractStatus: editContractStatus
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to update user roster.');
       }
-
-      // 2. Update profiles table
-      const profilePayload: any = {
-        full_name: editName.trim(),
-        phone_number: editPhone.trim(),
-        is_active: editIsActive
-      };
-
-      if (selectedUser.role === 'Consultant') {
-        profilePayload.consultant_type = editConsType;
-        profilePayload.specialization = editSpecialization.trim();
-        profilePayload.sap_modules = editSapModules;
-        profilePayload.employee_id = editStaffId.trim() || null;
-      } else if (selectedUser.role === 'Customer') {
-        profilePayload.organization_id = editOrgId || null;
-        profilePayload.employee_id = editDesignation.trim() || null; // designation
-      }
-
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .update(profilePayload)
-        .eq('id', selectedUser.id);
-
-      if (profileErr) throw profileErr;
-
-      // 3. Client Contract upsert / update if they edited contract details (Stage 5)
-      if (selectedUser.role === 'Customer' && editOrgId) {
-        // Find existing Active contract
-        const { data: existingContract, error: contractFetchErr } = await supabase
-          .from('customer_contracts')
-          .select('id')
-          .eq('organization_id', editOrgId)
-          .eq('status', 'Active')
-          .maybeSingle();
-
-        if (contractFetchErr) throw contractFetchErr;
-
-        // Populate both Legacy and New columns
-        const contractPayload = {
-          organization_id: editOrgId,
-          customer_id: editOrgId,
-          contract_type: editContractType,
-          start_date: editStartDate || null,
-          contract_start_date: editStartDate || null,
-          end_date: editEndDate || null,
-          contract_end_date: editEndDate || null,
-          monthly_budget_hours: Number(editMonthlyHours),
-          monthly_allocated_hours: Number(editMonthlyHours),
-          total_hours: Number(editAnnualHours),
-          total_contract_hours: Number(editAnnualHours),
-          status: editContractStatus,
-          is_active: editContractStatus === 'Active'
-        };
-
-        if (existingContract) {
-          const { error: contractUpdErr } = await supabase
-            .from('customer_contracts')
-            .update(contractPayload)
-            .eq('id', existingContract.id);
-          if (contractUpdErr) throw contractUpdErr;
-        } else {
-          const { error: contractInsErr } = await supabase
-            .from('customer_contracts')
-            .insert(contractPayload);
-          if (contractInsErr) throw contractInsErr;
-        }
-      }
-
-      // Log audit action
-      await logUserAuditAction(selectedUser.email, `Profile updated by Manager`, user?.email || 'Manager');
 
       toast.success('User updated successfully', { id: toastId });
       setEditUserOpen(false);
       await refetchData();
+      await fetchOrgs();
     } catch (err: any) {
       toast.error('Failed to update user: ' + err.message, { id: toastId });
     } finally {
@@ -932,17 +885,34 @@ export default function UserManagementPage() {
         is_active: cViewContractStatus === 'Active'
       };
 
-      if (selectedUser.activeContract?.id) {
+      let contractId = selectedUser.activeContract?.id;
+
+      if (contractId) {
         const { error } = await supabase
           .from('customer_contracts')
           .update(contractPayload)
-          .eq('id', selectedUser.activeContract.id);
+          .eq('id', contractId);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('customer_contracts')
-          .insert(contractPayload);
+          .insert(contractPayload)
+          .select('id')
+          .single();
         if (error) throw error;
+        contractId = data.id;
+      }
+
+      if (cViewContractStatus === 'Active' && contractId) {
+        const { error: expireErr } = await supabase
+          .from('customer_contracts')
+          .update({ status: 'Expired', is_active: false })
+          .eq('organization_id', selectedUser.organizationId)
+          .eq('status', 'Active')
+          .neq('id', contractId);
+        if (expireErr) {
+          console.warn('Failed to expire older contracts:', expireErr.message);
+        }
       }
 
       toast.success('Contract details updated successfully', { id: toastId });
