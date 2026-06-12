@@ -239,12 +239,12 @@ export default function ConsultantReportsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
           <Link href="/consultant/dashboard">
-            <Button variant="outline" size="icon" className="h-8 w-8 text-slate-600 bg-white">
+            <Button variant="outline" size="icon" className="h-8 w-8 text-slate-600 bg-surface">
               <ArrowLeft size={16} />
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold uppercase text-slate-950 font-mono">Analytics Reports Desk</h1>
+            <h1 className="text-xl font-bold uppercase text-slate-950">Analytics Reports Desk</h1>
             <p className="text-slate-500 text-xs mt-1">
               Select configurations, filter records, and download operational timesheets.
             </p>
@@ -254,7 +254,7 @@ export default function ConsultantReportsPage() {
         <div className="flex gap-2">
           <Button
             onClick={() => handleExport('CSV')}
-            className="bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase text-[9px] h-8 cursor-pointer shadow font-mono"
+            className="bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase text-[11px] h-8 cursor-pointer shadow"
           >
             <Download size={12} className="mr-1" />
             Export CSV
@@ -262,7 +262,7 @@ export default function ConsultantReportsPage() {
           <Button
             onClick={() => handleExport('Excel')}
             variant="outline"
-            className="border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold uppercase text-[9px] h-8 cursor-pointer font-mono"
+            className="border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold uppercase text-[11px] h-8 cursor-pointer"
           >
             <FileSpreadsheet size={12} className="mr-1" />
             Export Excel
@@ -270,7 +270,7 @@ export default function ConsultantReportsPage() {
           <Button
             onClick={handlePDFPlaceholder}
             variant="outline"
-            className="border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold uppercase text-[9px] h-8 cursor-pointer font-mono"
+            className="border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold uppercase text-[11px] h-8 cursor-pointer"
           >
             <FileText size={12} className="mr-1" />
             PDF Placeholder
@@ -279,7 +279,7 @@ export default function ConsultantReportsPage() {
       </div>
 
       {/* Tabs Selector (8 Reports) */}
-      <div className="bg-white border border-slate-200 rounded-lg p-2 flex flex-wrap gap-1.5 shadow-sm">
+      <div className="bg-surface border border-slate-200 rounded-lg p-2 flex flex-wrap gap-1.5 shadow-card">
         {[
           { id: 'monthly_performance', label: 'Monthly Performance' },
           { id: 'ticket_summary', label: 'Ticket Summary' },
@@ -293,7 +293,7 @@ export default function ConsultantReportsPage() {
           <button
             key={tab.id}
             onClick={() => setActiveReport(tab.id as ReportType)}
-            className={`px-3 py-1.5 rounded font-mono font-bold uppercase tracking-wider text-[9px] transition ${
+            className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider text-[11px] transition ${
               activeReport === tab.id
                 ? 'bg-slate-950 text-white'
                 : 'text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200'
@@ -305,36 +305,36 @@ export default function ConsultantReportsPage() {
       </div>
 
       {/* Filters Panel (5 filters) */}
-      <Card className="bg-white border border-slate-200 p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+      <Card className="bg-surface border border-slate-200 p-4 shadow-card grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
         {/* Date Range Start */}
         <div>
-          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">Start Date</label>
+          <label className="font-bold text-slate-450 uppercase text-[11px] tracking-wider block mb-1">Start Date</label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:outline-none"
           />
         </div>
 
         {/* Date Range End */}
         <div>
-          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">End Date</label>
+          <label className="font-bold text-slate-450 uppercase text-[11px] tracking-wider block mb-1">End Date</label>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:outline-none"
           />
         </div>
 
         {/* Client */}
         <div>
-          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">Client</label>
+          <label className="font-bold text-slate-450 uppercase text-[11px] tracking-wider block mb-1">Client</label>
           <select
             value={clientFilter}
             onChange={(e) => setClientFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:outline-none"
           >
             <option value="All">All Clients</option>
             {clientsList.map(c => <option key={c} value={c}>{c}</option>)}
@@ -343,11 +343,11 @@ export default function ConsultantReportsPage() {
 
         {/* SAP Module */}
         <div>
-          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">SAP Module</label>
+          <label className="font-bold text-slate-450 uppercase text-[11px] tracking-wider block mb-1">SAP Module</label>
           <select
             value={moduleFilter}
             onChange={(e) => setModuleFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:outline-none"
           >
             <option value="All">All Modules</option>
             {modulesList.map(m => <option key={m} value={m}>{m}</option>)}
@@ -356,11 +356,11 @@ export default function ConsultantReportsPage() {
 
         {/* Priority */}
         <div>
-          <label className="font-bold text-slate-450 uppercase text-[8px] tracking-wider block mb-1 font-mono">Priority</label>
+          <label className="font-bold text-slate-450 uppercase text-[11px] tracking-wider block mb-1">Priority</label>
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:outline-none"
           >
             <option value="All">All Priorities</option>
             <option value="Critical">Critical</option>
@@ -373,21 +373,21 @@ export default function ConsultantReportsPage() {
 
       {/* KPI Cards section */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
-          <span className="text-[9px] font-bold text-slate-400 uppercase font-mono">Filtered Scope Tickets</span>
-          <span className="text-xl font-bold font-mono text-slate-900 mt-1">{kpis.total} Items</span>
+        <Card className="bg-surface border border-slate-200 p-4 shadow-card flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-slate-400 uppercase">Filtered Scope Tickets</span>
+          <span className="text-xl font-bold text-slate-900 mt-1">{kpis.total} Items</span>
         </Card>
-        <Card className="bg-white border border-slate-200 p-4 shadow-sm border-l-2 border-l-emerald-500 flex flex-col justify-between">
-          <span className="text-[9px] font-bold text-slate-400 uppercase text-emerald-800 font-mono">Approved Actual Hours</span>
-          <span className="text-xl font-bold font-mono text-emerald-600 mt-1">{kpis.totalAct.toFixed(1)} h</span>
+        <Card className="bg-surface border border-slate-200 p-4 shadow-card border-l-2 border-l-emerald-500 flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-slate-400 uppercase text-emerald-800">Approved Actual Hours</span>
+          <span className="text-xl font-bold text-success mt-1">{kpis.totalAct.toFixed(1)} h</span>
         </Card>
-        <Card className="bg-white border border-slate-200 p-4 shadow-sm border-l-2 border-l-indigo-500 flex flex-col justify-between">
-          <span className="text-[9px] font-bold text-indigo-800 uppercase font-mono">Billable Hours Log</span>
-          <span className="text-xl font-bold font-mono text-indigo-700 mt-1">{kpis.billableHours.toFixed(1)} h</span>
+        <Card className="bg-surface border border-slate-200 p-4 shadow-card border-l-2 border-l-indigo-500 flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-indigo-800 uppercase">Billable Hours Log</span>
+          <span className="text-xl font-bold text-indigo-700 mt-1">{kpis.billableHours.toFixed(1)} h</span>
         </Card>
-        <Card className="bg-white border border-slate-200 p-4 shadow-sm border-l-2 border-l-emerald-500 flex flex-col justify-between">
-          <span className="text-[9px] font-bold text-emerald-800 uppercase font-mono">SLA Compliance Rate</span>
-          <span className="text-xl font-bold font-mono text-emerald-600 mt-1">{kpis.complianceRate.toFixed(1)}%</span>
+        <Card className="bg-surface border border-slate-200 p-4 shadow-card border-l-2 border-l-emerald-500 flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-emerald-800 uppercase">SLA Compliance Rate</span>
+          <span className="text-xl font-bold text-success mt-1">{kpis.complianceRate.toFixed(1)}%</span>
         </Card>
       </div>
 
@@ -395,15 +395,15 @@ export default function ConsultantReportsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Table Preview */}
-        <Card className="lg:col-span-2 bg-white border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
-          <span className="font-bold text-[9px] text-slate-450 uppercase tracking-widest p-4 border-b border-slate-100 block bg-slate-50/50 font-mono">
+        <Card className="lg:col-span-2 bg-surface border border-slate-200 shadow-card overflow-hidden flex flex-col justify-between">
+          <span className="font-bold text-[11px] text-slate-450 uppercase tracking-widest p-4 border-b border-slate-100 block bg-slate-50/50">
             Report Data Preview Table
           </span>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[9px] tracking-wider font-mono">
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px] tracking-wider">
                   <th className="py-2.5 px-3">Ticket ID</th>
                   <th className="py-2.5 px-3">Customer</th>
                   <th className="py-2.5 px-3">Subject</th>
@@ -413,7 +413,7 @@ export default function ConsultantReportsPage() {
                   <th className="py-2.5 px-3">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-[11px] font-mono">
+              <tbody className="divide-y divide-slate-100 text-[11px]">
                 {filteredTickets.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-400 italic">No records match configuration filters.</td>
@@ -431,12 +431,12 @@ export default function ConsultantReportsPage() {
                         <td className="py-3 px-3 font-semibold text-slate-655">{t.organization}</td>
                         <td className="py-3 px-3 text-slate-900 truncate max-w-[150px]" title={t.title}>{t.title}</td>
                         <td className="py-3 px-3">
-                          <Badge variant="outline" className="text-[8px] uppercase">{t.sapModule}</Badge>
+                          <Badge variant="outline" className="text-[11px] uppercase">{t.sapModule}</Badge>
                         </td>
                         <td className="py-3 px-3 text-center font-bold">{latestEst?.totalEstimatedHours || t.quotedHours || 0}h</td>
-                        <td className="py-3 px-3 text-center font-bold text-emerald-600">{approvedCls?.totalActualHours || 0}h</td>
+                        <td className="py-3 px-3 text-center font-bold text-success">{approvedCls?.totalActualHours || 0}h</td>
                         <td className="py-3 px-3">
-                          <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[9px] ${
+                          <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[11px] ${
                             t.status === 'Closed' ? 'text-emerald-700 bg-emerald-50' :
                             t.status === 'Request for Closure' ? 'text-blue-700 bg-blue-50' :
                             'text-slate-700 bg-slate-50'
@@ -450,20 +450,20 @@ export default function ConsultantReportsPage() {
             </table>
           </div>
 
-          <div className="bg-slate-50 p-3 border-t border-slate-200 text-right text-slate-500 font-bold uppercase text-[9px] font-mono">
+          <div className="bg-slate-50 p-3 border-t border-slate-200 text-right text-slate-500 font-bold uppercase text-[11px]">
             Previewing {filteredTickets.length} matching incidents rows
           </div>
         </Card>
 
         {/* Chart breakdown panel */}
-        <Card className="bg-white border border-slate-200 shadow-sm p-4 flex flex-col justify-between h-[380px]">
-          <span className="font-bold text-[9px] text-slate-450 uppercase tracking-widest block border-b border-slate-100 pb-2 font-mono">
+        <Card className="bg-surface border border-slate-200 shadow-card p-4 flex flex-col justify-between h-[380px]">
+          <span className="font-bold text-[11px] text-slate-450 uppercase tracking-widest block border-b border-slate-100 pb-2">
             Chart breakdown distribution
           </span>
 
           <div className="w-full h-72 mt-4">
             {chartData.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-slate-400 text-xs italic font-mono">
+              <div className="flex items-center justify-center h-full text-slate-400 text-xs italic">
                 No data available for charting
               </div>
             ) : (

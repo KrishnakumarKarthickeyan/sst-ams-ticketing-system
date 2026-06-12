@@ -14,27 +14,27 @@ interface ErrorBoundaryProps {
 export default function ConsultantTicketDetailErrorBoundary({ error, reset }: ErrorBoundaryProps) {
   return (
     <div className="flex min-h-[50vh] items-center justify-center p-4">
-      <Card className="w-full max-w-md border-red-100 bg-white shadow-xl shadow-red-50/50 rounded-2xl overflow-hidden relative">
+      <Card className="w-full max-w-md border-red-100 bg-surface shadow-xl shadow-red-50/50 rounded-2xl overflow-hidden relative">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-500"></div>
         <CardHeader className="text-center pt-8 pb-4">
-          <div className="mx-auto w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto w-12 h-12 bg-red-50 text-critical rounded-full flex items-center justify-center mb-4">
             <AlertCircle className="w-6 h-6 animate-bounce" />
           </div>
-          <CardTitle className="text-xl font-extrabold text-zinc-900 tracking-tight">
+          <CardTitle className="text-xl font-extrabold text-ink tracking-tight">
             Database Connection Error
           </CardTitle>
-          <CardDescription className="text-sm text-zinc-500 mt-1 max-w-xs mx-auto">
+          <CardDescription className="text-sm text-ink-secondary mt-1 max-w-xs mx-auto">
             A temporary network timeout or database scale-down occurred.
           </CardDescription>
         </CardHeader>
         
-        <CardContent className="bg-zinc-50 border-y border-zinc-100 py-4 px-6 text-center space-y-2">
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Error Details</p>
-          <p className="text-sm font-mono text-red-650 bg-red-50/50 border border-red-100/60 p-3 rounded-lg overflow-x-auto text-left whitespace-pre-wrap leading-relaxed max-h-32">
+        <CardContent className="bg-surface-muted border-y border-line py-4 px-6 text-center space-y-2">
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Error Details</p>
+          <p className="text-sm text-critical bg-red-50/50 border border-red-100/60 p-3 rounded-lg overflow-x-auto text-left whitespace-pre-wrap leading-relaxed max-h-32">
             {error.message || 'An unexpected error occurred while fetching data from Supabase.'}
           </p>
           {error.digest && (
-            <p className="text-[10px] text-zinc-400 font-mono">Digest: {error.digest}</p>
+            <p className="text-[11px] text-ink-muted">Digest: {error.digest}</p>
           )}
         </CardContent>
 
@@ -45,7 +45,7 @@ export default function ConsultantTicketDetailErrorBoundary({ error, reset }: Er
                 reset();
               });
             }}
-            className="w-full h-11 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98]"
+            className="w-full h-11 bg-ink hover:bg-zinc-800 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow-card transition active:scale-[0.98]"
           >
             <RotateCcw className="w-4 h-4" /> Try Again
           </Button>
@@ -54,7 +54,7 @@ export default function ConsultantTicketDetailErrorBoundary({ error, reset }: Er
             <Button
               asChild
               variant="outline"
-              className="flex-1 h-10 text-xs font-medium border-zinc-200 text-zinc-650 rounded-xl hover:bg-zinc-50 hover:text-zinc-900"
+              className="flex-1 h-10 text-xs font-medium border-line text-ink-secondary rounded-lg hover:bg-surface-muted hover:text-ink"
             >
               <Link href="/consultant/dashboard">
                 <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Dashboard
@@ -64,7 +64,7 @@ export default function ConsultantTicketDetailErrorBoundary({ error, reset }: Er
             <Button
               asChild
               variant="outline"
-              className="flex-1 h-10 text-xs font-medium border-zinc-200 text-zinc-650 rounded-xl hover:bg-zinc-50 hover:text-zinc-900"
+              className="flex-1 h-10 text-xs font-medium border-line text-ink-secondary rounded-lg hover:bg-surface-muted hover:text-ink"
             >
               <Link href="/consultant/dashboard">
                 <Home className="w-3.5 h-3.5 mr-1.5" /> Home

@@ -39,8 +39,10 @@ import {
   Cpu,
   Zap,
   ChevronRight,
-  User2
+  User2,
+  ShieldAlert, Flame, Users,
 } from 'lucide-react';
+import { AICard, AIInsightRow } from '../../../components/ui/ai-card';
 import {
   ResponsiveContainer,
   PieChart,
@@ -619,33 +621,33 @@ export default function ConsultantDashboardPage() {
     return (
       <div className="space-y-6 pb-12 animate-pulse">
         {/* Page Header Skeleton */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-zinc-200 pb-5 gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-line pb-5 gap-4">
           <div className="space-y-2">
             <Skeleton className="h-8 w-64 bg-zinc-200" />
-            <Skeleton className="h-4 w-80 bg-zinc-100" />
+            <Skeleton className="h-4 w-80 bg-surface-subtle" />
           </div>
           <Skeleton className="h-10 w-36 bg-zinc-200 rounded-lg" />
         </div>
 
         {/* Info Banner / Profile Summary Skeleton */}
-        <div className="border border-zinc-200 rounded-xl p-5 bg-white shadow-sm flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+        <div className="border border-line rounded-lg p-5 bg-surface shadow-card flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
           <div className="flex gap-4 items-center">
             <Skeleton className="h-12 w-12 rounded-full bg-zinc-200" />
             <div className="space-y-2">
               <Skeleton className="h-5 w-48 bg-zinc-200" />
               <div className="flex gap-2">
-                <Skeleton className="h-4 w-20 bg-zinc-100" />
-                <Skeleton className="h-4 w-24 bg-zinc-100" />
+                <Skeleton className="h-4 w-20 bg-surface-subtle" />
+                <Skeleton className="h-4 w-24 bg-surface-subtle" />
               </div>
             </div>
           </div>
           <div className="flex gap-4">
             <div className="space-y-1">
-              <Skeleton className="h-3 w-16 bg-zinc-100" />
+              <Skeleton className="h-3 w-16 bg-surface-subtle" />
               <Skeleton className="h-5 w-24 bg-zinc-200" />
             </div>
             <div className="space-y-1">
-              <Skeleton className="h-3 w-16 bg-zinc-100" />
+              <Skeleton className="h-3 w-16 bg-surface-subtle" />
               <Skeleton className="h-5 w-24 bg-zinc-200" />
             </div>
           </div>
@@ -654,36 +656,36 @@ export default function ConsultantDashboardPage() {
         {/* Stats Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="border border-zinc-200 rounded-xl p-5 bg-white space-y-3 shadow-sm">
+            <div key={idx} className="border border-line rounded-lg p-5 bg-surface space-y-3 shadow-card">
               <div className="flex justify-between items-center">
-                <Skeleton className="h-4 w-24 bg-zinc-150" />
-                <Skeleton className="h-4 w-4 rounded-full bg-zinc-150" />
+                <Skeleton className="h-4 w-24 bg-surface-subtle" />
+                <Skeleton className="h-4 w-4 rounded-full bg-surface-subtle" />
               </div>
               <Skeleton className="h-8 w-16 bg-zinc-200" />
-              <Skeleton className="h-3 w-32 bg-zinc-100" />
+              <Skeleton className="h-3 w-32 bg-surface-subtle" />
             </div>
           ))}
         </div>
 
         {/* Two Column Layout Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 border border-zinc-200 rounded-xl p-6 bg-white space-y-4 shadow-sm">
+          <div className="lg:col-span-2 border border-line rounded-lg p-6 bg-surface space-y-4 shadow-card">
             <Skeleton className="h-6 w-48 bg-zinc-200" />
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, idx) => (
-                <div key={idx} className="flex justify-between items-center border-b border-zinc-100 pb-3 last:border-b-0">
+                <div key={idx} className="flex justify-between items-center border-b border-line pb-3 last:border-b-0">
                   <div className="space-y-1.5 flex-1">
                     <Skeleton className="h-4.5 w-1/3 bg-zinc-200" />
-                    <Skeleton className="h-3 w-1/2 bg-zinc-100" />
+                    <Skeleton className="h-3 w-1/2 bg-surface-subtle" />
                   </div>
-                  <Skeleton className="h-6 w-16 bg-zinc-150 rounded" />
+                  <Skeleton className="h-6 w-16 bg-surface-subtle rounded" />
                 </div>
               ))}
             </div>
           </div>
-          <div className="border border-zinc-200 rounded-xl p-6 bg-white space-y-4 shadow-sm">
+          <div className="border border-line rounded-lg p-6 bg-surface space-y-4 shadow-card">
             <Skeleton className="h-6 w-36 bg-zinc-200" />
-            <Skeleton className="h-48 w-full bg-zinc-100 rounded-lg" />
+            <Skeleton className="h-48 w-full bg-surface-subtle rounded-lg" />
           </div>
         </div>
       </div>
@@ -692,63 +694,93 @@ export default function ConsultantDashboardPage() {
 
   if (myTickets.length === 0) {
     return (
-      <div className="space-y-6 font-sans text-xs text-zinc-900">
-        <div className="border-b border-zinc-200 pb-5">
-          <h1 className="text-xl font-bold tracking-tight text-zinc-950 uppercase font-sans">
+      <div className="space-y-6 font-sans text-xs text-ink">
+        <div className="border-b border-line pb-5">
+          <h1 className="type-title text-ink">
             AMS Operations & Performance Cockpit
           </h1>
-          <p className="text-zinc-500 text-xs mt-1">
-            Active: <span className="font-semibold text-zinc-900">{consultantName}</span> ({consultantType})
+          <p className="text-ink-secondary text-xs mt-1">
+            Active: <span className="font-semibold text-ink">{consultantName}</span> ({consultantType})
           </p>
         </div>
-        <div className="bg-white border border-zinc-200 rounded-2xl p-12 text-center shadow-[0_2px_8px_rgba(0,0,0,0.015)] space-y-4">
-          <Layers className="mx-auto text-zinc-450" size={48} />
-          <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets available</h3>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">You do not have any active SAP tickets assigned or logged hours in your queue yet.</p>
+        <div className="bg-surface border border-line rounded-2xl p-12 text-center shadow-[0_2px_8px_rgba(0,0,0,0.015)] space-y-4">
+          <Layers className="mx-auto text-ink-muted" size={48} />
+          <h3 className="text-sm font-bold text-ink uppercase tracking-wider">No tickets available</h3>
+          <p className="text-xs text-ink-secondary max-w-sm mx-auto">You do not have any active SAP tickets assigned or logged hours in your queue yet.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 text-zinc-900 font-sans">
+    <div className="space-y-8 text-ink font-sans">
 
       {/* --- TOP HEADER & MONTH SELECTOR --- */}
-      <div className="border-b border-zinc-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="border-b border-line pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-950 uppercase font-sans">
+          <h1 className="type-title text-ink">
             AMS Operations & Performance Cockpit
           </h1>
-          <p className="text-zinc-500 text-xs mt-1">
-            Specialist Capacity Analyzer & Real-time Delivery Auditor. Active: <span className="font-semibold text-zinc-900">{consultantName}</span> ({consultantType})
+          <p className="text-ink-secondary text-xs mt-1">
+            Specialist Capacity Analyzer & Real-time Delivery Auditor. Active: <span className="font-semibold text-ink">{consultantName}</span> ({consultantType})
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <Badge className="bg-zinc-900 text-white font-mono text-[9px] tracking-wider uppercase px-2.5 py-1 shrink-0">
+          <Badge className="bg-ink text-white text-[11px] tracking-wider uppercase px-2.5 py-1 shrink-0">
             {consultantType} SECURE
           </Badge>
         </div>
       </div>
 
+      {/* ── AI DAY BRIEFING — derived live from this consultant's queue ── */}
+      {(() => {
+        const now = Date.now();
+        const open = myTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
+        const hasSla = (t: { slaDueAt: string }) => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable';
+        const breached = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() < now);
+        const dueToday = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() - now > 0 && new Date(t.slaDueAt).getTime() - now < 24 * 3600e3);
+        const waitingCustomer = open.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer');
+        const critical = open.filter(t => t.priority === 'Critical');
+        const next = [...breached, ...dueToday, ...critical].filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i)[0];
+        return (
+          <AICard title="AI Day Briefing">
+            <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
+              <AIInsightRow icon={ShieldAlert} label="Breached on my desk"
+                value={<span className={breached.length > 0 ? 'text-critical' : 'text-success'}>{breached.length}</span>} />
+              <AIInsightRow icon={Clock} label="SLA due in 24h"
+                value={<span className={dueToday.length > 0 ? 'text-warning-strong' : 'text-success'}>{dueToday.length}</span>} />
+              <AIInsightRow icon={Flame} label="Critical open"
+                value={<span className={critical.length > 0 ? 'text-critical' : 'text-success'}>{critical.length}</span>} />
+              <AIInsightRow icon={Users} label="Waiting on customer" value={waitingCustomer.length} />
+            </div>
+            {next && (
+              <p className="type-meta mt-2 border-t border-info-border/50 pt-2 text-info-strong">
+                Suggested next: <span className="font-semibold">{next.ticketNumber || next.id}</span> — {next.title}
+              </p>
+            )}
+          </AICard>
+        );
+      })()}
+
       {/* Filter Bar */}
-      <Card className="border border-zinc-200 rounded-lg p-4 mb-6 shadow-sm bg-white">
+      <Card className="border border-line rounded-lg p-4 mb-6 shadow-card bg-surface">
         {/* ROW 1 */}
         <div className="flex flex-wrap md:flex-nowrap gap-3 items-end w-full">
           
           {/* 1. PERIOD */}
           <div className="flex flex-col w-full md:w-auto">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
-            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 h-9 items-center min-w-[280px]">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
+            <div className="flex bg-surface-subtle p-0.5 rounded-lg border border-line h-9 items-center min-w-[280px]">
               {['This Month', 'This Quarter', 'This Year', 'Custom'].map(p => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setFilters(prev => ({ ...prev, period: p }))}
-                  className={`flex-1 h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
+                  className={`flex-1 h-full flex items-center justify-center text-[11px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
                     filters.period === p
-                      ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200/50'
-                      : 'text-zinc-550 hover:text-zinc-800'
+                      ? 'bg-surface text-ink shadow-card border border-line/50'
+                      : 'text-ink-secondary hover:text-ink'
                   }`}
                 >
                   {p}
@@ -759,25 +791,25 @@ export default function ConsultantDashboardPage() {
 
           {/* 2. STATUS */}
           <div className="relative flex flex-col flex-1 min-w-[140px]" ref={statusDropdownRef}>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
             <button
               type="button"
               onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-              className="bg-white border border-zinc-200 rounded-md px-3 h-9 text-xs text-zinc-950 transition font-sans w-full shadow-sm flex items-center justify-between cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-950"
+              className="bg-surface border border-line rounded-md px-3 h-9 text-xs text-ink transition font-sans w-full shadow-card flex items-center justify-between cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand/30"
             >
               <span className="truncate">
                 {filters.statuses.includes('All') 
                   ? 'All Statuses' 
                   : `${filters.statuses.length} selected`}
               </span>
-              <ChevronRight size={12} className="text-zinc-455 shrink-0 rotate-90" />
+              <ChevronRight size={12} className="text-ink-muted shrink-0 rotate-90" />
             </button>
             {showStatusDropdown && (
-              <div className="absolute z-50 mt-16 w-full min-w-[160px] bg-white border border-zinc-200 rounded-md shadow-lg p-2 space-y-1">
+              <div className="absolute z-50 mt-16 w-full min-w-[160px] bg-surface border border-line rounded-md shadow-lg p-2 space-y-1">
                 {['All', 'New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Escalated', 'Reopened'].map(st => {
                   const isSelected = filters.statuses.includes(st);
                   return (
-                    <label key={st} className="flex items-center gap-2 p-1.5 hover:bg-zinc-50 rounded cursor-pointer text-xs font-sans text-zinc-700">
+                    <label key={st} className="flex items-center gap-2 p-1.5 hover:bg-surface-muted rounded cursor-pointer text-xs font-sans text-ink-secondary">
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -795,7 +827,7 @@ export default function ConsultantDashboardPage() {
                             setFilters(prev => ({ ...prev, statuses: next }));
                           }
                         }}
-                        className="rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950"
+                        className="rounded border-line-strong text-ink focus:ring-brand/30"
                       />
                       <span>{st}</span>
                     </label>
@@ -807,12 +839,12 @@ export default function ConsultantDashboardPage() {
 
           {/* 3. PRIORITY */}
           <div className="flex flex-col flex-1 min-w-[140px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
             <Select
               value={filters.priority}
               onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -827,12 +859,12 @@ export default function ConsultantDashboardPage() {
 
           {/* 4. MODULE */}
           <div className="flex flex-col flex-1 min-w-[140px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Module</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Module</span>
             <Select
               value={filters.module}
               onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Module" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -846,12 +878,12 @@ export default function ConsultantDashboardPage() {
 
           {/* 5. CUSTOMER */}
           <div className="flex flex-col flex-1 min-w-[140px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Customer</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Customer</span>
             <Select
               value={filters.customer}
               onValueChange={(val) => setFilters(prev => ({ ...prev, customer: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Customer" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -876,7 +908,7 @@ export default function ConsultantDashboardPage() {
               module: 'All',
               customer: 'All'
             })}
-            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200 shadow-sm"
+            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-surface-subtle hover:text-ink border border-line shadow-card"
           >
             <RotateCcw size={14} />
             Reset
@@ -886,23 +918,23 @@ export default function ConsultantDashboardPage() {
 
         {/* ROW 2 - Custom range From/To inputs */}
         {filters.period === 'Custom' && (
-          <div className="border-t border-zinc-200 mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="border-t border-line mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex flex-col flex-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-950 w-full cursor-pointer font-sans"
+                className="h-9 border border-line rounded-md bg-surface px-3 py-1.5 text-xs text-ink shadow-card focus:outline-none focus:ring-1 focus:ring-brand/30 w-full cursor-pointer font-sans"
               />
             </div>
             <div className="flex flex-col flex-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-950 w-full cursor-pointer font-sans"
+                className="h-9 border border-line rounded-md bg-surface px-3 py-1.5 text-xs text-ink shadow-card focus:outline-none focus:ring-1 focus:ring-brand/30 w-full cursor-pointer font-sans"
               />
             </div>
           </div>
@@ -910,46 +942,46 @@ export default function ConsultantDashboardPage() {
       </Card>
 
       {/* --- WORKING CAPACITY BAR CHART SUMMARY --- */}
-      <Card className="bg-white border border-zinc-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.015)] overflow-hidden">
-        <div className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 divide-y md:divide-y-0 md:divide-x divide-zinc-100 w-full">
+      <Card className="bg-surface border border-line/80 shadow-[0_2px_8px_rgba(0,0,0,0.015)] overflow-hidden">
+        <div className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 divide-y md:divide-y-0 md:divide-x divide-line w-full">
           <div className="space-y-1 pr-6 flex-1">
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-sans">Expected Capacity Hours</div>
-            <div className="text-3xl font-extrabold text-zinc-900 font-mono">
-              {monthlyStats.expectedHours} <span className="text-xs text-zinc-400 font-normal">hours</span>
+            <div className="text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">Expected Capacity Hours</div>
+            <div className="text-3xl font-extrabold text-ink">
+              {monthlyStats.expectedHours} <span className="text-xs text-ink-muted font-normal">hours</span>
             </div>
-            <p className="text-[10px] text-zinc-400 font-sans">
+            <p className="text-[11px] text-ink-muted font-sans">
               Based on {monthlyStats.workingDays} working days (8h/day) · Sunday through Thursday
             </p>
           </div>
 
           <div className="space-y-1 pt-4 md:pt-0 md:pl-8 flex-1">
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-sans">Actual Logged Hours</div>
-            <div className="text-3xl font-extrabold text-zinc-900 font-mono">
-              {monthlyStats.actualHours.toFixed(1)} <span className="text-xs text-zinc-400 font-normal">hours</span>
+            <div className="text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">Actual Logged Hours</div>
+            <div className="text-3xl font-extrabold text-ink">
+              {monthlyStats.actualHours.toFixed(1)} <span className="text-xs text-ink-muted font-normal">hours</span>
             </div>
-            <p className="text-[10px] text-zinc-400 font-sans">
+            <p className="text-[11px] text-ink-muted font-sans">
               Billable: {monthlyStats.billableHours.toFixed(1)}h · Non-Billable: {monthlyStats.nonBillableHours.toFixed(1)}h
             </p>
           </div>
 
           <div className="space-y-1 pt-4 md:pt-0 md:pl-8 flex-1">
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-sans">Remaining Capacity</div>
-            <div className="text-3xl font-extrabold text-zinc-900 font-mono">
-              {monthlyStats.remainingCapacity.toFixed(1)} <span className="text-xs text-zinc-400 font-normal">hours</span>
+            <div className="text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">Remaining Capacity</div>
+            <div className="text-3xl font-extrabold text-ink">
+              {monthlyStats.remainingCapacity.toFixed(1)} <span className="text-xs text-ink-muted font-normal">hours</span>
             </div>
-            <p className="text-[10px] text-zinc-400 font-sans">
+            <p className="text-[11px] text-ink-muted font-sans">
               Unallocated bandwidth in current cycle
             </p>
           </div>
 
           <div className="space-y-2 pt-4 md:pt-0 md:pl-8 flex-1 w-full">
-            <div className="flex justify-between items-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-sans">
+            <div className="flex justify-between items-center text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">
               <span>Monthly Utilization</span>
-              <span className="font-mono text-zinc-800 text-xs">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
+              <span className="text-ink text-xs">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
             </div>
-            <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-surface-subtle h-2 rounded-full overflow-hidden">
               <div 
-                className="h-full rounded-full bg-zinc-900 transition-all duration-500" 
+                className="h-full rounded-full bg-ink transition-all duration-500" 
                 style={{ width: `${monthlyStats.utilizationPercent}%` }}
               />
             </div>
@@ -960,21 +992,21 @@ export default function ConsultantDashboardPage() {
       {/* --- MY TICKET STATUS SUMMARY --- */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">My Ticket Status Summary</h2>
-          <span className="text-[10px] text-zinc-500 font-mono">Real-time Ticket counts across 11 phases</span>
+          <h2 className="text-xs font-bold text-ink-muted uppercase tracking-widest">My Ticket Status Summary</h2>
+          <span className="text-[11px] text-ink-secondary">Real-time Ticket counts across 11 phases</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
           {[
-            { label: 'All Tickets', count: ticketStatusCounts.all, value: 'all', icon: Layers, color: 'bg-zinc-800', textColor: 'text-zinc-800' },
+            { label: 'All Tickets', count: ticketStatusCounts.all, value: 'all', icon: Layers, color: 'bg-zinc-800', textColor: 'text-ink' },
             { label: 'Requirement Gathering', count: ticketStatusCounts.requirementGathering, value: 'requirementGathering', icon: FileText, color: 'bg-blue-500', textColor: 'text-blue-600' },
-            { label: 'Waiting for Hours Approval', count: ticketStatusCounts.waitingHours, value: 'waitingHours', icon: Clock, color: 'bg-amber-500', textColor: 'text-amber-600' },
+            { label: 'Waiting for Hours Approval', count: ticketStatusCounts.waitingHours, value: 'waitingHours', icon: Clock, color: 'bg-amber-500', textColor: 'text-warning' },
             { label: 'In Progress Functional', count: ticketStatusCounts.inProgressFunctional, value: 'inProgressFunctional', icon: Zap, color: 'bg-indigo-500', textColor: 'text-indigo-600' },
             { label: 'In Progress Technical', count: ticketStatusCounts.inProgressTechnical, value: 'inProgressTechnical', icon: Cpu, color: 'bg-purple-500', textColor: 'text-purple-600' },
-            { label: 'Customer Action', count: ticketStatusCounts.customerAction, value: 'customerAction', icon: UserCheck, color: 'bg-orange-500', textColor: 'text-orange-600' },
+            { label: 'Customer Action', count: ticketStatusCounts.customerAction, value: 'customerAction', icon: UserCheck, color: 'bg-orange-500', textColor: 'text-warning' },
             { label: 'On Hold', count: ticketStatusCounts.onHold, value: 'onHold', icon: Hourglass, color: 'bg-slate-500', textColor: 'text-slate-600' },
-            { label: 'Raised to SAP', count: ticketStatusCounts.raisedSap, value: 'raisedSap', icon: ArrowUpRight, color: 'bg-red-500', textColor: 'text-red-600' },
+            { label: 'Raised to SAP', count: ticketStatusCounts.raisedSap, value: 'raisedSap', icon: ArrowUpRight, color: 'bg-red-500', textColor: 'text-critical' },
             { label: 'Request for Closure', count: ticketStatusCounts.requestClosure, value: 'requestClosure', icon: AlertCircle, color: 'bg-teal-500', textColor: 'text-teal-600' },
-            { label: 'Closed', count: ticketStatusCounts.closed, value: 'closed', icon: CheckCircle, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+            { label: 'Closed', count: ticketStatusCounts.closed, value: 'closed', icon: CheckCircle, color: 'bg-emerald-500', textColor: 'text-success' },
             { label: 'Reopened', count: ticketStatusCounts.reopened, value: 'reopened', icon: RotateCcw, color: 'bg-rose-500', textColor: 'text-rose-600' },
           ].map((item, idx) => {
             const IconComponent = item.icon;
@@ -982,18 +1014,18 @@ export default function ConsultantDashboardPage() {
             return (
               <Card 
                 key={idx} 
-                className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-28 hover:shadow-md hover:border-zinc-300 transition duration-200 cursor-pointer"
+                className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-28 hover:shadow-md hover:border-line-strong transition duration-200 cursor-pointer"
               >
-                <div className="flex justify-between items-start text-zinc-400">
-                  <span className="text-[9px] font-bold uppercase tracking-wider line-clamp-1">{item.label}</span>
+                <div className="flex justify-between items-start text-ink-muted">
+                  <span className="text-[11px] font-bold uppercase tracking-wider line-clamp-1">{item.label}</span>
                   <IconComponent size={14} className={item.textColor} />
                 </div>
                 <div className="mt-2 space-y-1.5">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-xl font-bold font-mono text-zinc-950">{item.count}</span>
-                    <span className="text-[9px] text-zinc-450 font-mono">{pct.toFixed(0)}%</span>
+                    <span className="text-xl font-bold text-ink">{item.count}</span>
+                    <span className="text-[11px] text-ink-muted">{pct.toFixed(0)}%</span>
                   </div>
-                  <div className="w-full bg-zinc-100 h-1 rounded-full overflow-hidden">
+                  <div className="w-full bg-surface-subtle h-1 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full ${item.color} transition-all duration-500`} 
                       style={{ width: `${pct}%` }}
@@ -1008,18 +1040,18 @@ export default function ConsultantDashboardPage() {
 
       {/* --- SECTION 6: MY PERFORMANCE COMMAND CENTER --- */}
       <div className="space-y-4">
-        <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">My Performance Command Center</h2>
+        <h2 className="text-xs font-bold text-ink-muted uppercase tracking-widest">My Performance Command Center</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           
           {/* 1. Utilization */}
-          <Card className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-zinc-450">
-              <span className="text-[9px] font-bold uppercase tracking-widest">Utilization Gauge</span>
+          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
+            <div className="flex justify-between items-start text-ink-muted">
+              <span className="text-[11px] font-bold uppercase tracking-widest">Utilization Gauge</span>
               <Clock size={14} />
             </div>
             <div className="mt-2 space-y-1.5">
-              <span className="text-xl font-bold font-mono text-zinc-950">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
-              <div className="w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden">
+              <span className="text-xl font-bold text-ink">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
+              <div className="w-full bg-surface-subtle h-1.5 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full ${monthlyStats.utilizationPercent > 92 ? 'bg-red-500' : 'bg-zinc-800'}`} 
                   style={{ width: `${monthlyStats.utilizationPercent}%` }}
@@ -1029,45 +1061,45 @@ export default function ConsultantDashboardPage() {
           </Card>
 
           {/* 2. Productivity Score */}
-          <Card className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-zinc-450">
-              <span className="text-[9px] font-bold uppercase tracking-widest">Productivity Score</span>
+          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
+            <div className="flex justify-between items-start text-ink-muted">
+              <span className="text-[11px] font-bold uppercase tracking-widest">Productivity Score</span>
               <Award size={14} />
             </div>
             <div className="mt-2">
-              <span className="text-xl font-bold font-mono text-zinc-950">{monthlyStats.productivityScore} <span className="text-[9px] text-zinc-400 font-normal">/ 100</span></span>
-              <span className="text-[9px] text-emerald-600 font-medium block mt-1 font-sans">Quality Grade: Excellent</span>
+              <span className="text-xl font-bold text-ink">{monthlyStats.productivityScore} <span className="text-[11px] text-ink-muted font-normal">/ 100</span></span>
+              <span className="text-[11px] text-success font-medium block mt-1 font-sans">Quality Grade: Excellent</span>
             </div>
           </Card>
 
           {/* 3. SLA Score */}
-          <Card className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-zinc-450">
-              <span className="text-[9px] font-bold uppercase tracking-widest">SLA Score</span>
+          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
+            <div className="flex justify-between items-start text-ink-muted">
+              <span className="text-[11px] font-bold uppercase tracking-widest">SLA Score</span>
               <ShieldCheck size={14} />
             </div>
             <div className="mt-2">
-              <span className="text-xl font-bold font-mono text-emerald-600">{monthlyStats.slaCompliancePercent.toFixed(1)}%</span>
-              <span className="text-[9px] text-zinc-400 block mt-1">Target Threshold: 95%</span>
+              <span className="text-xl font-bold text-success">{monthlyStats.slaCompliancePercent.toFixed(1)}%</span>
+              <span className="text-[11px] text-ink-muted block mt-1">Target Threshold: 95%</span>
             </div>
           </Card>
 
           {/* 4. Resolution Score */}
-          <Card className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-zinc-450">
-              <span className="text-[9px] font-bold uppercase tracking-widest">Resolution Score</span>
+          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
+            <div className="flex justify-between items-start text-ink-muted">
+              <span className="text-[11px] font-bold uppercase tracking-widest">Resolution Score</span>
               <Hourglass size={14} />
             </div>
             <div className="mt-2">
-              <span className="text-xl font-bold font-mono text-zinc-950">{monthlyStats.avgResolutionTime.toFixed(1)}h</span>
-              <span className="text-[9px] text-zinc-400 block mt-1">Avg Resolution Cycle</span>
+              <span className="text-xl font-bold text-ink">{monthlyStats.avgResolutionTime.toFixed(1)}h</span>
+              <span className="text-[11px] text-ink-muted block mt-1">Avg Resolution Cycle</span>
             </div>
           </Card>
 
           {/* 5. Workload Score */}
-          <Card className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-zinc-450">
-              <span className="text-[9px] font-bold uppercase tracking-widest">Workload Score</span>
+          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
+            <div className="flex justify-between items-start text-ink-muted">
+              <span className="text-[11px] font-bold uppercase tracking-widest">Workload Score</span>
               <Layers size={14} />
             </div>
             <div className="mt-2">
@@ -1075,19 +1107,19 @@ export default function ConsultantDashboardPage() {
                 monthlyStats.workloadHealth === 'Overloaded' ? 'bg-red-50 text-red-700' :
                 monthlyStats.workloadHealth === 'Underutilized' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
               }`}>{monthlyStats.workloadHealth}</span>
-              <span className="text-[9px] text-zinc-400 block mt-2">{monthlyStats.ticketsAssigned} assigned backlogs</span>
+              <span className="text-[11px] text-ink-muted block mt-2">{monthlyStats.ticketsAssigned} assigned backlogs</span>
             </div>
           </Card>
 
           {/* 6. Billable Efficiency */}
-          <Card className="bg-white border border-zinc-200/80 p-4 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-zinc-450">
-              <span className="text-[9px] font-bold uppercase tracking-widest">Billable Efficiency</span>
+          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
+            <div className="flex justify-between items-start text-ink-muted">
+              <span className="text-[11px] font-bold uppercase tracking-widest">Billable Efficiency</span>
               <DollarSign size={14} />
             </div>
             <div className="mt-2">
-              <span className="text-xl font-bold font-mono text-indigo-650">{monthlyStats.billableEfficiencyScore.toFixed(0)}%</span>
-              <span className="text-[9px] text-zinc-400 block mt-1">Billable vs Non-Billable</span>
+              <span className="text-xl font-bold text-indigo-650">{monthlyStats.billableEfficiencyScore.toFixed(0)}%</span>
+              <span className="text-[11px] text-ink-muted block mt-1">Billable vs Non-Billable</span>
             </div>
           </Card>
 
@@ -1096,82 +1128,82 @@ export default function ConsultantDashboardPage() {
 
       {/* --- SECTION 1: AMS OPERATIONS & PERFORMANCE AUDIT CENTER --- */}
       <div className="space-y-4">
-        <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">AMS Operations & Performance Audit Center</h2>
+        <h2 className="text-xs font-bold text-ink-muted uppercase tracking-widest">AMS Operations & Performance Audit Center</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* A. Consultant Utilization */}
-          <Card className="bg-white border border-zinc-200/80 shadow-sm p-5 flex flex-col">
-            <div className="text-xs font-bold text-zinc-800 uppercase tracking-wider mb-4 font-sans">A. Consultant Capacity Utilization</div>
+          <Card className="bg-surface border border-line/80 shadow-card p-5 flex flex-col">
+            <div className="text-xs font-bold text-ink uppercase tracking-wider mb-4 font-sans">A. Consultant Capacity Utilization</div>
             <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-zinc-50 p-3 rounded-lg text-center">
-                <span className="text-[9px] text-zinc-450 uppercase font-semibold block leading-none">Available Capacity</span>
-                <span className="text-base font-bold text-zinc-900 block mt-2 font-mono">{monthlyStats.expectedHours}h</span>
+              <div className="bg-surface-muted p-3 rounded-lg text-center">
+                <span className="text-[11px] text-ink-muted uppercase font-semibold block leading-none">Available Capacity</span>
+                <span className="text-base font-bold text-ink block mt-2">{monthlyStats.expectedHours}h</span>
               </div>
-              <div className="bg-zinc-50 p-3 rounded-lg text-center">
-                <span className="text-[9px] text-zinc-450 uppercase font-semibold block leading-none">Planned Effort</span>
-                <span className="text-base font-bold text-zinc-900 block mt-2 font-mono">{monthlyStats.plannedHours}h</span>
+              <div className="bg-surface-muted p-3 rounded-lg text-center">
+                <span className="text-[11px] text-ink-muted uppercase font-semibold block leading-none">Planned Effort</span>
+                <span className="text-base font-bold text-ink block mt-2">{monthlyStats.plannedHours}h</span>
               </div>
-              <div className="bg-zinc-50 p-3 rounded-lg text-center">
-                <span className="text-[9px] text-zinc-450 uppercase font-semibold block leading-none">Actual Logged</span>
-                <span className="text-base font-bold text-zinc-900 block mt-2 font-mono">{monthlyStats.actualHours.toFixed(1)}h</span>
+              <div className="bg-surface-muted p-3 rounded-lg text-center">
+                <span className="text-[11px] text-ink-muted uppercase font-semibold block leading-none">Actual Logged</span>
+                <span className="text-base font-bold text-ink block mt-2">{monthlyStats.actualHours.toFixed(1)}h</span>
               </div>
             </div>
             <div className="space-y-3 text-xs flex-1">
-              <div className="flex justify-between items-center border-b border-zinc-100 pb-2">
-                <span className="text-zinc-500 font-sans">Utilization Ratio</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
+              <div className="flex justify-between items-center border-b border-line pb-2">
+                <span className="text-ink-secondary font-sans">Utilization Ratio</span>
+                <span className="font-bold text-ink">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
               </div>
-              <div className="flex justify-between items-center border-b border-zinc-100 pb-2">
-                <span className="text-zinc-500 font-sans">Billable Hours Share</span>
-                <span className="font-mono font-bold text-emerald-600">{monthlyStats.billableHours.toFixed(1)}h ({monthlyStats.billableEfficiencyScore.toFixed(1)}%)</span>
+              <div className="flex justify-between items-center border-b border-line pb-2">
+                <span className="text-ink-secondary font-sans">Billable Hours Share</span>
+                <span className="font-bold text-success">{monthlyStats.billableHours.toFixed(1)}h ({monthlyStats.billableEfficiencyScore.toFixed(1)}%)</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-zinc-500 font-sans">Non-Billable Administration</span>
-                <span className="font-mono font-bold text-zinc-550">{monthlyStats.nonBillableHours.toFixed(1)}h ({(100 - monthlyStats.billableEfficiencyScore).toFixed(1)}%)</span>
+                <span className="text-ink-secondary font-sans">Non-Billable Administration</span>
+                <span className="font-bold text-ink-secondary">{monthlyStats.nonBillableHours.toFixed(1)}h ({(100 - monthlyStats.billableEfficiencyScore).toFixed(1)}%)</span>
               </div>
             </div>
           </Card>
 
           {/* B. Delivery Performance */}
-          <Card className="bg-white border border-zinc-200/80 shadow-sm p-5 flex flex-col">
-            <div className="text-xs font-bold text-zinc-800 uppercase tracking-wider mb-4 font-sans">B. Delivery Performance & SLAs</div>
+          <Card className="bg-surface border border-line/80 shadow-card p-5 flex flex-col">
+            <div className="text-xs font-bold text-ink uppercase tracking-wider mb-4 font-sans">B. Delivery Performance & SLAs</div>
             <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-zinc-50 p-3 rounded-lg text-center">
-                <span className="text-[9px] text-zinc-450 uppercase font-semibold block leading-none">Closed Work items</span>
-                <span className="text-base font-bold text-zinc-900 block mt-2 font-mono">{monthlyStats.ticketsClosed}</span>
+              <div className="bg-surface-muted p-3 rounded-lg text-center">
+                <span className="text-[11px] text-ink-muted uppercase font-semibold block leading-none">Closed Work items</span>
+                <span className="text-base font-bold text-ink block mt-2">{monthlyStats.ticketsClosed}</span>
               </div>
-              <div className="bg-zinc-50 p-3 rounded-lg text-center">
-                <span className="text-[9px] text-zinc-450 uppercase font-semibold block leading-none">Resolution Speed</span>
-                <span className="text-base font-bold text-zinc-900 block mt-2 font-mono">{monthlyStats.avgResolutionTime.toFixed(1)}h</span>
+              <div className="bg-surface-muted p-3 rounded-lg text-center">
+                <span className="text-[11px] text-ink-muted uppercase font-semibold block leading-none">Resolution Speed</span>
+                <span className="text-base font-bold text-ink block mt-2">{monthlyStats.avgResolutionTime.toFixed(1)}h</span>
               </div>
-              <div className="bg-zinc-50 p-3 rounded-lg text-center">
-                <span className="text-[9px] text-zinc-450 uppercase font-semibold block leading-none">SLA Compliance</span>
-                <span className="text-base font-bold text-emerald-600 block mt-2 font-mono">{monthlyStats.slaCompliancePercent.toFixed(1)}%</span>
+              <div className="bg-surface-muted p-3 rounded-lg text-center">
+                <span className="text-[11px] text-ink-muted uppercase font-semibold block leading-none">SLA Compliance</span>
+                <span className="text-base font-bold text-success block mt-2">{monthlyStats.slaCompliancePercent.toFixed(1)}%</span>
               </div>
             </div>
             <div className="space-y-3 text-xs flex-1">
-              <div className="flex justify-between items-center border-b border-zinc-100 pb-2">
-                <span className="text-zinc-500 font-sans">Reopened Backlogs</span>
-                <span className={`font-mono font-bold ${monthlyStats.ticketsReopened > 0 ? 'text-red-600' : 'text-zinc-900'}`}>{monthlyStats.ticketsReopened}</span>
+              <div className="flex justify-between items-center border-b border-line pb-2">
+                <span className="text-ink-secondary font-sans">Reopened Backlogs</span>
+                <span className={`font-bold ${monthlyStats.ticketsReopened > 0 ? 'text-critical' : 'text-ink'}`}>{monthlyStats.ticketsReopened}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-zinc-100 pb-2">
-                <span className="text-zinc-500 font-sans">Closure Request Approval Rate</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.closureSuccessRate.toFixed(1)}%</span>
+              <div className="flex justify-between items-center border-b border-line pb-2">
+                <span className="text-ink-secondary font-sans">Closure Request Approval Rate</span>
+                <span className="font-bold text-ink">{monthlyStats.closureSuccessRate.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-zinc-500 font-sans">First Response SLA Adherence</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.firstResponseCompliancePercent.toFixed(1)}%</span>
+                <span className="text-ink-secondary font-sans">First Response SLA Adherence</span>
+                <span className="font-bold text-ink">{monthlyStats.firstResponseCompliancePercent.toFixed(1)}%</span>
               </div>
             </div>
           </Card>
 
           {/* C. Customer Portfolio */}
-          <Card className="bg-white border border-zinc-200/80 shadow-sm p-5 flex flex-col">
-            <div className="text-xs font-bold text-zinc-800 uppercase tracking-wider mb-4 font-sans">C. Customer Portfolio Split</div>
+          <Card className="bg-surface border border-line/80 shadow-card p-5 flex flex-col">
+            <div className="text-xs font-bold text-ink uppercase tracking-wider mb-4 font-sans">C. Customer Portfolio Split</div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-zinc-100 text-zinc-400 font-bold uppercase text-[9px]">
+                  <tr className="border-b border-line text-ink-muted font-bold uppercase text-[11px]">
                     <th className="py-2">Client Name</th>
                     <th className="py-2 text-right">Effort (Hours)</th>
                     <th className="py-2 text-right">Total Vol</th>
@@ -1180,12 +1212,12 @@ export default function ConsultantDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
                   {monthlyStats.customerEffort.map((c, i) => (
-                    <tr key={i} className="hover:bg-zinc-50/50">
-                      <td className="py-2.5 font-semibold text-zinc-800">{c.name}</td>
-                      <td className="py-2.5 text-right font-mono text-zinc-900">{c.hours.toFixed(1)}h</td>
-                      <td className="py-2.5 text-right font-mono text-zinc-550">{c.volume}</td>
-                      <td className="py-2.5 text-right font-mono">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${c.open > 2 ? 'bg-red-50 text-red-700' : 'bg-zinc-50 text-zinc-600'}`}>
+                    <tr key={i} className="hover:bg-surface-muted/60">
+                      <td className="py-2.5 font-semibold text-ink">{c.name}</td>
+                      <td className="py-2.5 text-right text-ink">{c.hours.toFixed(1)}h</td>
+                      <td className="py-2.5 text-right text-ink-secondary">{c.volume}</td>
+                      <td className="py-2.5 text-right">
+                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${c.open > 2 ? 'bg-red-50 text-red-700' : 'bg-surface-muted text-ink-secondary'}`}>
                           {c.open}
                         </span>
                       </td>
@@ -1197,12 +1229,12 @@ export default function ConsultantDashboardPage() {
           </Card>
 
           {/* D. Module Portfolio */}
-          <Card className="bg-white border border-zinc-200/80 shadow-sm p-5 flex flex-col">
-            <div className="text-xs font-bold text-zinc-800 uppercase tracking-wider mb-4 font-sans">D. SAP Modules Audit Split</div>
+          <Card className="bg-surface border border-line/80 shadow-card p-5 flex flex-col">
+            <div className="text-xs font-bold text-ink uppercase tracking-wider mb-4 font-sans">D. SAP Modules Audit Split</div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-zinc-100 text-zinc-400 font-bold uppercase text-[9px]">
+                  <tr className="border-b border-line text-ink-muted font-bold uppercase text-[11px]">
                     <th className="py-2">SAP Module</th>
                     <th className="py-2 text-right">Logged Hours</th>
                     <th className="py-2 text-right">Total count</th>
@@ -1211,12 +1243,12 @@ export default function ConsultantDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
                   {monthlyStats.modulePortfolio.map((m, i) => (
-                    <tr key={i} className="hover:bg-zinc-50/50">
-                      <td className="py-2.5 font-mono font-bold text-zinc-700">{m.name}</td>
-                      <td className="py-2.5 text-right font-mono text-zinc-900">{m.hours.toFixed(1)}h</td>
-                      <td className="py-2.5 text-right font-mono text-zinc-550">{m.count}</td>
-                      <td className="py-2.5 text-right font-mono">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${m.open > 2 ? 'bg-amber-50 text-amber-700' : 'bg-zinc-50 text-zinc-600'}`}>
+                    <tr key={i} className="hover:bg-surface-muted/60">
+                      <td className="py-2.5 font-bold text-ink-secondary">{m.name}</td>
+                      <td className="py-2.5 text-right text-ink">{m.hours.toFixed(1)}h</td>
+                      <td className="py-2.5 text-right text-ink-secondary">{m.count}</td>
+                      <td className="py-2.5 text-right">
+                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${m.open > 2 ? 'bg-amber-50 text-amber-700' : 'bg-surface-muted text-ink-secondary'}`}>
                           {m.open}
                         </span>
                       </td>
@@ -1228,29 +1260,29 @@ export default function ConsultantDashboardPage() {
           </Card>
 
           {/* E. Workload Health Slider */}
-          <Card className="bg-white border border-zinc-200/80 shadow-sm p-5 lg:col-span-2 flex flex-col justify-between">
+          <Card className="bg-surface border border-line/80 shadow-card p-5 lg:col-span-2 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider font-sans">E. Workload Allocation Health</span>
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+              <span className="text-xs font-bold text-ink uppercase tracking-wider font-sans">E. Workload Allocation Health</span>
+              <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
                 monthlyStats.workloadHealth === 'Overloaded' ? 'bg-red-50 text-red-700' :
                 monthlyStats.workloadHealth === 'Underutilized' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
               }`}>{monthlyStats.workloadHealth}</span>
             </div>
             
             <div className="relative pt-6 pb-2">
-              <div className="h-2 w-full rounded-full bg-zinc-100 flex relative overflow-hidden">
+              <div className="h-2 w-full rounded-full bg-surface-subtle flex relative overflow-hidden">
                 <div className="w-[70%] h-full bg-amber-200/60" title="Underutilized zone" />
                 <div className="w-[22%] h-full bg-green-200/60" title="Healthy zone" />
                 <div className="w-[8%] h-full bg-red-200/60" title="Overloaded zone" />
               </div>
               {/* Slider Thumb representing actual utilization */}
               <div 
-                className="absolute top-4 w-4 h-4 rounded-full bg-zinc-950 border-2 border-white shadow-md transform -translate-x-1/2 transition-all duration-500"
+                className="absolute top-4 w-4 h-4 rounded-full bg-ink border-2 border-white shadow-md transform -translate-x-1/2 transition-all duration-500"
                 style={{ left: `${monthlyStats.utilizationPercent}%` }}
               />
             </div>
             
-            <div className="flex justify-between text-[10px] text-zinc-400 font-mono mt-1">
+            <div className="flex justify-between text-[11px] text-ink-muted mt-1">
               <span>Underutilized (&lt;70%)</span>
               <span>Optimal Health (70% - 92%)</span>
               <span>Overloaded (&gt;92%)</span>
@@ -1261,13 +1293,13 @@ export default function ConsultantDashboardPage() {
       </div>
 
       {/* --- SECTION 4: MONTHLY Scorecard --- */}
-      <Card className="bg-white border border-zinc-200/80 shadow-sm p-6 space-y-6">
-        <div className="border-b border-zinc-150 pb-3 flex justify-between items-center">
+      <Card className="bg-surface border border-line/80 shadow-card p-6 space-y-6">
+        <div className="border-b border-line pb-3 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-zinc-650" />
-            <h2 className="text-sm font-bold text-zinc-900 tracking-wide font-sans">Monthly Consultant Scorecard</h2>
+            <ShieldCheck size={16} className="text-ink-secondary" />
+            <h2 className="text-sm font-bold text-ink tracking-wide font-sans">Monthly Consultant Scorecard</h2>
           </div>
-          <span className="text-[10px] font-mono text-zinc-500 uppercase">
+          <span className="text-[11px] text-ink-secondary uppercase">
             Period: {filters.period === 'Custom' ? `${filters.dateFrom || 'Start'} to ${filters.dateTo || 'End'}` : filters.period}
           </span>
         </div>
@@ -1275,81 +1307,81 @@ export default function ConsultantDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Effort scorecard */}
           <div className="space-y-3">
-            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Hours & Capacity</h4>
-            <div className="bg-zinc-50/50 rounded-lg p-4 space-y-2.5 text-xs">
+            <h4 className="text-[11px] font-bold text-ink-muted uppercase tracking-widest">Hours & Capacity</h4>
+            <div className="bg-surface-muted/60 rounded-lg p-4 space-y-2.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-zinc-500">Expected Hours</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.expectedHours}h</span>
+                <span className="text-ink-secondary">Expected Hours</span>
+                <span className="font-bold text-ink">{monthlyStats.expectedHours}h</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Actual Logged Hours</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.actualHours.toFixed(1)}h</span>
+                <span className="text-ink-secondary">Actual Logged Hours</span>
+                <span className="font-bold text-ink">{monthlyStats.actualHours.toFixed(1)}h</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Billable Hours Log</span>
-                <span className="font-mono font-bold text-emerald-600">{monthlyStats.billableHours.toFixed(1)}h</span>
+                <span className="text-ink-secondary">Billable Hours Log</span>
+                <span className="font-bold text-success">{monthlyStats.billableHours.toFixed(1)}h</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Non-Billable Administration</span>
-                <span className="font-mono font-bold text-zinc-550">{monthlyStats.nonBillableHours.toFixed(1)}h</span>
+                <span className="text-ink-secondary">Non-Billable Administration</span>
+                <span className="font-bold text-ink-secondary">{monthlyStats.nonBillableHours.toFixed(1)}h</span>
               </div>
-              <div className="flex justify-between pt-1.5 border-t border-zinc-200 font-bold">
-                <span className="text-zinc-800">Utilization Rate</span>
-                <span className="font-mono text-zinc-950">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
+              <div className="flex justify-between pt-1.5 border-t border-line font-bold">
+                <span className="text-ink">Utilization Rate</span>
+                <span className="text-ink">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
               </div>
             </div>
           </div>
 
           {/* Tickets scorecard */}
           <div className="space-y-3">
-            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Ticket Portfolio</h4>
-            <div className="bg-zinc-50/50 rounded-lg p-4 space-y-2.5 text-xs">
+            <h4 className="text-[11px] font-bold text-ink-muted uppercase tracking-widest">Ticket Portfolio</h4>
+            <div className="bg-surface-muted/60 rounded-lg p-4 space-y-2.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-zinc-500">Total Work Items Assigned</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.ticketsAssigned}</span>
+                <span className="text-ink-secondary">Total Work Items Assigned</span>
+                <span className="font-bold text-ink">{monthlyStats.ticketsAssigned}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Tickets Successfully Closed</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.ticketsClosed}</span>
+                <span className="text-ink-secondary">Tickets Successfully Closed</span>
+                <span className="font-bold text-ink">{monthlyStats.ticketsClosed}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Reopened Backlogs</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.ticketsReopened}</span>
+                <span className="text-ink-secondary">Reopened Backlogs</span>
+                <span className="font-bold text-ink">{monthlyStats.ticketsReopened}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Tickets Escalated to SAP</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.ticketsRaisedToSap}</span>
+                <span className="text-ink-secondary">Tickets Escalated to SAP</span>
+                <span className="font-bold text-ink">{monthlyStats.ticketsRaisedToSap}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Customer Action Pending</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.customerActionTickets}</span>
+                <span className="text-ink-secondary">Customer Action Pending</span>
+                <span className="font-bold text-ink">{monthlyStats.customerActionTickets}</span>
               </div>
             </div>
           </div>
 
           {/* Performance scorecard */}
           <div className="space-y-3">
-            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Performance Grades</h4>
-            <div className="bg-zinc-50/50 rounded-lg p-4 space-y-2.5 text-xs">
+            <h4 className="text-[11px] font-bold text-ink-muted uppercase tracking-widest">Performance Grades</h4>
+            <div className="bg-surface-muted/60 rounded-lg p-4 space-y-2.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-zinc-500">SLA Adherence Compliance</span>
-                <span className="font-mono font-bold text-emerald-600">{monthlyStats.slaCompliancePercent.toFixed(1)}%</span>
+                <span className="text-ink-secondary">SLA Adherence Compliance</span>
+                <span className="font-bold text-success">{monthlyStats.slaCompliancePercent.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Average Resolution Speed</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.avgResolutionTime.toFixed(1)}h</span>
+                <span className="text-ink-secondary">Average Resolution Speed</span>
+                <span className="font-bold text-ink">{monthlyStats.avgResolutionTime.toFixed(1)}h</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Average Ticket Age</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.avgTicketAge.toFixed(1)}d</span>
+                <span className="text-ink-secondary">Average Ticket Age</span>
+                <span className="font-bold text-ink">{monthlyStats.avgTicketAge.toFixed(1)}d</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Closure Approval success</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.closureSuccessRate.toFixed(1)}%</span>
+                <span className="text-ink-secondary">Closure Approval success</span>
+                <span className="font-bold text-ink">{monthlyStats.closureSuccessRate.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Ticket Reopen Rate</span>
-                <span className="font-mono font-bold text-zinc-900">{monthlyStats.reopenRate.toFixed(1)}%</span>
+                <span className="text-ink-secondary">Ticket Reopen Rate</span>
+                <span className="font-bold text-ink">{monthlyStats.reopenRate.toFixed(1)}%</span>
               </div>
             </div>
           </div>
@@ -1358,48 +1390,48 @@ export default function ConsultantDashboardPage() {
 
       {/* --- SECTION 7: ACHIEVEMENTS & MILESTONES --- */}
       <div className="space-y-4">
-        <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono font-sans">Achievements & Milestones</h2>
+        <h2 className="text-xs font-bold text-ink-muted uppercase tracking-widest font-sans">Achievements & Milestones</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-          <Card className="bg-white border border-zinc-200/80 p-5 shadow-sm hover:shadow-md transition">
+          <Card className="bg-surface border border-line/80 p-5 shadow-card hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase font-mono block">Productivity Peak</span>
-                <span className="text-sm font-bold text-zinc-800 mt-1 block">Best Resolution Day</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Productivity Peak</span>
+                <span className="text-sm font-bold text-ink mt-1 block">Best Resolution Day</span>
               </div>
-              <CheckCircle className="text-zinc-400" size={16} />
+              <CheckCircle className="text-ink-muted" size={16} />
             </div>
             <div className="mt-4 text-xs">
-              <strong className="text-base text-zinc-900 font-semibold">{isTechnical ? 'Monday' : 'Tuesday'}</strong>
-              <p className="text-[10px] text-zinc-500 mt-1 font-sans">Consistently resolving backlog tasks on this weekday</p>
+              <strong className="text-base text-ink font-semibold">{isTechnical ? 'Monday' : 'Tuesday'}</strong>
+              <p className="text-[11px] text-ink-secondary mt-1 font-sans">Consistently resolving backlog tasks on this weekday</p>
             </div>
           </Card>
 
-          <Card className="bg-white border border-zinc-200/80 p-5 shadow-sm hover:shadow-md transition">
+          <Card className="bg-surface border border-line/80 p-5 shadow-card hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase font-mono block">Workload Record</span>
-                <span className="text-sm font-bold text-zinc-800 mt-1 block">Highest Ticket Closure Week</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Workload Record</span>
+                <span className="text-sm font-bold text-ink mt-1 block">Highest Ticket Closure Week</span>
               </div>
-              <TrendingUp className="text-zinc-400" size={16} />
+              <TrendingUp className="text-ink-muted" size={16} />
             </div>
             <div className="mt-4 text-xs">
-              <strong className="text-base text-zinc-900 font-semibold">Week 2 ({monthlyStats.ticketsClosed + 2} tickets)</strong>
-              <p className="text-[10px] text-zinc-500 mt-1 font-sans">Record weekly closure volume recorded in current quarter</p>
+              <strong className="text-base text-ink font-semibold">Week 2 ({monthlyStats.ticketsClosed + 2} tickets)</strong>
+              <p className="text-[11px] text-ink-secondary mt-1 font-sans">Record weekly closure volume recorded in current quarter</p>
             </div>
           </Card>
 
-          <Card className="bg-white border border-zinc-200/80 p-5 shadow-sm hover:shadow-md transition">
+          <Card className="bg-surface border border-line/80 p-5 shadow-card hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase font-mono block">Customer Focus</span>
-                <span className="text-sm font-bold text-zinc-800 mt-1 block">Longest Customer Support Relationship</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Customer Focus</span>
+                <span className="text-sm font-bold text-ink mt-1 block">Longest Customer Support Relationship</span>
               </div>
-              <Building2 className="text-zinc-400" size={16} />
+              <Building2 className="text-ink-muted" size={16} />
             </div>
             <div className="mt-4 text-xs">
-              <strong className="text-base text-zinc-900 font-semibold">Apex Global Industries</strong>
-              <p className="text-[10px] text-zinc-500 mt-1 font-sans">6 months of continuous SAP module SLA compliance</p>
+              <strong className="text-base text-ink font-semibold">Apex Global Industries</strong>
+              <p className="text-[11px] text-ink-secondary mt-1 font-sans">6 months of continuous SAP module SLA compliance</p>
             </div>
           </Card>
 
@@ -1456,14 +1488,14 @@ export default function ConsultantDashboardPage() {
 
         return (
           <div className="space-y-4">
-            <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Upcoming Commitments</h2>
+            <h2 className="text-xs font-bold text-ink-muted uppercase tracking-widest">Upcoming Commitments</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
               {/* SLA Due This Week */}
-              <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
-                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                  <span className="text-xs font-bold text-zinc-800 font-sans">SLA Due This Week</span>
-                  <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
+              <Card className="bg-surface border border-line/80 shadow-card p-4">
+                <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                  <span className="text-xs font-bold text-ink font-sans">SLA Due This Week</span>
+                  <Badge className="bg-surface-muted text-ink-secondary border-line hover:bg-surface-muted text-[11px]">
                     {slaDueThisWeek.length} Tickets
                   </Badge>
                 </div>
@@ -1477,29 +1509,29 @@ export default function ConsultantDashboardPage() {
                     return (
                       <div key={t.id} className={`flex justify-between items-center py-1.5 ${borderClass}`}>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
-                          {isEscalated && <Badge variant="destructive" className="text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
+                          <Link href={`/consultant/tickets/${t.id}`} className="text-ink font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
+                          {isEscalated && <Badge variant="destructive" className="text-[11px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
                           {slaInfo && (
-                            <Badge className={`text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
+                            <Badge className={`text-[11px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
                               slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
                             }`}>{slaInfo.label}</Badge>
                           )}
                         </div>
-                        <span className="text-red-655 font-bold shrink-0">{getSlaHoursLeft(t.slaDueAt)}</span>
+                        <span className="text-critical font-bold shrink-0">{getSlaHoursLeft(t.slaDueAt)}</span>
                       </div>
                     );
                   })}
                   {slaDueThisWeek.length === 0 && (
-                    <span className="text-zinc-400 italic">No SLAs due this week</span>
+                    <span className="text-ink-muted italic">No SLAs due this week</span>
                   )}
                 </div>
               </Card>
 
               {/* Customer Action Pending */}
-              <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
-                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                  <span className="text-xs font-bold text-zinc-800 font-sans">Customer Action Pending</span>
-                  <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
+              <Card className="bg-surface border border-line/80 shadow-card p-4">
+                <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                  <span className="text-xs font-bold text-ink font-sans">Customer Action Pending</span>
+                  <Badge className="bg-surface-muted text-ink-secondary border-line hover:bg-surface-muted text-[11px]">
                     {customerActionPendingTickets.length} Tickets
                   </Badge>
                 </div>
@@ -1513,29 +1545,29 @@ export default function ConsultantDashboardPage() {
                     return (
                       <div key={t.id} className={`flex justify-between items-center py-1.5 ${borderClass}`}>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
-                          {isEscalated && <Badge variant="destructive" className="text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
+                          <Link href={`/consultant/tickets/${t.id}`} className="text-ink font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
+                          {isEscalated && <Badge variant="destructive" className="text-[11px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
                           {slaInfo && (
-                            <Badge className={`text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
+                            <Badge className={`text-[11px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
                               slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
                             }`}>{slaInfo.label}</Badge>
                           )}
-                          <span className="text-zinc-550 truncate max-w-[120px]">{t.title}</span>
+                          <span className="text-ink-secondary truncate max-w-[120px]">{t.title}</span>
                         </div>
                       </div>
                     );
                   })}
                   {customerActionPendingTickets.length === 0 && (
-                    <span className="text-zinc-400 italic">No actions pending client</span>
+                    <span className="text-ink-muted italic">No actions pending client</span>
                   )}
                 </div>
               </Card>
 
               {/* Closure Approvals */}
-              <Card className="bg-white border border-zinc-200/80 shadow-sm p-4">
-                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                  <span className="text-xs font-bold text-zinc-800 font-sans">Closure Awaiting Approval</span>
-                  <Badge className="bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-50 text-[10px] font-mono">
+              <Card className="bg-surface border border-line/80 shadow-card p-4">
+                <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                  <span className="text-xs font-bold text-ink font-sans">Closure Awaiting Approval</span>
+                  <Badge className="bg-surface-muted text-ink-secondary border-line hover:bg-surface-muted text-[11px]">
                     {closureAwaitingApproval.length} Requests
                   </Badge>
                 </div>
@@ -1549,20 +1581,20 @@ export default function ConsultantDashboardPage() {
                     return (
                       <div key={t.id} className={`flex justify-between items-center py-1.5 ${borderClass}`}>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <Link href={`/consultant/tickets/${t.id}`} className="font-mono text-zinc-900 font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
-                          {isEscalated && <Badge variant="destructive" className="text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
+                          <Link href={`/consultant/tickets/${t.id}`} className="text-ink font-bold hover:underline shrink-0">{t.ticketNumber || t.id}</Link>
+                          {isEscalated && <Badge variant="destructive" className="text-[11px] px-1.5 py-0 font-bold uppercase leading-none h-4">Escalated</Badge>}
                           {slaInfo && (
-                            <Badge className={`text-[8px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
+                            <Badge className={`text-[11px] px-1.5 py-0 font-bold uppercase leading-none h-4 ${
                               slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
                             }`}>{slaInfo.label}</Badge>
                           )}
-                          <span className="text-zinc-550 truncate max-w-[120px]">{t.title}</span>
+                          <span className="text-ink-secondary truncate max-w-[120px]">{t.title}</span>
                         </div>
                       </div>
                     );
                   })}
                   {closureAwaitingApproval.length === 0 && (
-                    <span className="text-zinc-400 italic">No closures pending approval</span>
+                    <span className="text-ink-muted italic">No closures pending approval</span>
                   )}
                 </div>
               </Card>
@@ -1574,12 +1606,12 @@ export default function ConsultantDashboardPage() {
 
       {/* --- ADVANCED ANALYTICS TABBED CHARTS --- */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-zinc-200 pb-3">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-line pb-3">
           <div>
-            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-sans">Advanced Analytics Hub</h3>
-            <p className="text-zinc-500 text-[11px] mt-0.5">Statistical performance charts for the selected timeline</p>
+            <h3 className="text-sm font-bold text-ink uppercase tracking-wider font-sans">Advanced Analytics Hub</h3>
+            <p className="text-ink-secondary text-[11px] mt-0.5">Statistical performance charts for the selected timeline</p>
           </div>
-          <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
+          <div className="flex bg-surface-subtle p-0.5 rounded-lg border border-line">
             {[
               { id: 'volume', label: 'Ticket Volume' },
               { id: 'effort', label: 'Effort Analytics' },
@@ -1589,10 +1621,10 @@ export default function ConsultantDashboardPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveChartTab(tab.id as any)}
-                className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
+                className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
                   activeChartTab === tab.id
-                    ? 'bg-white text-zinc-950 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-800'
+                    ? 'bg-surface text-ink shadow-card'
+                    : 'text-ink-secondary hover:text-ink'
                 }`}
               >
                 {tab.label}
@@ -1605,9 +1637,9 @@ export default function ConsultantDashboardPage() {
           {activeChartTab === 'volume' && (
             <>
               {/* Chart 1: Ticket Trends */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Monthly Ticket Volume Trend</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Comparison of created, closed and reopened tickets</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Monthly Ticket Volume Trend</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Comparison of created, closed and reopened tickets</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyTicketTrend}>
@@ -1623,9 +1655,9 @@ export default function ConsultantDashboardPage() {
               </Card>
 
               {/* Chart 2: SLA & Quality Trends */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">SLA Adherence Compliance</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Historical monthly SLA compliance rates</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">SLA Adherence Compliance</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Historical monthly SLA compliance rates</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyProductivityTrend}>
@@ -1639,9 +1671,9 @@ export default function ConsultantDashboardPage() {
               </Card>
 
               {/* Chart 3: Ticket Resolution Cycle Time */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Resolution Cycle Speed</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Average hours required to resolve a ticket</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Resolution Cycle Speed</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Average hours required to resolve a ticket</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyProductivityTrend}>
@@ -1659,9 +1691,9 @@ export default function ConsultantDashboardPage() {
           {activeChartTab === 'effort' && (
             <>
               {/* Chart 4: Actual Hours Trend */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Monthly Logged Hours Trend</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Efforts distribution across billable and admin tasks</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Monthly Logged Hours Trend</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Efforts distribution across billable and admin tasks</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={monthlyHoursTrend}>
@@ -1677,9 +1709,9 @@ export default function ConsultantDashboardPage() {
               </Card>
 
               {/* Chart 5: Customer Hours Share */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Efforts by Customer</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Actual logged hours per organization</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Efforts by Customer</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Actual logged hours per organization</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyStats.customerEffort} layout="vertical" margin={{ left: 10, right: 10 }}>
@@ -1693,9 +1725,9 @@ export default function ConsultantDashboardPage() {
               </Card>
 
               {/* Chart 6: Module Hours Share */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Efforts by SAP Module</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Actual logged hours distributed by module</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Efforts by SAP Module</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Actual logged hours distributed by module</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyStats.modulePortfolio} layout="vertical" margin={{ left: 10, right: 10 }}>
@@ -1713,9 +1745,9 @@ export default function ConsultantDashboardPage() {
           {activeChartTab === 'portfolio' && (
             <>
               {/* Chart 7: Customer Ticket Distribution */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Ticket Volume by Customer</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Total assigned ticket split by customer</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Ticket Volume by Customer</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Total assigned ticket split by customer</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -1732,9 +1764,9 @@ export default function ConsultantDashboardPage() {
               </Card>
 
               {/* Chart 8: Module Ticket Distribution */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Ticket count by SAP Module</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Total assigned ticket split by SAP module</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Ticket count by SAP Module</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Total assigned ticket split by SAP module</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -1751,9 +1783,9 @@ export default function ConsultantDashboardPage() {
               </Card>
 
               {/* Chart 9: Active Customer Backlog */}
-              <Card className="bg-white border border-zinc-200/80 rounded-xl p-5 h-[320px] flex flex-col hover:shadow-md transition">
-                <CardTitle className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Open Tickets by Customer</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-400 mt-0.5 mb-4">Active open backlog items per organization</CardDescription>
+              <Card className="bg-surface border border-line/80 rounded-lg p-5 h-[320px] flex flex-col hover:shadow-md transition">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Open Tickets by Customer</CardTitle>
+                <CardDescription className="text-[11px] text-ink-muted mt-0.5 mb-4">Active open backlog items per organization</CardDescription>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyStats.customerEffort} margin={{ bottom: 10 }}>
@@ -1771,13 +1803,13 @@ export default function ConsultantDashboardPage() {
       </div>
 
       {/* --- SECTION 9: PROFILE & EMPLOYEE SUMMARY --- */}
-      <Card className="bg-white border border-zinc-200 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] p-6 space-y-6">
-        <div className="border-b border-zinc-150 pb-3 flex justify-between items-center flex-wrap gap-3">
+      <Card className="bg-surface border border-line rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] p-6 space-y-6">
+        <div className="border-b border-line pb-3 flex justify-between items-center flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <UserCheck size={18} className="text-zinc-850" />
-            <h2 className="text-base font-bold text-zinc-900 tracking-wide font-sans">Consultant Employment Summary</h2>
+            <UserCheck size={18} className="text-ink" />
+            <h2 className="text-base font-bold text-ink tracking-wide font-sans">Consultant Employment Summary</h2>
           </div>
-          <Badge className="bg-zinc-100 text-zinc-800 border-zinc-200 hover:bg-zinc-100 text-xs font-sans px-2.5 py-0.5 rounded">
+          <Badge className="bg-surface-subtle text-ink border-line hover:bg-surface-subtle text-xs font-sans px-2.5 py-0.5 rounded">
             Security Clearance Level: L2 Specialist
           </Badge>
         </div>
@@ -1785,90 +1817,90 @@ export default function ConsultantDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Col 1: Personal Info */}
           <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Personal Profile</h4>
-            <div className="space-y-2.5 text-xs text-zinc-700 font-sans">
+            <h4 className="text-[11px] font-bold text-ink-muted uppercase tracking-widest">Personal Profile</h4>
+            <div className="space-y-2.5 text-xs text-ink-secondary font-sans">
               <div className="flex items-center gap-2.5">
-                <User size={13} className="text-zinc-500" />
-                <span>Name: <strong className="text-zinc-900 font-semibold">{consultantName}</strong></span>
+                <User size={13} className="text-ink-secondary" />
+                <span>Name: <strong className="text-ink font-semibold">{consultantName}</strong></span>
               </div>
               <div className="flex items-center gap-2.5">
-                <ShieldCheck size={13} className="text-zinc-500" />
-                <span>Employee ID: <strong className="text-zinc-900 font-mono">{isTechnical ? 'EMP-SAP-112' : 'EMP-SAP-094'}</strong></span>
+                <ShieldCheck size={13} className="text-ink-secondary" />
+                <span>Employee ID: <strong className="text-ink">{isTechnical ? 'EMP-SAP-112' : 'EMP-SAP-094'}</strong></span>
               </div>
               <div className="flex items-center gap-2.5">
-                <Mail size={13} className="text-zinc-500" />
-                <span>Email: <strong className="text-zinc-900">{consultantEmail}</strong></span>
+                <Mail size={13} className="text-ink-secondary" />
+                <span>Email: <strong className="text-ink">{consultantEmail}</strong></span>
               </div>
               <div className="flex items-center gap-2.5">
-                <Phone size={13} className="text-zinc-500" />
-                <span>Phone: <strong className="text-zinc-900 font-mono">{consultantPhone}</strong></span>
+                <Phone size={13} className="text-ink-secondary" />
+                <span>Phone: <strong className="text-ink">{consultantPhone}</strong></span>
               </div>
             </div>
           </div>
 
           {/* Col 2: Professional Info */}
           <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Professional Profile</h4>
-            <div className="space-y-2.5 text-xs text-zinc-700 font-sans">
+            <h4 className="text-[11px] font-bold text-ink-muted uppercase tracking-widest">Professional Profile</h4>
+            <div className="space-y-2.5 text-xs text-ink-secondary font-sans">
               <div className="flex items-center gap-2.5">
-                <Award size={13} className="text-zinc-500" />
-                <span>Practice: <strong className="text-zinc-900">{consultantType} Consulting</strong></span>
+                <Award size={13} className="text-ink-secondary" />
+                <span>Practice: <strong className="text-ink">{consultantType} Consulting</strong></span>
               </div>
               <div className="flex items-center gap-2.5">
-                <Layers size={13} className="text-zinc-500" />
-                <span>SAP Modules: <strong className="text-zinc-900 font-mono">
+                <Layers size={13} className="text-ink-secondary" />
+                <span>SAP Modules: <strong className="text-ink">
                   {consultantModules.length > 0 ? consultantModules.join(', ') : 'N/A'}
                 </strong></span>
               </div>
               <div className="flex items-center gap-2.5">
-                <UserCheck size={13} className="text-zinc-500" />
-                <span>Reporting Manager: <strong className="text-zinc-900">Marcus Vance (AMS Lead)</strong></span>
+                <UserCheck size={13} className="text-ink-secondary" />
+                <span>Reporting Manager: <strong className="text-ink">Marcus Vance (AMS Lead)</strong></span>
               </div>
               <div className="flex items-center gap-2.5">
-                <Calendar size={13} className="text-zinc-500" />
-                <span>Joining Date: <strong className="text-zinc-900">{isTechnical ? 'October 15, 2025' : 'December 1, 2025'}</strong></span>
+                <Calendar size={13} className="text-ink-secondary" />
+                <span>Joining Date: <strong className="text-ink">{isTechnical ? 'October 15, 2025' : 'December 1, 2025'}</strong></span>
               </div>
             </div>
           </div>
 
           {/* Col 3: Current Month Performance */}
           <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono font-sans">Timeline Audit Summary</h4>
+            <h4 className="text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">Timeline Audit Summary</h4>
             <div className="grid grid-cols-2 gap-3 text-center text-xs">
-              <div className="bg-zinc-50 border border-zinc-200/60 rounded p-2.5">
-                <span className="text-[8px] text-zinc-500 uppercase font-mono block">Actual Hours</span>
-                <span className="text-sm font-bold text-zinc-900 mt-1 block font-mono">{monthlyStats.actualHours.toFixed(1)}h</span>
+              <div className="bg-surface-muted border border-line/60 rounded p-2.5">
+                <span className="text-[11px] text-ink-secondary uppercase block">Actual Hours</span>
+                <span className="text-sm font-bold text-ink mt-1 block">{monthlyStats.actualHours.toFixed(1)}h</span>
               </div>
-              <div className="bg-zinc-50 border border-zinc-200/60 rounded p-2.5">
-                <span className="text-[8px] text-zinc-550 uppercase font-mono block">Billable Hours</span>
-                <span className="text-sm font-bold text-emerald-600 mt-1 block font-mono">{monthlyStats.billableHours.toFixed(1)}h</span>
+              <div className="bg-surface-muted border border-line/60 rounded p-2.5">
+                <span className="text-[11px] text-ink-secondary uppercase block">Billable Hours</span>
+                <span className="text-sm font-bold text-success mt-1 block">{monthlyStats.billableHours.toFixed(1)}h</span>
               </div>
-              <div className="bg-zinc-50 border border-zinc-200/60 rounded p-2.5">
-                <span className="text-[8px] text-zinc-550 uppercase font-mono block">Utilization %</span>
-                <span className="text-sm font-bold text-zinc-900 mt-1 block font-mono">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
+              <div className="bg-surface-muted border border-line/60 rounded p-2.5">
+                <span className="text-[11px] text-ink-secondary uppercase block">Utilization %</span>
+                <span className="text-sm font-bold text-ink mt-1 block">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
               </div>
-              <div className="bg-zinc-50 border border-zinc-200/60 rounded p-2.5">
-                <span className="text-[8px] text-zinc-550 uppercase font-mono block">Tickets Closed</span>
-                <span className="text-sm font-bold text-zinc-900 mt-1 block font-mono">{monthlyStats.ticketsClosed}</span>
+              <div className="bg-surface-muted border border-line/60 rounded p-2.5">
+                <span className="text-[11px] text-ink-secondary uppercase block">Tickets Closed</span>
+                <span className="text-sm font-bold text-ink mt-1 block">{monthlyStats.ticketsClosed}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Quick Report Download Actions */}
-        <div className="border-t border-zinc-150 pt-4 flex flex-wrap gap-3 justify-end">
+        <div className="border-t border-line pt-4 flex flex-wrap gap-3 justify-end">
           <Button onClick={handleDownloadMonthlyReport} variant="outline"
-            className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer">
+            className="text-[11px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-line-strong hover:bg-surface-muted text-ink-secondary cursor-pointer">
             <Download size={12} />
             Download Monthly Report
           </Button>
           <Button onClick={handleDownloadPerformanceReport} variant="outline"
-            className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer">
+            className="text-[11px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-line-strong hover:bg-surface-muted text-ink-secondary cursor-pointer">
             <Download size={12} />
             Download Performance Report
           </Button>
           <Button onClick={handleDownloadUtilizationReport} variant="outline"
-            className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer">
+            className="text-[11px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-line-strong hover:bg-surface-muted text-ink-secondary cursor-pointer">
             <Download size={12} />
             Download Utilization Report
           </Button>

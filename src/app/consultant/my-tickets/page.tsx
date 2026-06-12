@@ -61,7 +61,7 @@ import { statusConfig, priorityConfig } from '../../../lib/status-theme';
 function StatusBadge({ status }: { status: string }) {
   const cfg = statusConfig[status] || { label: status, color: 'text-slate-600 bg-slate-50 border-slate-200' };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[9px] font-bold uppercase font-mono ${cfg.color}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[11px] font-bold uppercase ${cfg.color}`}>
       {cfg.label}
     </span>
   );
@@ -70,7 +70,7 @@ function StatusBadge({ status }: { status: string }) {
 function PriorityBadge({ priority }: { priority: string }) {
   const cfg = priorityConfig[priority] || priorityConfig['Low'];
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-bold font-mono ${cfg.color}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-bold ${cfg.color}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
       {cfg.label}
     </span>
@@ -82,9 +82,9 @@ function SLAIndicator({ slaDueAt }: { slaDueAt: string }) {
   const due = new Date(slaDueAt).getTime();
   const hoursLeft = (due - now) / (1000 * 60 * 60);
 
-  if (hoursLeft < 0) return <span className="text-[9px] font-bold text-red-655 font-mono flex items-center gap-1"><AlertTriangle size={10} /> SLA Breached</span>;
-  if (hoursLeft < 4)  return <span className="text-[9px] font-bold text-amber-600 font-mono flex items-center gap-1"><Timer size={10} /> {hoursLeft.toFixed(1)}h left</span>;
-  return <span className="text-[9px] text-slate-400 font-mono flex items-center gap-1"><Clock size={10} /> {new Date(slaDueAt).toLocaleDateString()}</span>;
+  if (hoursLeft < 0) return <span className="text-[11px] font-bold text-critical flex items-center gap-1"><AlertTriangle size={10} /> SLA Breached</span>;
+  if (hoursLeft < 4)  return <span className="text-[11px] font-bold text-warning flex items-center gap-1"><Timer size={10} /> {hoursLeft.toFixed(1)}h left</span>;
+  return <span className="text-[11px] text-slate-400 flex items-center gap-1"><Clock size={10} /> {new Date(slaDueAt).toLocaleDateString()}</span>;
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -494,7 +494,7 @@ export default function ConsultantMyTicketsPage() {
             <MoreHorizontal size={14} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52 text-xs font-mono">
+        <DropdownMenuContent align="end" className="w-52 text-xs">
           <DropdownMenuItem
             className="cursor-pointer font-semibold"
             onClick={() => { setActiveTicketId(t.id); setStatusValue(t.status); setActiveAction('status'); }}>
@@ -572,18 +572,18 @@ export default function ConsultantMyTicketsPage() {
         
         const isEscAck = t.isEscalated && t.escalationAcknowledgedAt;
         return (
-          <Card key={t.id} className={`bg-white border border-zinc-200/80 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden ${isLocked ? 'border-zinc-300 bg-zinc-50/50 shadow-none' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
+          <Card key={t.id} className={`bg-surface border border-line/80 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden ${isLocked ? 'border-line-strong bg-surface-muted/60 shadow-none' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
             <div className="p-5 flex flex-col gap-4 flex-1">
               {/* Header row: ID, Priority, Status, Age */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${priCfg.dot} ${t.priority === 'Critical' ? 'animate-pulse' : ''}`} />
-                  <span className="text-[11px] font-bold text-zinc-900 font-mono tracking-wider">{t.ticketNumber || t.id}</span>
-                  {isLocked && <Lock size={10} className="text-zinc-400" />}
+                  <span className="text-[11px] font-bold text-ink tracking-wider">{t.ticketNumber || t.id}</span>
+                  {isLocked && <Lock size={10} className="text-ink-muted" />}
                 </div>
                 <div className="flex items-center gap-1.5">
                   {isEscAck && (
-                    <Badge className="bg-red-150 text-red-700 border-red-200 font-bold text-[7px] py-0 px-1 uppercase leading-none h-4">TOP PRIORITY</Badge>
+                    <Badge className="bg-red-150 text-red-700 border-red-200 font-bold text-[11px] py-0 px-1 uppercase leading-none h-4">TOP PRIORITY</Badge>
                   )}
                   <StatusBadge status={t.status} />
                   <PriorityBadge priority={t.priority} />
@@ -592,76 +592,76 @@ export default function ConsultantMyTicketsPage() {
 
               {/* Body: Subject & Description */}
               <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
-                  <Building2 size={12} className="text-zinc-400 shrink-0" />
+                <div className="flex items-center gap-1.5 text-xs text-ink-muted font-medium">
+                  <Building2 size={12} className="text-ink-muted shrink-0" />
                   <span className="truncate">{t.organization}</span>
                 </div>
                 
                 <Link href={`/consultant/tickets/${t.id}`} className="group">
-                  <h3 className="text-xs font-bold text-zinc-900 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+                  <h3 className="text-xs font-bold text-ink leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
                     {t.title}
                   </h3>
                 </Link>
-                <p className="text-[11px] text-zinc-500 line-clamp-3 leading-relaxed">
+                <p className="text-[11px] text-ink-secondary line-clamp-3 leading-relaxed">
                   {t.description}
                 </p>
               </div>
 
               {/* Badges: SAP Modules, Ticket Type */}
               <div className="flex flex-wrap items-center gap-1.5">
-                <Badge variant="outline" className="text-[8px] font-bold uppercase font-mono px-1.5 py-0.5 bg-zinc-50 text-zinc-600 border-zinc-200 hover:bg-zinc-50">
+                <Badge variant="outline" className="text-[11px] font-bold uppercase px-1.5 py-0.5 bg-surface-muted text-ink-secondary border-line hover:bg-surface-muted">
                   {t.sapModule}
                 </Badge>
-                <Badge variant="outline" className="text-[8px] font-bold uppercase font-mono px-1.5 py-0.5 bg-indigo-50/50 text-indigo-700 border-indigo-100 hover:bg-indigo-50/50">
+                <Badge variant="outline" className="text-[11px] font-bold uppercase px-1.5 py-0.5 bg-indigo-50/50 text-indigo-700 border-indigo-100 hover:bg-indigo-50/50">
                   {t.ticketType || 'Incident'}
                 </Badge>
               </div>
 
               {/* Hours (Role Specific) */}
-              <div className="bg-zinc-50 border border-zinc-150 p-3 rounded-xl flex items-center justify-between text-xs font-mono">
+              <div className="bg-surface-muted border border-line p-3 rounded-lg flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block">{consultantType} Est</span>
-                  <strong className="text-zinc-950 text-sm mt-0.5 block">{estHours.toFixed(1)} h</strong>
+                  <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider block">{consultantType} Est</span>
+                  <strong className="text-ink text-sm mt-0.5 block">{estHours.toFixed(1)} h</strong>
                 </div>
-                <div className="border-l border-zinc-200 h-8 mx-2" />
+                <div className="border-l border-line h-8 mx-2" />
                 <div>
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block">{consultantType} Act</span>
-                  <strong className="text-emerald-600 text-sm mt-0.5 block">{actHours.toFixed(1)} h</strong>
+                  <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider block">{consultantType} Act</span>
+                  <strong className="text-success text-sm mt-0.5 block">{actHours.toFixed(1)} h</strong>
                 </div>
               </div>
 
               {/* Progress Bar (Hours execution ratio) */}
               {estHours > 0 && (
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[9px] font-mono text-zinc-400">
+                  <div className="flex justify-between text-[11px] text-ink-muted">
                     <span>Effort Logged</span>
                     <span>{completionPct}%</span>
                   </div>
-                  <div className="w-full bg-zinc-100 rounded-full h-1 overflow-hidden">
+                  <div className="w-full bg-surface-subtle rounded-full h-1 overflow-hidden">
                     <div className={`h-full rounded-full ${completionPct > 100 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, completionPct)}%` }} />
                   </div>
                 </div>
               )}
 
               {/* Footer: Created/Updated Date, Comment/Attachment count, Actions */}
-              <div className="border-t border-zinc-100 pt-3 flex items-center justify-between text-[9px] font-mono text-zinc-400 mt-auto">
-                <div className="space-y-0.5 text-zinc-450">
+              <div className="border-t border-line pt-3 flex items-center justify-between text-[11px] text-ink-muted mt-auto">
+                <div className="space-y-0.5 text-ink-muted">
                   <div>Age: <strong>{age}d old</strong></div>
                   <div>Updated: <strong>{new Date(t.updatedAt).toLocaleDateString()}</strong></div>
                 </div>
                 
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1" title="Comments count">
-                    <MessageSquare size={11} className="text-zinc-400" />
+                    <MessageSquare size={11} className="text-ink-muted" />
                     <span>{t.comments?.length || 0}</span>
                   </div>
                   <div className="flex items-center gap-1" title="Attachments count">
-                    <Paperclip size={11} className="text-zinc-400" />
+                    <Paperclip size={11} className="text-ink-muted" />
                     <span>{t.attachments?.length || 0}</span>
                   </div>
-                  <div className="flex items-center gap-1 border-l border-zinc-200 pl-3">
+                  <div className="flex items-center gap-1 border-l border-line pl-3">
                     <Link href={`/consultant/tickets/${t.id}`}>
-                      <Button size="icon" variant="outline" className="h-7 w-7 text-zinc-600 cursor-pointer" title="View details">
+                      <Button size="icon" variant="outline" className="h-7 w-7 text-ink-secondary cursor-pointer" title="View details">
                         <Eye size={12} />
                       </Button>
                     </Link>
@@ -675,7 +675,7 @@ export default function ConsultantMyTicketsPage() {
       })}
 
       {paginatedTickets.length === 0 && (
-        <div className="md:col-span-2 xl:col-span-3 py-20 flex flex-col items-center justify-center text-zinc-400 bg-white border border-zinc-250 rounded-2xl">
+        <div className="md:col-span-2 xl:col-span-3 py-20 flex flex-col items-center justify-center text-ink-muted bg-surface border border-line rounded-2xl">
           <Flag size={36} className="mb-3 opacity-30" />
           <p className="text-sm font-semibold">No tickets match your filters.</p>
           <p className="text-xs mt-1">Try resetting the status/priority filter or search query.</p>
@@ -686,12 +686,12 @@ export default function ConsultantMyTicketsPage() {
 
   // ── COMPACT LIST VIEW ──
   const CompactListView = () => (
-    <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+    <div className="bg-surface border border-line rounded-lg overflow-hidden shadow-card">
       <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
         <Table className="w-full">
-          <TableHeader className="bg-zinc-50/70 sticky top-0 z-10 border-b border-zinc-200">
+          <TableHeader className="bg-surface-muted/70 sticky top-0 z-10 border-b border-line">
             <TableRow>
-              <TableHead className="w-[100px] font-mono">Ticket ID</TableHead>
+              <TableHead className="w-[100px]">Ticket ID</TableHead>
               <TableHead className="w-[150px]">Customer</TableHead>
               <TableHead className="min-w-[200px]">Subject</TableHead>
               <TableHead className="w-[80px]">Modules</TableHead>
@@ -709,30 +709,30 @@ export default function ConsultantMyTicketsPage() {
               const { estHours, actHours, isLocked, age } = getTicketMeta(t);
               const isEscAck = t.isEscalated && t.escalationAcknowledgedAt;
               return (
-                <TableRow key={t.id} className={`hover:bg-zinc-50/40 transition-colors ${isLocked ? 'bg-zinc-50/25' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
-                  <TableCell className="font-mono font-bold text-zinc-500 whitespace-nowrap">
+                <TableRow key={t.id} className={`hover:bg-surface-muted/40 transition-colors ${isLocked ? 'bg-surface-muted/25' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
+                  <TableCell className="font-bold text-ink-secondary whitespace-nowrap">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span>{t.ticketNumber || t.id}</span>
                       {isEscAck && (
-                        <Badge variant="destructive" className="text-[8px] font-bold py-0.5 px-1.5 uppercase leading-none h-4">
+                        <Badge variant="destructive" className="text-[11px] font-bold py-0.5 px-1.5 uppercase leading-none h-4">
                           TOP PRIORITY
                         </Badge>
                       )}
-                      {isLocked && <Lock size={9} className="text-zinc-400" />}
+                      {isLocked && <Lock size={9} className="text-ink-muted" />}
                     </div>
                   </TableCell>
-                  <TableCell className="font-semibold text-zinc-700 whitespace-nowrap truncate max-w-[150px]" title={t.organization}>
+                  <TableCell className="font-semibold text-ink-secondary whitespace-nowrap truncate max-w-[150px]" title={t.organization}>
                     {t.organization}
                   </TableCell>
                   <TableCell className="min-w-[200px] max-w-[320px] truncate" title={t.title}>
                     <div className="flex items-center gap-1.5 truncate">
-                      <Link href={`/consultant/tickets/${t.id}`} className="font-bold text-zinc-950 hover:text-blue-600 transition-colors truncate">
+                      <Link href={`/consultant/tickets/${t.id}`} className="font-bold text-ink hover:text-blue-600 transition-colors truncate">
                         {t.title}
                       </Link>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-[8px] font-bold font-mono uppercase bg-zinc-50 text-zinc-500 border-zinc-200 hover:bg-zinc-50">
+                    <Badge variant="outline" className="text-[11px] font-bold uppercase bg-surface-muted text-ink-secondary border-line hover:bg-surface-muted">
                       {t.sapModule}
                     </Badge>
                   </TableCell>
@@ -742,22 +742,22 @@ export default function ConsultantMyTicketsPage() {
                   <TableCell>
                     <StatusBadge status={t.status} />
                   </TableCell>
-                  <TableCell className="text-zinc-500 font-mono text-[10px] whitespace-nowrap">
+                  <TableCell className="text-ink-secondary text-[11px] whitespace-nowrap">
                     {age}d old
                   </TableCell>
-                  <TableCell className="text-right font-mono font-semibold text-zinc-700">
+                  <TableCell className="text-right font-semibold text-ink-secondary">
                     {estHours.toFixed(1)}h
                   </TableCell>
-                  <TableCell className="text-right font-mono font-semibold text-emerald-600">
+                  <TableCell className="text-right font-semibold text-success">
                     {actHours.toFixed(1)}h
                   </TableCell>
-                  <TableCell className="text-zinc-400 font-mono text-[9px] whitespace-nowrap">
+                  <TableCell className="text-ink-muted text-[11px] whitespace-nowrap">
                     {new Date(t.updatedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Link href={`/consultant/tickets/${t.id}`}>
-                        <Button size="icon" variant="outline" className="h-7 w-7 text-zinc-500 cursor-pointer">
+                        <Button size="icon" variant="outline" className="h-7 w-7 text-ink-secondary cursor-pointer">
                           <Eye size={12} />
                         </Button>
                       </Link>
@@ -770,7 +770,7 @@ export default function ConsultantMyTicketsPage() {
 
             {paginatedTickets.length === 0 && (
               <TableRow>
-                <TableCell colSpan={11} className="py-20 text-center text-zinc-400 italic font-sans">
+                <TableCell colSpan={11} className="py-20 text-center text-ink-muted italic font-sans">
                   <Flag size={24} className="mx-auto mb-2 opacity-30" />
                   No tickets found matching your query filters.
                 </TableCell>
@@ -798,14 +798,14 @@ export default function ConsultantMyTicketsPage() {
 
     return (
       <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <Card className="bg-white border border-zinc-200/80 shadow-2xl w-full max-w-lg overflow-hidden text-zinc-950 rounded-2xl">
+        <Card className="bg-surface border border-line/80 shadow-2xl w-full max-w-lg overflow-hidden text-ink rounded-2xl">
           {/* Modal Header */}
-          <div className="border-b border-zinc-150 px-5 py-4 bg-zinc-50/50 backdrop-blur-md flex justify-between items-center">
+          <div className="border-b border-line px-5 py-4 bg-surface-muted/60 backdrop-blur-md flex justify-between items-center">
             <div>
-              <p className="text-[9px] text-zinc-400 font-semibold uppercase tracking-widest font-sans">Action Panel</p>
-              <h3 className="text-sm font-bold text-zinc-900">{actionLabel[activeAction]} — <span className="font-mono text-xs">{activeTicketId}</span></h3>
+              <p className="text-[11px] text-ink-muted font-semibold uppercase tracking-widest font-sans">Action Panel</p>
+              <h3 className="text-sm font-bold text-ink">{actionLabel[activeAction]} — <span className="text-xs">{activeTicketId}</span></h3>
             </div>
-            <button onClick={closeActionModal} className="p-1.5 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-700 transition cursor-pointer">
+            <button onClick={closeActionModal} className="p-1.5 hover:bg-surface-subtle rounded text-ink-muted hover:text-ink-secondary transition cursor-pointer">
               <X size={14} />
             </button>
           </div>
@@ -813,7 +813,7 @@ export default function ConsultantMyTicketsPage() {
           {/* Modal Body */}
           <div className="p-5 max-h-[75vh] overflow-y-auto space-y-4 text-xs">
             {validationError && (
-              <div className="p-3 bg-red-50 text-red-800 border border-red-200 text-[10px] font-bold rounded flex items-center gap-2">
+              <div className="p-3 bg-red-50 text-red-800 border border-red-200 text-[11px] font-bold rounded flex items-center gap-2">
                 <AlertCircle size={14} className="shrink-0" />
                 {validationError}
               </div>
@@ -823,9 +823,9 @@ export default function ConsultantMyTicketsPage() {
             {activeAction === 'status' && (
               <form onSubmit={handleStatusSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="font-bold text-zinc-500 uppercase text-[9px] block">Select Transition Status</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px] block">Select Transition Status</label>
                   <select value={statusValue} onChange={e => setStatusValue(e.target.value as TicketStatus)}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition" required>
+                    className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 transition" required>
                     <option value="">-- Select Status --</option>
                     <option value="Requirement Gathering">1. Requirement Gathering</option>
                     <option value="Waiting for Hours Approval">2. Waiting for Hours Approval</option>
@@ -838,11 +838,11 @@ export default function ConsultantMyTicketsPage() {
                     <option value="Customer Action">5. Customer Action</option>
                     <option value="Request for Closure">6. Request for Closure (Logs Actuals)</option>
                   </select>
-                  <span className="text-[9px] text-zinc-450 block">"Request for Closure" will prompt actual hours entry.</span>
+                  <span className="text-[11px] text-ink-muted block">"Request for Closure" will prompt actual hours entry.</span>
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Apply Status</Button>
+                <div className="flex justify-end gap-2 border-t border-line pt-3">
+                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 cursor-pointer">Apply Status</Button>
                 </div>
               </form>
             )}
@@ -851,19 +851,19 @@ export default function ConsultantMyTicketsPage() {
             {activeAction === 'comment' && (
               <form onSubmit={handleCommentSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-zinc-500 uppercase text-[9px] block">Comment</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px] block">Comment</label>
                   <textarea value={commentText} onChange={e => setCommentText(e.target.value)}
-                    placeholder="Write your comment..." className="w-full bg-zinc-50 border border-zinc-200 rounded p-3 text-xs h-28 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition text-zinc-900" required />
+                    placeholder="Write your comment..." className="w-full bg-surface-muted border border-line rounded p-3 text-xs h-28 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 transition text-ink" required />
                 </div>
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id="internalCheck" checked={isInternalComment} onChange={e => setIsInternalComment(e.target.checked)} className="rounded border-zinc-300" />
-                  <label htmlFor="internalCheck" className="font-bold text-zinc-650 uppercase text-[9px] cursor-pointer select-none">
+                  <input type="checkbox" id="internalCheck" checked={isInternalComment} onChange={e => setIsInternalComment(e.target.checked)} className="rounded border-line-strong" />
+                  <label htmlFor="internalCheck" className="font-bold text-ink-secondary uppercase text-[11px] cursor-pointer select-none">
                     Internal Note (Consultant & Manager only)
                   </label>
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Submit Comment</Button>
+                <div className="flex justify-end gap-2 border-t border-line pt-3">
+                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 cursor-pointer">Submit Comment</Button>
                 </div>
               </form>
             )}
@@ -872,14 +872,14 @@ export default function ConsultantMyTicketsPage() {
             {activeAction === 'attachment' && (
               <form onSubmit={handleAttachmentSubmit} className="space-y-4">
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-500 uppercase text-[9px] block">File Name</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px] block">File Name</label>
                   <input type="text" placeholder="e.g. transport_log_AS360_102.txt" value={uploadFileName}
                     onChange={e => setUploadFileName(e.target.value)}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition" required />
+                    className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 transition" required />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Upload File</Button>
+                <div className="flex justify-end gap-2 border-t border-line pt-3">
+                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 cursor-pointer">Upload File</Button>
                 </div>
               </form>
             )}
@@ -889,29 +889,29 @@ export default function ConsultantMyTicketsPage() {
               <form onSubmit={handleQuoteHoursSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px] block">Functional Est. Hours</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">Functional Est. Hours</label>
                     <input type="number" step="0.5" placeholder="e.g. 10.0" value={estFuncHours}
                       onChange={e => setEstFuncHours(e.target.value)} min="0" required={consultantType === 'Functional'}
                       disabled={consultantType !== 'Functional'}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 disabled:opacity-50" />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink disabled:opacity-50" />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px] block">Technical Est. Hours</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">Technical Est. Hours</label>
                     <input type="number" step="0.5" placeholder="e.g. 12.0" value={estTechHours}
                       onChange={e => setEstTechHours(e.target.value)} min="0" required={consultantType === 'Technical'}
                       disabled={consultantType !== 'Technical'}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 disabled:opacity-50" />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink disabled:opacity-50" />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-500 uppercase text-[9px] block">Remarks</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px] block">Remarks</label>
                   <textarea value={estRemarks} onChange={e => setEstRemarks(e.target.value)}
-                    placeholder="Estimation scope remarks..." className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 h-20 focus:outline-none" />
+                    placeholder="Estimation scope remarks..." className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink h-20 focus:outline-none" />
                 </div>
-                <p className="text-[10px] text-zinc-450 font-mono">First-time quote takes effect immediately.</p>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Submit Quote</Button>
+                <p className="text-[11px] text-ink-muted">First-time quote takes effect immediately.</p>
+                <div className="flex justify-end gap-2 border-t border-line pt-3">
+                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 cursor-pointer">Submit Quote</Button>
                 </div>
               </form>
             )}
@@ -919,32 +919,32 @@ export default function ConsultantMyTicketsPage() {
             {/* REQUEST REVISION */}
             {activeAction === 'requestRevision' && (
               <form onSubmit={handleRevisionSubmit} className="space-y-4">
-                <div className="bg-zinc-50 p-2.5 border border-zinc-200 rounded text-[10px] text-zinc-500 font-mono">
+                <div className="bg-surface-muted p-2.5 border border-line rounded text-[11px] text-ink-secondary">
                   Current Quote: {activeTicketEst.totalEst}h (Func: {activeTicketEst.estFunc}h | Tech: {activeTicketEst.estTech}h)
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px] block">New Functional Hours</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">New Functional Hours</label>
                     <input type="number" step="0.5" value={estFuncHours} onChange={e => setEstFuncHours(e.target.value)} min="0" required={consultantType === 'Functional'}
                       disabled={consultantType !== 'Functional'}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 disabled:opacity-50" />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink disabled:opacity-50" />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px] block">New Technical Hours</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">New Technical Hours</label>
                     <input type="number" step="0.5" value={estTechHours} onChange={e => setEstTechHours(e.target.value)} min="0" required={consultantType === 'Technical'}
                       disabled={consultantType !== 'Technical'}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 disabled:opacity-50" />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink disabled:opacity-50" />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-500 uppercase text-[9px] block">Justification (Mandatory)</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px] block">Justification (Mandatory)</label>
                   <textarea value={estRemarks} onChange={e => setEstRemarks(e.target.value)}
-                    placeholder="Rationale for revision..." className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 h-20 focus:outline-none" required />
+                    placeholder="Rationale for revision..." className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink h-20 focus:outline-none" required />
                 </div>
-                <p className="text-[10px] text-zinc-450 font-mono">Revision requests take effect immediately.</p>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">Submit Revision</Button>
+                <p className="text-[11px] text-ink-muted">Revision requests take effect immediately.</p>
+                <div className="flex justify-end gap-2 border-t border-line pt-3">
+                  <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 cursor-pointer">Submit Revision</Button>
                 </div>
               </form>
             )}
@@ -954,18 +954,18 @@ export default function ConsultantMyTicketsPage() {
               <form onSubmit={handleClosureSubmit} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px] block">Functional Actual Hrs</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">Functional Actual Hrs</label>
                     <input type="number" step="0.5" placeholder="e.g. 6.0" value={actFuncHours}
                       onChange={e => setActFuncHours(e.target.value)} min="0" required={consultantType === 'Functional'}
                       disabled={consultantType !== 'Functional'}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 disabled:opacity-50" />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink disabled:opacity-50" />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px] block">Technical Actual Hrs</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">Technical Actual Hrs</label>
                     <input type="number" step="0.5" placeholder="e.g. 8.0" value={actTechHours}
                       onChange={e => setActTechHours(e.target.value)} min="0" required={consultantType === 'Technical'}
                       disabled={consultantType !== 'Technical'}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 disabled:opacity-50" />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink disabled:opacity-50" />
                   </div>
                 </div>
                 {[
@@ -974,20 +974,20 @@ export default function ConsultantMyTicketsPage() {
                   { label: 'Resolution Summary (Mandatory)', val: resolutionSummary, set: setResolutionSummary, ph: 'Steps taken to resolve...' },
                 ].map(({ label, val, set, ph }) => (
                   <div key={label} className="space-y-1">
-                    <label className="font-bold text-zinc-550 uppercase text-[9px] block">{label}</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">{label}</label>
                     <textarea value={val} onChange={e => set(e.target.value)} placeholder={ph}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 h-16 focus:outline-none" required />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink h-16 focus:outline-none" required />
                   </div>
                 ))}
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-550 uppercase text-[9px] block">Pending Items (Optional)</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px] block">Pending Items (Optional)</label>
                   <input type="text" value={pendingItems} onChange={e => setPendingItems(e.target.value)}
-                    placeholder="e.g. transport release to PRD" className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900" />
+                    placeholder="e.g. transport release to PRD" className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink" />
                 </div>
-                <p className="text-[10px] text-zinc-450">Submitting closure locks the ticket pending Manager approval.</p>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} disabled={isSubmitting} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" disabled={isSubmitting} className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">
+                <p className="text-[11px] text-ink-muted">Submitting closure locks the ticket pending Manager approval.</p>
+                <div className="flex justify-end gap-2 border-t border-line pt-3">
+                  <Button type="button" variant="outline" onClick={closeActionModal} disabled={isSubmitting} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting} className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 cursor-pointer">
                     {isSubmitting ? 'Submitting...' : 'Submit Closure Request'}
                   </Button>
                 </div>
@@ -1002,16 +1002,16 @@ export default function ConsultantMyTicketsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px] block">Revised Functional Hrs</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">Revised Functional Hrs</label>
                     <input type="number" step="0.5" value={actFuncHours} onChange={e => setActFuncHours(e.target.value)} min="0" required={consultantType === 'Functional'}
                       disabled={consultantType !== 'Functional'}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 disabled:opacity-50" />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink disabled:opacity-50" />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-500 uppercase text-[9px] block">Revised Technical Hrs</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">Revised Technical Hrs</label>
                     <input type="number" step="0.5" value={actTechHours} onChange={e => setActTechHours(e.target.value)} min="0" required={consultantType === 'Technical'}
                       disabled={consultantType !== 'Technical'}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 disabled:opacity-50" />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink disabled:opacity-50" />
                   </div>
                 </div>
                 {[
@@ -1020,19 +1020,19 @@ export default function ConsultantMyTicketsPage() {
                   { label: 'Resolution Summary', val: resolutionSummary, set: setResolutionSummary },
                 ].map(({ label, val, set }) => (
                   <div key={label} className="space-y-1">
-                    <label className="font-bold text-zinc-550 uppercase text-[9px] block">{label}</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">{label}</label>
                     <textarea value={val} onChange={e => set(e.target.value)}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 h-14 focus:outline-none" required />
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink h-14 focus:outline-none" required />
                   </div>
                 ))}
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-550 uppercase text-[9px] block">Pending Items</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px] block">Pending Items</label>
                   <input type="text" value={pendingItems} onChange={e => setPendingItems(e.target.value)}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900" />
+                    className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink" />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
-                  <Button type="button" variant="outline" onClick={closeActionModal} disabled={isSubmitting} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                  <Button type="submit" disabled={isSubmitting} className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">
+                <div className="flex justify-end gap-2 border-t border-line pt-3">
+                  <Button type="button" variant="outline" onClick={closeActionModal} disabled={isSubmitting} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting} className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 cursor-pointer">
                     {isSubmitting ? 'Resubmitting...' : 'Resubmit Request'}
                   </Button>
                 </div>
@@ -1046,7 +1046,7 @@ export default function ConsultantMyTicketsPage() {
 
   // ── RENDER ──
   return (
-    <div className="space-y-6 text-zinc-900 font-sans">
+    <div className="space-y-6 text-ink font-sans">
 
       {/* Toast */}
       {toastMsg && (
@@ -1060,24 +1060,24 @@ export default function ConsultantMyTicketsPage() {
       <ModalContent />
 
       {/* Page Header */}
-      <div className="border-b border-zinc-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="border-b border-line pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-zinc-950 tracking-tight">My Ticket Workspace</h1>
-          <p className="text-zinc-500 text-xs mt-1">
+          <h1 className="text-xl font-bold text-ink tracking-tight">My Ticket Workspace</h1>
+          <p className="text-ink-secondary text-xs mt-1">
             {consultantType} consultant — workload, hours, and closure workflows.
-            Active Specialist: <span className="font-semibold text-zinc-900">{consultantName}</span>
+            Active Specialist: <span className="font-semibold text-ink">{consultantName}</span>
           </p>
         </div>
         {/* View Toggle */}
-        <div className="flex items-center gap-1 border border-zinc-200 bg-white rounded-lg p-1 shadow-sm">
+        <div className="flex items-center gap-1 border border-line bg-surface rounded-lg p-1 shadow-card">
           <button
             onClick={() => setViewMode('card')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase transition cursor-pointer ${viewMode === 'card' ? 'bg-zinc-950 text-white shadow' : 'text-zinc-500 hover:bg-zinc-50'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold uppercase transition cursor-pointer ${viewMode === 'card' ? 'bg-ink text-white shadow' : 'text-ink-secondary hover:bg-surface-muted'}`}>
             <LayoutGrid size={12} /> Card
           </button>
           <button
             onClick={() => setViewMode('compact')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase transition cursor-pointer ${viewMode === 'compact' ? 'bg-zinc-950 text-white shadow' : 'text-zinc-500 hover:bg-zinc-50'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold uppercase transition cursor-pointer ${viewMode === 'compact' ? 'bg-ink text-white shadow' : 'text-ink-secondary hover:bg-surface-muted'}`}>
             <List size={12} /> List
           </button>
         </div>
@@ -1086,50 +1086,50 @@ export default function ConsultantMyTicketsPage() {
       {/* Tabs */}
       <Tabs defaultValue="all" value={activeTab} onValueChange={val => { setActiveTab(val); setCurrentPage(1); }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <TabsList className="bg-zinc-100 border border-zinc-200 h-auto p-0.5 rounded-lg flex flex-wrap gap-1">
-            <TabsTrigger value="all" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              All <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.all}</Badge>
+          <TabsList className="bg-surface-subtle border border-line h-auto p-0.5 rounded-lg flex flex-wrap gap-1">
+            <TabsTrigger value="all" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              All <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.all}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="requirement_gathering" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              Req. Gathering <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.requirementGathering}</Badge>
+            <TabsTrigger value="requirement_gathering" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              Req. Gathering <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.requirementGathering}</Badge>
             </TabsTrigger>
             {/* Hrs Approval tab hidden because estimates do not require approval */}
-            <TabsTrigger value="in_progress_functional" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              IP Functional <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.inProgressFunctional}</Badge>
+            <TabsTrigger value="in_progress_functional" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              IP Functional <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.inProgressFunctional}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="in_progress_technical" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              IP Technical <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.inProgressTechnical}</Badge>
+            <TabsTrigger value="in_progress_technical" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              IP Technical <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.inProgressTechnical}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="customer_action" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              Cust. Action <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.customerAction}</Badge>
+            <TabsTrigger value="customer_action" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              Cust. Action <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.customerAction}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="on_hold" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              On Hold <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.onHold}</Badge>
+            <TabsTrigger value="on_hold" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              On Hold <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.onHold}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="raised_sap" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              Raised To SAP <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.raisedToSap}</Badge>
+            <TabsTrigger value="raised_sap" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              Raised To SAP <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.raisedToSap}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="request_closure" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              Req. Closure <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.requestForClosure}</Badge>
+            <TabsTrigger value="request_closure" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              Req. Closure <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.requestForClosure}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="closed" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              Closed <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.closed}</Badge>
+            <TabsTrigger value="closed" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              Closed <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.closed}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="reopened" className="text-[9px] uppercase font-bold data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm px-2.5 py-1.5 cursor-pointer">
-              Reopened <Badge variant="outline" className="ml-1.5 text-[8px] px-1 bg-zinc-50">{counts.reopened}</Badge>
+            <TabsTrigger value="reopened" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+              Reopened <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.reopened}</Badge>
             </TabsTrigger>
           </TabsList>
 
           {/* Search + Filters */}
           <div className="space-y-4 mt-4 w-full">
             <div className="relative w-full">
-              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 placeholder="Search tickets..."
-                className="bg-white border border-zinc-200 rounded-md pl-9 pr-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 transition w-full font-mono"
+                className="bg-surface border border-line rounded-md pl-9 pr-3 py-2 text-xs text-ink focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 transition w-full"
               />
             </div>
             <TicketFilterPanel
@@ -1158,7 +1158,7 @@ export default function ConsultantMyTicketsPage() {
 
         {/* Result count */}
         <div className="flex items-center justify-between mt-2.5">
-          <p className="text-[10px] text-zinc-400 uppercase font-mono tracking-wider font-semibold">
+          <p className="text-[11px] text-ink-muted uppercase tracking-wider font-semibold">
             {filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''} found in your queue
           </p>
         </div>
@@ -1166,12 +1166,12 @@ export default function ConsultantMyTicketsPage() {
         {/* Ticket display */}
         <TabsContent value={activeTab} className="mt-3">
           {loading ? (
-            <div className="py-16 text-center text-zinc-500 font-bold uppercase font-mono text-xs">Synchronizing active workspace registry...</div>
+            <div className="py-16 text-center text-ink-secondary font-bold uppercase text-xs">Synchronizing active workspace registry...</div>
           ) : myAssignedTickets.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center text-zinc-400 bg-white border border-zinc-200 rounded-2xl space-y-2 shadow-sm">
+            <div className="py-20 flex flex-col items-center justify-center text-ink-muted bg-surface border border-line rounded-2xl space-y-2 shadow-card">
               <BrandedLogo width={36} height={36} iconOnly={true} className="mb-3 opacity-40" />
-              <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No tickets assigned yet.</h3>
-              <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono text-center">There are no tickets assigned to you yet.</p>
+              <h3 className="text-sm font-bold text-ink uppercase tracking-wider">No tickets assigned yet.</h3>
+              <p className="text-xs text-ink-secondary max-w-sm mx-auto text-center">There are no tickets assigned to you yet.</p>
             </div>
           ) : viewMode === 'card' ? (
             <CardView />
@@ -1183,17 +1183,17 @@ export default function ConsultantMyTicketsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4 border-t border-zinc-200">
-          <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">
+        <div className="flex items-center justify-between pt-4 border-t border-line">
+          <span className="text-[11px] text-ink-secondary uppercase tracking-wider">
             Page {currentPage} of {totalPages} · {filteredTickets.length} tickets
           </span>
           <div className="flex gap-2">
             <Button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-              variant="outline" className="h-8 px-3 text-[10px] font-bold gap-1 cursor-pointer">
+              variant="outline" className="h-8 px-3 text-[11px] font-bold gap-1 cursor-pointer">
               <ChevronLeft size={12} /> Prev
             </Button>
             <Button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-              variant="outline" className="h-8 px-3 text-[10px] font-bold gap-1 cursor-pointer">
+              variant="outline" className="h-8 px-3 text-[11px] font-bold gap-1 cursor-pointer">
               Next <ChevronRight size={12} />
             </Button>
           </div>
