@@ -340,28 +340,28 @@ export default function ManagerWorkloadPage() {
   }, [selectedOrgName, customerAnalytics]);
 
   return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900">
+    <div className="space-y-6 text-xs text-ink">
       
       {/* Header Panel */}
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-4 bg-white">
+      <div className="flex items-center justify-between border-b border-line pb-4 bg-surface">
         <div>
-          <h1 className="text-lg font-bold uppercase tracking-tight text-zinc-955 font-mono flex items-center gap-2">
-            <Activity size={20} className="text-zinc-500 animate-pulse" />
+          <h1 className="type-title text-ink flex items-center gap-2">
+            <Activity size={20} className="text-ink-secondary animate-pulse" />
             Workload & Utilization Analytics
           </h1>
-          <p className="text-zinc-500 mt-1">Audit support resource balances, track SLA violations, and monitor company hour allocations.</p>
+          <p className="text-ink-secondary mt-1">Audit support resource balances, track SLA violations, and monitor company hour allocations.</p>
         </div>
       </div>
 
       {/* Top Canonical Filter Bar */}
-      <div className="bg-white border border-zinc-200 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
+      <div className="bg-surface border border-line rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
         
         {/* Sub-tab Switcher */}
-        <div className="flex bg-zinc-100 p-0.5 rounded border border-zinc-250 w-full md:w-auto shrink-0">
+        <div className="flex bg-surface-subtle p-0.5 rounded border border-line w-full md:w-auto shrink-0">
           <button
             onClick={() => { setActiveSubTab('consultants'); setSelectedConsultantId(null); }}
-            className={`flex-1 md:flex-none px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeSubTab === 'consultants' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+            className={`flex-1 md:flex-none px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeSubTab === 'consultants' ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'
             }`}
           >
             <Users size={12} />
@@ -369,8 +369,8 @@ export default function ManagerWorkloadPage() {
           </button>
           <button
             onClick={() => { setActiveSubTab('customers'); setSelectedOrgName(null); }}
-            className={`flex-1 md:flex-none px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeSubTab === 'customers' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+            className={`flex-1 md:flex-none px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeSubTab === 'customers' ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'
             }`}
           >
             <Building2 size={12} />
@@ -381,14 +381,14 @@ export default function ManagerWorkloadPage() {
         {/* Global filter controls */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Timeframe Filter */}
-          <div className="flex bg-zinc-50 border border-zinc-200 rounded-lg p-1 items-center gap-1 w-full sm:w-auto">
-            <Calendar size={11} className="text-zinc-400 ml-1.5" />
+          <div className="flex bg-surface-muted border border-line rounded-lg p-1 items-center gap-1 w-full sm:w-auto">
+            <Calendar size={11} className="text-ink-muted ml-1.5" />
             {(['All', '30', '90', 'YTD'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setTimeframe(t)}
-                className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded cursor-pointer transition ${
-                  timeframe === t ? 'bg-zinc-950 text-white' : 'text-zinc-500 hover:text-zinc-900'
+                className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded cursor-pointer transition ${
+                  timeframe === t ? 'bg-ink text-white' : 'text-ink-secondary hover:text-ink'
                 }`}
               >
                 {t === 'All' ? 'All' : t === 'YTD' ? 'YTD' : `${t}d`}
@@ -397,12 +397,12 @@ export default function ManagerWorkloadPage() {
           </div>
 
           {/* SAP Module Filter */}
-          <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 w-full sm:w-auto max-w-xs">
-            <Filter size={11} className="text-zinc-400" />
+          <div className="flex items-center gap-1.5 bg-surface-muted border border-line rounded-lg px-2.5 py-1.5 w-full sm:w-auto max-w-xs">
+            <Filter size={11} className="text-ink-muted" />
             <select
               value={selectedModule}
               onChange={(e) => setSelectedModule(e.target.value)}
-              className="bg-transparent border-none text-[10px] font-bold uppercase focus:outline-none cursor-pointer w-full"
+              className="bg-transparent border-none text-[11px] font-bold uppercase focus:outline-none cursor-pointer w-full"
             >
               <option value="All">All Modules</option>
               {modulesDropdownOptions.map(mod => (
@@ -412,12 +412,12 @@ export default function ManagerWorkloadPage() {
           </div>
 
           {/* Customer / Company Filter */}
-          <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 w-full sm:w-auto max-w-xs">
-            <Building2 size={11} className="text-zinc-400" />
+          <div className="flex items-center gap-1.5 bg-surface-muted border border-line rounded-lg px-2.5 py-1.5 w-full sm:w-auto max-w-xs">
+            <Building2 size={11} className="text-ink-muted" />
             <select
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="bg-transparent border-none text-[10px] font-bold uppercase focus:outline-none cursor-pointer w-full truncate"
+              className="bg-transparent border-none text-[11px] font-bold uppercase focus:outline-none cursor-pointer w-full truncate"
             >
               <option value="All">All Companies</option>
               {organizationsDropdownOptions.map(org => (
@@ -435,33 +435,33 @@ export default function ManagerWorkloadPage() {
         <div className="space-y-6">
           {/* Top KPI row */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white border border-zinc-200 rounded-lg p-4 flex items-center justify-between shadow-xs">
+            <div className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block">Active Tickets / Resource</span>
-                <span className="text-xl font-bold text-zinc-900 mt-1 block">{consultantKPIs.avgActive}</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Active Tickets / Resource</span>
+                <span className="text-xl font-bold text-ink mt-1 block">{consultantKPIs.avgActive}</span>
               </div>
-              <Users className="text-zinc-300" size={24} />
+              <Users className="text-ink-muted" size={24} />
             </div>
 
-            <div className="bg-white border border-zinc-200 rounded-lg p-4 flex items-center justify-between shadow-xs">
+            <div className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block">Total Logged Hours</span>
-                <span className="text-xl font-bold text-zinc-900 mt-1 block">{consultantKPIs.totalHours} hrs</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Total Logged Hours</span>
+                <span className="text-xl font-bold text-ink mt-1 block">{consultantKPIs.totalHours} hrs</span>
               </div>
-              <FileCheck2 className="text-zinc-300" size={24} />
+              <FileCheck2 className="text-ink-muted" size={24} />
             </div>
 
-            <div className="bg-white border border-zinc-200 rounded-lg p-4 flex items-center justify-between shadow-xs">
+            <div className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block">Avg Resolution Speed</span>
-                <span className="text-xl font-bold text-zinc-900 mt-1 block">{consultantKPIs.avgResolution} days</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Avg Resolution Speed</span>
+                <span className="text-xl font-bold text-ink mt-1 block">{consultantKPIs.avgResolution} days</span>
               </div>
-              <Clock className="text-zinc-300" size={24} />
+              <Clock className="text-ink-muted" size={24} />
             </div>
 
-            <div className="bg-white border border-zinc-200 rounded-lg p-4 flex items-center justify-between shadow-xs">
+            <div className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block">Overloaded Resources</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Overloaded Resources</span>
                 <span className="text-xl font-bold text-red-700 mt-1 block flex items-center gap-1.5">
                   {consultantKPIs.overloadedCount}
                   {consultantKPIs.overloadedCount > 0 && (
@@ -476,20 +476,20 @@ export default function ManagerWorkloadPage() {
           {/* Visualizations row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Active Tickets Load Chart */}
-            <Card className="md:col-span-2 border-zinc-200 bg-white">
-              <CardHeader className="border-b border-zinc-150 py-3.5 px-4">
+            <Card className="md:col-span-2 border-line bg-surface">
+              <CardHeader className="border-b border-line py-3.5 px-4">
                 <CardTitle className="text-xs uppercase tracking-wide">Queue Balances (Top 8 Resources)</CardTitle>
-                <CardDescription className="text-[9.5px]">Open assignments and critical tickets per consultant.</CardDescription>
+                <CardDescription className="text-[11px]">Open assignments and critical tickets per consultant.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 px-4 h-64">
                 {consultantActiveTicketsChartData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-zinc-400 font-mono italic">No data available for the active filters.</div>
+                  <div className="flex h-full items-center justify-center text-ink-muted italic">No data available for the active filters.</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={consultantActiveTicketsChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke={COLORS.gray} fontSize={9} className="font-mono" />
-                      <YAxis stroke={COLORS.gray} fontSize={9} className="font-mono" allowDecimals={false} />
+                      <XAxis dataKey="name" stroke={COLORS.gray} fontSize={9} className="" />
+                      <YAxis stroke={COLORS.gray} fontSize={9} className="" allowDecimals={false} />
                       <RechartsTooltip contentStyle={{ fontFamily: 'monospace', fontSize: '9px', borderRadius: '4px', borderColor: '#e4e4e7' }} />
                       <Legend wrapperStyle={{ fontSize: '9px', fontFamily: 'monospace', paddingTop: '10px' }} />
                       <Bar dataKey="Active Tickets" fill={COLORS.zinc950} radius={[2, 2, 0, 0]} />
@@ -501,14 +501,14 @@ export default function ManagerWorkloadPage() {
             </Card>
 
             {/* Workload health breakdown */}
-            <Card className="border-zinc-200 bg-white">
-              <CardHeader className="border-b border-zinc-150 py-3.5 px-4">
+            <Card className="border-line bg-surface">
+              <CardHeader className="border-b border-line py-3.5 px-4">
                 <CardTitle className="text-xs uppercase tracking-wide">Workload Ratios</CardTitle>
-                <CardDescription className="text-[9.5px]">Percentage capacity split on consultant rosters.</CardDescription>
+                <CardDescription className="text-[11px]">Percentage capacity split on consultant rosters.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 px-4 h-64 flex flex-col justify-between">
                 {workloadStateChartData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-zinc-400 font-mono italic">No data available.</div>
+                  <div className="flex h-full items-center justify-center text-ink-muted italic">No data available.</div>
                 ) : (
                   <>
                     <div className="h-44">
@@ -532,14 +532,14 @@ export default function ManagerWorkloadPage() {
                       </ResponsiveContainer>
                     </div>
                     {/* Custom Legend */}
-                    <div className="space-y-1 mt-1 pb-1 border-t border-zinc-100 pt-2">
+                    <div className="space-y-1 mt-1 pb-1 border-t border-line pt-2">
                       {workloadStateChartData.map(d => (
-                        <div key={d.name} className="flex justify-between items-center text-[9px] font-mono">
+                        <div key={d.name} className="flex justify-between items-center text-[11px]">
                           <span className="flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.color }}></span>
-                            <span className="text-zinc-500">{d.name}</span>
+                            <span className="text-ink-secondary">{d.name}</span>
                           </span>
-                          <span className="font-bold text-zinc-800">{d.value} ({Math.round((d.value / consultantAnalytics.length) * 100)}%)</span>
+                          <span className="font-bold text-ink">{d.value} ({Math.round((d.value / consultantAnalytics.length) * 100)}%)</span>
                         </div>
                       ))}
                     </div>
@@ -553,13 +553,13 @@ export default function ManagerWorkloadPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Roster Table */}
-            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs md:col-span-2">
-              <div className="bg-zinc-50 border-b border-zinc-200 px-4 py-3">
-                <h3 className="font-bold text-xs uppercase text-zinc-800 font-mono">Resource Utilization Registry</h3>
+            <div className="bg-surface border border-line rounded-lg overflow-hidden shadow-xs md:col-span-2">
+              <div className="bg-surface-muted border-b border-line px-4 py-3">
+                <h3 className="font-bold text-xs uppercase text-ink">Resource Utilization Registry</h3>
               </div>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[8.5px] tracking-wider text-zinc-500">
+                  <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
                     <th className="p-4">Consultant</th>
                     <th className="p-4">Type</th>
                     <th className="p-4 text-center">Active Load</th>
@@ -568,42 +568,42 @@ export default function ManagerWorkloadPage() {
                     <th className="p-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-150">
+                <tbody className="divide-y divide-line">
                   {consultantAnalytics.map(c => {
                     const isSelected = selectedConsultantId === c.id;
                     return (
                       <tr 
                         key={c.id} 
-                        className={`hover:bg-zinc-50/50 transition cursor-pointer ${
-                          isSelected ? 'bg-zinc-50 border-l-2 border-l-zinc-950' : ''
+                        className={`hover:bg-surface-muted/60 transition cursor-pointer ${
+                          isSelected ? 'bg-surface-muted border-l-2 border-l-zinc-950' : ''
                         }`}
                         onClick={() => setSelectedConsultantId(c.id)}
                       >
                         <td className="p-4">
-                          <span className="font-bold text-zinc-850 text-xs block">{c.name}</span>
-                          <span className="text-[10px] text-zinc-400 block truncate">{c.email}</span>
+                          <span className="font-bold text-ink text-xs block">{c.name}</span>
+                          <span className="text-[11px] text-ink-muted block truncate">{c.email}</span>
                         </td>
                         <td className="p-4">
-                          <span className={`px-1.5 py-0.2 rounded border text-[8.5px] font-bold ${
-                            c.type === 'Functional' ? 'bg-zinc-50 text-zinc-650 border-zinc-200' : 'bg-zinc-950 text-white border-zinc-900'
+                          <span className={`px-1.5 py-0.2 rounded border text-[11px] font-bold ${
+                            c.type === 'Functional' ? 'bg-surface-muted text-ink-secondary border-line' : 'bg-ink text-white border-zinc-900'
                           }`}>
                             {c.type}
                           </span>
                         </td>
                         <td className="p-4 text-center">
-                          <span className={`font-bold text-xs ${c.activeCount >= 5 ? 'text-red-700' : 'text-zinc-800'}`}>
+                          <span className={`font-bold text-xs ${c.activeCount >= 5 ? 'text-red-700' : 'text-ink'}`}>
                             {c.activeCount}
                           </span>
                           {c.criticalCount > 0 && (
-                            <span className="text-[8px] bg-red-955 text-white font-mono px-1 rounded ml-1 uppercase">{c.criticalCount} crit</span>
+                            <span className="text-[11px] bg-red-955 text-white px-1 rounded ml-1 uppercase">{c.criticalCount} crit</span>
                           )}
                         </td>
-                        <td className="p-4 text-center font-bold text-zinc-700">{c.hoursApproved} hrs</td>
+                        <td className="p-4 text-center font-bold text-ink-secondary">{c.hoursApproved} hrs</td>
                         <td className="p-4">
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold ${
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-bold ${
                             c.workloadState === 'Overloaded' ? 'bg-red-50 border-red-200 text-red-700' :
                             c.workloadState === 'Optimal' ? 'bg-emerald-50 border-emerald-250 text-emerald-700' :
-                            'bg-zinc-50 border-zinc-200 text-zinc-550'
+                            'bg-surface-muted border-line text-ink-secondary'
                           }`}>
                             <span className={`h-1 w-1 rounded-full ${
                               c.workloadState === 'Overloaded' ? 'bg-red-500 animate-pulse' :
@@ -619,7 +619,7 @@ export default function ManagerWorkloadPage() {
                               e.stopPropagation();
                               setSelectedConsultantId(c.id);
                             }}
-                            className="px-2 py-1 bg-zinc-950 hover:bg-zinc-800 text-white rounded text-[9px] uppercase tracking-wide cursor-pointer font-bold"
+                            className="px-2 py-1 bg-ink hover:bg-zinc-800 text-white rounded text-[11px] uppercase tracking-wide cursor-pointer font-bold"
                           >
                             Inspect
                           </button>
@@ -632,54 +632,54 @@ export default function ManagerWorkloadPage() {
             </div>
 
             {/* Selected Consultant detail drawer */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs h-fit space-y-4">
-              <div className="border-b border-zinc-150 pb-2.5">
-                <h4 className="font-bold text-xs uppercase tracking-wide text-zinc-955 flex items-center gap-1.5">
-                  <BarChart3 size={14} className="text-zinc-500" />
+            <div className="bg-surface border border-line rounded-lg p-4 shadow-xs h-fit space-y-4">
+              <div className="border-b border-line pb-2.5">
+                <h4 className="font-bold text-xs uppercase tracking-wide text-ink flex items-center gap-1.5">
+                  <BarChart3 size={14} className="text-ink-secondary" />
                   Resource Queue Audit
                 </h4>
               </div>
 
               {selectedConsultant ? (
                 <div className="space-y-4">
-                  <div className="bg-zinc-50 border border-zinc-150 rounded-lg p-3 space-y-2">
-                    <h5 className="font-bold text-zinc-850 text-xs block">{selectedConsultant.name}</h5>
-                    <span className="text-[10px] text-zinc-400 block truncate">{selectedConsultant.email}</span>
+                  <div className="bg-surface-muted border border-line rounded-lg p-3 space-y-2">
+                    <h5 className="font-bold text-ink text-xs block">{selectedConsultant.name}</h5>
+                    <span className="text-[11px] text-ink-muted block truncate">{selectedConsultant.email}</span>
                     
                     <div className="grid grid-cols-2 gap-2 text-center pt-2">
-                      <div className="bg-white border border-zinc-200 rounded p-2">
-                        <span className="text-[8px] font-bold text-zinc-400 uppercase block">Active Tickets</span>
-                        <span className="text-sm font-bold text-zinc-800">{selectedConsultant.activeCount}</span>
+                      <div className="bg-surface border border-line rounded p-2">
+                        <span className="text-[11px] font-bold text-ink-muted uppercase block">Active Tickets</span>
+                        <span className="text-sm font-bold text-ink">{selectedConsultant.activeCount}</span>
                       </div>
-                      <div className="bg-white border border-zinc-200 rounded p-2">
-                        <span className="text-[8px] font-bold text-zinc-400 uppercase block">Approved Hours</span>
-                        <span className="text-sm font-bold text-zinc-800">{selectedConsultant.hoursApproved} hrs</span>
+                      <div className="bg-surface border border-line rounded p-2">
+                        <span className="text-[11px] font-bold text-ink-muted uppercase block">Approved Hours</span>
+                        <span className="text-sm font-bold text-ink">{selectedConsultant.hoursApproved} hrs</span>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h6 className="font-bold text-[9px] uppercase text-zinc-450 mb-2 tracking-wider">Active Assignments ({selectedConsultant.activeCount})</h6>
+                    <h6 className="font-bold text-[11px] uppercase text-ink-muted mb-2 tracking-wider">Active Assignments ({selectedConsultant.activeCount})</h6>
                     {selectedConsultant.ticketsList.length === 0 ? (
-                      <div className="text-center py-6 border border-dashed border-zinc-200 rounded text-zinc-400 font-mono italic">
+                      <div className="text-center py-6 border border-dashed border-line rounded text-ink-muted italic">
                         No active assignments on the roster.
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-72 overflow-y-auto">
                         {selectedConsultant.ticketsList.map(t => (
-                          <div key={t.id} className="border border-zinc-150 hover:bg-zinc-50/50 p-2.5 rounded-lg transition text-[10px] space-y-1">
+                          <div key={t.id} className="border border-line hover:bg-surface-muted/60 p-2.5 rounded-lg transition text-[11px] space-y-1">
                             <div className="flex justify-between items-center">
-                              <span className="font-bold text-zinc-950 font-mono">{t.ticketNumber || t.id.slice(0, 8)}</span>
-                              <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
+                              <span className="font-bold text-ink">{t.ticketNumber || t.id.slice(0, 8)}</span>
+                              <span className={`px-1.5 py-0.2 rounded text-[11px] font-bold uppercase ${
                                 t.priority === 'Critical' ? 'bg-red-950 text-white animate-pulse' :
                                 t.priority === 'High' ? 'bg-amber-100 text-amber-800' :
-                                'bg-zinc-100 text-zinc-650'
+                                'bg-surface-subtle text-ink-secondary'
                               }`}>{t.priority}</span>
                             </div>
-                            <h6 className="font-bold text-zinc-800 truncate">{t.title}</h6>
-                            <div className="flex justify-between text-[8px] text-zinc-400 border-t border-zinc-100 pt-1 mt-1 font-mono">
+                            <h6 className="font-bold text-ink truncate">{t.title}</h6>
+                            <div className="flex justify-between text-[11px] text-ink-muted border-t border-line pt-1 mt-1">
                               <span>Module: {t.sapModule}</span>
-                              <span className="px-1 bg-zinc-100 rounded text-zinc-550">{t.status}</span>
+                              <span className="px-1 bg-surface-subtle rounded text-ink-secondary">{t.status}</span>
                             </div>
                           </div>
                         ))}
@@ -688,7 +688,7 @@ export default function ManagerWorkloadPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-zinc-400 font-mono border border-dashed border-zinc-200 rounded-lg">
+                <div className="text-center py-12 text-ink-muted border border-dashed border-line rounded-lg">
                   Select a consultant from the registry to inspect their active support queue.
                 </div>
               )}
@@ -704,40 +704,40 @@ export default function ManagerWorkloadPage() {
         <div className="space-y-6">
           {/* Top KPI row */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white border border-zinc-200 rounded-lg p-4 flex items-center justify-between shadow-xs">
+            <div className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block">Total Support Hours Logged</span>
-                <span className="text-xl font-bold text-zinc-900 mt-1 block">{customerKPIs.totalConsumedHours} hrs</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Total Support Hours Logged</span>
+                <span className="text-xl font-bold text-ink mt-1 block">{customerKPIs.totalConsumedHours} hrs</span>
               </div>
-              <Building2 className="text-zinc-300" size={24} />
+              <Building2 className="text-ink-muted" size={24} />
             </div>
 
-            <div className="bg-white border border-zinc-200 rounded-lg p-4 flex items-center justify-between shadow-xs">
+            <div className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block">Average SLA Compliance</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Average SLA Compliance</span>
                 <span className="text-xl font-bold text-emerald-700 mt-1 block flex items-center gap-1">
                   {customerKPIs.complianceRateAvg}%
-                  <TrendingUp className="text-emerald-500" size={16} />
+                  <TrendingUp className="text-success" size={16} />
                 </span>
               </div>
               <Clock className="text-emerald-200" size={24} />
             </div>
 
-            <div className="bg-white border border-zinc-200 rounded-lg p-4 flex items-center justify-between shadow-xs">
+            <div className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block">Top Customer (Approved Hours)</span>
-                <span className="text-sm font-bold text-zinc-800 mt-2 block truncate">{customerKPIs.topCustomerName}</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Top Customer (Approved Hours)</span>
+                <span className="text-sm font-bold text-ink mt-2 block truncate">{customerKPIs.topCustomerName}</span>
               </div>
-              <Activity className="text-zinc-300" size={24} />
+              <Activity className="text-ink-muted" size={24} />
             </div>
 
-            <div className="bg-white border border-zinc-200 rounded-lg p-4 flex items-center justify-between shadow-xs">
+            <div className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block">Total SLA Breaches</span>
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Total SLA Breaches</span>
                 <span className="text-xl font-bold text-red-750 mt-1 block flex items-center gap-1.5">
                   {customerKPIs.totalBreaches}
                   {customerKPIs.totalBreaches > 0 && (
-                    <AlertCircle className="text-red-500 animate-pulse" size={16} />
+                    <AlertCircle className="text-critical animate-pulse" size={16} />
                   )}
                 </span>
               </div>
@@ -748,20 +748,20 @@ export default function ManagerWorkloadPage() {
           {/* Visualizations row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Consumed Hours by Customer Chart */}
-            <Card className="border-zinc-200 bg-white">
-              <CardHeader className="border-b border-zinc-150 py-3.5 px-4">
+            <Card className="border-line bg-surface">
+              <CardHeader className="border-b border-line py-3.5 px-4">
                 <CardTitle className="text-xs uppercase tracking-wide">Approved Support Hours Consumption</CardTitle>
-                <CardDescription className="text-[9.5px]">Approved functional and technical hours consumed by organization.</CardDescription>
+                <CardDescription className="text-[11px]">Approved functional and technical hours consumed by organization.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 px-4 h-64">
                 {customerHoursChartData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-zinc-400 font-mono italic">No data available for the active filters.</div>
+                  <div className="flex h-full items-center justify-center text-ink-muted italic">No data available for the active filters.</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={customerHoursChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke={COLORS.gray} fontSize={9} className="font-mono" />
-                      <YAxis stroke={COLORS.gray} fontSize={9} className="font-mono" />
+                      <XAxis dataKey="name" stroke={COLORS.gray} fontSize={9} className="" />
+                      <YAxis stroke={COLORS.gray} fontSize={9} className="" />
                       <RechartsTooltip contentStyle={{ fontFamily: 'monospace', fontSize: '9px', borderRadius: '4px' }} />
                       <Legend wrapperStyle={{ fontSize: '9px', fontFamily: 'monospace', paddingTop: '10px' }} />
                       <Bar dataKey="Hours Consumed" fill={COLORS.zinc950} radius={[2, 2, 0, 0]} />
@@ -772,20 +772,20 @@ export default function ManagerWorkloadPage() {
             </Card>
 
             {/* SLA Breaches Chart */}
-            <Card className="border-zinc-200 bg-white">
-              <CardHeader className="border-b border-zinc-150 py-3.5 px-4">
+            <Card className="border-line bg-surface">
+              <CardHeader className="border-b border-line py-3.5 px-4">
                 <CardTitle className="text-xs uppercase tracking-wide">SLA Breaches vs Total Tickets</CardTitle>
-                <CardDescription className="text-[9.5px]">Audit ticket volume alongside count of SLA violations per client.</CardDescription>
+                <CardDescription className="text-[11px]">Audit ticket volume alongside count of SLA violations per client.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 px-4 h-64">
                 {customerSLAChartData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-zinc-400 font-mono italic">No data available.</div>
+                  <div className="flex h-full items-center justify-center text-ink-muted italic">No data available.</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={customerSLAChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke={COLORS.gray} fontSize={9} className="font-mono" />
-                      <YAxis stroke={COLORS.gray} fontSize={9} className="font-mono" allowDecimals={false} />
+                      <XAxis dataKey="name" stroke={COLORS.gray} fontSize={9} className="" />
+                      <YAxis stroke={COLORS.gray} fontSize={9} className="" allowDecimals={false} />
                       <RechartsTooltip contentStyle={{ fontFamily: 'monospace', fontSize: '9px', borderRadius: '4px' }} />
                       <Legend wrapperStyle={{ fontSize: '9px', fontFamily: 'monospace', paddingTop: '10px' }} />
                       <Bar dataKey="Total Tickets" fill={COLORS.zinc300} radius={[2, 2, 0, 0]} />
@@ -801,13 +801,13 @@ export default function ManagerWorkloadPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Customer table */}
-            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs md:col-span-2">
-              <div className="bg-zinc-50 border-b border-zinc-200 px-4 py-3">
-                <h3 className="font-bold text-xs uppercase text-zinc-800 font-mono">Customer Roster Utilization</h3>
+            <div className="bg-surface border border-line rounded-lg overflow-hidden shadow-xs md:col-span-2">
+              <div className="bg-surface-muted border-b border-line px-4 py-3">
+                <h3 className="font-bold text-xs uppercase text-ink">Customer Roster Utilization</h3>
               </div>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[8.5px] tracking-wider text-zinc-500">
+                  <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
                     <th className="p-4">Customer Company</th>
                     <th className="p-4 text-center">Tickets Created</th>
                     <th className="p-4 text-center font-bold">Consumed Hours</th>
@@ -816,24 +816,24 @@ export default function ManagerWorkloadPage() {
                     <th className="p-4 text-right">SLA Rate</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-150">
+                <tbody className="divide-y divide-line">
                   {customerAnalytics.map(c => {
                     const isSelected = selectedOrgName === c.name;
                     return (
                       <tr 
                         key={c.name} 
-                        className={`hover:bg-zinc-50/50 transition cursor-pointer ${
-                          isSelected ? 'bg-zinc-50 border-l-2 border-l-zinc-950' : ''
+                        className={`hover:bg-surface-muted/60 transition cursor-pointer ${
+                          isSelected ? 'bg-surface-muted border-l-2 border-l-zinc-950' : ''
                         }`}
                         onClick={() => setSelectedOrgName(c.name)}
                       >
-                        <td className="p-4 font-bold text-zinc-850 text-xs">{c.name}</td>
-                        <td className="p-4 text-center text-zinc-600 font-semibold">{c.totalTickets}</td>
-                        <td className="p-4 text-center font-bold text-zinc-800">{Number(c.consumedHours.toFixed(1))} hrs</td>
+                        <td className="p-4 font-bold text-ink text-xs">{c.name}</td>
+                        <td className="p-4 text-center text-ink-secondary font-semibold">{c.totalTickets}</td>
+                        <td className="p-4 text-center font-bold text-ink">{Number(c.consumedHours.toFixed(1))} hrs</td>
                         <td className="p-4 text-center font-bold text-red-700">{c.breaches}</td>
-                        <td className="p-4 font-mono font-bold text-zinc-500 uppercase">{c.topModule}</td>
+                        <td className="p-4 font-bold text-ink-secondary uppercase">{c.topModule}</td>
                         <td className="p-4 text-right font-bold">
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                          <span className={`px-1.5 py-0.5 rounded text-[11px] ${
                             c.complianceRate >= 90 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
                             c.complianceRate >= 75 ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                             'bg-red-50 text-red-700 border border-red-100'
@@ -849,35 +849,35 @@ export default function ManagerWorkloadPage() {
             </div>
 
             {/* Selected customer detail drawer */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs h-fit space-y-4">
-              <div className="border-b border-zinc-150 pb-2.5">
-                <h4 className="font-bold text-xs uppercase tracking-wide text-zinc-955 flex items-center gap-1.5">
-                  <Building2 size={14} className="text-zinc-500" />
+            <div className="bg-surface border border-line rounded-lg p-4 shadow-xs h-fit space-y-4">
+              <div className="border-b border-line pb-2.5">
+                <h4 className="font-bold text-xs uppercase tracking-wide text-ink flex items-center gap-1.5">
+                  <Building2 size={14} className="text-ink-secondary" />
                   Client Support Audit
                 </h4>
               </div>
 
               {selectedCustomer ? (
                 <div className="space-y-4">
-                  <div className="bg-zinc-50 border border-zinc-150 rounded-lg p-3 space-y-2">
-                    <h5 className="font-bold text-zinc-850 text-xs block">{selectedCustomer.name}</h5>
+                  <div className="bg-surface-muted border border-line rounded-lg p-3 space-y-2">
+                    <h5 className="font-bold text-ink text-xs block">{selectedCustomer.name}</h5>
                     
                     <div className="grid grid-cols-2 gap-2 text-center pt-2">
-                      <div className="bg-white border border-zinc-250 rounded p-2">
-                        <span className="text-[8px] font-bold text-zinc-400 uppercase block">Total Tickets</span>
-                        <span className="text-sm font-bold text-zinc-800">{selectedCustomer.totalTickets}</span>
+                      <div className="bg-surface border border-line rounded p-2">
+                        <span className="text-[11px] font-bold text-ink-muted uppercase block">Total Tickets</span>
+                        <span className="text-sm font-bold text-ink">{selectedCustomer.totalTickets}</span>
                       </div>
-                      <div className="bg-white border border-zinc-250 rounded p-2">
-                        <span className="text-[8px] font-bold text-zinc-400 uppercase block">Consumed Hours</span>
-                        <span className="text-sm font-bold text-zinc-800">{Number(selectedCustomer.consumedHours.toFixed(1))} hrs</span>
+                      <div className="bg-surface border border-line rounded p-2">
+                        <span className="text-[11px] font-bold text-ink-muted uppercase block">Consumed Hours</span>
+                        <span className="text-sm font-bold text-ink">{Number(selectedCustomer.consumedHours.toFixed(1))} hrs</span>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h6 className="font-bold text-[9px] uppercase text-zinc-450 mb-2 tracking-wider">Ticket History ({selectedCustomer.totalTickets})</h6>
+                    <h6 className="font-bold text-[11px] uppercase text-ink-muted mb-2 tracking-wider">Ticket History ({selectedCustomer.totalTickets})</h6>
                     {selectedCustomer.ticketsList.length === 0 ? (
-                      <div className="text-center py-6 border border-dashed border-zinc-200 rounded text-zinc-400 font-mono italic">
+                      <div className="text-center py-6 border border-dashed border-line rounded text-ink-muted italic">
                         No support tickets found.
                       </div>
                     ) : (
@@ -885,19 +885,19 @@ export default function ManagerWorkloadPage() {
                         {selectedCustomer.ticketsList.map(t => {
                           const breached = isTicketBreached(t);
                           return (
-                            <div key={t.id} className="border border-zinc-150 hover:bg-zinc-50/50 p-2.5 rounded-lg transition text-[10px] space-y-1">
+                            <div key={t.id} className="border border-line hover:bg-surface-muted/60 p-2.5 rounded-lg transition text-[11px] space-y-1">
                               <div className="flex justify-between items-center">
-                                <span className="font-bold text-zinc-950 font-mono">{t.ticketNumber || t.id.slice(0, 8)}</span>
-                                <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
+                                <span className="font-bold text-ink">{t.ticketNumber || t.id.slice(0, 8)}</span>
+                                <span className={`px-1.5 py-0.2 rounded text-[11px] font-bold uppercase ${
                                   breached ? 'bg-red-50 text-red-700 border border-red-150 animate-pulse' : 'bg-emerald-50 text-emerald-700 border border-emerald-150'
                                 }`}>
                                   {breached ? 'SLA Breached' : 'SLA Met / OK'}
                                 </span>
                               </div>
-                              <h6 className="font-bold text-zinc-850 truncate">{t.title}</h6>
-                              <div className="flex justify-between text-[8px] text-zinc-400 border-t border-zinc-100 pt-1 mt-1 font-mono">
+                              <h6 className="font-bold text-ink truncate">{t.title}</h6>
+                              <div className="flex justify-between text-[11px] text-ink-muted border-t border-line pt-1 mt-1">
                                 <span>Module: {t.sapModule}</span>
-                                <span className="px-1 bg-zinc-100 rounded text-zinc-550">{t.status}</span>
+                                <span className="px-1 bg-surface-subtle rounded text-ink-secondary">{t.status}</span>
                               </div>
                             </div>
                           );
@@ -907,7 +907,7 @@ export default function ManagerWorkloadPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-zinc-400 font-mono border border-dashed border-zinc-200 rounded-lg">
+                <div className="text-center py-12 text-ink-muted border border-dashed border-line rounded-lg">
                   Select a company from the roster list to audit support history and SLA statuses.
                 </div>
               )}

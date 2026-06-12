@@ -406,7 +406,7 @@ export default function AllCustomerTicketsPage() {
     if (hoursLeft < 24) {
       return { label: `SLA WARNING (${Math.round(hoursLeft)}h left)`, color: 'text-amber-700 bg-amber-50 border-amber-200' };
     }
-    return { label: `SLA MET (${new Date(slaDueAt).toLocaleDateString()})`, color: 'text-zinc-650 bg-zinc-50 border-zinc-200' };
+    return { label: `SLA MET (${new Date(slaDueAt).toLocaleDateString()})`, color: 'text-ink-secondary bg-surface-muted border-line' };
   };
 
   // CSV Export handler
@@ -526,24 +526,24 @@ export default function AllCustomerTicketsPage() {
   }, [filteredTickets]);
 
   return (
-    <div className="space-y-6 font-mono text-xs text-[#09090b]">
+    <div className="space-y-6 text-xs text-[#09090b]">
       
       {/* ── HEADER ROW ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-4">
         <div>
-          <h1 className="text-lg font-bold uppercase text-zinc-950 tracking-wider">All Customer Tickets</h1>
-          <p className="text-zinc-500 mt-1">Cross-Customer ticketing dashboard with dynamic status filters, SLAs, and effort aggregation.</p>
+          <h1 className="type-title text-ink">All Customer Tickets</h1>
+          <p className="text-ink-secondary mt-1">Cross-Customer ticketing dashboard with dynamic status filters, SLAs, and effort aggregation.</p>
         </div>
         <div className="flex gap-2">
           <Button
             onClick={exportToCSV}
             variant="outline"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white rounded font-bold uppercase text-[10px] tracking-wider transition h-8"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border-line-strong hover:bg-ink hover:text-white rounded font-bold uppercase text-[11px] tracking-wider transition h-8"
           >
             <Download size={12} />
             <span>Export CSV</span>
           </Button>
-          <Link href="/manager/create-ticket" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider transition h-8">
+          <Link href="/manager/create-ticket" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-zinc-800 text-white rounded font-bold uppercase text-[11px] tracking-wider transition h-8">
             <Plus size={12} />
             <span>Create On Behalf</span>
           </Link>
@@ -552,70 +552,70 @@ export default function AllCustomerTicketsPage() {
 
       {/* ── KPI CARDS ROW ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+        <Card className="bg-surface border border-line shadow-card p-4 flex flex-col justify-between rounded-lg">
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Total Tickets</span>
-            <Layers size={14} className="text-zinc-400" />
+            <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Total Tickets</span>
+            <Layers size={14} className="text-ink-muted" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-extrabold text-zinc-950">{filteredTickets.length}</span>
-            <span className="text-[9px] text-zinc-450 block mt-1">Matching current filters</span>
+            <span className="text-2xl font-extrabold text-ink">{filteredTickets.length}</span>
+            <span className="text-[11px] text-ink-muted block mt-1">Matching current filters</span>
           </div>
         </Card>
 
-        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+        <Card className="bg-surface border border-line shadow-card p-4 flex flex-col justify-between rounded-lg">
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Unassigned</span>
-            <Users size={14} className="text-zinc-400" />
+            <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Unassigned</span>
+            <Users size={14} className="text-ink-muted" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-extrabold text-zinc-950">
+            <span className="text-2xl font-extrabold text-ink">
               {filteredTickets.filter(t => !t.assignedConsultantId).length}
             </span>
-            <span className="text-[9px] text-zinc-450 block mt-1">Pending allocation</span>
+            <span className="text-[11px] text-ink-muted block mt-1">Pending allocation</span>
           </div>
         </Card>
 
-        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+        <Card className="bg-surface border border-line shadow-card p-4 flex flex-col justify-between rounded-lg">
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Critical P1s</span>
-            <ShieldAlert size={14} className="text-red-500 animate-pulse" />
+            <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Critical P1s</span>
+            <ShieldAlert size={14} className="text-critical animate-pulse" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-extrabold text-red-650">
+            <span className="text-2xl font-extrabold text-critical">
               {filteredTickets.filter(t => t.priority === 'Critical').length}
             </span>
-            <span className="text-[9px] text-red-500 block mt-1 font-bold">Requires Immediate Attention</span>
+            <span className="text-[11px] text-critical block mt-1 font-bold">Requires Immediate Attention</span>
           </div>
         </Card>
 
-        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+        <Card className="bg-surface border border-line shadow-card p-4 flex flex-col justify-between rounded-lg">
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">SLA Risk/Breach</span>
+            <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">SLA Risk/Breach</span>
             <Clock size={14} className="text-amber-500" />
           </div>
           <div className="mt-2">
             <span className="text-2xl font-extrabold text-amber-700">
               {slaBreachedOrWarningCount}
             </span>
-            <span className="text-[9px] text-amber-600 block mt-1">Breached or &lt; 24h remaining</span>
+            <span className="text-[11px] text-warning block mt-1">Breached or &lt; 24h remaining</span>
           </div>
         </Card>
 
-        <Card className="bg-white border border-zinc-200 shadow-sm p-4 flex flex-col justify-between rounded-xl">
+        <Card className="bg-surface border border-line shadow-card p-4 flex flex-col justify-between rounded-lg">
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Effort (Quoted/Actual)</span>
-            <Briefcase size={14} className="text-zinc-400" />
+            <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Effort (Quoted/Actual)</span>
+            <Briefcase size={14} className="text-ink-muted" />
           </div>
           <div className="mt-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-extrabold text-zinc-900">{totalEstimates}h</span>
-              <span className="text-zinc-400 text-[9px]">/</span>
-              <span className={`text-lg font-extrabold ${totalActuals > totalEstimates ? 'text-red-650' : 'text-emerald-700'}`}>
+              <span className="text-lg font-extrabold text-ink">{totalEstimates}h</span>
+              <span className="text-ink-muted text-[11px]">/</span>
+              <span className={`text-lg font-extrabold ${totalActuals > totalEstimates ? 'text-critical' : 'text-emerald-700'}`}>
                 {totalActuals}h
               </span>
             </div>
-            <span className="text-[9px] text-zinc-450 block mt-1">Quoted vs Consumed</span>
+            <span className="text-[11px] text-ink-muted block mt-1">Quoted vs Consumed</span>
           </div>
         </Card>
       </div>
@@ -623,10 +623,10 @@ export default function AllCustomerTicketsPage() {
       {/* ── CHARTS SECTION ── */}
       {filteredTickets.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="bg-white border border-zinc-200 shadow-sm p-4 rounded-xl">
+          <Card className="bg-surface border border-line shadow-card p-4 rounded-lg">
             <CardHeader className="p-0 pb-3">
-              <CardTitle className="text-xs uppercase font-extrabold text-zinc-800 tracking-wider">Tickets by Current Status</CardTitle>
-              <CardDescription className="text-[10px]">Distribution of incidents across active states.</CardDescription>
+              <CardTitle className="text-xs uppercase font-extrabold text-ink tracking-wider">Tickets by Current Status</CardTitle>
+              <CardDescription className="text-[11px]">Distribution of incidents across active states.</CardDescription>
             </CardHeader>
             <CardContent className="p-0 h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -644,10 +644,10 @@ export default function AllCustomerTicketsPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-zinc-200 shadow-sm p-4 rounded-xl">
+          <Card className="bg-surface border border-line shadow-card p-4 rounded-lg">
             <CardHeader className="p-0 pb-3">
-              <CardTitle className="text-xs uppercase font-extrabold text-zinc-800 tracking-wider">Top Modules by Volume</CardTitle>
-              <CardDescription className="text-[10px]">Volume of tickets matching SAP modules.</CardDescription>
+              <CardTitle className="text-xs uppercase font-extrabold text-ink tracking-wider">Top Modules by Volume</CardTitle>
+              <CardDescription className="text-[11px]">Volume of tickets matching SAP modules.</CardDescription>
             </CardHeader>
             <CardContent className="p-0 flex items-center justify-between h-[220px]">
               <div className="w-1/2 h-full">
@@ -670,14 +670,14 @@ export default function AllCustomerTicketsPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="w-1/2 space-y-1.5 pl-4 font-mono text-[9px] overflow-y-auto max-h-[200px]">
+              <div className="w-1/2 space-y-1.5 pl-4 text-[11px] overflow-y-auto max-h-[200px]">
                 {moduleData.map((entry, index) => (
                   <div key={entry.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 truncate mr-2">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ZINC_COLORS[index % ZINC_COLORS.length] }} />
-                      <span className="text-zinc-650 truncate">{entry.name}</span>
+                      <span className="text-ink-secondary truncate">{entry.name}</span>
                     </div>
-                    <span className="font-bold text-zinc-850 shrink-0">{entry.value}</span>
+                    <span className="font-bold text-ink shrink-0">{entry.value}</span>
                   </div>
                 ))}
               </div>
@@ -687,7 +687,7 @@ export default function AllCustomerTicketsPage() {
       )}
 
       {/* ── 10 VIEWS TABS CONSOLE ── */}
-      <div className="flex border-b border-zinc-200 overflow-x-auto whitespace-nowrap bg-zinc-50 p-1 rounded-lg border gap-1">
+      <div className="flex border-b border-line overflow-x-auto whitespace-nowrap bg-surface-muted p-1 rounded-lg border gap-1">
         {([
           { id: 'all', label: 'All Tickets', count: tabCounts.all },
           { id: 'unassigned', label: 'Unassigned', count: tabCounts.unassigned },
@@ -703,14 +703,14 @@ export default function AllCustomerTicketsPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 py-1.5 px-3 font-bold uppercase text-[9px] rounded transition ${
+            className={`flex items-center gap-1.5 py-1.5 px-3 font-bold uppercase text-[11px] rounded transition ${
               activeTab === tab.id
-                ? 'bg-white text-zinc-955 shadow-sm border border-zinc-200 font-black'
-                : 'text-zinc-500 hover:text-zinc-850 hover:bg-zinc-100'
+                ? 'bg-surface text-ink shadow-card border border-line font-black'
+                : 'text-ink-secondary hover:text-ink hover:bg-surface-subtle'
             }`}
           >
             <span>{tab.label}</span>
-            <Badge className="bg-zinc-105 text-zinc-800 border border-zinc-200 hover:bg-zinc-200 font-bold px-1 py-0 text-[8px] border-none">
+            <Badge className="bg-surface-subtle text-ink border border-line hover:bg-surface-subtle font-bold px-1 py-0 text-[11px] border-none">
               {tab.count}
             </Badge>
           </button>
@@ -718,31 +718,31 @@ export default function AllCustomerTicketsPage() {
       </div>
 
       {/* Search & View Toggles Row */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-3 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-surface border border-line rounded-lg p-3 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Search bar */}
         <div className="relative w-full md:max-w-md">
-          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search Subject, Ticket ID, Description, Consultants..."
-            className="w-full bg-white border border-zinc-200 rounded pl-9 pr-4 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono placeholder:text-zinc-400"
+            className="w-full bg-surface border border-line rounded pl-9 pr-4 py-1.5 text-xs text-ink focus:outline-none focus:border-brand placeholder:text-ink-muted"
           />
         </div>
 
         {/* View Toggles */}
-        <div className="flex bg-zinc-150/70 p-0.5 rounded border border-zinc-250 shrink-0">
+        <div className="flex bg-surface-subtle/70 p-0.5 rounded border border-line shrink-0">
           <button
             onClick={() => setViewMode('card')}
-            className={`p-1.5 rounded transition ${viewMode === 'card' ? 'bg-white shadow-sm text-zinc-900 font-bold' : 'text-zinc-500 hover:text-zinc-850'}`}
+            className={`p-1.5 rounded transition ${viewMode === 'card' ? 'bg-surface shadow-card text-ink font-bold' : 'text-ink-secondary hover:text-ink'}`}
             title="Card Workspace"
           >
             <LayoutGrid size={13} />
           </button>
           <button
             onClick={() => setViewMode('compact')}
-            className={`p-1.5 rounded transition ${viewMode === 'compact' ? 'bg-white shadow-sm text-zinc-900 font-bold' : 'text-zinc-500 hover:text-zinc-855'}`}
+            className={`p-1.5 rounded transition ${viewMode === 'compact' ? 'bg-surface shadow-card text-ink font-bold' : 'text-ink-secondary hover:text-ink'}`}
             title="Compact Service Desk"
           >
             <List size={13} />
@@ -799,18 +799,18 @@ export default function AllCustomerTicketsPage() {
 
       {/* ── BULK ACTION CONSOLE ── */}
       {selectedTicketIds.length > 0 && (
-        <div className="bg-zinc-950 text-white rounded-lg p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md border border-zinc-800 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="bg-ink text-white rounded-lg p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md border border-zinc-800 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2">
             <CheckSquare size={14} className="text-green-400" />
-            <span className="font-bold text-[10px] uppercase tracking-wider">{selectedTicketIds.length} Tickets Selected</span>
+            <span className="font-bold text-[11px] uppercase tracking-wider">{selectedTicketIds.length} Tickets Selected</span>
           </div>
           <div className="flex flex-wrap items-center gap-4">
             {/* Assign */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] uppercase text-zinc-400 font-bold">Assign:</span>
+              <span className="text-[11px] uppercase text-ink-muted font-bold">Assign:</span>
               <select
                 onChange={e => { handleBulkAssign(e.target.value); e.target.value = ''; }}
-                className="bg-zinc-900 border border-zinc-850 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none font-mono"
+                className="bg-ink border border-zinc-850 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none"
               >
                 <option value="">Select consultant...</option>
                 {consultantsList.map(c => <option key={c} value={c}>{c}</option>)}
@@ -818,10 +818,10 @@ export default function AllCustomerTicketsPage() {
             </div>
             {/* Priority */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] uppercase text-zinc-400 font-bold">Priority:</span>
+              <span className="text-[11px] uppercase text-ink-muted font-bold">Priority:</span>
               <select
                 onChange={e => { handleBulkPriority(e.target.value as any); e.target.value = ''; }}
-                className="bg-zinc-900 border border-zinc-850 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none font-mono"
+                className="bg-ink border border-zinc-850 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none"
               >
                 <option value="">Select...</option>
                 <option value="Critical">Critical</option>
@@ -832,10 +832,10 @@ export default function AllCustomerTicketsPage() {
             </div>
             {/* Status */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] uppercase text-zinc-400 font-bold">Status:</span>
+              <span className="text-[11px] uppercase text-ink-muted font-bold">Status:</span>
               <select
                 onChange={e => { handleBulkStatus(e.target.value as any); e.target.value = ''; }}
-                className="bg-zinc-900 border border-zinc-850 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none font-mono"
+                className="bg-ink border border-zinc-850 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none"
               >
                 <option value="">Select...</option>
                 <option value="In Progress - Functional">IP Functional</option>
@@ -847,7 +847,7 @@ export default function AllCustomerTicketsPage() {
               </select>
             </div>
             {/* Cancel */}
-            <button onClick={() => setSelectedTicketIds([])} className="text-[9px] uppercase font-bold text-zinc-400 hover:text-white transition cursor-pointer">
+            <button onClick={() => setSelectedTicketIds([])} className="text-[11px] uppercase font-bold text-ink-muted hover:text-white transition cursor-pointer">
               Cancel
             </button>
           </div>
@@ -856,21 +856,21 @@ export default function AllCustomerTicketsPage() {
 
       {/* ── TICKETS WORKSPACE PRESENTATION ── */}
       {loading ? (
-        <div className="py-20 text-center text-zinc-500 font-bold">Querying tickets registry...</div>
+        <div className="py-20 text-center text-ink-secondary font-bold">Querying tickets registry...</div>
       ) : tickets.length === 0 ? (
-        <Card className="border border-zinc-200 rounded-xl p-20 text-center text-zinc-450 italic space-y-4 bg-white flex flex-col items-center justify-center">
+        <Card className="border border-line rounded-lg p-20 text-center text-ink-muted italic space-y-4 bg-surface flex flex-col items-center justify-center">
           <BrandedLogo width={28} height={28} iconOnly={true} className="opacity-45" />
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-zinc-955 uppercase tracking-wider font-mono">No tickets created yet.</h3>
-            <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Create an SAP incident to start tracking support and resolutions.</p>
+            <h3 className="text-sm font-bold text-ink uppercase tracking-wider">No tickets created yet.</h3>
+            <p className="text-xs text-ink-secondary max-w-sm mx-auto">Create an SAP incident to start tracking support and resolutions.</p>
           </div>
         </Card>
       ) : sortedTickets.length === 0 ? (
-        <Card className="border border-zinc-200 rounded-xl p-20 text-center text-zinc-455 italic space-y-4 bg-white flex flex-col items-center justify-center">
+        <Card className="border border-line rounded-lg p-20 text-center text-ink-muted italic space-y-4 bg-surface flex flex-col items-center justify-center">
           <BrandedLogo width={28} height={28} iconOnly={true} className="opacity-45" />
           <div className="space-y-1">
-            <p className="font-bold uppercase text-[10px] text-zinc-955 font-mono tracking-wider">No Incidents Found</p>
-            <p className="text-[9px] text-zinc-400 font-mono">No tickets match the selected filters or active workspace tab.</p>
+            <p className="font-bold uppercase text-[11px] text-ink tracking-wider">No Incidents Found</p>
+            <p className="text-[11px] text-ink-muted">No tickets match the selected filters or active workspace tab.</p>
           </div>
         </Card>
       ) : viewMode === 'card' ? (
@@ -879,7 +879,7 @@ export default function AllCustomerTicketsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {paginatedTickets.map((t) => {
             const priorityCfg = priorityConfig[t.priority] || priorityConfig['Low'];
-            const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-zinc-650 bg-zinc-50 border-zinc-200' };
+            const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-ink-secondary bg-surface-muted border-line' };
             const slaCfg = getSLAStatus(t.slaDueAt, t.status);
 
             const funcEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
@@ -894,7 +894,7 @@ export default function AllCustomerTicketsPage() {
             const totalAct = funcAct + techAct;
 
             return (
-              <Card key={t.id} className="border border-zinc-200 rounded-xl hover:border-zinc-400 transition flex flex-col justify-between shadow-sm overflow-hidden bg-white">
+              <Card key={t.id} className="border border-line rounded-lg hover:border-line-strong transition flex flex-col justify-between shadow-card overflow-hidden bg-surface">
                 
                 <div className="p-4 space-y-3.5">
                   <div className="flex items-start justify-between">
@@ -903,15 +903,15 @@ export default function AllCustomerTicketsPage() {
                         type="checkbox"
                         checked={selectedTicketIds.includes(t.id)}
                         onChange={() => toggleSelectTicket(t.id)}
-                        className="cursor-pointer rounded border-zinc-300 text-zinc-905 focus:ring-zinc-950"
+                        className="cursor-pointer rounded border-line-strong text-ink focus:ring-brand/30"
                       />
-                      <span className="font-bold text-[10px] text-zinc-955 tracking-wider">{t.ticketNumber}</span>
+                      <span className="font-bold text-[11px] text-ink tracking-wider">{t.ticketNumber}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className={`inline-flex items-center px-1.5 py-0.2 rounded border text-[8px] font-bold uppercase font-mono ${statusCfg.color}`}>
+                      <span className={`inline-flex items-center px-1.5 py-0.2 rounded border text-[11px] font-bold uppercase ${statusCfg.color}`}>
                         {statusCfg.label}
                       </span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full border text-[8px] font-bold font-mono ${priorityCfg.color}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full border text-[11px] font-bold ${priorityCfg.color}`}>
                         <span className={`w-1 h-1 rounded-full ${priorityCfg.dot}`} />
                         {priorityCfg.label}
                       </span>
@@ -919,93 +919,93 @@ export default function AllCustomerTicketsPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <h3 className="font-bold text-xs text-zinc-950 leading-snug line-clamp-2 hover:underline">
+                    <h3 className="font-bold text-xs text-ink leading-snug line-clamp-2 hover:underline">
                       <Link href={`/manager/tickets/${t.id}`}>{t.title}</Link>
                     </h3>
-                    <p className="text-[10px] text-zinc-500 line-clamp-2 leading-relaxed" title={t.description}>
+                    <p className="text-[11px] text-ink-secondary line-clamp-2 leading-relaxed" title={t.description}>
                       {t.description}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[9px] border-t border-b border-zinc-100 py-2">
-                    <div className="flex items-center gap-1.5 text-zinc-550 font-bold uppercase">
-                      <Building2 size={11} className="text-zinc-450" />
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] border-t border-b border-line py-2">
+                    <div className="flex items-center gap-1.5 text-ink-secondary font-bold uppercase">
+                      <Building2 size={11} className="text-ink-muted" />
                       <span className="truncate max-w-[100px]">{t.organization}</span>
                     </div>
-                    <div className="text-right text-zinc-450 font-semibold">
+                    <div className="text-right text-ink-muted font-semibold">
                       <span>{getTicketAgeStr(t.createdAt)}</span>
                     </div>
                     <div className="col-span-2">
-                      <span className="text-[8px] text-zinc-455 uppercase block font-bold">Allocated Resources:</span>
+                      <span className="text-[11px] text-ink-muted uppercase block font-bold">Allocated Resources:</span>
                       <div className="mt-0.5 space-y-0.5">
                         {funcEfforts.length > 0 && (
-                          <div className="text-[9px] text-zinc-700 truncate">
-                            <span className="font-bold text-zinc-700">[F]: </span>
+                          <div className="text-[11px] text-ink-secondary truncate">
+                            <span className="font-bold text-ink-secondary">[F]: </span>
                             {funcEfforts.map(e => e.consultantName).join(', ')}
                           </div>
                         )}
                         {techEfforts.length > 0 && (
-                          <div className="text-[9px] text-zinc-700 truncate">
+                          <div className="text-[11px] text-ink-secondary truncate">
                             <span className="font-bold text-slate-700">[T]: </span>
                             {techEfforts.map(e => e.consultantName).join(', ')}
                           </div>
                         )}
                         {funcEfforts.length === 0 && techEfforts.length === 0 && (
-                          <span className="text-zinc-400 italic">No assigned engineers</span>
+                          <span className="text-ink-muted italic">No assigned engineers</span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[9px] font-mono">
-                    <div className="bg-zinc-50 border border-zinc-200 p-1.5 rounded">
-                      <span className="text-[8px] text-zinc-450 font-bold uppercase block">Effort Estimates</span>
-                      <span className="font-semibold text-zinc-700 block mt-0.5">F: {funcEst}h | T: {techEst}h</span>
-                      <span className="font-bold text-zinc-950 block mt-0.5">Total: {totalEst}h</span>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="bg-surface-muted border border-line p-1.5 rounded">
+                      <span className="text-[11px] text-ink-muted font-bold uppercase block">Effort Estimates</span>
+                      <span className="font-semibold text-ink-secondary block mt-0.5">F: {funcEst}h | T: {techEst}h</span>
+                      <span className="font-bold text-ink block mt-0.5">Total: {totalEst}h</span>
                     </div>
-                    <div className="bg-zinc-50 border border-zinc-200 p-1.5 rounded">
-                      <span className="text-[8px] text-zinc-450 font-bold uppercase block">Actual Logged</span>
-                      <span className="font-semibold text-zinc-700 block mt-0.5">F: {funcAct}h | T: {techAct}h</span>
-                      <span className={`font-bold block mt-0.5 ${totalAct > totalEst ? 'text-red-655' : 'text-green-700'}`}>Total: {totalAct}h</span>
+                    <div className="bg-surface-muted border border-line p-1.5 rounded">
+                      <span className="text-[11px] text-ink-muted font-bold uppercase block">Actual Logged</span>
+                      <span className="font-semibold text-ink-secondary block mt-0.5">F: {funcAct}h | T: {techAct}h</span>
+                      <span className={`font-bold block mt-0.5 ${totalAct > totalEst ? 'text-critical' : 'text-green-700'}`}>Total: {totalAct}h</span>
                     </div>
                   </div>
 
                   {/* Closure Status */}
-                  <div className="flex items-center justify-between text-[9px] pt-1">
-                    <span className="text-zinc-450 uppercase font-bold">Closure:</span>
+                  <div className="flex items-center justify-between text-[11px] pt-1">
+                    <span className="text-ink-muted uppercase font-bold">Closure:</span>
                     {t.status === 'Closed' ? (
-                      <span className="text-zinc-500 font-bold font-mono">Closed</span>
+                      <span className="text-ink-secondary font-bold">Closed</span>
                     ) : t.status === 'Request for Closure' ? (
                       <span className="text-[#d97706] font-bold animate-pulse">Awaiting Verification</span>
                     ) : (
-                      <span className="text-zinc-400">Active development</span>
+                      <span className="text-ink-muted">Active development</span>
                     )}
                   </div>
 
                 </div>
 
-                <div className="bg-zinc-50 border-t border-zinc-200 py-2.5 px-4 flex items-center justify-between text-[9px] font-mono text-zinc-500">
+                <div className="bg-surface-muted border-t border-line py-2.5 px-4 flex items-center justify-between text-[11px] text-ink-secondary">
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-zinc-955 text-white hover:bg-zinc-900 text-[8px] py-0 px-1 border-none font-bold uppercase">
+                    <Badge className="bg-ink text-white hover:bg-ink text-[11px] py-0 px-1 border-none font-bold uppercase">
                       {t.sapModule}
                     </Badge>
-                    <span className={`px-1.5 py-0.2 rounded font-bold border text-[8px] uppercase ${slaCfg.color}`}>
+                    <span className={`px-1.5 py-0.2 rounded font-bold border text-[11px] uppercase ${slaCfg.color}`}>
                       {slaCfg.label}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-zinc-400 text-[8px]" title="Last Updated">
+                    <span className="text-ink-muted text-[11px]" title="Last Updated">
                       Updated {relativeTime(t.updatedAt)}
                     </span>
                     
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost" className="h-6 w-6 text-zinc-500 cursor-pointer">
+                        <Button size="icon" variant="ghost" className="h-6 w-6 text-ink-secondary cursor-pointer">
                           <MoreHorizontal size={13} />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 text-[10px] font-mono">
+                      <DropdownMenuContent align="end" className="w-48 text-[11px]">
                         <DropdownMenuItem className="cursor-pointer font-bold" asChild>
                           <Link href={`/manager/tickets/${t.id}`}>
                             <Eye size={12} className="mr-1.5" /> View details
@@ -1036,7 +1036,7 @@ export default function AllCustomerTicketsPage() {
                           Wait customer
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          className="cursor-pointer font-bold text-red-650 focus:text-red-750"
+                          className="cursor-pointer font-bold text-critical focus:text-red-750"
                           onClick={() => { updateTicketStatus(t.id, 'Closed', managerName); }}
                         >
                           Force close
@@ -1054,40 +1054,40 @@ export default function AllCustomerTicketsPage() {
       ) : (
         
         // ── COMPACT SERVICE DESK TABLE ──
-        <Card className="border border-zinc-200 shadow-sm overflow-hidden bg-white rounded-xl">
+        <Card className="border border-line shadow-card overflow-hidden bg-surface rounded-lg">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse font-mono">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-550 font-bold uppercase text-[9px]">
+                <tr className="bg-surface-muted border-b border-line text-ink-secondary font-bold uppercase text-[11px]">
                   <th className="py-2.5 px-4 font-bold text-center w-8">
                     <input
                       type="checkbox"
                       checked={selectedTicketIds.length === paginatedTickets.length && paginatedTickets.length > 0}
                       onChange={toggleSelectAll}
-                      className="cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950"
+                      className="cursor-pointer rounded border-line-strong text-ink focus:ring-brand/30"
                     />
                   </th>
-                  <th onClick={() => handleSort('ticketNumber')} className="py-2.5 px-4 font-bold cursor-pointer hover:bg-zinc-100 select-none">
+                  <th onClick={() => handleSort('ticketNumber')} className="py-2.5 px-4 font-bold cursor-pointer hover:bg-surface-subtle select-none">
                     <div className="flex items-center gap-1">
-                      Ticket ID <ArrowUpDown size={10} className="text-zinc-400" />
+                      Ticket ID <ArrowUpDown size={10} className="text-ink-muted" />
                     </div>
                   </th>
                   <th className="py-2.5 px-4 font-bold">Customer</th>
                   <th className="py-2.5 px-4 font-bold">Subject / Title</th>
                   <th className="py-2.5 px-4 font-bold text-center">Module</th>
-                  <th onClick={() => handleSort('priority')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-zinc-100 select-none">
+                  <th onClick={() => handleSort('priority')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-surface-subtle select-none">
                     <div className="flex items-center justify-center gap-1">
-                      Priority <ArrowUpDown size={10} className="text-zinc-400" />
+                      Priority <ArrowUpDown size={10} className="text-ink-muted" />
                     </div>
                   </th>
-                  <th onClick={() => handleSort('status')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-zinc-100 select-none">
+                  <th onClick={() => handleSort('status')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-surface-subtle select-none">
                     <div className="flex items-center justify-center gap-1">
-                      Status <ArrowUpDown size={10} className="text-zinc-400" />
+                      Status <ArrowUpDown size={10} className="text-ink-muted" />
                     </div>
                   </th>
-                  <th onClick={() => handleSort('createdAt')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-zinc-100 select-none">
+                  <th onClick={() => handleSort('createdAt')} className="py-2.5 px-4 font-bold text-center cursor-pointer hover:bg-surface-subtle select-none">
                     <div className="flex items-center justify-center gap-1">
-                      Age <ArrowUpDown size={10} className="text-zinc-400" />
+                      Age <ArrowUpDown size={10} className="text-ink-muted" />
                     </div>
                   </th>
                   <th className="py-2.5 px-4 font-bold">Allocated Resources</th>
@@ -1097,9 +1097,9 @@ export default function AllCustomerTicketsPage() {
                   <th className="py-2.5 px-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 text-[11px]">
+              <tbody className="divide-y divide-line text-[11px]">
                 {paginatedTickets.map((t) => {
-                  const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-zinc-650 bg-zinc-50 border-zinc-200' };
+                  const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-ink-secondary bg-surface-muted border-line' };
                   const priorityCfg = priorityConfig[t.priority] || priorityConfig['Low'];
                   const slaCfg = getSLAStatus(t.slaDueAt, t.status);
 
@@ -1115,64 +1115,64 @@ export default function AllCustomerTicketsPage() {
                   const totalAct = funcAct + techAct;
 
                   return (
-                    <tr key={t.id} className={`hover:bg-zinc-50/50 transition ${selectedTicketIds.includes(t.id) ? 'bg-zinc-50' : ''}`}>
+                    <tr key={t.id} className={`hover:bg-surface-muted/60 transition ${selectedTicketIds.includes(t.id) ? 'bg-surface-muted' : ''}`}>
                       <td className="py-2.5 px-4 text-center w-8">
                         <input
                           type="checkbox"
                           checked={selectedTicketIds.includes(t.id)}
                           onChange={() => toggleSelectTicket(t.id)}
-                          className="cursor-pointer rounded border-zinc-300 text-zinc-905 focus:ring-zinc-950"
+                          className="cursor-pointer rounded border-line-strong text-ink focus:ring-brand/30"
                         />
                       </td>
-                      <td className="py-2.5 px-4 font-bold text-zinc-955">
+                      <td className="py-2.5 px-4 font-bold text-ink">
                         <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.ticketNumber}</Link>
                       </td>
-                      <td className="py-2.5 px-4 font-semibold text-zinc-650 truncate max-w-[100px]" title={t.organization}>
+                      <td className="py-2.5 px-4 font-semibold text-ink-secondary truncate max-w-[100px]" title={t.organization}>
                         {t.organization}
                       </td>
-                      <td className="py-2.5 px-4 font-bold text-zinc-900 max-w-[180px] truncate" title={t.title}>
+                      <td className="py-2.5 px-4 font-bold text-ink max-w-[180px] truncate" title={t.title}>
                         <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.title}</Link>
                       </td>
                       <td className="py-2.5 px-4 text-center">
-                        <Badge className="bg-zinc-100 text-zinc-700 border-none font-bold text-[8px] py-0 px-1 uppercase">
+                        <Badge className="bg-surface-subtle text-ink-secondary border-none font-bold text-[11px] py-0 px-1 uppercase">
                           {t.sapModule}
                         </Badge>
                       </td>
                       <td className="py-2.5 px-4">
                         <div className="flex items-center justify-center gap-1">
                           <span className={`w-1.5 h-1.5 rounded-full ${priorityCfg.dot}`} />
-                          <span className="text-[10px] font-semibold text-zinc-750">{t.priority}</span>
+                          <span className="text-[11px] font-semibold text-ink-secondary">{t.priority}</span>
                         </div>
                       </td>
                       <td className="py-2.5 px-4 text-center">
-                        <span className={`inline-block px-1.5 py-0.2 rounded border text-[8px] font-bold uppercase ${statusCfg.color}`}>
+                        <span className={`inline-block px-1.5 py-0.2 rounded border text-[11px] font-bold uppercase ${statusCfg.color}`}>
                           {statusCfg.label}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-center text-zinc-500 whitespace-nowrap">
+                      <td className="py-2.5 px-4 text-center text-ink-secondary whitespace-nowrap">
                         {getTicketAgeStr(t.createdAt)}
                       </td>
-                      <td className="py-2.5 px-4 font-semibold text-zinc-600 text-[10px]">
+                      <td className="py-2.5 px-4 font-semibold text-ink-secondary text-[11px]">
                         <div className="space-y-0.5 max-w-[150px] truncate">
-                          {funcEfforts.length > 0 && <div className="truncate"><span className="font-bold text-zinc-700">[F] </span>{funcEfforts.map(e => e.consultantName).join(', ')}</div>}
+                          {funcEfforts.length > 0 && <div className="truncate"><span className="font-bold text-ink-secondary">[F] </span>{funcEfforts.map(e => e.consultantName).join(', ')}</div>}
                           {techEfforts.length > 0 && <div className="truncate"><span className="font-bold text-slate-700">[T] </span>{techEfforts.map(e => e.consultantName).join(', ')}</div>}
-                          {funcEfforts.length === 0 && techEfforts.length === 0 && <span className="text-zinc-400 italic">None</span>}
+                          {funcEfforts.length === 0 && techEfforts.length === 0 && <span className="text-ink-muted italic">None</span>}
                         </div>
                       </td>
-                      <td className="py-2.5 px-4 text-center text-zinc-650 whitespace-nowrap">
+                      <td className="py-2.5 px-4 text-center text-ink-secondary whitespace-nowrap">
                         {totalEst}h (F:{funcEst}/T:{techEst})
                       </td>
-                      <td className={`py-2.5 px-4 text-center whitespace-nowrap font-bold ${totalAct > totalEst ? 'text-red-650' : 'text-green-700'}`}>
+                      <td className={`py-2.5 px-4 text-center whitespace-nowrap font-bold ${totalAct > totalEst ? 'text-critical' : 'text-green-700'}`}>
                         {totalAct}h (F:{funcAct}/T:{techAct})
                       </td>
                       <td className="py-2.5 px-4 text-center">
-                        <span className={`px-1.5 py-0.2 rounded font-bold border text-[8px] uppercase ${slaCfg.color}`}>
+                        <span className={`px-1.5 py-0.2 rounded font-bold border text-[11px] uppercase ${slaCfg.color}`}>
                           {slaCfg.label}
                         </span>
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex justify-end gap-1.5">
-                          <Link href={`/manager/tickets/${t.id}`} className="p-1 border border-zinc-200 hover:border-zinc-950 bg-white text-zinc-800 rounded transition" title="Inspect detail">
+                          <Link href={`/manager/tickets/${t.id}`} className="p-1 border border-line hover:border-line-strong bg-surface text-ink rounded transition" title="Inspect detail">
                             <Eye size={12} />
                           </Link>
                         </div>
@@ -1188,11 +1188,11 @@ export default function AllCustomerTicketsPage() {
 
       {/* Pagination Controls */}
       {sortedTickets.length > 0 && (
-        <div className="flex items-center justify-between border-t border-zinc-150 pt-3 px-4 pb-1 font-mono text-[10px] text-zinc-500 bg-zinc-50/50">
+        <div className="flex items-center justify-between border-t border-line pt-3 px-4 pb-1 text-[11px] text-ink-secondary bg-surface-muted/60">
           <div>
-            Showing <span className="font-bold text-zinc-800">{Math.min(sortedTickets.length, (currentPage - 1) * pageSize + 1)}</span> to{' '}
-            <span className="font-bold text-zinc-800">{Math.min(sortedTickets.length, currentPage * pageSize)}</span> of{' '}
-            <span className="font-bold text-zinc-800">{sortedTickets.length}</span> tickets
+            Showing <span className="font-bold text-ink">{Math.min(sortedTickets.length, (currentPage - 1) * pageSize + 1)}</span> to{' '}
+            <span className="font-bold text-ink">{Math.min(sortedTickets.length, currentPage * pageSize)}</span> of{' '}
+            <span className="font-bold text-ink">{sortedTickets.length}</span> tickets
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -1200,12 +1200,12 @@ export default function AllCustomerTicketsPage() {
               size="sm"
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className="h-7 px-2 border-zinc-300 hover:bg-zinc-900 hover:text-white text-[10px]"
+              className="h-7 px-2 border-line-strong hover:bg-ink hover:text-white text-[11px]"
             >
               <ChevronLeft size={12} className="mr-0.5" /> Previous
             </Button>
-            <div className="flex items-center gap-1 font-mono">
-              <span className="font-bold text-zinc-800">{currentPage}</span>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-ink">{currentPage}</span>
               <span>/</span>
               <span>{totalPages || 1}</span>
             </div>
@@ -1214,7 +1214,7 @@ export default function AllCustomerTicketsPage() {
               size="sm"
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="h-7 px-2 border-zinc-300 hover:bg-zinc-900 hover:text-white text-[10px]"
+              className="h-7 px-2 border-line-strong hover:bg-ink hover:text-white text-[11px]"
             >
               Next <ChevronRight size={12} className="ml-0.5" />
             </Button>

@@ -82,21 +82,21 @@ export default function ManagerProfilePage() {
   };
 
   return (
-    <div className="space-y-6 max-w-xl mx-auto font-mono text-xs">
+    <div className="space-y-6 max-w-xl mx-auto text-xs">
       {/* Header */}
-      <div className="border-b border-zinc-200 pb-4">
-        <h1 className="text-xl font-bold tracking-tight text-zinc-950 uppercase">
+      <div className="border-b border-line pb-4">
+        <h1 className="type-title text-ink">
           Manager Profile
         </h1>
-        <p className="text-xs text-zinc-500 font-medium">
+        <p className="text-xs text-ink-secondary font-medium">
           Manage your personal manager profile settings and password credentials.
         </p>
       </div>
 
       {/* Account Settings Card */}
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-          <CardTitle className="text-xs uppercase tracking-wider text-zinc-950 flex items-center gap-1.5 font-bold">
+      <Card className="border-line bg-surface shadow-card">
+        <CardHeader className="pb-3 border-b border-line bg-surface-muted/60">
+          <CardTitle className="text-xs uppercase tracking-wider text-ink flex items-center gap-1.5 font-bold">
             <User size={14} />
             User Metadata Details
           </CardTitle>
@@ -107,30 +107,30 @@ export default function ManagerProfilePage() {
         <CardContent className="p-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">User Full Name</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">User Full Name</Label>
               <div className="relative">
-                <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <Input
                   type="text"
                   disabled
                   value={user?.name || ''}
-                  className="pl-9 bg-zinc-50 text-zinc-450 text-xs h-9 cursor-not-allowed border-zinc-200"
+                  className="pl-9 bg-surface-muted text-ink-muted text-xs h-9 cursor-not-allowed border-line"
                 />
               </div>
-              <p className="text-[10px] text-zinc-400 font-sans mt-0.5">
+              <p className="text-[11px] text-ink-muted font-sans mt-0.5">
                 Full name changes are read-only. Contact SuperAdmin to request adjustments.
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Registered Email Address</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Registered Email Address</Label>
               <div className="relative">
-                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <Input
                   type="email"
                   disabled
                   value={user?.email || ''}
-                  className="pl-9 bg-zinc-50 text-zinc-450 text-xs h-9 cursor-not-allowed border-zinc-200"
+                  className="pl-9 bg-surface-muted text-ink-muted text-xs h-9 cursor-not-allowed border-line"
                 />
               </div>
             </div>
@@ -139,9 +139,9 @@ export default function ManagerProfilePage() {
       </Card>
 
       {/* Password Request Card */}
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-          <CardTitle className="text-xs uppercase tracking-wider text-zinc-950 flex items-center gap-1.5 font-bold">
+      <Card className="border-line bg-surface shadow-card">
+        <CardHeader className="pb-3 border-b border-line bg-surface-muted/60">
+          <CardTitle className="text-xs uppercase tracking-wider text-ink flex items-center gap-1.5 font-bold">
             <KeyRound size={14} />
             Password Change Request
           </CardTitle>
@@ -152,35 +152,35 @@ export default function ManagerProfilePage() {
         <CardContent className="p-6">
           <div className="space-y-4">
             {pendingRequest ? (
-              <div className="bg-amber-50/60 border border-amber-250 rounded-xl p-4 text-[11px] text-amber-800 font-bold space-y-2">
+              <div className="bg-amber-50/60 border border-amber-250 rounded-lg p-4 text-[11px] text-amber-800 font-bold space-y-2">
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="animate-pulse" />
                   <span>PENDING SUPERADMIN APPROVAL</span>
                 </div>
-                <p className="font-normal text-zinc-600 font-sans leading-relaxed">
+                <p className="font-normal text-ink-secondary font-sans leading-relaxed">
                   A password reset request was submitted on {new Date(pendingRequest.requested_at).toLocaleString()}. You will receive a new temporary password once a SuperAdmin approves your request.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-zinc-650 font-sans leading-relaxed">
+                <p className="text-ink-secondary font-sans leading-relaxed">
                   For security compliance, managers cannot directly change their passwords. Click below to submit a password reset request to your SuperAdmin queue.
                 </p>
                 <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
                   <DialogTrigger asChild>
-                    <Button className="bg-zinc-950 hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[10px] h-9">
+                    <Button className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9">
                       Request Password Reset
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-white border border-zinc-200 font-mono text-xs">
+                  <DialogContent className="bg-surface border border-line text-xs">
                     <DialogHeader>
-                      <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-950">Confirm Password Reset Request</DialogTitle>
-                      <DialogDescription className="text-[11px] text-zinc-500">
+                      <DialogTitle className="text-sm font-bold uppercase tracking-wider text-ink">Confirm Password Reset Request</DialogTitle>
+                      <DialogDescription className="text-[11px] text-ink-secondary">
                         Submit a password change request. SuperAdmins will be notified immediately.
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleRequestSubmit} className="space-y-4 pt-2">
-                      <p className="text-zinc-650 font-sans">
+                      <p className="text-ink-secondary font-sans">
                         Are you sure you want to request a password reset for manager <strong>{user?.email}</strong>?
                       </p>
                       <DialogFooter className="gap-2 sm:gap-0">
@@ -188,14 +188,14 @@ export default function ManagerProfilePage() {
                           type="button" 
                           variant="outline" 
                           onClick={() => setShowRequestDialog(false)}
-                          className="text-[10px] font-bold uppercase h-9"
+                          className="text-[11px] font-bold uppercase h-9"
                         >
                           Cancel
                         </Button>
                         <Button 
                           type="submit" 
                           disabled={requestLoading}
-                          className="bg-zinc-950 hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[10px] h-9"
+                          className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9"
                         >
                           {requestLoading ? 'Submitting...' : 'Confirm Request'}
                         </Button>
