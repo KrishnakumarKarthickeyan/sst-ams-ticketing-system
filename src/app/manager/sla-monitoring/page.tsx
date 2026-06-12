@@ -75,7 +75,7 @@ export default function ManagerSlaMonitoringPage() {
   };
 
   return (
-    <div className="space-y-6 text-xs text-[#09090b]">
+    <div className="space-y-6 text-xs text-ink">
       
       {/* Title */}
       <div className="border-b border-line pb-4">

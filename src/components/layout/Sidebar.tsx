@@ -131,21 +131,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
   const sidebarWidthClass = effectiveCollapsed ? 'w-16' : 'w-64';
 
   return (
-    <aside className={`${isMobile ? 'w-full h-full' : `${sidebarWidthClass} h-screen sticky top-0 hidden md:flex`} border-r border-zinc-200 bg-white flex flex-col transition-all duration-200`}>
+    <aside className={`${isMobile ? 'w-full h-full' : `${sidebarWidthClass} h-screen sticky top-0 hidden md:flex`} border-r border-line bg-surface flex flex-col transition-all duration-200`}>
       {/* Brand Header */}
       {effectiveCollapsed ? (
-        <div className="h-16 border-b border-zinc-200 flex items-center justify-center">
+        <div className="h-16 border-b border-line flex items-center justify-center">
           <Link href="/dashboard" className="flex items-center justify-center">
             <BrandedLogo width={24} height={24} iconOnly={true} />
           </Link>
         </div>
       ) : (
-        <div className="h-16 px-6 border-b border-zinc-200 flex items-center justify-between">
+        <div className="h-16 px-6 border-b border-line flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2.5">
             <BrandedLogo width={28} height={28} />
             <div>
-              <span className="font-bold tracking-tight text-xs text-zinc-900 block font-mono leading-tight">{BRAND_CONFIG.shortName}</span>
-              <span className="text-[9px] font-bold text-zinc-400 block tracking-wider uppercase leading-none mt-0.5">{roleLabel}</span>
+              <span className="font-bold tracking-tight text-xs text-ink block leading-tight">{BRAND_CONFIG.shortName}</span>
+              <span className="text-[11px] font-bold text-ink-muted block tracking-wider uppercase leading-none mt-0.5">{roleLabel}</span>
             </div>
           </Link>
         </div>
@@ -165,11 +165,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
                   effectiveCollapsed ? 'justify-center p-2.5 w-10 mx-auto' : 'gap-3 px-3 py-2.5'
                 } ${
                   isActive
-                    ? 'bg-zinc-950 text-white font-bold'
-                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                    ? 'bg-ink text-white font-bold'
+                    : 'text-ink-secondary hover:text-ink hover:bg-surface-subtle'
                 }`}
               >
-                <span className={isActive ? 'text-white' : 'text-zinc-400'}>{item.icon}</span>
+                <span className={isActive ? 'text-white' : 'text-ink-muted'}>{item.icon}</span>
                 {!effectiveCollapsed && <span>{item.title}</span>}
               </Link>
             );
@@ -194,10 +194,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
 
       {/* Collapse Toggle Button (Desktop only) */}
       {!isMobile && (
-        <div className="p-3 border-t border-zinc-200">
+        <div className="p-3 border-t border-line">
           <button
             onClick={toggleCollapse}
-            className="p-1.5 rounded-lg border border-zinc-200 hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 transition w-full flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-wider font-mono"
+            className="p-1.5 rounded-lg border border-line hover:bg-surface-subtle text-ink-secondary hover:text-ink transition w-full flex items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-wider"
           >
             {effectiveCollapsed ? (
               <ChevronRight size={14} />
@@ -212,8 +212,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
       )}
 
       {/* System Health / Footer */}
-      <div className="p-4 border-t border-zinc-200 bg-zinc-50/50">
-        <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-bold uppercase tracking-wider justify-center md:justify-start">
+      <div className="p-4 border-t border-line bg-surface-muted/60">
+        <div className="flex items-center gap-2 text-[11px] text-ink-secondary font-bold uppercase tracking-wider justify-center md:justify-start">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping"></span>
           {!effectiveCollapsed && <span>System status: OK</span>}
         </div>

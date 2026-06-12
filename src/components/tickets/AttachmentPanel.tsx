@@ -47,7 +47,7 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
 
   if (!ticket) {
     return (
-      <div className="p-4 text-center border rounded-xl bg-zinc-50 border-zinc-200 text-zinc-500 text-xs font-mono">
+      <div className="p-4 text-center border rounded-lg bg-surface-muted border-line text-ink-secondary text-xs">
         Ticket details unavailable
       </div>
     );
@@ -68,12 +68,12 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
       return <FileText size={18} className="text-red-505 shrink-0" />;
     }
     if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) {
-      return <FileText size={18} className="text-emerald-600 shrink-0" />;
+      return <FileText size={18} className="text-success shrink-0" />;
     }
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
       return <FileArchive size={18} className="text-amber-500 shrink-0" />;
     }
-    return <File size={18} className="text-zinc-500 shrink-0" />;
+    return <File size={18} className="text-ink-secondary shrink-0" />;
   };
 
   // Drag and Drop triggers
@@ -263,16 +263,16 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
   };
 
   return (
-    <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
-      <CardHeader className="border-b border-zinc-100 bg-zinc-50/50 py-4 px-6">
+    <Card className="border-line shadow-card bg-surface overflow-hidden">
+      <CardHeader className="border-b border-line bg-surface-muted/60 py-4 px-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Paperclip size={16} className="text-zinc-500" />
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-950 font-sans">
+            <Paperclip size={16} className="text-ink-secondary" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-ink font-sans">
               Ticket Attachments ({attachments.length})
             </CardTitle>
           </div>
-          <span className="text-[10px] text-zinc-400 font-mono">Max size: 10MB</span>
+          <span className="text-[11px] text-ink-muted">Max size: 10MB</span>
         </div>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
@@ -283,8 +283,8 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
           onDragLeave={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1.5 bg-white ${
-            dragActive ? 'border-zinc-950 bg-zinc-50/50' : 'border-zinc-200 hover:border-zinc-350'
+          className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1.5 bg-surface ${
+            dragActive ? 'border-ink bg-surface-muted/60' : 'border-line hover:border-line-strong'
           }`}
         >
           <input
@@ -295,12 +295,12 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
             className="hidden"
             accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.gif,.zip,.txt"
           />
-          <Upload className="text-zinc-400" size={18} />
+          <Upload className="text-ink-muted" size={18} />
           <div>
-            <span className="text-xs font-bold text-zinc-800 font-sans block">
+            <span className="text-xs font-bold text-ink font-sans block">
               Drag & drop files here
             </span>
-            <span className="text-[10px] text-zinc-455 font-sans block mt-0.5">
+            <span className="text-[11px] text-ink-muted font-sans block mt-0.5">
               or click to browse files
             </span>
           </div>
@@ -308,23 +308,23 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
 
         {/* Uploading Queue */}
         {queue.length > 0 && (
-          <div className="space-y-2 border-t border-zinc-100 pt-4">
-            <h4 className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider font-mono">
+          <div className="space-y-2 border-t border-line pt-4">
+            <h4 className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">
               Uploading Queue
             </h4>
             <div className="space-y-1.5">
               {queue.map((item) => (
                 <div
                   key={item.id}
-                  className="p-2.5 border border-zinc-150 rounded-lg flex items-center justify-between gap-3 text-[10px] font-mono bg-zinc-50/50"
+                  className="p-2.5 border border-line rounded-lg flex items-center justify-between gap-3 text-[11px] bg-surface-muted/60"
                 >
                   <div className="flex items-center gap-2 truncate flex-1">
                     {getFileIcon(item.file.name)}
                     <div className="truncate min-w-0">
-                      <span className="font-bold text-zinc-850 block truncate leading-snug">
+                      <span className="font-bold text-ink block truncate leading-snug">
                         {item.file.name}
                       </span>
-                      <span className="text-[8px] text-zinc-400 block mt-0.5 font-mono">
+                      <span className="text-[11px] text-ink-muted block mt-0.5">
                         {(item.file.size / 1024).toFixed(0)} KB
                       </span>
                     </div>
@@ -335,22 +335,22 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
                       <div className="flex items-center gap-1.5">
                         <div className="w-12 h-1 bg-zinc-200 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-zinc-950 transition-all duration-300"
+                            className="h-full bg-ink transition-all duration-300"
                             style={{ width: `${item.progress}%` }}
                           ></div>
                         </div>
-                        <span className="text-[8px] font-bold text-zinc-500">{item.progress}%</span>
+                        <span className="text-[11px] font-bold text-ink-secondary">{item.progress}%</span>
                       </div>
                     )}
 
                     {item.status === 'success' && (
-                      <Badge className="bg-emerald-50 hover:bg-emerald-50 text-emerald-800 text-[8px] font-bold border-emerald-100 rounded px-1.5 py-0">
+                      <Badge className="bg-emerald-50 hover:bg-emerald-50 text-emerald-800 text-[11px] font-bold border-emerald-100 rounded px-1.5 py-0">
                         Ready
                       </Badge>
                     )}
 
                     {item.status === 'error' && (
-                      <Badge variant="destructive" className="text-[8px] font-bold rounded px-1.5 py-0">
+                      <Badge variant="destructive" className="text-[11px] font-bold rounded px-1.5 py-0">
                         Error
                       </Badge>
                     )}
@@ -361,7 +361,7 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
                         e.stopPropagation();
                         removeQueueItem(item.id);
                       }}
-                      className="p-1 text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100 rounded transition"
+                      className="p-1 text-ink-muted hover:text-ink hover:bg-surface-subtle rounded transition"
                     >
                       <X size={12} />
                     </button>
@@ -373,12 +373,12 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
         )}
 
         {/* Attachment List */}
-        <div className="space-y-2.5 border-t border-zinc-100 pt-4">
-          <h4 className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider font-mono">
+        <div className="space-y-2.5 border-t border-line pt-4">
+          <h4 className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">
             Files Registry ({attachments.length})
           </h4>
           {attachments.length === 0 ? (
-            <p className="text-[11px] text-zinc-400 italic text-center py-4 font-sans">
+            <p className="text-[11px] text-ink-muted italic text-center py-4 font-sans">
               No files registered to this ticket.
             </p>
           ) : (
@@ -386,20 +386,20 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
               {attachments.map((att) => (
                 <div
                   key={att.id}
-                  className="flex items-center gap-3 px-3.5 py-2.5 border border-zinc-200 rounded-xl bg-zinc-50/50 hover:border-zinc-300 transition-all group"
+                  className="flex items-center gap-3 px-3.5 py-2.5 border border-line rounded-lg bg-surface-muted/60 hover:border-line-strong transition-all group"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-surface border border-line flex items-center justify-center shrink-0">
                     {getFileIcon(att.fileName)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
                       onClick={() => handleDownload(att.fileName, att.fileUrl || att.filePath)}
-                      className="text-xs font-semibold text-zinc-900 truncate hover:text-zinc-950 hover:underline cursor-pointer transition"
+                      className="text-xs font-semibold text-ink truncate hover:text-ink hover:underline cursor-pointer transition"
                       title={att.fileName}
                     >
                       {att.fileName}
                     </p>
-                    <p className="text-[9px] text-zinc-400 font-mono mt-0.5">
+                    <p className="text-[11px] text-ink-muted mt-0.5">
                       {(att.fileSize / 1024).toFixed(0)} KB • By {att.uploadedBy}
                     </p>
                   </div>
@@ -408,7 +408,7 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDownload(att.fileName, att.fileUrl || att.filePath)}
-                      className="h-7 w-7 text-zinc-400 hover:text-zinc-950 rounded-lg"
+                      className="h-7 w-7 text-ink-muted hover:text-ink rounded-lg"
                       title="Download file"
                     >
                       <Download size={13} />
@@ -419,7 +419,7 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
                         size="icon"
                         onClick={() => handleDelete(att.id, att.fileName)}
                         disabled={deletingId === att.id}
-                        className="h-7 w-7 text-zinc-400 hover:text-red-600 rounded-lg"
+                        className="h-7 w-7 text-ink-muted hover:text-critical rounded-lg"
                         title="Delete file"
                       >
                         {deletingId === att.id ? (

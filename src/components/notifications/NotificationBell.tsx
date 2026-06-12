@@ -103,27 +103,27 @@ export const NotificationBell: React.FC = () => {
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-600 hover:text-zinc-900 transition relative"
+        className="p-2 rounded-lg border border-line hover:bg-surface-muted text-ink-secondary hover:text-ink transition relative"
         title="Alerts"
       >
         <Bell size={15} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-zinc-950 rounded-full text-[9px] font-bold text-white flex items-center justify-center font-mono border border-white">
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-ink rounded-full text-[11px] font-bold text-white flex items-center justify-center border border-white">
             {unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white border border-zinc-200 rounded-xl shadow-lg z-50 overflow-hidden font-mono text-xs">
-          <div className="p-3 border-b border-zinc-150 flex justify-between items-center bg-zinc-50">
-            <span className="text-xs font-extrabold text-zinc-900 uppercase tracking-wider">Alert Center</span>
+        <div className="absolute right-0 mt-2 w-80 bg-surface border border-line rounded-lg shadow-lg z-50 overflow-hidden text-xs">
+          <div className="p-3 border-b border-line flex justify-between items-center bg-surface-muted">
+            <span className="text-xs font-extrabold text-ink uppercase tracking-wider">Alert Center</span>
             {unreadCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleMarkAllRead}
-                className="h-6 px-2 text-[9px] text-zinc-500 hover:text-zinc-900 font-bold uppercase gap-1 flex items-center"
+                className="h-6 px-2 text-[11px] text-ink-secondary hover:text-ink font-bold uppercase gap-1 flex items-center"
               >
                 <CheckCheck size={11} />
                 <span>Mark all read</span>
@@ -131,25 +131,25 @@ export const NotificationBell: React.FC = () => {
             )}
           </div>
 
-          <div className="max-h-80 overflow-y-auto divide-y divide-zinc-100">
+          <div className="max-h-80 overflow-y-auto divide-y divide-line">
             {displayNotifications.length === 0 ? (
-              <div className="p-8 text-center text-zinc-400 italic flex flex-col items-center justify-center gap-2">
-                <Inbox size={16} className="text-zinc-350" />
-                <span className="text-[10px] font-sans">No alerts or notifications</span>
+              <div className="p-8 text-center text-ink-muted italic flex flex-col items-center justify-center gap-2">
+                <Inbox size={16} className="text-ink-muted" />
+                <span className="text-[11px] font-sans">No alerts or notifications</span>
               </div>
             ) : (
               displayNotifications.map((n) => (
-                <div key={n.id} className={`p-3 text-[11px] transition ${n.isRead ? 'bg-white' : 'bg-zinc-50/50'}`}>
+                <div key={n.id} className={`p-3 text-[11px] transition ${n.isRead ? 'bg-surface' : 'bg-surface-muted/60'}`}>
                   <div className="flex justify-between items-start gap-2">
-                    <span className={`font-bold leading-tight ${n.isRead ? 'text-zinc-700' : 'text-zinc-950'}`}>
+                    <span className={`font-bold leading-tight ${n.isRead ? 'text-ink-secondary' : 'text-ink'}`}>
                       {n.title}
                     </span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[9px] text-zinc-400 font-sans">{formatRelativeTime(n.createdAt)}</span>
+                      <span className="text-[11px] text-ink-muted font-sans">{formatRelativeTime(n.createdAt)}</span>
                       {!n.isRead && (
                         <button
                           onClick={() => markNotificationRead(n.id)}
-                          className="text-zinc-400 hover:text-zinc-900 transition"
+                          className="text-ink-muted hover:text-ink transition"
                           title="Mark as read"
                         >
                           <CheckCheck size={12} />
@@ -157,7 +157,7 @@ export const NotificationBell: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  <p className="text-zinc-500 text-[10px] mt-1 leading-relaxed font-sans">{n.message}</p>
+                  <p className="text-ink-secondary text-[11px] mt-1 leading-relaxed font-sans">{n.message}</p>
                   {(n.linkPath || n.ticketId) && (
                     <Link
                       href={n.linkPath || `/tickets/${n.ticketId}`}
@@ -165,7 +165,7 @@ export const NotificationBell: React.FC = () => {
                         setIsOpen(false);
                         if (!n.isRead) markNotificationRead(n.id);
                       }}
-                      className="inline-block text-[9px] font-bold text-zinc-900 hover:underline mt-1.5 uppercase tracking-wider"
+                      className="inline-block text-[11px] font-bold text-ink hover:underline mt-1.5 uppercase tracking-wider"
                     >
                       View Details &rarr;
                     </Link>

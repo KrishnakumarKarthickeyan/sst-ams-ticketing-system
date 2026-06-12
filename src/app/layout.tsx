@@ -32,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-white text-[#09090b]">
+      <body className="min-h-full flex flex-col bg-white text-ink">
         <AuthProvider>
           <TicketProvider>
             {children}

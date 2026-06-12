@@ -45,7 +45,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
       }
       
       parts.push(
-        <span key={`mention-${keyCounter++}`} className="bg-zinc-900 text-white font-mono px-1.5 py-0.5 rounded text-[9px] font-bold inline-block mx-0.5 shadow-sm">
+        <span key={`mention-${keyCounter++}`} className="bg-ink text-white px-1.5 py-0.5 rounded text-[11px] font-bold inline-block mx-0.5 shadow-card">
           {matchText}
         </span>
       );
@@ -340,21 +340,21 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
 
   const getNodeColors = (type: TimelineItem['type'], action: string) => {
     const act = action.toLowerCase();
-    if (act.includes('approved') || act.includes('closed')) return { ring: 'ring-emerald-200', bg: 'bg-emerald-50', text: 'text-emerald-600' };
-    if (act.includes('rejected')) return { ring: 'ring-red-200', bg: 'bg-red-50', text: 'text-red-500' };
-    if (act.includes('escalat')) return { ring: 'ring-orange-200', bg: 'bg-orange-50', text: 'text-orange-500' };
+    if (act.includes('approved') || act.includes('closed')) return { ring: 'ring-emerald-200', bg: 'bg-emerald-50', text: 'text-success' };
+    if (act.includes('rejected')) return { ring: 'ring-red-200', bg: 'bg-red-50', text: 'text-critical' };
+    if (act.includes('escalat')) return { ring: 'ring-orange-200', bg: 'bg-orange-50', text: 'text-warning' };
     if (type === 'effort') return { ring: 'ring-blue-200', bg: 'bg-blue-50', text: 'text-blue-500' };
     if (type === 'estimate') return { ring: 'ring-indigo-200', bg: 'bg-indigo-50', text: 'text-indigo-500' };
-    if (type === 'closure') return { ring: 'ring-amber-200', bg: 'bg-amber-50', text: 'text-amber-600' };
-    return { ring: 'ring-zinc-200', bg: 'bg-zinc-50', text: 'text-zinc-500' };
+    if (type === 'closure') return { ring: 'ring-amber-200', bg: 'bg-amber-50', text: 'text-warning' };
+    return { ring: 'ring-zinc-200', bg: 'bg-surface-muted', text: 'text-ink-secondary' };
   };
 
   const getRoleBadge = (role: TimelineItem['role']) => {
     switch (role) {
       case 'Customer': return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
       case 'Manager': return { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
-      case 'SuperAdmin': return { bg: 'bg-zinc-100', text: 'text-zinc-800', border: 'border-zinc-300' };
-      case 'System': return { bg: 'bg-zinc-50', text: 'text-zinc-500', border: 'border-zinc-200' };
+      case 'SuperAdmin': return { bg: 'bg-surface-subtle', text: 'text-ink', border: 'border-line-strong' };
+      case 'System': return { bg: 'bg-surface-muted', text: 'text-ink-secondary', border: 'border-line' };
       default: return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
     }
   };
@@ -421,10 +421,10 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-0.5">
-          <h3 className="text-sm font-bold text-zinc-900 tracking-tight">
+          <h3 className="text-sm font-bold text-ink tracking-tight">
             Operation History & Timeline
           </h3>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-ink-secondary">
             {timelineItems.length} events tracked
           </p>
         </div>
@@ -435,15 +435,15 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all duration-200 ${
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all duration-200 ${
                 filter === f.key
-                  ? 'bg-zinc-900 text-white shadow-sm'
-                  : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 border border-zinc-200'
+                  ? 'bg-ink text-white shadow-card'
+                  : 'bg-surface-subtle text-ink-secondary hover:bg-surface-subtle border border-line'
               }`}
             >
               {f.label}
-              <span className={`text-[9px] px-1 py-px rounded-full font-bold ${
-                filter === f.key ? 'bg-white/20 text-white' : 'bg-zinc-200/80 text-zinc-500'
+              <span className={`text-[11px] px-1 py-px rounded-full font-bold ${
+                filter === f.key ? 'bg-surface/20 text-white' : 'bg-zinc-200/80 text-ink-secondary'
               }`}>
                 {f.count}
               </span>
@@ -455,11 +455,11 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
       {/* Timeline */}
       {filteredItems.length === 0 ? (
         <div className="py-12 text-center">
-          <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
-            <Activity size={18} className="text-zinc-400" />
+          <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-surface-subtle flex items-center justify-center">
+            <Activity size={18} className="text-ink-muted" />
           </div>
-          <p className="text-sm text-zinc-500 font-medium">No events found</p>
-          <p className="text-xs text-zinc-400 mt-0.5">Try selecting a different filter</p>
+          <p className="text-sm text-ink-secondary font-medium">No events found</p>
+          <p className="text-xs text-ink-muted mt-0.5">Try selecting a different filter</p>
         </div>
       ) : (
         <div className="relative">
@@ -467,7 +467,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
             <div key={group.label} className={gIdx > 0 ? 'mt-6' : ''}>
               {/* Date Group Header */}
               <div className="flex items-center gap-3 mb-3">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">
+                <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider whitespace-nowrap">
                   {group.label}
                 </span>
                 <div className="flex-1 h-px bg-zinc-200" />
@@ -488,7 +488,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
                     return (
                       <div key={item.id} className="relative flex gap-3 group">
                         {/* Node */}
-                        <div className={`relative z-10 flex-shrink-0 w-6 h-6 rounded-full ${colors.bg} ring-2 ${colors.ring} flex items-center justify-center shadow-sm transition-transform group-hover:scale-110`}>
+                        <div className={`relative z-10 flex-shrink-0 w-6 h-6 rounded-full ${colors.bg} ring-2 ${colors.ring} flex items-center justify-center shadow-card transition-transform group-hover:scale-110`}>
                           <span className={colors.text}>{getTimelineIcon(item.type, item.action)}</span>
                         </div>
 
@@ -499,14 +499,14 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
                             className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer select-none ${hasDetails ? 'hover:opacity-80' : ''}`}
                             onClick={() => hasDetails && toggleExpand(item.id)}
                           >
-                            <span className="text-[12px] font-semibold text-zinc-900 leading-tight flex-1">
+                            <span className="text-[12px] font-semibold text-ink leading-tight flex-1">
                               {formatTimelineEvent(item)}
                             </span>
-                            <span className="text-[10px] text-zinc-400 ml-auto whitespace-nowrap pr-2">
+                            <span className="text-[11px] text-ink-muted ml-auto whitespace-nowrap pr-2">
                               {formatRelativeTime(item.date)}
                             </span>
                             {hasDetails && (
-                              <span className="text-zinc-400">
+                              <span className="text-ink-muted">
                                 {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                               </span>
                             )}
@@ -517,20 +517,20 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
                             <div className="mt-2 ml-0.5 space-y-2 animate-in slide-in-from-top-1 duration-200">
                               {/* Value Change */}
                               {(item.oldValue || item.newValue) && (
-                                <div className="flex items-center gap-2 text-[11px] bg-zinc-50 border border-zinc-200/70 rounded-lg px-3 py-1.5">
+                                <div className="flex items-center gap-2 text-[11px] bg-surface-muted border border-line/70 rounded-lg px-3 py-1.5">
                                   {item.oldValue && (
                                     <>
-                                      <span className="text-zinc-400 line-through font-mono">{item.oldValue}</span>
-                                      <ChevronRight size={12} className="text-zinc-400 shrink-0" />
+                                      <span className="text-ink-muted line-through">{item.oldValue}</span>
+                                      <ChevronRight size={12} className="text-ink-muted shrink-0" />
                                     </>
                                   )}
-                                  <span className="text-zinc-900 font-semibold font-mono">{item.newValue}</span>
+                                  <span className="text-ink font-semibold">{item.newValue}</span>
                                 </div>
                               )}
 
                               {/* Remarks */}
                               {item.remarks && (
-                                <div className="text-[11px] text-zinc-600 leading-relaxed bg-zinc-50/60 border border-zinc-200/50 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                                <div className="text-[11px] text-ink-secondary leading-relaxed bg-surface-muted/60 border border-line/50 rounded-lg px-3 py-2 whitespace-pre-wrap">
                                   {highlightMentions(item.remarks)}
                                 </div>
                               )}
@@ -539,8 +539,8 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
                               {item.attachments && item.attachments.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5">
                                   {item.attachments.map((file, fIdx) => (
-                                    <span key={fIdx} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-zinc-50 border border-zinc-200 rounded-md text-[10px] text-zinc-600 font-mono">
-                                      <Paperclip size={10} className="text-zinc-400" />
+                                    <span key={fIdx} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-surface-muted border border-line rounded-md text-[11px] text-ink-secondary">
+                                      <Paperclip size={10} className="text-ink-muted" />
                                       {file.fileName}
                                     </span>
                                   ))}

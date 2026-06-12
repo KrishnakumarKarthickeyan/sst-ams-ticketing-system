@@ -224,9 +224,9 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
   if (localLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-zinc-950 font-mono text-xs">
+      <div className="flex h-screen items-center justify-center bg-surface text-ink text-xs">
         <div className="text-center space-y-3">
-          <span className="animate-spin inline-block w-4 h-4 border border-zinc-955 border-t-transparent rounded-full"></span>
+          <span className="animate-spin inline-block w-4 h-4 border border-ink border-t-transparent rounded-full"></span>
           <p className="tracking-wider">Loading Ticket Details...</p>
         </div>
       </div>
@@ -235,7 +235,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
   if (!ticket) {
     return (
-      <div className="p-8 text-center text-red-500 font-bold font-mono bg-red-50 border border-red-200 rounded-lg">
+      <div className="p-8 text-center text-critical font-bold bg-red-50 border border-red-200 rounded-lg">
         ERROR: Ticket ID "{ticketId}" not found in database registry.
       </div>
     );
@@ -390,7 +390,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
         }
         
         parts.push(
-          <span key={`mention-${keyCounter++}`} className="bg-zinc-900 text-white font-mono px-1.5 py-0.5 rounded text-[10px] font-bold inline-block mx-0.5 shadow-sm">
+          <span key={`mention-${keyCounter++}`} className="bg-ink text-white px-1.5 py-0.5 rounded text-[11px] font-bold inline-block mx-0.5 shadow-card">
             {matchText}
           </span>
         );
@@ -863,21 +863,21 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-5 gap-4">
         <div className="flex items-center gap-3">
           <Link href="/consultant/my-tickets">
-            <Button variant="outline" size="icon" className="h-8 w-8 text-slate-600 bg-white">
+            <Button variant="outline" size="icon" className="h-8 w-8 text-slate-600 bg-surface">
               <ArrowLeft size={16} />
             </Button>
           </Link>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-base font-bold text-slate-955 bg-white px-2 py-0.5 border border-slate-200 rounded">{ticket.ticketNumber}</span>
-              <Badge variant="secondary" className="text-[10px] font-mono font-bold uppercase">{ticket.ticketType || 'Incident'}</Badge>
+              <span className="text-base font-bold text-slate-955 bg-surface px-2 py-0.5 border border-slate-200 rounded">{ticket.ticketNumber}</span>
+              <Badge variant="secondary" className="text-[11px] font-bold uppercase">{ticket.ticketType || 'Incident'}</Badge>
               <SlaBadge ticket={ticket} />
-              <Badge variant="outline" className="text-[10px] bg-white border border-slate-200 text-slate-600 font-mono py-0.5">Age: {ageDays} days</Badge>
+              <Badge variant="outline" className="text-[11px] bg-surface border border-slate-200 text-slate-600 py-0.5">Age: {ageDays} days</Badge>
             </div>
             <h1 className="text-xl font-bold text-slate-900 mt-1.5">{ticket.title}</h1>
             {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
               <div className="mt-1.5">
-                <Badge className="bg-red-655 hover:bg-red-700 text-white font-mono uppercase text-[9px]">TOP PRIORITY</Badge>
+                <Badge className="bg-red-655 hover:bg-red-700 text-white uppercase text-[11px]">TOP PRIORITY</Badge>
               </div>
             )}
           </div>
@@ -901,7 +901,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
       {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
         <div className="border-l-4 border-l-emerald-500 bg-emerald-50 p-4 rounded-md flex items-start gap-3 animate-pulse-once">
-          <ShieldAlert className="text-emerald-600 size-5 mt-0.5 shrink-0" />
+          <ShieldAlert className="text-success size-5 mt-0.5 shrink-0" />
           <div>
             <p className="font-semibold text-emerald-800">
               🚨 ESCALATED · TOP PRIORITY — Focus Required
@@ -916,17 +916,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       {isTicketFullyLocked && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-semibold">
           <div className="flex items-start gap-2.5">
-            <Lock size={16} className="text-red-500 shrink-0 mt-0.5" />
+            <Lock size={16} className="text-critical shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold uppercase tracking-wider text-[10px] font-mono">Backlog Item Locked</p>
-              <p className="mt-1 leading-normal text-red-650 font-mono">
+              <p className="font-bold uppercase tracking-wider text-[11px]">Backlog Item Locked</p>
+              <p className="mt-1 leading-normal text-critical">
                 This ticket is locked because a closure request is pending approval or closed. 
                 All modifications (status edits, comments, attachments) are blocked.
               </p>
             </div>
           </div>
           {hasPendingUnlock ? (
-            <Badge className="bg-amber-100 border border-amber-300 text-amber-800 font-mono uppercase px-3 py-1 text-[10px]">
+            <Badge className="bg-amber-100 border border-amber-300 text-amber-800 uppercase px-3 py-1 text-[11px]">
               Unlock Requested
             </Badge>
           ) : (
@@ -938,7 +938,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 setValidationError(null);
                 setActiveModal('unlock');
               }}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase font-mono text-[10px] h-8 cursor-pointer"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase text-[11px] h-8 cursor-pointer"
             >
               Request Manager Unlock
             </Button>
@@ -951,15 +951,15 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           <div className="flex items-start gap-2.5">
             <Lock size={16} className="text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold uppercase tracking-wider text-[10px] font-mono">My Effort Locked</p>
-              <p className="mt-1 leading-normal text-amber-750 font-mono">
+              <p className="font-bold uppercase tracking-wider text-[11px]">My Effort Locked</p>
+              <p className="mt-1 leading-normal text-amber-750">
                 You have submitted your effort details for this ticket. Your inputs, comments, and uploads are locked. 
                 Other allocated consultants can still update their efforts.
               </p>
             </div>
           </div>
           {hasPendingUnlock ? (
-            <Badge className="bg-amber-100 border border-amber-300 text-amber-800 font-mono uppercase px-3 py-1 text-[10px]">
+            <Badge className="bg-amber-100 border border-amber-300 text-amber-800 uppercase px-3 py-1 text-[11px]">
               Unlock Requested
             </Badge>
           ) : (
@@ -971,7 +971,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 setValidationError(null);
                 setActiveModal('unlock');
               }}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-bold uppercase font-mono text-[10px] h-8 cursor-pointer border border-amber-500"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold uppercase text-[11px] h-8 cursor-pointer border border-amber-500"
             >
               Request Manager Unlock
             </Button>
@@ -986,59 +986,59 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
         <div className="lg:col-span-2 space-y-6">
           
           {/* Ticket Overview Card */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
+          <Card className="bg-surface border border-slate-200 p-5 shadow-card space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                 <Briefcase size={14} className="text-slate-400" />
                 Ticket Overview
               </h3>
               <div className="flex gap-2">
-                <Badge variant={ticket.priority === 'Critical' || ticket.priority === 'High' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-bold">
+                <Badge variant={ticket.priority === 'Critical' || ticket.priority === 'High' ? 'destructive' : 'secondary'} className="uppercase text-[11px] font-bold">
                   {ticket.priority} Priority
                 </Badge>
-                <Badge className="bg-zinc-900 text-white uppercase text-[9px] font-mono">
+                <Badge className="bg-ink text-white uppercase text-[11px]">
                   {ticket.status}
                 </Badge>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="space-y-2">
                 <div>
-                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Ticket Number</span>
+                  <span className="text-slate-400 block text-[11px] uppercase font-bold">Ticket Number</span>
                   <span className="text-slate-900 font-bold text-sm bg-slate-50 px-2 py-0.5 border border-slate-200 rounded inline-block mt-0.5">{ticket.ticketNumber}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Subject / Title</span>
+                  <span className="text-slate-400 block text-[11px] uppercase font-bold">Subject / Title</span>
                   <span className="text-slate-900 font-semibold block mt-0.5">{ticket.title}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Description</span>
+                  <span className="text-slate-400 block text-[11px] uppercase font-bold">Description</span>
                   <p className="text-slate-700 whitespace-pre-line leading-relaxed mt-1 font-sans text-xs bg-slate-50/50 p-2.5 rounded border border-slate-100">{ticket.description}</p>
                 </div>
               </div>
               
               <div className="space-y-2">
                 <div>
-                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Classification</span>
+                  <span className="text-slate-400 block text-[11px] uppercase font-bold">Classification</span>
                   <span className="text-slate-955 font-bold block mt-0.5">{ticket.classification || ticket.functionalOrTechnical || 'Functional'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Issue Category</span>
+                  <span className="text-slate-400 block text-[11px] uppercase font-bold">Issue Category</span>
                   <span className="text-slate-900 font-bold block mt-0.5">{ticket.category}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Created On</span>
-                    <span className="text-slate-700 text-[10px] block mt-0.5">{new Date(ticket.createdAt).toLocaleString()}</span>
+                    <span className="text-slate-400 block text-[11px] uppercase font-bold">Created On</span>
+                    <span className="text-slate-700 text-[11px] block mt-0.5">{new Date(ticket.createdAt).toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Last Updated</span>
-                    <span className="text-slate-700 text-[10px] block mt-0.5">{new Date(ticket.updatedAt).toLocaleString()}</span>
+                    <span className="text-slate-400 block text-[11px] uppercase font-bold">Last Updated</span>
+                    <span className="text-slate-700 text-[11px] block mt-0.5">{new Date(ticket.updatedAt).toLocaleString()}</span>
                   </div>
                 </div>
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-slate-400 text-[9px] uppercase font-bold">SLA Target Due</span>
+                  <span className="text-slate-400 text-[11px] uppercase font-bold">SLA Target Due</span>
                   <SlaBadge ticket={ticket} />
                 </div>
               </div>
@@ -1046,34 +1046,34 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Card>
 
           {/* Customer / Client Details Card */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
+          <Card className="bg-surface border border-slate-200 p-5 shadow-card space-y-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
               <Building2 size={14} className="text-slate-400" />
               Customer & Requester details
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               <div className="space-y-1">
-                <span className="text-slate-400 block text-[9px] uppercase font-bold">Company / Organization</span>
+                <span className="text-slate-400 block text-[11px] uppercase font-bold">Company / Organization</span>
                 <span className="text-slate-900 font-bold flex items-center gap-1">
                   <Building2 size={12} className="text-slate-400 shrink-0" />
                   {ticket.organization}
                 </span>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-400 block text-[9px] uppercase font-bold">Requester Name</span>
+                <span className="text-slate-400 block text-[11px] uppercase font-bold">Requester Name</span>
                 <span className="text-slate-900 font-bold flex items-center gap-1">
                   <User size={12} className="text-slate-400 shrink-0" />
                   {ticket.createdByName || ticket.requestedBy}
                 </span>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-400 block text-[9px] uppercase font-bold">Contact Coordinates</span>
+                <span className="text-slate-400 block text-[11px] uppercase font-bold">Contact Coordinates</span>
                 <span className="text-slate-700 block">{ticket.requestedByEmail || 'customer@sap.com'}</span>
                 {(() => {
                   const reqProf = MOCK_MENTIONABLE_USERS.find(u => u.name === (ticket.createdByName || ticket.requestedBy));
                   const phone = ticket.requestedByPhone || reqProf?.phoneNumber;
                   return phone ? (
-                    <span className="text-[10px] text-slate-500 font-mono block mt-0.5">Phone: {phone}</span>
+                    <span className="text-[11px] text-slate-500 block mt-0.5">Phone: {phone}</span>
                   ) : null;
                 })()}
               </div>
@@ -1081,23 +1081,23 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Card>
 
           {/* SAP Scope Card */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
+          <Card className="bg-surface border border-slate-200 p-5 shadow-card space-y-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
               <Layers size={14} className="text-slate-400" />
               SAP Scope & Business Impact
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               <div className="space-y-1">
-                <span className="text-slate-400 block text-[9px] uppercase font-bold">Scope Modules</span>
+                <span className="text-slate-400 block text-[11px] uppercase font-bold">Scope Modules</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {ticket.sapModules && ticket.sapModules.length > 0 ? (
                     ticket.sapModules.map((mod, i) => (
-                      <Badge key={i} className="bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-150 font-mono text-[9px] uppercase px-1.5 py-0.2">
+                      <Badge key={i} className="bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-150 text-[11px] uppercase px-1.5 py-0.2">
                         {mod}
                       </Badge>
                     ))
                   ) : (
-                    <Badge className="bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-150 font-mono text-[9px] uppercase px-1.5 py-0.2">
+                    <Badge className="bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-150 text-[11px] uppercase px-1.5 py-0.2">
                       {ticket.sapModule}
                     </Badge>
                   )}
@@ -1105,18 +1105,18 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               </div>
               
               <div className="space-y-1">
-                <span className="text-slate-400 block text-[9px] uppercase font-bold">Business Impact Severity</span>
+                <span className="text-slate-400 block text-[11px] uppercase font-bold">Business Impact Severity</span>
                 <span className="text-slate-900 font-semibold block">{ticket.businessImpactLevel || ticket.businessImpact || 'Standard Operations'}</span>
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-400 block text-[9px] uppercase font-bold">SAP Transport Request</span>
+                <span className="text-slate-400 block text-[11px] uppercase font-bold">SAP Transport Request</span>
                 <span className="font-bold text-slate-900 block mt-0.5">{ticket.transportRequest || 'None Specified'}</span>
               </div>
 
               {ticket.businessJustification && (
                 <div className="md:col-span-3 space-y-1 pt-1 border-t border-slate-50">
-                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Business Justification</span>
+                  <span className="text-slate-400 block text-[11px] uppercase font-bold">Business Justification</span>
                   <p className="text-slate-700 font-sans text-xs italic">"{ticket.businessJustification}"</p>
                 </div>
               )}
@@ -1124,29 +1124,29 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Card>
 
           {/* Assigned Team Grid Card */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
+          <Card className="bg-surface border border-slate-200 p-5 shadow-card space-y-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
               <Users size={14} className="text-slate-400" />
               Assigned AMS Specialist Teams
             </h3>
             
-            <div className="space-y-4 font-mono">
+            <div className="space-y-4">
               {/* Functional Consultants */}
               <div className="space-y-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                   Functional Consulting Team
                 </span>
                 {(() => {
                   const list = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
                   if (list.length === 0) {
-                    return <div className="text-[10px] text-slate-450 italic p-3 bg-slate-50 border border-slate-150 rounded">No Functional consultants assigned to this ticket.</div>;
+                    return <div className="text-[11px] text-slate-450 italic p-3 bg-slate-50 border border-slate-150 rounded">No Functional consultants assigned to this ticket.</div>;
                   }
                   return (
                     <div className="overflow-x-auto border border-slate-200 rounded-lg">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[9px]">
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[11px]">
                             <th className="p-2">Name</th>
                             <th className="p-2">Specialty / Module</th>
                             <th className="p-2">SLA Role</th>
@@ -1163,13 +1163,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                                 <td className="p-2 font-bold text-slate-900 flex items-center gap-1.5">
                                   {e.consultantName}
                                   {((ticket.assignments?.find(a => a.consultantId === e.consultantId || a.consultantName === e.consultantName)?.isPrimary) || e.consultantName === ticket.assignedConsultant) && (
-                                    <span className="px-1.5 py-0.2 rounded font-black text-[8px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
+                                    <span className="px-1.5 py-0.2 rounded font-black text-[11px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
                                   )}
                                 </td>
                                 <td className="p-2 text-slate-655">{prof?.sapModules?.join(', ') || ticket.sapModule}</td>
                                 <td className="p-2 text-slate-500">{prof?.roleTitle || 'Functional Consultant'}</td>
                                 <td className="p-2 text-center">
-                                  <Badge className={`uppercase text-[8px] px-1.5 py-0.2 tracking-wider ${
+                                  <Badge className={`uppercase text-[11px] px-1.5 py-0.2 tracking-wider ${
                                     e.closureStatus === 'Submitted' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-850'
                                   }`}>
                                     {e.closureStatus || 'Pending'}
@@ -1189,20 +1189,20 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
               {/* Technical Consultants */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
                   Technical Development Team
                 </span>
                 {(() => {
                   const list = (ticket.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
                   if (list.length === 0) {
-                    return <div className="text-[10px] text-slate-450 italic p-3 bg-slate-50 border border-slate-150 rounded">No Technical developers assigned to this ticket.</div>;
+                    return <div className="text-[11px] text-slate-450 italic p-3 bg-slate-50 border border-slate-150 rounded">No Technical developers assigned to this ticket.</div>;
                   }
                   return (
                     <div className="overflow-x-auto border border-slate-200 rounded-lg">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[9px]">
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[11px]">
                             <th className="p-2">Name</th>
                             <th className="p-2">Specialty / Module</th>
                             <th className="p-2">SLA Role</th>
@@ -1219,13 +1219,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                                 <td className="p-2 font-bold text-slate-900 flex items-center gap-1.5">
                                   {e.consultantName}
                                   {((ticket.assignments?.find(a => a.consultantId === e.consultantId || a.consultantName === e.consultantName)?.isPrimary) || e.consultantName === ticket.assignedConsultant) && (
-                                    <span className="px-1.5 py-0.2 rounded font-black text-[8px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
+                                    <span className="px-1.5 py-0.2 rounded font-black text-[11px] bg-amber-500 text-white uppercase tracking-wider">Lead</span>
                                   )}
                                 </td>
                                 <td className="p-2 text-slate-655">{prof?.sapModules?.join(', ') || ticket.sapModule}</td>
                                 <td className="p-2 text-slate-500">{prof?.roleTitle || 'ABAP Developer'}</td>
                                 <td className="p-2 text-center">
-                                  <Badge className={`uppercase text-[8px] px-1.5 py-0.2 tracking-wider ${
+                                  <Badge className={`uppercase text-[11px] px-1.5 py-0.2 tracking-wider ${
                                     e.closureStatus === 'Submitted' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-850'
                                   }`}>
                                     {e.closureStatus || 'Pending'}
@@ -1246,9 +1246,9 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Card>
 
           {/* Estimated Hours Quotation */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
+          <Card className="bg-surface border border-slate-200 p-5 shadow-card space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                 <Clock size={14} className="text-slate-400" />
                 Resource Estimates (Quotation)
               </h3>
@@ -1267,7 +1267,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     setEstRemarks('');
                     setActiveModal('quote');
                   }}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase h-7 cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold uppercase h-7 cursor-pointer"
                 >
                   Quote Estimated Hours
                 </Button>
@@ -1287,7 +1287,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     setActiveModal('revision');
                   }}
                   variant="outline"
-                  className="text-[10px] font-bold uppercase h-7 cursor-pointer"
+                  className="text-[11px] font-bold uppercase h-7 cursor-pointer"
                 >
                   Revise Quoted Estimate
                 </Button>
@@ -1298,31 +1298,31 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               <div className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-blue-500">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">My Estimate</span>
-                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{myEstimatedHours} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">My Estimate</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{myEstimatedHours} h</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-slate-400">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Team Estimate</span>
-                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{teamEstimatedHours} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Team Estimate</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{teamEstimatedHours} h</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-cyan-500">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Functional Total</span>
-                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{functionalTotalEst} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Functional Total</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{functionalTotalEst} h</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-slate-600">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Technical Total</span>
-                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{technicalTotalEst} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Technical Total</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{technicalTotalEst} h</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-emerald-500 col-span-2 md:col-span-1">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Grand Total</span>
-                    <span className="text-sm font-bold text-emerald-600 mt-0.5 block font-mono">{grandTotalEst} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Grand Total</span>
+                    <span className="text-sm font-bold text-success mt-0.5 block">{grandTotalEst} h</span>
                   </div>
                 </div>
 
                 {myEstimate && (
-                  <div className="bg-slate-50 p-3 border border-slate-200 rounded text-xs space-y-1.5 text-slate-655 font-mono">
+                  <div className="bg-slate-50 p-3 border border-slate-200 rounded text-xs space-y-1.5 text-slate-655">
                     <div>Remarks: <span className="text-slate-900 italic">"{myEstimate.remarks || 'No remarks listed'}"</span></div>
-                    <div className="flex justify-between text-[10px] pt-1 text-slate-400 border-t border-slate-200/50">
+                    <div className="flex justify-between text-[11px] pt-1 text-slate-400 border-t border-slate-200/50">
                       <span>Submitted by: <strong>{consultantName}</strong></span>
                       <span>Date: <strong>{new Date(myEstimate.submittedAt).toLocaleDateString()}</strong></span>
                     </div>
@@ -1331,26 +1331,26 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
                 {/* Team Estimate Breakdown Card */}
                 <div className="bg-slate-50 p-4 border border-slate-200 rounded-lg space-y-3">
-                  <span className="font-bold text-slate-500 uppercase text-[9px] font-mono tracking-widest block border-b border-slate-200 pb-1.5">Team Estimate Breakdown</span>
+                  <span className="font-bold text-slate-500 uppercase text-[11px] tracking-widest block border-b border-slate-200 pb-1.5">Team Estimate Breakdown</span>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
                     {(ticket.estimates || []).length === 0 ? (
-                      <div className="text-slate-400 italic text-[11px] font-mono py-1 col-span-2">No team estimates submitted yet.</div>
+                      <div className="text-slate-400 italic text-[11px] py-1 col-span-2">No team estimates submitted yet.</div>
                     ) : (
                       (ticket.estimates || []).map((est) => {
                         const assignment = (ticket.assignments || []).find(a => a.consultantId === est.consultantId);
                         const nameToUse = assignment ? assignment.consultantName : est.consultantId;
                         return (
-                          <div key={est.id || est.consultantId} className="bg-white p-2.5 border border-slate-200 rounded text-xs font-mono">
+                          <div key={est.id || est.consultantId} className="bg-surface p-2.5 border border-slate-200 rounded text-xs">
                             <div className="flex justify-between font-bold text-slate-800">
                               <span>{nameToUse}</span>
-                              <Badge variant="secondary" className="text-[8px] uppercase py-0 px-1 rounded-sm">{est.consultantType}</Badge>
+                              <Badge variant="secondary" className="text-[11px] uppercase py-0 px-1 rounded-sm">{est.consultantType}</Badge>
                             </div>
-                            <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                            <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                               <span>Quote: <strong>{est.estimatedHours} h</strong></span>
                               <span>{new Date(est.submittedAt).toLocaleDateString()}</span>
                             </div>
                             {est.remarks && (
-                              <div className="text-[10px] text-slate-400 italic mt-1 bg-slate-50/50 p-1 rounded border border-slate-100">
+                              <div className="text-[11px] text-slate-400 italic mt-1 bg-slate-50/50 p-1 rounded border border-slate-100">
                                 "{est.remarks}"
                               </div>
                             )}
@@ -1362,15 +1362,15 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 </div>
               </div>
             ) : (
-              <div className="p-6 text-center border border-slate-200 bg-slate-50/45 rounded text-xs text-slate-400 italic font-mono">
+              <div className="p-6 text-center border border-slate-200 bg-slate-50/45 rounded text-xs text-slate-400 italic">
                 No estimates quoted yet. Initial one-time quote required.
               </div>
             )}
 
             {currentRevisionReq && (
-              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded text-xs text-amber-800 space-y-1 font-mono">
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded text-xs text-amber-800 space-y-1">
                 <div className="font-bold flex items-center gap-1">
-                  <AlertCircle size={13} className="text-amber-600" />
+                  <AlertCircle size={13} className="text-warning" />
                   Pending Estimate Revision Request
                 </div>
                 <div>Proposed: <strong>{currentRevisionReq.totalEstimatedHours} h</strong> (Func: {currentRevisionReq.functionalEstimatedHours}h, Tech: {currentRevisionReq.technicalEstimatedHours}h)</div>
@@ -1380,9 +1380,9 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Card>
 
           {/* Actual Hours & Closure Summary */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
+          <Card className="bg-surface border border-slate-200 p-5 shadow-card space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                 <CheckCircle size={14} className="text-slate-400" />
                 Actual Hours & Closure Requests
               </h3>
@@ -1395,13 +1395,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                         <span>
                           <Button
                             disabled
-                            className="bg-emerald-600/50 text-white text-[10px] font-bold uppercase h-7 cursor-not-allowed"
+                            className="bg-emerald-600/50 text-white text-[11px] font-bold uppercase h-7 cursor-not-allowed"
                           >
                             Raise Closure Request
                           </Button>
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent className="bg-slate-900 text-white text-xs font-mono p-2 rounded">
+                      <TooltipContent className="bg-slate-900 text-white text-xs p-2 rounded">
                         <p>Only the Lead Consultant can raise closure request and enter actual hours.</p>
                       </TooltipContent>
                     </Tooltip>
@@ -1421,7 +1421,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                       setValidationError(null);
                       setActiveModal('closure');
                     }}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase h-7 cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold uppercase h-7 cursor-pointer"
                   >
                     Raise Closure Request
                   </Button>
@@ -1430,27 +1430,27 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             </div>
 
             {(latestClosureReq || grandTotalAct > 0) ? (
-              <div className="space-y-4 font-mono text-xs">
+              <div className="space-y-4 text-xs">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-blue-500">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">My Actual</span>
-                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{myActualHours} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">My Actual</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{myActualHours} h</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-slate-400">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Team Actual</span>
-                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{teamActualHours} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Team Actual</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{teamActualHours} h</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-cyan-500">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Functional Total</span>
-                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{functionalTotalAct} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Functional Total</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{functionalTotalAct} h</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-slate-600">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Technical Total</span>
-                    <span className="text-sm font-bold text-slate-900 mt-0.5 block font-mono">{technicalTotalAct} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Technical Total</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{technicalTotalAct} h</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 border border-slate-200 rounded border-l-2 border-l-emerald-500 col-span-2 md:col-span-1">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-mono">Grand Total</span>
-                    <span className="text-sm font-bold text-emerald-600 mt-0.5 block font-mono">{grandTotalAct} h</span>
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Grand Total</span>
+                    <span className="text-sm font-bold text-success mt-0.5 block">{grandTotalAct} h</span>
                   </div>
                 </div>
 
@@ -1458,30 +1458,30 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   <div className="bg-slate-50 p-4 border border-slate-200 rounded space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Work Completed Summary</span>
+                        <span className="font-bold text-[11px] uppercase tracking-wider text-slate-500 block mb-1">Work Completed Summary</span>
                         <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.workCompletedSummary}</p>
                       </div>
                       <div>
-                        <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Root Cause</span>
+                        <span className="font-bold text-[11px] uppercase tracking-wider text-slate-500 block mb-1">Root Cause</span>
                         <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.rootCause}</p>
                       </div>
                       <div className="md:col-span-2">
-                        <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Resolution Summary</span>
+                        <span className="font-bold text-[11px] uppercase tracking-wider text-slate-500 block mb-1">Resolution Summary</span>
                         <p className="text-slate-900 whitespace-pre-line leading-relaxed">{latestClosureReq.resolutionSummary}</p>
                       </div>
                       {latestClosureReq.pendingItems && (
                         <div className="md:col-span-2">
-                          <span className="font-bold text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Pending Items</span>
+                          <span className="font-bold text-[11px] uppercase tracking-wider text-slate-500 block mb-1">Pending Items</span>
                           <p className="text-slate-900">{latestClosureReq.pendingItems}</p>
                         </div>
                       )}
                     </div>
 
-                    <div className="flex justify-between items-center text-[10px] pt-2 text-slate-400 border-t border-slate-200/50">
+                    <div className="flex justify-between items-center text-[11px] pt-2 text-slate-400 border-t border-slate-200/50">
                       <span>Requested by: <strong className="text-slate-700">{latestClosureReq.requestedBy}</strong></span>
                       <div className="flex gap-2 items-center">
                         <span>Approval Status:</span>
-                        <Badge className={`uppercase text-[9px] ${
+                        <Badge className={`uppercase text-[11px] ${
                           latestClosureReq.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' :
                           latestClosureReq.status === 'Rejected' ? 'bg-red-100 text-red-800' :
                           'bg-amber-100 text-amber-800'
@@ -1491,7 +1491,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
                     {latestClosureReq.status === 'Rejected' && (
                       <div className="bg-red-50 p-3 rounded border border-red-200 space-y-2 mt-2">
-                        <div className="text-red-850 font-bold text-[10px] uppercase font-mono">Manager Rejection Reason:</div>
+                        <div className="text-red-850 font-bold text-[11px] uppercase">Manager Rejection Reason:</div>
                         <p className="text-slate-900 italic">"{latestClosureReq.rejectionReason || 'No reason specified.'}"</p>
                         {isPrimaryConsultant ? (
                           <Button
@@ -1508,7 +1508,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                               setValidationError(null);
                               setActiveModal('resubmit_closure');
                             }}
-                            className="bg-red-650 hover:bg-red-750 text-white font-mono font-bold text-[9px] h-7 cursor-pointer"
+                            className="bg-red-650 hover:bg-red-750 text-white font-bold text-[11px] h-7 cursor-pointer"
                           >
                             Resubmit Closure Request
                           </Button>
@@ -1519,13 +1519,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                                 <span>
                                   <Button
                                     disabled
-                                    className="bg-red-650/50 text-white font-mono font-bold text-[9px] h-7 cursor-not-allowed"
+                                    className="bg-red-650/50 text-white font-bold text-[11px] h-7 cursor-not-allowed"
                                   >
                                     Resubmit Closure Request
                                   </Button>
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent className="bg-slate-900 text-white text-xs font-mono p-2 rounded">
+                              <TooltipContent className="bg-slate-900 text-white text-xs p-2 rounded">
                                 <p>Only the Lead Consultant can resubmit closure request and enter actual hours.</p>
                               </TooltipContent>
                             </Tooltip>
@@ -1537,7 +1537,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 )}
               </div>
             ) : (
-              <div className="p-6 text-center border border-slate-200 bg-slate-50/45 rounded text-xs text-slate-400 italic font-mono">
+              <div className="p-6 text-center border border-slate-200 bg-slate-50/45 rounded text-xs text-slate-400 italic">
                 No closure requests submitted.
               </div>
             )}
@@ -1565,7 +1565,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           />
 
           {/* Audit History */}
-          <Card className="bg-white border border-slate-200 p-5 shadow-sm">
+          <Card className="bg-surface border border-slate-200 p-5 shadow-card">
             <TicketTimeline ticket={ticket} userRole="Consultant" />
           </Card>
 
@@ -1578,16 +1578,16 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           <SlaTelemetryPanel ticket={ticket} />
           
           {/* Controls */}
-          <Card className="bg-white border border-slate-200 p-4 shadow-sm space-y-4">
-            <span className="font-bold text-[10px] text-slate-500 uppercase tracking-widest block border-b border-slate-150 pb-2 font-mono">Incident State Controls</span>
+          <Card className="bg-surface border border-slate-200 p-4 shadow-card space-y-4">
+            <span className="font-bold text-[11px] text-slate-500 uppercase tracking-widest block border-b border-slate-150 pb-2">Incident State Controls</span>
             
             <div className="space-y-2">
-              <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Workflow Status</label>
+              <label className="font-bold text-slate-500 uppercase text-[11px] block">Workflow Status</label>
               <select
                 disabled={isLockedForMe}
                 value={selectedStatus}
                 onChange={handleStatusChange}
-                className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 font-mono focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="Requirement Gathering">1. Requirement Gathering</option>
                 <option value="Waiting for Hours Approval">2. Waiting for Hours Approval</option>
@@ -1599,7 +1599,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               </select>
             </div>
 
-            <div className="space-y-1.5 text-[11px] text-slate-655 font-mono pt-3 border-t border-slate-100">
+            <div className="space-y-1.5 text-[11px] text-slate-655 pt-3 border-t border-slate-100">
               <div>SAP Modules: <span className="px-1.5 py-0.2 bg-slate-50 border border-slate-200 rounded font-bold text-slate-700">{ticket.sapModule}</span></div>
               <div className="pt-1">Priority: <span className="font-bold text-slate-900">{ticket.priority}</span></div>
               <div className="pt-1">Classification: <span className="font-bold text-slate-900">{ticket.functionalOrTechnical || 'Functional'}</span></div>
@@ -1607,14 +1607,14 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Card>
 
           {/* Customer profile */}
-          <Card className="bg-white border border-slate-200 p-4 shadow-sm space-y-3">
-            <span className="font-bold text-[10px] text-slate-500 uppercase tracking-widest block border-b border-slate-150 pb-2 font-mono">Customer profile</span>
-            <div className="space-y-2.5 text-[11px] text-slate-655 font-mono">
+          <Card className="bg-surface border border-slate-200 p-4 shadow-card space-y-3">
+            <span className="font-bold text-[11px] text-slate-500 uppercase tracking-widest block border-b border-slate-150 pb-2">Customer profile</span>
+            <div className="space-y-2.5 text-[11px] text-slate-655">
               <div className="flex items-center gap-1.5 text-slate-900 font-bold text-sm">
                 <Building2 size={13} className="text-slate-400" />
                 {ticket.organization}
               </div>
-              <div className="space-y-1 pt-1 text-[10px]">
+              <div className="space-y-1 pt-1 text-[11px]">
                 <div>Requester: <b className="text-slate-900">{ticket.createdByName || ticket.requestedBy}</b></div>
                 <div>Email: <b className="text-slate-900">{ticket.requestedByEmail || 'customer@sap.com'}</b></div>
                 <div>Created: <b>{new Date(ticket.createdAt).toLocaleString()}</b></div>
@@ -1624,14 +1624,14 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
           </Card>
 
           {/* Workflow Approvals status */}
-          <Card className="bg-white border border-slate-200 p-4 shadow-sm space-y-3">
-            <span className="font-bold text-[10px] text-slate-500 uppercase tracking-widest block border-b border-slate-150 pb-2 font-mono">Workflow Approvals Status</span>
+          <Card className="bg-surface border border-slate-200 p-4 shadow-card space-y-3">
+            <span className="font-bold text-[11px] text-slate-500 uppercase tracking-widest block border-b border-slate-150 pb-2">Workflow Approvals Status</span>
             
-            <div className="space-y-3 text-[11px] font-mono">
+            <div className="space-y-3 text-[11px]">
               
               {/* Estimates revision approvals log */}
               <div>
-                <span className="text-[9px] text-slate-400 uppercase font-mono block">Estimates Revision approvals</span>
+                <span className="text-[11px] text-slate-400 uppercase block">Estimates Revision approvals</span>
                 {(ticket.hourEstimates || []).length === 0 ? (
                   <span className="text-slate-400 italic block mt-1">No estimates logged.</span>
                 ) : (
@@ -1641,13 +1641,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                         <div className="flex justify-between font-bold">
                           <span>{est.totalEstimatedHours} h</span>
                           <span className={
-                            est.status.includes('Approved') ? 'text-emerald-600' :
-                            est.status.includes('Rejected') ? 'text-red-600' :
-                            'text-amber-600'
+                            est.status.includes('Approved') ? 'text-success' :
+                            est.status.includes('Rejected') ? 'text-critical' :
+                            'text-warning'
                           }>{est.status}</span>
                         </div>
-                        {est.remarks && <div className="text-[9px] text-slate-450 truncate">"{est.remarks}"</div>}
-                        {est.rejectionReason && <div className="text-[9px] text-red-500">Rejection: {est.rejectionReason}</div>}
+                        {est.remarks && <div className="text-[11px] text-slate-450 truncate">"{est.remarks}"</div>}
+                        {est.rejectionReason && <div className="text-[11px] text-critical">Rejection: {est.rejectionReason}</div>}
                       </div>
                     ))}
                   </div>
@@ -1656,7 +1656,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
               {/* Closure request approvals log */}
               <div className="pt-2 border-t border-slate-100">
-                <span className="text-[9px] text-slate-400 uppercase font-mono block">Closure approvals</span>
+                <span className="text-[11px] text-slate-400 uppercase block">Closure approvals</span>
                 {(ticket.closureRequests || []).length === 0 ? (
                   <span className="text-slate-400 italic block mt-1">No closure requests logged.</span>
                 ) : (
@@ -1666,18 +1666,18 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                         <div className="flex justify-between font-bold">
                           <span>{req.totalActualHours} h</span>
                           <span className={
-                            req.status === 'Approved' ? 'text-emerald-600' :
-                            req.status === 'Rejected' ? 'text-red-600' :
-                            'text-amber-600'
+                            req.status === 'Approved' ? 'text-success' :
+                            req.status === 'Rejected' ? 'text-critical' :
+                            'text-warning'
                           }>{req.status}</span>
                         </div>
-                        {req.rejectionReason && <div className="text-[9px] text-red-500">Rejection: {req.rejectionReason}</div>}
+                        {req.rejectionReason && <div className="text-[11px] text-critical">Rejection: {req.rejectionReason}</div>}
                         {(() => {
                           const reqActualHours = (ticket.actualHoursLogs || []).filter(ah => ah.closureRequestId === req.id);
                           if (reqActualHours.length === 0) return null;
                           return (
-                            <div className="pt-1.5 mt-1 border-t border-slate-200/50 text-[9px] space-y-0.5 text-slate-500 font-mono">
-                              <span className="font-bold text-[8px] uppercase tracking-wider block text-slate-400">Consultant Breakdown</span>
+                            <div className="pt-1.5 mt-1 border-t border-slate-200/50 text-[11px] space-y-0.5 text-slate-500">
+                              <span className="font-bold text-[11px] uppercase tracking-wider block text-slate-400">Consultant Breakdown</span>
                               {reqActualHours.map((ah, idx) => {
                                 const name = (ticket.consultantEfforts || []).find(eff => eff.consultantId === ah.consultantId)?.consultantName || ah.consultantId;
                                 return (
@@ -1698,7 +1698,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
               {/* Unlock Requests */}
               <div className="pt-2 border-t border-slate-100">
-                <span className="text-[9px] text-slate-400 uppercase font-mono block">Unlock Requests</span>
+                <span className="text-[11px] text-slate-400 uppercase block">Unlock Requests</span>
                 {(ticket.unlockRequests || []).length === 0 ? (
                   <span className="text-slate-400 italic block mt-1">No unlock requests logged.</span>
                 ) : (
@@ -1708,12 +1708,12 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                         <div className="flex justify-between font-bold">
                           <span className="truncate max-w-[120px]">{req.reason}</span>
                           <span className={
-                            req.status === 'Approved' ? 'text-emerald-600' :
-                            req.status === 'Rejected' ? 'text-red-600' :
-                            'text-amber-600'
+                            req.status === 'Approved' ? 'text-success' :
+                            req.status === 'Rejected' ? 'text-critical' :
+                            'text-warning'
                           }>{req.status}</span>
                         </div>
-                        {req.rejectionReason && <div className="text-[9px] text-red-500">Rejection: {req.rejectionReason}</div>}
+                        {req.rejectionReason && <div className="text-[11px] text-critical">Rejection: {req.rejectionReason}</div>}
                       </div>
                     ))}
                   </div>
@@ -1733,10 +1733,10 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       {/* MODALS SECTION */}
       {activeModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <Card className="bg-white border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in text-slate-900">
+          <Card className="bg-surface border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in text-slate-900">
             
             {/* Header */}
-            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center font-bold uppercase text-[10px] tracking-wide text-slate-900 font-mono">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center font-bold uppercase text-[11px] tracking-wide text-slate-900">
               <span>
                 {activeModal === 'quote' && 'Quote Estimated Hours'}
                 {activeModal === 'revision' && 'Request Estimates Revision'}
@@ -1753,7 +1753,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             <div className="p-5 max-h-[75vh] overflow-y-auto space-y-4">
               
               {validationError && (
-                <div className="p-3 bg-red-50 text-red-800 border border-red-200 text-xs font-mono font-bold rounded flex items-center gap-2">
+                <div className="p-3 bg-red-50 text-red-800 border border-red-200 text-xs font-bold rounded flex items-center gap-2">
                   <AlertCircle size={14} className="shrink-0" />
                   <span>{validationError}</span>
                 </div>
@@ -1765,7 +1765,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   <div className="grid grid-cols-1 gap-3">
                     {consultantType === 'Functional' && (
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Functional Estimated Hours</label>
+                        <label className="font-bold text-slate-655 uppercase text-[11px] block">Functional Estimated Hours</label>
                         <input
                           type="number"
                           step="0.5"
@@ -1780,7 +1780,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     )}
                     {consultantType === 'Technical' && (
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Technical Estimated Hours</label>
+                        <label className="font-bold text-slate-655 uppercase text-[11px] block">Technical Estimated Hours</label>
                         <input
                           type="number"
                           step="0.5"
@@ -1796,7 +1796,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Remarks</label>
+                    <label className="font-bold text-slate-655 uppercase text-[11px] block">Remarks</label>
                     <textarea
                       value={estRemarks}
                       onChange={(e) => setEstRemarks(e.target.value)}
@@ -1805,13 +1805,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     />
                   </div>
 
-                  <div className="text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] text-slate-500">
                     Initial estimates do not require manager approvals. They will activate immediately and lock the ticket estimate.
                   </div>
 
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
-                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
-                    <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">Submit Quote</Button>
+                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                    <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold uppercase h-8 cursor-pointer">Submit Quote</Button>
                   </div>
                 </form>
               )}
@@ -1822,7 +1822,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   <div className="grid grid-cols-1 gap-3">
                     {consultantType === 'Functional' && (
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">New Functional Hours</label>
+                        <label className="font-bold text-slate-655 uppercase text-[11px] block">New Functional Hours</label>
                         <input
                           type="number"
                           step="0.5"
@@ -1837,7 +1837,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     )}
                     {consultantType === 'Technical' && (
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">New Technical Hours</label>
+                        <label className="font-bold text-slate-655 uppercase text-[11px] block">New Technical Hours</label>
                         <input
                           type="number"
                           step="0.5"
@@ -1853,7 +1853,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Remarks / Justification (Mandatory)</label>
+                    <label className="font-bold text-slate-655 uppercase text-[11px] block">Remarks / Justification (Mandatory)</label>
                     <textarea
                       value={estRemarks}
                       onChange={(e) => setEstRemarks(e.target.value)}
@@ -1863,13 +1863,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     />
                   </div>
 
-                  <div className="text-[10px] text-amber-600 font-bold font-mono">
+                  <div className="text-[11px] text-warning font-bold">
                     Revisions require Manager approval before they update.
                   </div>
 
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
-                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
-                    <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">Submit Revision Request</Button>
+                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                    <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold uppercase h-8 cursor-pointer">Submit Revision Request</Button>
                   </div>
                 </form>
               )}
@@ -1879,16 +1879,16 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 <form onSubmit={handleRaiseClosure} className="space-y-3">
                   {/* Dynamic Actual Hours inputs for all assigned team members */}
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded border border-slate-200">
-                    <span className="font-bold text-slate-500 uppercase text-[9px] font-mono block mb-1">Assigned Team Actual Hours</span>
+                    <span className="font-bold text-slate-500 uppercase text-[11px] block mb-1">Assigned Team Actual Hours</span>
                     {(ticket?.consultantEfforts || []).map((eff) => (
                       <div key={eff.consultantId} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
+                        <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                           {eff.consultantName}
-                          <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
-                            eff.consultantType === 'Functional' ? 'bg-zinc-100 text-zinc-700 border border-zinc-200' : 'bg-zinc-200 text-zinc-800 border border-zinc-300'
+                          <span className={`px-1.5 py-0.2 rounded font-bold text-[11px] uppercase ${
+                            eff.consultantType === 'Functional' ? 'bg-surface-subtle text-ink-secondary border border-line' : 'bg-zinc-200 text-ink border border-line-strong'
                           }`}>{eff.consultantType}</span>
                         </span>
-                        <div className="flex items-center gap-1 font-mono">
+                        <div className="flex items-center gap-1">
                           <input
                             type="number"
                             step="0.5"
@@ -1899,17 +1899,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                               ...prev,
                               [eff.consultantId]: e.target.value
                             }))}
-                            className="w-20 bg-white border border-slate-200 rounded p-1 text-center font-bold text-xs focus:outline-none"
+                            className="w-20 bg-surface border border-slate-200 rounded p-1 text-center font-bold text-xs focus:outline-none"
                             required
                           />
-                          <span className="text-slate-400 text-[10px]">h</span>
+                          <span className="text-slate-400 text-[11px]">h</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Work Completed Summary (Mandatory)</label>
+                    <label className="font-bold text-slate-500 uppercase text-[11px] block">Work Completed Summary (Mandatory)</label>
                     <textarea
                       value={workCompletedSummary}
                       onChange={(e) => setWorkCompletedSummary(e.target.value)}
@@ -1920,7 +1920,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
+                    <label className="font-bold text-critical uppercase text-[11px] block">Root Cause (Mandatory)</label>
                     <textarea
                       value={rootCause}
                       onChange={(e) => setRootCause(e.target.value)}
@@ -1931,7 +1931,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Resolution Notes / Summary (Mandatory)</label>
+                    <label className="font-bold text-critical uppercase text-[11px] block">Resolution Notes / Summary (Mandatory)</label>
                     <textarea
                       value={resolutionSummary}
                       onChange={(e) => setResolutionSummary(e.target.value)}
@@ -1942,7 +1942,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Pending Items (Optional)</label>
+                    <label className="font-bold text-slate-500 uppercase text-[11px] block">Pending Items (Optional)</label>
                     <input
                       type="text"
                       value={pendingItems}
@@ -1954,7 +1954,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
                   {/* File Upload for Closure Request */}
                   <div className="space-y-2 border-t border-slate-100 pt-3">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block font-mono">Closure Deliverables & Attachments</span>
+                    <span className="text-[11px] font-bold text-slate-500 uppercase block">Closure Deliverables & Attachments</span>
                     <div className="flex flex-col sm:flex-row gap-2 items-center">
                       <input
                         type="file"
@@ -1965,26 +1965,26 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                       />
                       <label
                         htmlFor="closure-file-upload"
-                        className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:border-slate-800 rounded bg-white font-bold uppercase text-[9px] tracking-wider text-slate-700 transition"
+                        className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:border-slate-800 rounded bg-surface font-bold uppercase text-[11px] tracking-wider text-slate-700 transition"
                       >
                         <Paperclip size={11} /> Select Closure Files
                       </label>
-                      {isUploadingClosure && <span className="text-[9px] text-slate-500 animate-pulse font-sans">Uploading...</span>}
+                      {isUploadingClosure && <span className="text-[11px] text-slate-500 animate-pulse font-sans">Uploading...</span>}
                     </div>
 
                     {closureFiles.length > 0 && (
                       <div className="space-y-2 border border-slate-200 p-2.5 rounded bg-slate-50/50 mt-2">
                         {closureFiles.map((file, i) => (
-                          <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px] bg-white border border-slate-150 p-2 rounded shadow-sm">
+                          <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] bg-surface border border-slate-150 p-2 rounded shadow-card">
                             <div className="flex-1 space-y-1">
                               <div className="flex justify-between items-center font-bold">
-                                <span className="text-slate-800 font-mono">{file.fileName}</span>
-                                <span className="text-slate-450 font-mono">{(file.fileSize / 1024).toFixed(0)} KB</span>
+                                <span className="text-slate-800">{file.fileName}</span>
+                                <span className="text-slate-450">{(file.fileSize / 1024).toFixed(0)} KB</span>
                               </div>
                               <div className="w-full h-1 bg-slate-100 border rounded overflow-hidden">
                                 <div className="h-full bg-slate-900 transition-all duration-200" style={{ width: `${file.progress}%` }}></div>
                               </div>
-                              <div className="flex justify-between text-[8px] font-bold text-slate-450 uppercase font-mono">
+                              <div className="flex justify-between text-[11px] font-bold text-slate-450 uppercase">
                                 <span>Upload: {file.progress < 100 ? `Syncing (${file.progress}%)` : 'Stored'}</span>
                               </div>
                             </div>
@@ -2005,8 +2005,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
-                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} disabled={isSubmittingClosure} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
-                    <Button type="submit" disabled={isSubmittingClosure} className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">
+                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} disabled={isSubmittingClosure} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                    <Button type="submit" disabled={isSubmittingClosure} className="bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold uppercase h-8 cursor-pointer">
                       {isSubmittingClosure ? 'Submitting...' : 'Submit Closure Request'}
                     </Button>
                   </div>
@@ -2018,16 +2018,16 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 <form onSubmit={handleResubmitClosure} className="space-y-3">
                   {/* Dynamic Actual Hours inputs for all assigned team members */}
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded border border-slate-200">
-                    <span className="font-bold text-slate-500 uppercase text-[9px] font-mono block mb-1">Revised Team Actual Hours</span>
+                    <span className="font-bold text-slate-500 uppercase text-[11px] block mb-1">Revised Team Actual Hours</span>
                     {(ticket?.consultantEfforts || []).map((eff) => (
                       <div key={eff.consultantId} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="font-semibold text-slate-800 flex items-center gap-1.5 font-mono">
+                        <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                           {eff.consultantName}
-                          <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${
-                            eff.consultantType === 'Functional' ? 'bg-zinc-100 text-zinc-700 border border-zinc-200' : 'bg-zinc-200 text-zinc-800 border border-zinc-300'
+                          <span className={`px-1.5 py-0.2 rounded font-bold text-[11px] uppercase ${
+                            eff.consultantType === 'Functional' ? 'bg-surface-subtle text-ink-secondary border border-line' : 'bg-zinc-200 text-ink border border-line-strong'
                           }`}>{eff.consultantType}</span>
                         </span>
-                        <div className="flex items-center gap-1 font-mono">
+                        <div className="flex items-center gap-1">
                           <input
                             type="number"
                             step="0.5"
@@ -2038,17 +2038,17 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                               ...prev,
                               [eff.consultantId]: e.target.value
                             }))}
-                            className="w-20 bg-white border border-slate-200 rounded p-1 text-center font-bold text-xs focus:outline-none"
+                            className="w-20 bg-surface border border-slate-200 rounded p-1 text-center font-bold text-xs focus:outline-none"
                             required
                           />
-                          <span className="text-slate-400 text-[10px]">h</span>
+                          <span className="text-slate-400 text-[11px]">h</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-500 uppercase text-[9px] font-mono block">Work Completed Summary (Mandatory)</label>
+                    <label className="font-bold text-slate-500 uppercase text-[11px] block">Work Completed Summary (Mandatory)</label>
                     <textarea
                       value={workCompletedSummary}
                       onChange={(e) => setWorkCompletedSummary(e.target.value)}
@@ -2059,7 +2059,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Root Cause (Mandatory)</label>
+                    <label className="font-bold text-critical uppercase text-[11px] block">Root Cause (Mandatory)</label>
                     <textarea
                       value={rootCause}
                       onChange={(e) => setRootCause(e.target.value)}
@@ -2070,7 +2070,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-red-500 uppercase text-[9px] font-mono block">Resolution Notes / Summary (Mandatory)</label>
+                    <label className="font-bold text-critical uppercase text-[11px] block">Resolution Notes / Summary (Mandatory)</label>
                     <textarea
                       value={resolutionSummary}
                       onChange={(e) => setResolutionSummary(e.target.value)}
@@ -2081,7 +2081,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-550 uppercase text-[9px] font-mono block">Pending Items</label>
+                    <label className="font-bold text-slate-550 uppercase text-[11px] block">Pending Items</label>
                     <input
                       type="text"
                       value={pendingItems}
@@ -2092,7 +2092,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
                   {/* File Upload for Resubmit Closure Request */}
                   <div className="space-y-2 border-t border-slate-100 pt-3">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block font-mono">Closure Deliverables & Attachments</span>
+                    <span className="text-[11px] font-bold text-slate-500 uppercase block">Closure Deliverables & Attachments</span>
                     <div className="flex flex-col sm:flex-row gap-2 items-center">
                       <input
                         type="file"
@@ -2103,26 +2103,26 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                       />
                       <label
                         htmlFor="closure-resubmit-file-upload"
-                        className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:border-slate-800 rounded bg-white font-bold uppercase text-[9px] tracking-wider text-slate-700 transition"
+                        className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:border-slate-800 rounded bg-surface font-bold uppercase text-[11px] tracking-wider text-slate-700 transition"
                       >
                         <Paperclip size={11} /> Select Closure Files
                       </label>
-                      {isUploadingClosure && <span className="text-[9px] text-slate-500 animate-pulse font-sans">Uploading...</span>}
+                      {isUploadingClosure && <span className="text-[11px] text-slate-500 animate-pulse font-sans">Uploading...</span>}
                     </div>
 
                     {closureFiles.length > 0 && (
                       <div className="space-y-2 border border-slate-200 p-2.5 rounded bg-slate-50/50 mt-2">
                         {closureFiles.map((file, i) => (
-                          <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px] bg-white border border-slate-150 p-2 rounded shadow-sm">
+                          <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] bg-surface border border-slate-150 p-2 rounded shadow-card">
                             <div className="flex-1 space-y-1">
                               <div className="flex justify-between items-center font-bold">
-                                <span className="text-slate-800 font-mono">{file.fileName}</span>
-                                <span className="text-slate-450 font-mono">{(file.fileSize / 1024).toFixed(0)} KB</span>
+                                <span className="text-slate-800">{file.fileName}</span>
+                                <span className="text-slate-450">{(file.fileSize / 1024).toFixed(0)} KB</span>
                               </div>
                               <div className="w-full h-1 bg-slate-100 border rounded overflow-hidden">
                                 <div className="h-full bg-slate-900 transition-all duration-200" style={{ width: `${file.progress}%` }}></div>
                               </div>
-                              <div className="flex justify-between text-[8px] font-bold text-slate-450 uppercase font-mono">
+                              <div className="flex justify-between text-[11px] font-bold text-slate-450 uppercase">
                                 <span>Upload: {file.progress < 100 ? `Syncing (${file.progress}%)` : 'Stored'}</span>
                               </div>
                             </div>
@@ -2143,8 +2143,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
-                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} disabled={isSubmittingClosure} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
-                    <Button type="submit" disabled={isSubmittingClosure} className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">
+                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} disabled={isSubmittingClosure} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                    <Button type="submit" disabled={isSubmittingClosure} className="bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold uppercase h-8 cursor-pointer">
                       {isSubmittingClosure ? 'Resubmitting...' : 'Resubmit Request'}
                     </Button>
                   </div>
@@ -2155,7 +2155,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {activeModal === 'unlock' && (
                 <form onSubmit={handleRequestUnlock} className="space-y-4">
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Reason for Unlock (Mandatory)</label>
+                    <label className="font-bold text-slate-655 uppercase text-[11px] block">Reason for Unlock (Mandatory)</label>
                     <input
                       type="text"
                       placeholder="e.g. Need to revise estimates"
@@ -2167,7 +2167,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Changes Required (Mandatory)</label>
+                    <label className="font-bold text-slate-655 uppercase text-[11px] block">Changes Required (Mandatory)</label>
                     <textarea
                       placeholder="Detail exactly what changes are needed..."
                       value={unlockChange}
@@ -2178,7 +2178,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-655 uppercase text-[9px] font-mono block">Remarks</label>
+                    <label className="font-bold text-slate-655 uppercase text-[11px] block">Remarks</label>
                     <textarea
                       placeholder="Any additional remarks..."
                       value={unlockRemarks}
@@ -2187,13 +2187,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     />
                   </div>
 
-                  <div className="text-[10px] text-amber-600 font-bold font-mono">
+                  <div className="text-[11px] text-warning font-bold">
                     This submits an unlock request to the SAP Manager. Editing remains locked until approved.
                   </div>
 
                   <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
-                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[10px] font-bold font-mono uppercase h-8">Cancel</Button>
-                    <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[10px] font-bold font-mono uppercase h-8 cursor-pointer">Submit Request</Button>
+                    <Button type="button" variant="outline" onClick={() => setActiveModal(null)} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                    <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold uppercase h-8 cursor-pointer">Submit Request</Button>
                   </div>
                 </form>
               )}

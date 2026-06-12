@@ -184,16 +184,16 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
   };
 
   return (
-    <div className="bg-zinc-50 border border-zinc-200 shadow-sm rounded-xl p-4 font-mono text-xs">
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-2.5 mb-4">
+    <div className="bg-surface-muted border border-line shadow-card rounded-lg p-4 text-xs">
+      <div className="flex items-center justify-between border-b border-line pb-2.5 mb-4">
         <div className="flex items-center gap-2">
-          <Filter size={13} className="text-zinc-500" />
-          <span className="font-bold text-zinc-900 uppercase">Filters Desk</span>
+          <Filter size={13} className="text-ink-secondary" />
+          <span className="font-bold text-ink uppercase">Filters Desk</span>
         </div>
         <Button
           variant="ghost"
           onClick={handleReset}
-          className="h-6 text-[9px] uppercase font-bold text-zinc-500 hover:text-zinc-900 cursor-pointer"
+          className="h-6 text-[11px] uppercase font-bold text-ink-secondary hover:text-ink cursor-pointer"
         >
           Reset Filters
         </Button>
@@ -203,11 +203,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Date Select Option */}
         {showFilter('dateSelect') && setDateFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Time Period</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Time Period</span>
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Time</option>
               <option value="24h">Last 24 Hours</option>
@@ -224,15 +224,15 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Start Date */}
         {showFilter('dateRange') && setStartDateFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Start Date</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Start Date</span>
             <div className="relative">
               <input
                 type="date"
                 value={startDateFilter || ''}
                 onChange={(e) => setStartDateFilter(e.target.value)}
-                className="w-full h-8 border border-zinc-200 rounded pl-2 pr-6 text-[10px] bg-white text-zinc-700 outline-none focus:border-zinc-400"
+                className="w-full h-8 border border-line rounded pl-2 pr-6 text-[11px] bg-surface text-ink-secondary outline-none focus:border-zinc-400"
               />
-              <Calendar size={11} className="absolute right-2 top-2.5 text-zinc-400 pointer-events-none" />
+              <Calendar size={11} className="absolute right-2 top-2.5 text-ink-muted pointer-events-none" />
             </div>
           </div>
         )}
@@ -240,15 +240,15 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* End Date */}
         {showFilter('dateRange') && setEndDateFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">End Date</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">End Date</span>
             <div className="relative">
               <input
                 type="date"
                 value={endDateFilter || ''}
                 onChange={(e) => setEndDateFilter(e.target.value)}
-                className="w-full h-8 border border-zinc-200 rounded pl-2 pr-6 text-[10px] bg-white text-zinc-700 outline-none focus:border-zinc-400"
+                className="w-full h-8 border border-line rounded pl-2 pr-6 text-[11px] bg-surface text-ink-secondary outline-none focus:border-zinc-400"
               />
-              <Calendar size={11} className="absolute right-2 top-2.5 text-zinc-400 pointer-events-none" />
+              <Calendar size={11} className="absolute right-2 top-2.5 text-ink-muted pointer-events-none" />
             </div>
           </div>
         )}
@@ -256,11 +256,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Year */}
         {showFilter('year') && setYearFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Year</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Year</span>
             <select
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Years</option>
               <option value="2024">2024</option>
@@ -273,11 +273,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Month */}
         {showFilter('month') && setMonthFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Month</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Month</span>
             <select
               value={monthFilter}
               onChange={(e) => setMonthFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Months</option>
               {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
@@ -290,11 +290,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Quarter */}
         {showFilter('quarter') && setQuarterFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Quarter</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Quarter</span>
             <select
               value={quarterFilter}
               onChange={(e) => setQuarterFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Quarters</option>
               <option value="Q1">Q1 (Jan-Mar)</option>
@@ -308,11 +308,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Customer */}
         {showFilter('customer') && setCustomerFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Customer</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Customer</span>
             <select
               value={customerFilter}
               onChange={(e) => setCustomerFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Customers</option>
               {customerOrgsList.map(org => (
@@ -325,11 +325,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Consultant */}
         {showFilter('consultant') && setConsultantFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Consultant</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Consultant</span>
             <select
               value={consultantFilter}
               onChange={(e) => setConsultantFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Consultants</option>
               {consultantsProfilesList.map(cons => (
@@ -342,11 +342,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Functional Consultant */}
         {showFilter('functionalConsultant') && setFunctionalConsultantFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Functional Cons.</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Functional Cons.</span>
             <select
               value={functionalConsultantFilter}
               onChange={(e) => setFunctionalConsultantFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Functional</option>
               {functionalConsultantsList.map(cons => (
@@ -359,11 +359,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Technical Consultant */}
         {showFilter('technicalConsultant') && setTechnicalConsultantFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Technical Cons.</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Technical Cons.</span>
             <select
               value={technicalConsultantFilter}
               onChange={(e) => setTechnicalConsultantFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Technical</option>
               {technicalConsultantsList.map(cons => (
@@ -376,11 +376,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Manager */}
         {showFilter('manager') && setManagerFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Manager</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Manager</span>
             <select
               value={managerFilter}
               onChange={(e) => setManagerFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Managers</option>
               {managersProfilesList.map(mgr => (
@@ -393,11 +393,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Module */}
         {showFilter('module') && setModuleFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">SAP Module</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">SAP Module</span>
             <select
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Modules</option>
               {modulesList.map(mod => (
@@ -410,11 +410,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Status */}
         {showFilter('status') && setStatusFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Status</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Status</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Statuses</option>
               {statusList.map(status => (
@@ -427,11 +427,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Priority */}
         {showFilter('priority') && setPriorityFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Priority</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Priority</span>
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Priorities</option>
               <option value="Critical">Critical</option>
@@ -445,11 +445,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Type */}
         {showFilter('type') && setTypeFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Ticket Type</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Ticket Type</span>
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Types</option>
               {typesList.map(type => (
@@ -462,11 +462,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Scope */}
         {showFilter('scope') && setScopeFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Classification</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Classification</span>
             <select
               value={scopeFilter}
               onChange={(e) => setScopeFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Classifications</option>
               <option value="Functional">Functional</option>
@@ -478,11 +478,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* SLA */}
         {showFilter('sla') && setSlaFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">SLA Status</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">SLA Status</span>
             <select
               value={slaFilter}
               onChange={(e) => setSlaFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All SLA Statuses</option>
               <option value="Breached">Breached</option>
@@ -494,11 +494,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Allocation State */}
         {showFilter('assignState') && setAssignStateFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Allocation State</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Allocation State</span>
             <select
               value={assignStateFilter}
               onChange={(e) => setAssignStateFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Allocations</option>
               <option value="Assigned">Assigned</option>
@@ -510,11 +510,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Closure State */}
         {showFilter('closureState') && setClosureStateFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Closure State</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Closure State</span>
             <select
               value={closureStateFilter}
               onChange={(e) => setClosureStateFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Closure States</option>
               <option value="Open">Active / Open</option>
@@ -527,11 +527,11 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         {/* Approval State */}
         {showFilter('approvalState') && setApprovalStateFilter && (
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Approval State</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Approval State</span>
             <select
               value={approvalStateFilter}
               onChange={(e) => setApprovalStateFilter(e.target.value)}
-              className="w-full h-8 border border-zinc-200 bg-white rounded px-2 text-[10px] text-zinc-700 outline-none focus:border-zinc-400 cursor-pointer"
+              className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
             >
               <option value="All">All Approvals</option>
               <option value="PendingEstimates">Pending Estimates</option>
@@ -545,29 +545,29 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
 
       {/* Render Custom Date inputs inline if dateFilter === 'custom' */}
       {showFilter('dateSelect') && dateFilter === 'custom' && setStartDateFilter && setEndDateFilter && (
-        <div className="mt-4 pt-4 border-t border-zinc-200 grid grid-cols-2 gap-4 max-w-md">
+        <div className="mt-4 pt-4 border-t border-line grid grid-cols-2 gap-4 max-w-md">
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Custom Start Date</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Custom Start Date</span>
             <div className="relative">
               <input
                 type="date"
                 value={startDateFilter || ''}
                 onChange={(e) => setStartDateFilter(e.target.value)}
-                className="w-full h-8 border border-zinc-200 rounded pl-2 pr-6 text-[10px] bg-white text-zinc-700 outline-none focus:border-zinc-400"
+                className="w-full h-8 border border-line rounded pl-2 pr-6 text-[11px] bg-surface text-ink-secondary outline-none focus:border-zinc-400"
               />
-              <Calendar size={11} className="absolute right-2 top-2.5 text-zinc-400 pointer-events-none" />
+              <Calendar size={11} className="absolute right-2 top-2.5 text-ink-muted pointer-events-none" />
             </div>
           </div>
           <div className="space-y-1 flex flex-col">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Custom End Date</span>
+            <span className="text-[11px] font-bold text-ink-muted uppercase">Custom End Date</span>
             <div className="relative">
               <input
                 type="date"
                 value={endDateFilter || ''}
                 onChange={(e) => setEndDateFilter(e.target.value)}
-                className="w-full h-8 border border-zinc-200 rounded pl-2 pr-6 text-[10px] bg-white text-zinc-700 outline-none focus:border-zinc-400"
+                className="w-full h-8 border border-line rounded pl-2 pr-6 text-[11px] bg-surface text-ink-secondary outline-none focus:border-zinc-400"
               />
-              <Calendar size={11} className="absolute right-2 top-2.5 text-zinc-400 pointer-events-none" />
+              <Calendar size={11} className="absolute right-2 top-2.5 text-ink-muted pointer-events-none" />
             </div>
           </div>
         </div>

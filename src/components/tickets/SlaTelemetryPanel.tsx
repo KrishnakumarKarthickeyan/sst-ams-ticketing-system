@@ -90,25 +90,25 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
     switch (slaMetrics.status) {
       case 'MET':
         return (
-          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 uppercase font-mono text-[9px] font-bold py-0.5 px-2">
+          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 uppercase text-[11px] font-bold py-0.5 px-2">
             SLA Met
           </Badge>
         );
       case 'BREACHED':
         return (
-          <Badge className="bg-red-50 text-red-700 hover:bg-red-50 border border-red-200 uppercase font-mono text-[9px] font-bold py-0.5 px-2 animate-pulse">
+          <Badge className="bg-red-50 text-red-700 hover:bg-red-50 border border-red-200 uppercase text-[11px] font-bold py-0.5 px-2 animate-pulse">
             Breached
           </Badge>
         );
       case 'WARNING':
         return (
-          <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200 uppercase font-mono text-[9px] font-bold py-0.5 px-2">
+          <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200 uppercase text-[11px] font-bold py-0.5 px-2">
             Warning
           </Badge>
         );
       case 'COMPLIANT':
         return (
-          <Badge className="bg-zinc-100 text-zinc-800 hover:bg-zinc-100 border border-zinc-200 uppercase font-mono text-[9px] font-bold py-0.5 px-2">
+          <Badge className="bg-surface-subtle text-ink hover:bg-surface-subtle border border-line uppercase text-[11px] font-bold py-0.5 px-2">
             Compliant
           </Badge>
         );
@@ -133,34 +133,34 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
   }, [ticket.slaDueAt]);
 
   return (
-    <Card className="bg-white border border-zinc-200 rounded-lg p-5 shadow-sm space-y-4">
-      <div className="flex justify-between items-center border-b border-zinc-150 pb-2">
-        <h3 className="font-bold text-xs uppercase tracking-wider text-zinc-955 flex items-center gap-1.5 font-mono">
-          <Clock size={14} className="text-zinc-500" /> SLA SLA Governance
+    <Card className="bg-surface border border-line rounded-lg p-5 shadow-card space-y-4">
+      <div className="flex justify-between items-center border-b border-line pb-2">
+        <h3 className="font-bold text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
+          <Clock size={14} className="text-ink-secondary" /> SLA SLA Governance
         </h3>
         {statusBadge()}
       </div>
 
-      <div className="space-y-3.5 text-zinc-700 font-mono text-xs">
+      <div className="space-y-3.5 text-ink-secondary text-xs">
         {/* Due Date & Remaining Time */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-zinc-50 p-2.5 rounded border border-zinc-100 space-y-1">
-            <span className="text-[9px] text-zinc-400 uppercase font-bold block flex items-center gap-1">
+          <div className="bg-surface-muted p-2.5 rounded border border-line space-y-1">
+            <span className="text-[11px] text-ink-muted uppercase font-bold block flex items-center gap-1">
               <Calendar size={10} /> SLA Target Due
             </span>
-            <span className="font-bold text-zinc-900 text-[10px] block leading-tight">
+            <span className="font-bold text-ink text-[11px] block leading-tight">
               {formattedDueDate}
             </span>
           </div>
 
-          <div className="bg-zinc-50 p-2.5 rounded border border-zinc-100 space-y-1">
-            <span className="text-[9px] text-zinc-450 uppercase font-bold block flex items-center gap-1">
+          <div className="bg-surface-muted p-2.5 rounded border border-line space-y-1">
+            <span className="text-[11px] text-ink-muted uppercase font-bold block flex items-center gap-1">
               <Activity size={10} /> Time Remaining
             </span>
-            <span className={`font-black text-[10px] block leading-tight ${
-              slaMetrics.status === 'BREACHED' ? 'text-red-650' : 
+            <span className={`font-black text-[11px] block leading-tight ${
+              slaMetrics.status === 'BREACHED' ? 'text-critical' : 
               slaMetrics.status === 'WARNING' ? 'text-amber-700 animate-pulse' : 
-              'text-zinc-900'
+              'text-ink'
             }`}>
               {slaMetrics.timeLeft}
             </span>
@@ -170,13 +170,13 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
         {/* SLA Hours Progress Gauge */}
         {targetHours !== null && (
           <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between text-[10px]">
-              <span className="text-zinc-450">SLA Capacity (Consumed / Target)</span>
-              <span className="font-bold text-zinc-900">
+            <div className="flex justify-between text-[11px]">
+              <span className="text-ink-muted">SLA Capacity (Consumed / Target)</span>
+              <span className="font-bold text-ink">
                 {consumedHours.toFixed(1)}h / {targetHours}h ({Math.round(consumedPercentage)}%)
               </span>
             </div>
-            <div className="w-full bg-zinc-100 rounded-full h-2 overflow-hidden border border-zinc-200/50">
+            <div className="w-full bg-surface-subtle rounded-full h-2 overflow-hidden border border-line/50">
               <div 
                 className={`h-full transition-all duration-300 ${getProgressColor()}`}
                 style={{ width: `${consumedPercentage}%` }}
@@ -186,35 +186,35 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
         )}
 
         {/* Numerical Grid */}
-        <div className="divide-y divide-zinc-100 text-[10px]">
+        <div className="divide-y divide-line text-[11px]">
           <div className="flex justify-between py-1.5">
-            <span className="text-zinc-500">Urgency Priority:</span>
-            <span className="font-bold text-zinc-900 uppercase">{ticket.priority}</span>
+            <span className="text-ink-secondary">Urgency Priority:</span>
+            <span className="font-bold text-ink uppercase">{ticket.priority}</span>
           </div>
           {targetHours !== null && (
             <>
               <div className="flex justify-between py-1.5">
-                <span className="text-zinc-500">SLA Target Hours:</span>
-                <span className="font-bold text-zinc-900">{targetHours} Hours</span>
+                <span className="text-ink-secondary">SLA Target Hours:</span>
+                <span className="font-bold text-ink">{targetHours} Hours</span>
               </div>
               <div className="flex justify-between py-1.5">
-                <span className="text-zinc-500">Remaining SLA Hours:</span>
-                <span className={`font-bold ${remainingHours && remainingHours < 2 ? 'text-red-600' : 'text-zinc-900'}`}>
+                <span className="text-ink-secondary">Remaining SLA Hours:</span>
+                <span className={`font-bold ${remainingHours && remainingHours < 2 ? 'text-critical' : 'text-ink'}`}>
                   {remainingHours !== null ? `${remainingHours.toFixed(1)} Hours` : 'N/A'}
                 </span>
               </div>
             </>
           )}
           <div className="flex justify-between py-1.5">
-            <span className="text-zinc-500">Escalation path level:</span>
-            <span className={`font-bold flex items-center gap-1 ${escalationLevel > 0 ? 'text-red-600 animate-pulse' : 'text-zinc-900'}`}>
+            <span className="text-ink-secondary">Escalation path level:</span>
+            <span className={`font-bold flex items-center gap-1 ${escalationLevel > 0 ? 'text-critical animate-pulse' : 'text-ink'}`}>
               {escalationLevel > 0 ? (
                 <>
                   <ShieldAlert size={11} /> Level {escalationLevel}
                 </>
               ) : (
                 <>
-                  <ShieldCheck size={11} className="text-zinc-400" /> Level 0 (Nominal)
+                  <ShieldCheck size={11} className="text-ink-muted" /> Level 0 (Nominal)
                 </>
               )}
             </span>
