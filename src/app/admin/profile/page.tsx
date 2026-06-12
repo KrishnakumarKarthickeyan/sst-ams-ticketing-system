@@ -79,64 +79,64 @@ export default function AdminProfilePage() {
   return (
     <div className="space-y-6 max-w-xl mx-auto">
       {/* Header */}
-      <div className="border-b border-zinc-200 pb-4">
-        <h1 className="text-xl font-bold tracking-tight font-mono text-zinc-950 uppercase">
+      <div className="border-b border-line pb-4">
+        <h1 className="type-title text-ink">
           Super Admin Profile
         </h1>
-        <p className="text-xs text-zinc-500 font-medium">
+        <p className="text-xs text-ink-secondary font-medium">
           Manage your administrative profile settings and password credentials.
         </p>
       </div>
 
       {success && (
-        <div className="bg-zinc-950 text-white border border-zinc-900 rounded-lg p-4 font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+        <div className="bg-ink text-white border border-zinc-900 rounded-lg p-4 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
           <Check size={14} className="text-emerald-400" />
           <span>Profile Name Updated Successfully</span>
         </div>
       )}
 
       {/* Account Settings Card */}
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-          <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center gap-1.5">
+      <Card className="border-line bg-surface shadow-card">
+        <CardHeader className="pb-3 border-b border-line bg-surface-muted/60">
+          <CardTitle className="text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
             <User size={14} />
             User Metadata Details
           </CardTitle>
-          <CardDescription className="text-[11px] font-mono">
+          <CardDescription className="text-[11px]">
             Verify personal details mapping to support logins.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <form onSubmit={handleUpdate} className="space-y-4 font-mono text-xs">
+          <form onSubmit={handleUpdate} className="space-y-4 text-xs">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">User Full Name</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">User Full Name</Label>
               <div className="relative">
-                <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <Input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-9 text-xs font-mono h-9"
+                  className="pl-9 text-xs h-9"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Registered Email Address</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Registered Email Address</Label>
               <div className="relative">
-                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <Input
                   type="email"
                   disabled
                   value={user?.email || ''}
-                  className="pl-9 bg-zinc-50 text-zinc-400 text-xs font-mono h-9 cursor-not-allowed border-zinc-200"
+                  className="pl-9 bg-surface-muted text-ink-muted text-xs h-9 cursor-not-allowed border-line"
                 />
               </div>
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button type="submit" className="bg-zinc-950 hover:bg-zinc-800 text-white font-mono font-bold uppercase tracking-wider text-[10px] h-9">
+              <Button type="submit" className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9">
                 Update Settings
               </Button>
             </div>
@@ -145,40 +145,40 @@ export default function AdminProfilePage() {
       </Card>
 
       {/* Password Update Card */}
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-          <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center gap-1.5">
+      <Card className="border-line bg-surface shadow-card">
+        <CardHeader className="pb-3 border-b border-line bg-surface-muted/60">
+          <CardTitle className="text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
             <KeyRound size={14} />
             Update Password Credentials
           </CardTitle>
-          <CardDescription className="text-[11px] font-mono">
+          <CardDescription className="text-[11px]">
             Change your password. After saving, the old password will stop working immediately.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <form onSubmit={handlePasswordUpdate} className="space-y-4 font-mono text-xs">
+          <form onSubmit={handlePasswordUpdate} className="space-y-4 text-xs">
             {passwordError && (
               <div className="bg-red-50 border border-red-200 rounded p-2.5 text-[11px] text-red-800 font-bold">
                 [ERROR]: {passwordError}
               </div>
             )}
             {passwordSuccess && (
-              <div className="bg-zinc-950 text-white border border-zinc-900 rounded p-2.5 text-[11px] font-bold flex items-center gap-1.5">
+              <div className="bg-ink text-white border border-zinc-900 rounded p-2.5 text-[11px] font-bold flex items-center gap-1.5">
                 <Check size={12} className="text-emerald-400" />
                 <span>Password changed and audit log registered.</span>
               </div>
             )}
             
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">New Password</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">New Password</Label>
               <div className="relative">
-                <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <Input
                   type="password"
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="pl-9 text-xs font-mono h-9"
+                  className="pl-9 text-xs h-9"
                   placeholder="Min. 6 characters"
                   disabled={passwordUpdating}
                 />
@@ -186,15 +186,15 @@ export default function AdminProfilePage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Confirm New Password</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Confirm New Password</Label>
               <div className="relative">
-                <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <Input
                   type="password"
                   required
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  className="pl-9 text-xs font-mono h-9"
+                  className="pl-9 text-xs h-9"
                   placeholder="Re-type new password"
                   disabled={passwordUpdating}
                 />
@@ -204,7 +204,7 @@ export default function AdminProfilePage() {
             <div className="flex justify-end pt-2">
               <Button 
                 type="submit" 
-                className="bg-zinc-950 hover:bg-zinc-800 text-white font-mono font-bold uppercase tracking-wider text-[10px] h-9"
+                className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9"
                 disabled={passwordUpdating}
               >
                 {passwordUpdating ? 'Updating...' : 'Change Password'}
