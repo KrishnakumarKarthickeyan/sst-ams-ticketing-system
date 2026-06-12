@@ -90,53 +90,53 @@ export default function CustomerProfilePage() {
   return (
     <div className="space-y-6 max-w-xl mx-auto">
       {/* Header */}
-      <div className="border-b border-zinc-200 pb-4">
-        <h1 className="text-xl font-bold tracking-tight font-mono text-zinc-950 uppercase">
+      <div className="border-b border-line pb-4">
+        <h1 className="text-xl font-bold tracking-tight text-ink uppercase">
           My Account Profile
         </h1>
-        <p className="text-xs text-zinc-500 font-medium">
+        <p className="text-xs text-ink-secondary font-medium">
           Manage your personal support user settings and review organizational SLA contract budgets.
         </p>
       </div>
 
       {/* Account Settings Card */}
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-          <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center gap-1.5">
+      <Card className="border-line bg-surface shadow-card">
+        <CardHeader className="pb-3 border-b border-line bg-surface-muted/60">
+          <CardTitle className="text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
             <User size={14} />
             User Metadata Details
           </CardTitle>
-          <CardDescription className="text-[11px] font-mono">
+          <CardDescription className="text-[11px]">
             Verify personal details mapping to support logins.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="space-y-4 font-mono text-xs">
+          <div className="space-y-4 text-xs">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">User Full Name</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">User Full Name</Label>
               <div className="relative">
-                <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <Input
                   type="text"
                   disabled
                   value={user?.name || ''}
-                  className="pl-9 bg-zinc-50 text-zinc-450 text-xs font-mono h-9 cursor-not-allowed border-zinc-200"
+                  className="pl-9 bg-surface-muted text-ink-muted text-xs h-9 cursor-not-allowed border-line"
                 />
               </div>
-              <p className="text-[10px] text-zinc-400 font-sans mt-0.5">
+              <p className="text-[11px] text-ink-muted font-sans mt-0.5">
                 Full name changes are read-only. Contact your SAP Account Manager to request adjustments.
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider font-mono">Registered Email Address</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Registered Email Address</Label>
               <div className="relative">
-                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <Input
                   type="email"
                   disabled
                   value={user?.email || ''}
-                  className="pl-9 bg-zinc-50 text-zinc-450 text-xs font-mono h-9 cursor-not-allowed border-zinc-200"
+                  className="pl-9 bg-surface-muted text-ink-muted text-xs h-9 cursor-not-allowed border-line"
                 />
               </div>
             </div>
@@ -145,48 +145,48 @@ export default function CustomerProfilePage() {
       </Card>
 
       {/* Password Request Card */}
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-          <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center gap-1.5">
+      <Card className="border-line bg-surface shadow-card">
+        <CardHeader className="pb-3 border-b border-line bg-surface-muted/60">
+          <CardTitle className="text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
             <KeyRound size={14} />
             Password Change Request
           </CardTitle>
-          <CardDescription className="text-[11px] font-mono">
+          <CardDescription className="text-[11px]">
             Request a password reset. A Manager or Admin will review and authorize a temporary password reset.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="space-y-4 font-mono text-xs">
+          <div className="space-y-4 text-xs">
             {pendingRequest ? (
-              <div className="bg-amber-50/60 border border-amber-250 rounded-xl p-4 text-[11px] text-amber-800 font-bold space-y-2">
+              <div className="bg-amber-50/60 border border-amber-250 rounded-lg p-4 text-[11px] text-amber-800 font-bold space-y-2">
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="animate-pulse" />
                   <span>PENDING MANAGER APPROVAL</span>
                 </div>
-                <p className="font-normal text-zinc-600 font-sans leading-relaxed">
+                <p className="font-normal text-ink-secondary font-sans leading-relaxed">
                   A password reset request was submitted on {new Date(pendingRequest.requested_at).toLocaleString()}. You will receive a new temporary password once a Manager or Admin approves your request.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-zinc-600 font-sans leading-relaxed">
+                <p className="text-ink-secondary font-sans leading-relaxed">
                   For security compliance, customers cannot directly change their passwords. Click below to submit a password reset request to your SAP Support Managers.
                 </p>
                 <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
                   <DialogTrigger asChild>
-                    <Button className="bg-zinc-950 hover:bg-zinc-800 text-white font-mono font-bold uppercase tracking-wider text-[10px] h-9">
+                    <Button className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9">
                       Request Password Reset
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-white border border-zinc-200 font-mono text-xs">
+                  <DialogContent className="bg-surface border border-line text-xs">
                     <DialogHeader>
-                      <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-950">Confirm Password Reset Request</DialogTitle>
-                      <DialogDescription className="text-[11px] font-mono text-zinc-500">
+                      <DialogTitle className="text-sm font-bold uppercase tracking-wider text-ink">Confirm Password Reset Request</DialogTitle>
+                      <DialogDescription className="text-[11px] text-ink-secondary">
                         Submit a password change request. Your support managers will be notified immediately.
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleRequestSubmit} className="space-y-4 pt-2">
-                      <p className="text-zinc-650 font-sans">
+                      <p className="text-ink-secondary font-sans">
                         Are you sure you want to request a password reset for <strong>{user?.email}</strong>?
                       </p>
                       <DialogFooter className="gap-2 sm:gap-0">
@@ -194,14 +194,14 @@ export default function CustomerProfilePage() {
                           type="button" 
                           variant="outline" 
                           onClick={() => setShowRequestDialog(false)}
-                          className="font-mono text-[10px] font-bold uppercase h-9"
+                          className="text-[11px] font-bold uppercase h-9"
                         >
                           Cancel
                         </Button>
                         <Button 
                           type="submit" 
                           disabled={requestLoading}
-                          className="bg-zinc-950 hover:bg-zinc-800 text-white font-mono font-bold uppercase tracking-wider text-[10px] h-9"
+                          className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9"
                         >
                           {requestLoading ? 'Submitting...' : 'Confirm Request'}
                         </Button>
@@ -216,57 +216,57 @@ export default function CustomerProfilePage() {
       </Card>
 
       {/* Contract card */}
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50">
-          <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center gap-1.5">
+      <Card className="border-line bg-surface shadow-card">
+        <CardHeader className="pb-3 border-b border-line bg-surface-muted/60">
+          <CardTitle className="text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
             <Building2 size={14} />
             Active Service Contract Pool Summary
           </CardTitle>
-          <CardDescription className="text-[11px] font-mono">
+          <CardDescription className="text-[11px]">
             Service allocation details and validation records of AMS contracts.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6 space-y-4 font-mono text-xs">
+        <CardContent className="p-6 space-y-4 text-xs">
           {contract ? (
-            <div className="space-y-3.5 text-zinc-750">
+            <div className="space-y-3.5 text-ink-secondary">
               <div className="flex justify-between items-center">
                 <span>Contract Type Classification:</span>
-                <Badge className="bg-zinc-100 text-zinc-850 hover:bg-zinc-100 font-mono text-[10px] border-zinc-200 rounded py-0.5 px-1.5">
+                <Badge className="bg-surface-subtle text-ink hover:bg-surface-subtle text-[11px] border-line rounded py-0.5 px-1.5">
                   {contract.contractType}
                 </Badge>
               </div>
               <div className="flex justify-between">
                 <span>Contract Validation Ends:</span>
-                <span className="font-bold text-zinc-950 font-mono">{contract.endDate}</span>
+                <span className="font-bold text-ink">{contract.endDate}</span>
               </div>
               <div className="flex justify-between">
                 <span>Services Hours Pool Used:</span>
-                <span className="font-bold text-zinc-950 font-mono">{contract.usedHours} / {contract.totalHours} Hours</span>
+                <span className="font-bold text-ink">{contract.usedHours} / {contract.totalHours} Hours</span>
               </div>
               
-              <div className="space-y-1.5 pt-2 border-t border-zinc-100">
-                <div className="flex justify-between text-[10px] font-bold text-zinc-400">
+              <div className="space-y-1.5 pt-2 border-t border-line">
+                <div className="flex justify-between text-[11px] font-bold text-ink-muted">
                   <span>POOL USAGE BURN RATE</span>
                   <span>{((contract.usedHours / contract.totalHours) * 100).toFixed(1)}% CONSUMED</span>
                 </div>
-                <div className="w-full h-3.5 bg-zinc-100 border border-zinc-200 rounded-full overflow-hidden">
+                <div className="w-full h-3.5 bg-surface-subtle border border-line rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-zinc-950 transition-all duration-300"
+                    className="h-full bg-ink transition-all duration-300"
                     style={{ width: `${(contract.usedHours / contract.totalHours) * 100}%` }}
                   ></div>
                 </div>
-                <span className="text-[9px] text-zinc-400 block font-mono text-right font-bold uppercase mt-1">
+                <span className="text-[11px] text-ink-muted block text-right font-bold uppercase mt-1">
                   {contract.totalHours - contract.usedHours} hours remaining
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 text-[9px] text-zinc-400 font-bold uppercase pt-4 border-t border-zinc-100">
-                <ShieldCheck size={13} className="text-zinc-500" />
+              <div className="flex items-center gap-1.5 text-[11px] text-ink-muted font-bold uppercase pt-4 border-t border-line">
+                <ShieldCheck size={13} className="text-ink-secondary" />
                 <span>Security Notice: Mapped under active database Row Level Security (RLS) policies</span>
               </div>
             </div>
           ) : (
-            <div className="text-zinc-400 italic py-4 text-center">No support contracts currently registered for your company profile.</div>
+            <div className="text-ink-muted italic py-4 text-center">No support contracts currently registered for your company profile.</div>
           )}
         </CardContent>
       </Card>
