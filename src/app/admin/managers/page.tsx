@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../../../components/ui/badge';
+import { PageHeader } from '../../../components/ui/page-header';
+import { Button } from '../../../components/ui/button';
 
 interface ManagerProfile {
   id: string;
@@ -408,35 +410,32 @@ export default function AdminManagersPage() {
   };
 
   return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900">
+    <div className="space-y-6 text-xs text-ink">
       {/* Header Panel */}
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-4 bg-white">
-        <div>
-          <h1 className="text-lg font-bold uppercase tracking-tight text-zinc-950 font-mono">SAP Manager Cockpits</h1>
-          <p className="text-zinc-500 mt-1">Supervise operational leads, audit oversight workloads, and provision system coordinators.</p>
-        </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-3 py-2 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5 transition cursor-pointer"
-        >
-          <Plus size={12} />
-          Provision Manager
-        </button>
-      </div>
+      <PageHeader
+        title="SAP Manager Cockpits"
+        description="Supervise operational leads, audit oversight workloads, and provision system coordinators."
+        actions={
+          <Button onClick={() => setShowAddForm(!showAddForm)} className="gap-1.5 rounded-md">
+            <Plus size={13} />
+            Provision Manager
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main List */}
         <div className="lg:col-span-2 space-y-4">
           {showAddForm && (
-            <form onSubmit={handleAddManager} className="bg-white border border-zinc-200 rounded p-4 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between border-b border-zinc-150 pb-2">
-                <h3 className="font-bold text-[10px] uppercase tracking-wider text-zinc-950">
+            <form onSubmit={handleAddManager} className="bg-surface border border-line rounded p-4 space-y-4 shadow-card">
+              <div className="flex items-center justify-between border-b border-line pb-2">
+                <h3 className="font-bold text-[11px] uppercase tracking-wider text-ink">
                   Provision SAP Manager Account
                 </h3>
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="text-zinc-400 hover:text-zinc-950 uppercase text-[9px] font-bold"
+                  className="text-ink-muted hover:text-ink uppercase text-[11px] font-bold"
                 >
                   Close
                 </button>
@@ -444,39 +443,39 @@ export default function AdminManagersPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-700 uppercase text-[9px]">Full Name *</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px]">Full Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Keerthana Rajan"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                    className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-700 uppercase text-[9px]">Email Address *</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px]">Email Address *</label>
                   <input
                     type="email"
                     required
                     placeholder="e.g. keerthana@assist360.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                    className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                 </div>
                 <div className="space-y-1 pt-1 md:col-span-2">
-                  <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Assignment</label>
-                  <p className="text-[10px] text-zinc-500 font-mono italic">A secure temporary password will be auto-generated for this role.</p>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px] block">Password Assignment</label>
+                  <p className="text-[11px] text-ink-secondary italic">A secure temporary password will be auto-generated for this role.</p>
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-700 uppercase text-[9px]">Phone Number</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px]">Phone Number</label>
                   <input
                     type="text"
                     placeholder="e.g. +91 98765 43210"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                    className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                 </div>
               </div>
@@ -485,13 +484,13 @@ export default function AdminManagersPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-3 py-1.5 border border-zinc-200 hover:bg-zinc-50 rounded uppercase tracking-wider text-[10px] cursor-pointer"
+                  className="px-3 py-1.5 border border-line hover:bg-surface-muted rounded uppercase tracking-wider text-[11px] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1.5 bg-zinc-950 text-white hover:bg-zinc-800 rounded uppercase tracking-wider text-[10px] cursor-pointer"
+                  className="px-3 py-1.5 bg-ink text-white hover:bg-zinc-800 rounded uppercase tracking-wider text-[11px] cursor-pointer"
                 >
                   Provision Account
                 </button>
@@ -500,10 +499,10 @@ export default function AdminManagersPage() {
           )}
 
           {/* Directory Table */}
-          <div className="bg-white border border-zinc-200 rounded overflow-hidden shadow-sm">
+          <div className="bg-surface border border-line rounded overflow-hidden shadow-card">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[9px] tracking-wider text-zinc-500">
+                <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
                   <th className="p-4">Manager Info</th>
                   <th className="p-4">Performance Indexes</th>
                   <th className="p-4">Contact</th>
@@ -511,16 +510,16 @@ export default function AdminManagersPage() {
                   <th className="p-4 text-right">Operations</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200">
+              <tbody className="divide-y divide-line">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-zinc-400 font-mono">
+                    <td colSpan={5} className="p-8 text-center text-ink-muted">
                       Querying database profiles...
                     </td>
                   </tr>
                 ) : managers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-zinc-400 font-mono">
+                    <td colSpan={5} className="p-8 text-center text-ink-muted">
                       No active SAP Manager roles registered in system directory.
                     </td>
                   </tr>
@@ -528,43 +527,43 @@ export default function AdminManagersPage() {
                   managers.map((mgr) => {
                     const isSelected = selectedManager?.id === mgr.id;
                     return (
-                      <tr key={mgr.id} className={`hover:bg-zinc-50/50 transition-colors ${isSelected ? 'bg-zinc-50 font-semibold' : ''}`}>
+                      <tr key={mgr.id} className={`hover:bg-surface-muted/60 transition-colors ${isSelected ? 'bg-surface-muted font-semibold' : ''}`}>
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-900 font-bold uppercase shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-surface-subtle border border-line flex items-center justify-center text-ink font-bold uppercase shrink-0">
                               {mgr.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                             </div>
                             <div>
-                              <span className="font-bold text-zinc-800 text-xs block">{mgr.name}</span>
-                              <span className="text-[10px] text-zinc-400 font-mono">{mgr.email}</span>
+                              <span className="font-bold text-ink text-xs block">{mgr.name}</span>
+                              <span className="text-[11px] text-ink-muted">{mgr.email}</span>
                             </div>
                           </div>
                         </td>
                         <td className="p-4">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-bold text-zinc-650">Workload Volume:</span>
-                              <span className="px-1.5 py-0.2 bg-zinc-100 text-zinc-800 rounded font-bold font-mono">
+                              <span className="text-[11px] font-bold text-ink-secondary">Workload Volume:</span>
+                              <span className="px-1.5 py-0.2 bg-surface-subtle text-ink rounded font-bold">
                                 {mgr.ticketCount} active
                               </span>
                             </div>
                             {mgr.criticalCount > 0 && (
                               <div className="flex items-center gap-1.5 text-amber-700">
                                 <AlertTriangle size={11} className="shrink-0" />
-                                <span className="text-[9px] font-bold">
+                                <span className="text-[11px] font-bold">
                                   {mgr.criticalCount} SLA Risk Ticket{mgr.criticalCount > 1 ? 's' : ''}
                                 </span>
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="p-4 text-zinc-500 font-mono">
+                        <td className="p-4 text-ink-secondary">
                           <div className="space-y-0.5">
-                            <span className="block text-[10px]">{mgr.phoneNumber || 'N/A'}</span>
+                            <span className="block text-[11px]">{mgr.phoneNumber || 'N/A'}</span>
                           </div>
                         </td>
                         <td className="p-4">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-bold ${
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-bold ${
                             mgr.active ? 'bg-emerald-50 border-emerald-250 text-emerald-800' : 'bg-red-50 border-red-250 text-red-800'
                           }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${mgr.active ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
@@ -575,14 +574,14 @@ export default function AdminManagersPage() {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => handleViewCockpit(mgr)}
-                              className="p-1.5 rounded border border-zinc-200 hover:bg-zinc-100 text-zinc-600 transition cursor-pointer"
+                              className="p-1.5 rounded border border-line hover:bg-surface-subtle text-ink-secondary transition cursor-pointer"
                               title="View Assignments & Cockpit"
                             >
                               <Eye size={12} />
                             </button>
                             <button
                               onClick={() => handleToggleStatus(mgr)}
-                              className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
+                              className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
                                 mgr.active 
                                   ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100' 
                                   : 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
@@ -592,14 +591,14 @@ export default function AdminManagersPage() {
                             </button>
                             <button
                               onClick={() => handleResetPassword(mgr)}
-                              className="p-1.5 rounded border border-zinc-200 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 transition cursor-pointer"
+                              className="p-1.5 rounded border border-line text-ink-secondary hover:text-ink hover:bg-surface-muted transition cursor-pointer"
                               title="Reset Password"
                             >
                               <Key size={12} />
                             </button>
                             <button
                               onClick={() => handleDeleteManager(mgr)}
-                              className="p-1.5 rounded hover:bg-red-50 text-zinc-400 hover:text-red-750 transition cursor-pointer"
+                              className="p-1.5 rounded hover:bg-red-50 text-ink-muted hover:text-red-750 transition cursor-pointer"
                               title="Remove Manager"
                             >
                               <Trash2 size={12} />
@@ -616,36 +615,36 @@ export default function AdminManagersPage() {
         </div>
 
         {/* Workload Cockpit Panel */}
-        <div className="bg-white border border-zinc-200 rounded p-4 shadow-sm h-fit space-y-4">
-          <div className="border-b border-zinc-200 pb-3">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-950 font-mono flex items-center gap-1.5">
-              <ListFilter size={14} className="text-zinc-500" />
+        <div className="bg-surface border border-line rounded p-4 shadow-card h-fit space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
+              <ListFilter size={14} className="text-ink-secondary" />
               Manager Workload Cockpit
             </h2>
-            <p className="text-[10px] text-zinc-500 mt-1">Audit active service desk responsibilities and tickets in real-time.</p>
+            <p className="text-[11px] text-ink-secondary mt-1">Audit active service desk responsibilities and tickets in real-time.</p>
           </div>
 
           {selectedManager ? (
             <div className="space-y-4">
               {/* Selected manager profile block */}
-              <div className="bg-zinc-50 rounded border border-zinc-200 p-3 flex flex-col gap-2">
+              <div className="bg-surface-muted rounded border border-line p-3 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-zinc-950 text-white flex items-center justify-center font-bold text-xs">
+                  <div className="w-8 h-8 rounded-full bg-ink text-white flex items-center justify-center font-bold text-xs">
                     {selectedManager.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                   </div>
                   <div>
-                    <h3 className="font-bold text-zinc-800 text-xs">{selectedManager.name}</h3>
-                    <span className="text-[9px] text-zinc-500 font-mono">{selectedManager.email}</span>
+                    <h3 className="font-bold text-ink text-xs">{selectedManager.name}</h3>
+                    <span className="text-[11px] text-ink-secondary">{selectedManager.email}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  <div className="bg-white rounded border border-zinc-150 p-2 text-center">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase block">Total Tickets</span>
-                    <span className="text-base font-bold text-zinc-900">{selectedManager.ticketCount}</span>
+                  <div className="bg-surface rounded border border-line p-2 text-center">
+                    <span className="text-[11px] font-bold text-ink-muted uppercase block">Total Tickets</span>
+                    <span className="text-base font-bold text-ink">{selectedManager.ticketCount}</span>
                   </div>
-                  <div className="bg-white rounded border border-zinc-150 p-2 text-center">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase block">High Priority</span>
-                    <span className={`text-base font-bold ${selectedManager.criticalCount > 0 ? 'text-amber-600' : 'text-zinc-900'}`}>
+                  <div className="bg-surface rounded border border-line p-2 text-center">
+                    <span className="text-[11px] font-bold text-ink-muted uppercase block">High Priority</span>
+                    <span className={`text-base font-bold ${selectedManager.criticalCount > 0 ? 'text-warning' : 'text-ink'}`}>
                       {selectedManager.criticalCount}
                     </span>
                   </div>
@@ -654,34 +653,34 @@ export default function AdminManagersPage() {
 
               {/* Assignment registry list */}
               <div>
-                <h4 className="font-bold text-[10px] uppercase tracking-wider text-zinc-500 mb-2">
+                <h4 className="font-bold text-[11px] uppercase tracking-wider text-ink-secondary mb-2">
                   Assigned Tickets Registry ({managerTickets.length})
                 </h4>
                 {loadingTickets ? (
-                  <p className="text-[10px] text-zinc-400 text-center py-4 font-mono">Fetching assigned ticket cards...</p>
+                  <p className="text-[11px] text-ink-muted text-center py-4">Fetching assigned ticket cards...</p>
                 ) : managerTickets.length === 0 ? (
-                  <div className="text-center py-6 border border-dashed border-zinc-200 rounded text-zinc-400 font-mono">
+                  <div className="text-center py-6 border border-dashed border-line rounded text-ink-muted">
                     No tickets currently assigned.
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-72 overflow-y-auto">
                     {managerTickets.map((t) => (
-                      <div key={t.id} className="border border-zinc-150 rounded p-2 hover:bg-zinc-50 transition-colors flex flex-col gap-1.5">
+                      <div key={t.id} className="border border-line rounded p-2 hover:bg-surface-muted transition-colors flex flex-col gap-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-zinc-900 text-[10px] font-mono">{t.ticket_number || t.id}</span>
-                          <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
+                          <span className="font-bold text-ink text-[11px]">{t.ticket_number || t.id}</span>
+                          <span className={`px-1.5 py-0.2 rounded text-[11px] font-bold uppercase ${
                             t.priority === 'Critical' ? 'bg-red-950 text-white' :
                             t.priority === 'High' ? 'bg-amber-100 text-amber-800' :
-                            t.priority === 'Medium' ? 'bg-zinc-100 text-zinc-800' :
-                            'bg-zinc-50 text-zinc-600'
+                            t.priority === 'Medium' ? 'bg-surface-subtle text-ink' :
+                            'bg-surface-muted text-ink-secondary'
                           }`}>
                             {t.priority}
                           </span>
                         </div>
-                        <h5 className="font-bold text-zinc-800 text-[10px] line-clamp-1">{t.title}</h5>
-                        <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono mt-0.5 border-t border-zinc-100 pt-1.5">
+                        <h5 className="font-bold text-ink text-[11px] line-clamp-1">{t.title}</h5>
+                        <div className="flex items-center justify-between text-[11px] text-ink-muted mt-0.5 border-t border-line pt-1.5">
                           <span>Module: {t.sap_module}</span>
-                          <span className="px-1.5 py-0.1 bg-zinc-100 text-zinc-700 rounded font-semibold">{t.status}</span>
+                          <span className="px-1.5 py-0.1 bg-surface-subtle text-ink-secondary rounded font-semibold">{t.status}</span>
                         </div>
                       </div>
                     ))}
@@ -690,7 +689,7 @@ export default function AdminManagersPage() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-12 text-zinc-400 font-mono border border-dashed border-zinc-200 rounded">
+            <div className="text-center py-12 text-ink-muted border border-dashed border-line rounded">
               Select a manager to audit workload metrics.
             </div>
           )}
@@ -698,16 +697,16 @@ export default function AdminManagersPage() {
       </div>
 
       {/* Password Reset Requests Section */}
-      <div className="bg-white border border-zinc-200 rounded overflow-hidden shadow-sm p-4 space-y-4">
-        <div className="border-b border-zinc-200 pb-3 flex items-center justify-between">
+      <div className="bg-surface border border-line rounded overflow-hidden shadow-card p-4 space-y-4">
+        <div className="border-b border-line pb-3 flex items-center justify-between">
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-950 font-mono flex items-center gap-1.5">
-              <Key className="text-zinc-500" size={14} />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
+              <Key className="text-ink-secondary" size={14} />
               Password Reset Requests
             </h2>
-            <p className="text-[10px] text-zinc-500 mt-1">Pending password change requests from system users.</p>
+            <p className="text-[11px] text-ink-secondary mt-1">Pending password change requests from system users.</p>
           </div>
-          <span className="px-2 py-0.5 bg-zinc-100 text-zinc-800 rounded-full text-[10px] font-bold font-mono">
+          <span className="px-2 py-0.5 bg-surface-subtle text-ink rounded-full text-[11px] font-bold">
             {passwordRequests.length} Pending
           </span>
         </div>
@@ -715,23 +714,23 @@ export default function AdminManagersPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[9px] tracking-wider text-zinc-500">
+              <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
                 <th className="p-3">User</th>
                 <th className="p-3">Organization</th>
                 <th className="p-3">Requested At</th>
                 <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200">
+            <tbody className="divide-y divide-line">
               {loadingRequests ? (
                 <tr>
-                  <td colSpan={4} className="p-6 text-center text-zinc-450 font-mono">
+                  <td colSpan={4} className="p-6 text-center text-ink-muted">
                     Querying reset requests...
                   </td>
                 </tr>
               ) : passwordRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-6 text-center text-zinc-450 font-mono">
+                  <td colSpan={4} className="p-6 text-center text-ink-muted">
                     No pending password reset requests.
                   </td>
                 </tr>
@@ -739,33 +738,33 @@ export default function AdminManagersPage() {
                 passwordRequests.map((req) => {
                   const role = req.profiles?.role || (req.organization === 'Assist360 Operations' ? 'Manager' : 'Customer');
                   return (
-                    <tr key={req.id} className="hover:bg-zinc-50/50">
+                    <tr key={req.id} className="hover:bg-surface-muted/60">
                       <td className="p-3">
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-zinc-850 text-xs">{req.requester_name}</span>
-                            <Badge variant={role === 'Manager' ? 'default' : 'secondary'} className="text-[8px] font-bold py-0.5 px-1 uppercase">
+                            <span className="font-bold text-ink text-xs">{req.requester_name}</span>
+                            <Badge variant={role === 'Manager' ? 'default' : 'secondary'} className="text-[11px] font-bold py-0.5 px-1 uppercase">
                               {role}
                             </Badge>
                           </div>
-                          <span className="text-[10px] text-zinc-450 font-mono block">{req.requester_email}</span>
+                          <span className="text-[11px] text-ink-muted block">{req.requester_email}</span>
                         </div>
                       </td>
-                      <td className="p-3 font-semibold text-zinc-700">{req.organization}</td>
-                      <td className="p-3 text-zinc-550 font-mono">
+                      <td className="p-3 font-semibold text-ink-secondary">{req.organization}</td>
+                      <td className="p-3 text-ink-secondary">
                         {new Date(req.requested_at).toLocaleString()}
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleApproveRequest(req)}
-                            className="px-2.5 py-1 bg-zinc-950 text-white hover:bg-zinc-850 rounded text-[9px] font-bold uppercase tracking-wider transition cursor-pointer"
+                            className="px-2.5 py-1 bg-ink text-white hover:bg-zinc-850 rounded text-[11px] font-bold uppercase tracking-wider transition cursor-pointer"
                           >
                             Approve & Reset
                           </button>
                           <button
                             onClick={() => handleRejectRequest(req)}
-                            className="px-2.5 py-1 border border-zinc-200 hover:bg-zinc-50 rounded text-[9px] font-bold uppercase tracking-wider text-zinc-600 transition cursor-pointer"
+                            className="px-2.5 py-1 border border-line hover:bg-surface-muted rounded text-[11px] font-bold uppercase tracking-wider text-ink-secondary transition cursor-pointer"
                           >
                             Reject
                           </button>

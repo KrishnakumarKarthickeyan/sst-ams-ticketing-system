@@ -1,22 +1,43 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useTickets } from '../../../context/TicketContext';
+import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTickets } from '../../../context/TicketContext';
 import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
-import { BrandedLogo } from '../../../components/ui/BrandedLogo';
-import { 
-  Search, Filter, Layers, Plus, AlertTriangle, Clock, 
-  ArrowRight, ShieldAlert, CheckCircle2, User, RefreshCw 
-} from 'lucide-react';
+import { PageHeader } from '../../../components/ui/page-header';
+import { DataTable, DataTableColumn } from '../../../components/ui/data-table';
+import { StatusPill, statusTone, priorityTone } from '../../../components/ui/status-pill';
+import { Button } from '../../../components/ui/button';
+import { Search, Plus, AlertTriangle, Clock, Ticket as TicketIcon } from 'lucide-react';
+import type { Ticket } from '../../../types/ticket';
 
-type TabType = 
-  | 'All' | 'New' | 'Assigned' | 'InProgress' | 'WaitingCust' | 'WaitingTeam' 
-  | 'ReqGathering' | 'WaitingQuote' | 'ClosureReq' | 'AwaitingMgr' 
+type TabType =
+  | 'All' | 'New' | 'Assigned' | 'InProgress' | 'WaitingCust' | 'WaitingTeam'
+  | 'ReqGathering' | 'WaitingQuote' | 'ClosureReq' | 'AwaitingMgr'
   | 'Resolved' | 'Closed' | 'Escalated';
+
+const TABS: { id: TabType; label: string }[] = [
+  { id: 'All', label: 'All' },
+  { id: 'New', label: 'New' },
+  { id: 'Assigned', label: 'Assigned' },
+  { id: 'InProgress', label: 'In Progress' },
+  { id: 'WaitingCust', label: 'Wait Cust' },
+  { id: 'WaitingTeam', label: 'Wait Team' },
+  { id: 'ReqGathering', label: 'Req Gather' },
+  { id: 'WaitingQuote', label: 'Wait Quote' },
+  { id: 'ClosureReq', label: 'Closure Req' },
+  { id: 'AwaitingMgr', label: 'Awaiting Mgr' },
+  { id: 'Resolved', label: 'Resolved' },
+  { id: 'Closed', label: 'Closed' },
+  { id: 'Escalated', label: 'Escalated' },
+];
+
+const PRIORITY_ORDER: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 
 export default function AdminTicketsPage() {
   const { tickets, loading } = useTickets();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
@@ -26,18 +47,9 @@ export default function AdminTicketsPage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
-  // Customers and modules list for filters
-  const customersList = useMemo(() => {
-    return Array.from(new Set(tickets.map(t => t.organization))).filter(Boolean).sort();
-  }, [tickets]);
-
-  const modulesList = useMemo(() => {
-    return Array.from(new Set(tickets.map(t => t.sapModule))).filter(Boolean).sort();
-  }, [tickets]);
-
   // Tab counts
   const tabCounts = useMemo(() => {
-    const counts = {
+    const counts: Record<TabType, number> = {
       All: tickets.length,
       New: tickets.filter(t => t.status === 'New').length,
       Assigned: tickets.filter(t => t.status === 'Assigned').length,
@@ -50,15 +62,14 @@ export default function AdminTicketsPage() {
       AwaitingMgr: tickets.filter(t => t.status === 'Awaiting Manager Approval' || t.status === 'Awaiting Closure').length,
       Resolved: tickets.filter(t => t.status === 'Resolved').length,
       Closed: tickets.filter(t => t.status === 'Closed').length,
-      Escalated: tickets.filter(t => t.escalationFlag).length
+      Escalated: tickets.filter(t => t.escalationFlag).length,
     };
     return counts;
   }, [tickets]);
 
-  // Filtering logic
+  // Filtering logic (unchanged from previous implementation)
   const filteredTickets = useMemo(() => {
     return tickets.filter(t => {
-      // 1. Tab Status filters
       if (activeTab === 'New' && t.status !== 'New') return false;
       if (activeTab === 'Assigned' && t.status !== 'Assigned') return false;
       if (activeTab === 'InProgress' && t.status !== 'In Progress' && t.status !== 'In Progress - Technical' && t.status !== 'In Progress - Functional') return false;
@@ -72,16 +83,14 @@ export default function AdminTicketsPage() {
       if (activeTab === 'Closed' && t.status !== 'Closed') return false;
       if (activeTab === 'Escalated' && !t.escalationFlag) return false;
 
-      // 2. Sidebar Dropdowns filters
       if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
       if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
       if (customerFilter !== 'All' && t.organization !== customerFilter) return false;
 
-      // 2b. Date range filtering
       if (dateFilter !== 'All') {
         const created = new Date(t.createdAt);
         const createdMs = created.getTime();
-        
+
         if (dateFilter === 'current-month') {
           const now = new Date();
           if (created.getMonth() !== now.getMonth() || created.getFullYear() !== now.getFullYear()) return false;
@@ -110,7 +119,6 @@ export default function AdminTicketsPage() {
         }
       }
 
-      // 3. Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -127,13 +135,13 @@ export default function AdminTicketsPage() {
     });
   }, [tickets, activeTab, priorityFilter, moduleFilter, customerFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
 
-  // SLA countdown logic formatting
+  // SLA countdown rendering
   const formatSlaCountdown = (dueDateStr: string, status: string) => {
     if (status === 'Closed' || status === 'Resolved') {
-      return <span className="text-zinc-400 font-semibold">SLA Completed</span>;
+      return <span className="type-status font-medium text-ink-muted">SLA Completed</span>;
     }
     if (!dueDateStr || dueDateStr === 'SLA Not Applicable') {
-      return <span className="text-zinc-400">SLA Not Applicable</span>;
+      return <span className="type-status text-ink-muted">Not Applicable</span>;
     }
 
     const diff = new Date(dueDateStr).getTime() - Date.now();
@@ -142,7 +150,7 @@ export default function AdminTicketsPage() {
 
     const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((absDiff % (1000 * 60 * 65)) / (1000 * 60));
+    const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
 
     let displayStr = '';
     if (days > 0) displayStr += `${days}d `;
@@ -151,54 +159,135 @@ export default function AdminTicketsPage() {
 
     if (isBreached) {
       return (
-        <span className="text-red-700 font-bold flex items-center gap-1">
+        <span className="type-status type-num inline-flex items-center gap-1 font-semibold text-critical">
           <AlertTriangle size={11} className="shrink-0" />
           Breached by {displayStr}
         </span>
       );
     }
-
-    // SLA Warning if within 12 hours
     if (absDiff < 12 * 60 * 60 * 1000) {
       return (
-        <span className="text-amber-700 font-bold flex items-center gap-1">
+        <span className="type-status type-num inline-flex items-center gap-1 font-semibold text-warning-strong">
           <Clock size={11} className="shrink-0" />
           Due in {displayStr}
         </span>
       );
     }
-
-    return <span className="text-zinc-650">Due in {displayStr}</span>;
+    return <span className="type-status type-num text-ink-secondary">Due in {displayStr}</span>;
   };
 
-  return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900">
-      
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
-        <div>
-          <h1 className="text-lg font-bold uppercase text-zinc-950 font-mono">Global Service Desk</h1>
-          <p className="text-zinc-500 mt-1">Cross-organization monitoring of active ticket pipelines, SLA compliance, and escalation alerts.</p>
-        </div>
-        <Link 
-          href="/admin/create-ticket" 
-          className="px-3 py-2 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+  const columns: DataTableColumn<Ticket>[] = [
+    {
+      key: 'ticket',
+      header: 'Ticket',
+      width: '120px',
+      hideable: false,
+      sortValue: t => t.ticketNumber || t.id,
+      render: t => (
+        <Link
+          href={`/admin/tickets/${t.id}`}
+          onClick={e => e.stopPropagation()}
+          className="type-meta type-num font-semibold text-ink hover:text-brand hover:underline"
         >
-          <Plus size={12} />
-          Create Ticket
+          {t.ticketNumber || t.id}
         </Link>
-      </div>
+      ),
+    },
+    {
+      key: 'details',
+      header: 'Details',
+      hideable: false,
+      sortValue: t => t.title,
+      exportValue: t => t.title,
+      render: t => (
+        <div className="min-w-0 space-y-1">
+          <span className="type-meta block max-w-md truncate font-medium text-ink">{t.title}</span>
+          <span className="flex items-center gap-1.5">
+            <StatusPill tone="neutral">{t.sapModule}</StatusPill>
+            <StatusPill tone={statusTone(t.status)}>{t.status}</StatusPill>
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'organization',
+      header: 'Organization',
+      width: '160px',
+      sortValue: t => t.organization,
+      render: t => <span className="type-meta block max-w-[150px] truncate text-ink-secondary">{t.organization}</span>,
+    },
+    {
+      key: 'priority',
+      header: 'Priority',
+      width: '110px',
+      sortValue: t => PRIORITY_ORDER[t.priority] ?? 9,
+      exportValue: t => t.priority,
+      render: t => (
+        <StatusPill tone={priorityTone(t.priority)} dot pulse={t.priority === 'Critical'}>
+          {t.priority}
+        </StatusPill>
+      ),
+    },
+    {
+      key: 'sla',
+      header: 'SLA',
+      width: '170px',
+      sortValue: t => (t.slaDueAt ? new Date(t.slaDueAt).getTime() : Number.MAX_SAFE_INTEGER),
+      exportValue: t => t.slaDueAt || '',
+      render: t => formatSlaCountdown(t.slaDueAt, t.status),
+    },
+    {
+      key: 'team',
+      header: 'Delivery Team',
+      width: '180px',
+      sortValue: t => t.assignedConsultant || t.assignedManager || '',
+      render: t =>
+        !t.assignedManager && !t.assignedConsultant ? (
+          <span className="type-status text-ink-muted italic">Unassigned</span>
+        ) : (
+          <div className="space-y-0.5">
+            {t.assignedManager && (
+              <div className="type-status flex items-center gap-1.5 text-ink-secondary">
+                <span className="w-8 shrink-0 text-ink-muted">Mgr</span>
+                <span className="max-w-[120px] truncate text-ink">{t.assignedManager}</span>
+              </div>
+            )}
+            {t.assignedConsultant && (
+              <div className="type-status flex items-center gap-1.5 text-ink-secondary">
+                <span className="w-8 shrink-0 text-ink-muted">Cons</span>
+                <span className="max-w-[120px] truncate text-ink">{t.assignedConsultant}</span>
+              </div>
+            )}
+          </div>
+        ),
+    },
+  ];
 
-      {/* Advanced Filter controls */}
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Global Service Desk"
+        description="Cross-organization monitoring of active ticket pipelines, SLA compliance, and escalation alerts."
+        actions={
+          <Button asChild>
+            <Link href="/admin/create-ticket">
+              <Plus size={13} />
+              Create Ticket
+            </Link>
+          </Button>
+        }
+      />
+
+      {/* Search + advanced filters */}
       <div className="space-y-4">
         <div className="relative w-full">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search size={14} className="absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted" />
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search Ticket ID, title, owner..."
-            className="w-full bg-white border border-zinc-200 rounded pl-9 pr-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search ticket ID, title, organization, owner…"
+            className="type-body w-full rounded-lg border border-line bg-surface py-2 pr-4 pl-9 text-ink shadow-card transition-colors placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
           />
         </div>
 
@@ -227,40 +316,32 @@ export default function AdminTicketsPage() {
         />
       </div>
 
-      {/* The 13 Status Tabs View */}
-      <div className="flex flex-wrap gap-1 bg-zinc-100 p-1 rounded border border-zinc-200 max-w-full overflow-x-auto">
-        {[
-          { id: 'All', label: 'All' },
-          { id: 'New', label: 'New' },
-          { id: 'Assigned', label: 'Assigned' },
-          { id: 'InProgress', label: 'In Progress' },
-          { id: 'WaitingCust', label: 'Wait Cust' },
-          { id: 'WaitingTeam', label: 'Wait Team' },
-          { id: 'ReqGathering', label: 'Req Gather' },
-          { id: 'WaitingQuote', label: 'Wait Quote' },
-          { id: 'ClosureReq', label: 'Closure Req' },
-          { id: 'AwaitingMgr', label: 'Awaiting Mgr' },
-          { id: 'Resolved', label: 'Resolved' },
-          { id: 'Closed', label: 'Closed' },
-          { id: 'Escalated', label: 'Escalated' }
-        ].map(tab => {
-          const count = (tabCounts as any)[tab.id] || 0;
+      {/* Status tabs */}
+      <div className="flex max-w-full flex-wrap gap-1 overflow-x-auto rounded-lg border border-line bg-surface-subtle p-1">
+        {TABS.map(tab => {
+          const count = tabCounts[tab.id] || 0;
           const isActive = activeTab === tab.id;
-          
+          const isEscalationTab = tab.id === 'Escalated';
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded transition-all flex items-center gap-1.5 cursor-pointer ${
-                isActive 
-                  ? 'bg-zinc-950 text-white shadow-sm'
-                  : 'text-zinc-650 hover:text-zinc-900 hover:bg-zinc-200'
+              onClick={() => setActiveTab(tab.id)}
+              className={`type-status flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 font-medium whitespace-nowrap transition-all ${
+                isActive
+                  ? 'bg-surface text-ink shadow-card'
+                  : 'text-ink-secondary hover:bg-surface/60 hover:text-ink'
               }`}
             >
               {tab.label}
-              <span className={`px-1.5 py-0.2 text-[9px] rounded-full font-mono ${
-                isActive ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-zinc-600'
-              }`}>
+              <span
+                className={`type-num rounded-full px-1.5 py-0.5 text-[11px] leading-none font-semibold ${
+                  isEscalationTab && count > 0
+                    ? 'bg-critical-soft text-critical-strong'
+                    : isActive
+                      ? 'bg-surface-subtle text-ink'
+                      : 'bg-line/60 text-ink-secondary'
+                }`}
+              >
                 {count}
               </span>
             </button>
@@ -268,128 +349,20 @@ export default function AdminTicketsPage() {
         })}
       </div>
 
-      {/* Compact Data Grid Table */}
-      <div className="bg-white border border-zinc-200 rounded overflow-hidden shadow-sm">
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[9px] tracking-wider text-zinc-500">
-              <th className="p-3 w-6"></th>
-              <th className="p-3 w-28">Ticket ID</th>
-              <th className="p-3">Ticket Details</th>
-              <th className="p-3 w-40">Client Org</th>
-              <th className="p-3 w-24">Priority</th>
-              <th className="p-3 w-40">SLA Telemetry</th>
-              <th className="p-3 w-36">Delivery Team</th>
-              <th className="p-3 w-16 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-200">
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-zinc-400 font-mono">
-                  Loading tickets registry...
-                </td>
-              </tr>
-            ) : filteredTickets.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="p-12 text-center text-zinc-400 font-mono">
-                  <div className="flex flex-col items-center justify-center space-y-2 py-4">
-                    <BrandedLogo width={24} height={24} iconOnly={true} className="opacity-40" />
-                    <span>No tickets found matching the selected filters.</span>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              filteredTickets.map(t => {
-                const isCritical = t.priority === 'Critical';
-                const hasEscalation = t.escalationFlag;
-                
-                return (
-                  <tr key={t.id} className="hover:bg-zinc-50/50 transition-colors">
-                    <td className="p-3 text-center">
-                      {hasEscalation && (
-                        <div className="h-2 w-2 rounded-full bg-red-500 animate-ping inline-block" title="Escalation active!" />
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <Link 
-                        href={`/admin/tickets/${t.id}`} 
-                        className="font-bold text-zinc-950 hover:underline font-mono"
-                      >
-                        {t.ticketNumber || t.id}
-                      </Link>
-                    </td>
-                    <td className="p-3">
-                      <div className="space-y-0.5">
-                        <Link 
-                          href={`/admin/tickets/${t.id}`} 
-                          className="font-bold text-zinc-800 text-xs block hover:underline line-clamp-1"
-                        >
-                          {t.title}
-                        </Link>
-                        <div className="flex items-center gap-2 text-[9px] text-zinc-400 font-mono">
-                          <span className="bg-zinc-100 text-zinc-700 px-1 rounded uppercase font-semibold">
-                            {t.sapModule}
-                          </span>
-                          <span>•</span>
-                          <span className="px-1.5 py-0.1 bg-zinc-50 border border-zinc-150 rounded text-zinc-650">
-                            {t.status}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3 font-semibold text-zinc-650 truncate max-w-[120px]">
-                      {t.organization}
-                    </td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                        isCritical ? 'bg-red-950 text-white' :
-                        t.priority === 'High' ? 'bg-amber-105 text-amber-800 border border-amber-200' :
-                        t.priority === 'Medium' ? 'bg-zinc-100 text-zinc-800 border border-zinc-200' :
-                        'bg-zinc-50 text-zinc-600 border border-zinc-200'
-                      }`}>
-                        {t.priority}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono text-[10px]">
-                      {formatSlaCountdown(t.slaDueAt, t.status)}
-                    </td>
-                    <td className="p-3 text-[10px] text-zinc-500 font-sans">
-                      <div className="space-y-0.5">
-                        {t.assignedManager && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-zinc-650">Mgr:</span>
-                            <span className="text-zinc-800 truncate max-w-[90px]">{t.assignedManager}</span>
-                          </div>
-                        )}
-                        {t.assignedConsultant && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-zinc-650">Cons:</span>
-                            <span className="text-zinc-800 truncate max-w-[90px]">{t.assignedConsultant}</span>
-                          </div>
-                        )}
-                        {!t.assignedManager && !t.assignedConsultant && (
-                          <span className="text-zinc-400 italic">Unassigned</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3 text-right">
-                      <Link 
-                        href={`/admin/tickets/${t.id}`}
-                        className="inline-flex p-1.5 rounded border border-zinc-200 hover:border-zinc-950 text-zinc-500 hover:text-zinc-950 transition cursor-pointer"
-                        title="Open Details View"
-                      >
-                        <ArrowRight size={12} />
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
+      {/* Tickets table */}
+      <DataTable<Ticket>
+        columns={columns}
+        rows={filteredTickets}
+        rowKey={t => t.id}
+        loading={loading}
+        onRowClick={t => router.push(`/admin/tickets/${t.id}`)}
+        rowAccent={t => (t.escalationFlag ? 'critical' : null)}
+        exportName="assist360-tickets"
+        pageSize={25}
+        emptyIcon={TicketIcon}
+        emptyTitle="No tickets match the current filters"
+        emptyDescription="Try a different status tab, broaden the date range, or clear the search."
+      />
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../../components/ui/dialog';
 import { toast } from 'sonner';
 import { provisionUser, resetUserPasswordAdmin, adminUpdatePasswordDirect } from '../../actions/auth';
+import { PageHeader } from '../../../components/ui/page-header';
 
 interface ConsultantDetail {
   id: string;
@@ -417,31 +418,26 @@ export default function AdminConsultantsPage() {
   }, [profiles]);
 
   return (
-    <div className="space-y-6 font-sans text-sm text-zinc-900 pb-16">
+    <div className="space-y-6 font-sans text-sm text-ink pb-16">
       
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-4 bg-white">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">
-            Consultant Capacity Workspace
-          </h1>
-          <p className="text-zinc-500 text-xs mt-1">Manage delivery capacity settings, inspect consultant rosters, and track performance scores.</p>
-        </div>
-        <Button
-          onClick={handleOpenWizard}
-          className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs flex items-center gap-1.5 cursor-pointer"
-        >
-          <Plus size={14} />
-          Add Consultant
-        </Button>
-      </div>
+      <PageHeader
+        title="Consultant Capacity Workspace"
+        description="Manage delivery capacity settings, inspect consultant rosters, and track performance scores."
+        actions={
+          <Button onClick={handleOpenWizard} className="gap-1.5 rounded-md">
+            <Plus size={13} />
+            Add Consultant
+          </Button>
+        }
+      />
 
       {/* Roster list & filters */}
-      <Card className="border-zinc-200 shadow-sm">
-        <CardHeader className="py-4 px-5 border-b border-zinc-100 flex flex-row items-center justify-between flex-wrap gap-4">
+      <Card className="border-line shadow-card">
+        <CardHeader className="py-4 px-5 border-b border-line flex flex-row items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-ink-muted" />
               <Input
                 placeholder="Search employee, email..."
                 value={searchQuery}
@@ -460,7 +456,7 @@ export default function AdminConsultantsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Badge variant="outline" className="text-[10px] uppercase font-bold text-zinc-500 border-zinc-300">
+          <Badge variant="outline" className="text-[11px] uppercase font-bold text-ink-secondary border-line-strong">
             {filteredConsultants.length} Active Resources
           </Badge>
         </CardHeader>
@@ -468,95 +464,95 @@ export default function AdminConsultantsPage() {
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
-              <div className="col-span-full py-12 text-center text-zinc-400 italic flex items-center justify-center gap-2">
+              <div className="col-span-full py-12 text-center text-ink-muted italic flex items-center justify-center gap-2">
                 <RefreshCw className="animate-spin" size={16} /> Retrieving consultant profiles...
               </div>
             ) : filteredConsultants.length === 0 ? (
-              <div className="col-span-full py-12 text-center text-zinc-400 italic">No resources matching filter constraints.</div>
+              <div className="col-span-full py-12 text-center text-ink-muted italic">No resources matching filter constraints.</div>
             ) : (
               filteredConsultants.map(c => {
                 const stats = getConsultantStats(c);
                 return (
-                  <Card key={c.id} className="border-zinc-200 bg-white hover:shadow-md transition-shadow relative overflow-hidden">
+                  <Card key={c.id} className="border-line bg-surface hover:shadow-md transition-shadow relative overflow-hidden">
                     <div className="p-5 space-y-4">
                       
                       {/* Avatar/Name row */}
                       <div className="flex items-start justify-between">
                         <div className="flex gap-3">
-                          <div className="w-10 h-10 rounded-full border bg-zinc-100 flex items-center justify-center font-bold text-zinc-650 text-xs">
+                          <div className="w-10 h-10 rounded-full border bg-surface-subtle flex items-center justify-center font-bold text-ink-secondary text-xs">
                             {c.full_name.split(' ').map(n => n[0]).join('')}
                           </div>
                           <div>
-                            <h3 className="font-semibold text-xs text-zinc-900">{c.full_name}</h3>
-                            <span className="text-[10px] text-zinc-400 font-mono block">ID: {c.employee_id || 'N/A'}</span>
-                            <span className="text-[10px] text-zinc-500 font-medium">{c.role_title || `${c.consultant_type} Consultant`}</span>
+                            <h3 className="font-semibold text-xs text-ink">{c.full_name}</h3>
+                            <span className="text-[11px] text-ink-muted block">ID: {c.employee_id || 'N/A'}</span>
+                            <span className="text-[11px] text-ink-secondary font-medium">{c.role_title || `${c.consultant_type} Consultant`}</span>
                           </div>
                         </div>
-                        <Badge variant="secondary" className={`text-[8px] font-bold uppercase ${c.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                        <Badge variant="secondary" className={`text-[11px] font-bold uppercase ${c.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                           {c.is_active ? 'Active' : 'Suspended'}
                         </Badge>
                       </div>
 
                       {/* Info details */}
-                      <div className="text-[11px] space-y-1 font-mono text-zinc-500 border-t border-zinc-100 pt-3">
-                        <div className="flex justify-between"><span>Email:</span><span className="text-zinc-800">{c.email}</span></div>
-                        <div className="flex justify-between"><span>Phone:</span><span className="text-zinc-800">{c.phone_number || 'N/A'}</span></div>
-                        <div className="flex justify-between"><span>Join Date:</span><span className="text-zinc-800">{c.join_date || 'N/A'}</span></div>
+                      <div className="text-[11px] space-y-1 text-ink-secondary border-t border-line pt-3">
+                        <div className="flex justify-between"><span>Email:</span><span className="text-ink">{c.email}</span></div>
+                        <div className="flex justify-between"><span>Phone:</span><span className="text-ink">{c.phone_number || 'N/A'}</span></div>
+                        <div className="flex justify-between"><span>Join Date:</span><span className="text-ink">{c.join_date || 'N/A'}</span></div>
                       </div>
 
                       {/* SAP modules multi-select badges */}
                       <div className="space-y-1.5">
-                        <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Expertise Modules</span>
+                        <span className="text-[11px] font-bold uppercase text-ink-muted tracking-wider">Expertise Modules</span>
                         <div className="flex flex-wrap gap-1">
                           {c.sap_modules && c.sap_modules.length > 0 ? (
                             c.sap_modules.map(mod => (
-                              <Badge key={mod} variant="outline" className="text-[9px] px-1 py-0 border-zinc-300 text-zinc-650">
+                              <Badge key={mod} variant="outline" className="text-[11px] px-1 py-0 border-line-strong text-ink-secondary">
                                 {mod}
                               </Badge>
                             ))
                           ) : (
-                            <span className="text-[10px] text-zinc-400 italic">No modules allocated</span>
+                            <span className="text-[11px] text-ink-muted italic">No modules allocated</span>
                           )}
                         </div>
                       </div>
 
                       {/* Statistics indicators */}
-                      <div className="grid grid-cols-2 gap-2 text-center pt-2 border-t border-zinc-100">
-                        <div className="bg-zinc-50/50 p-2 border border-zinc-150 rounded">
-                          <span className="text-[9px] text-zinc-400 font-bold uppercase">SLA COMPLIANCE</span>
-                          <span className="text-xs font-bold block mt-0.5 text-zinc-800">{stats.slaCompliancePct}%</span>
+                      <div className="grid grid-cols-2 gap-2 text-center pt-2 border-t border-line">
+                        <div className="bg-surface-muted/60 p-2 border border-line rounded">
+                          <span className="text-[11px] text-ink-muted font-bold uppercase">SLA COMPLIANCE</span>
+                          <span className="text-xs font-bold block mt-0.5 text-ink">{stats.slaCompliancePct}%</span>
                         </div>
-                        <div className="bg-zinc-50/50 p-2 border border-zinc-150 rounded">
-                          <span className="text-[9px] text-zinc-400 font-bold uppercase">ACTIVE INCIDENTS</span>
-                          <span className="text-xs font-bold block mt-0.5 text-zinc-800">{stats.open} Open</span>
+                        <div className="bg-surface-muted/60 p-2 border border-line rounded">
+                          <span className="text-[11px] text-ink-muted font-bold uppercase">ACTIVE INCIDENTS</span>
+                          <span className="text-xs font-bold block mt-0.5 text-ink">{stats.open} Open</span>
                         </div>
-                        <div className="bg-zinc-50/50 p-2 border border-zinc-150 rounded">
-                          <span className="text-[9px] text-zinc-400 font-bold uppercase">ALLOCATED LOAD</span>
-                          <span className="text-xs font-bold block mt-0.5 text-zinc-800">{stats.capacityPct}%</span>
+                        <div className="bg-surface-muted/60 p-2 border border-line rounded">
+                          <span className="text-[11px] text-ink-muted font-bold uppercase">ALLOCATED LOAD</span>
+                          <span className="text-xs font-bold block mt-0.5 text-ink">{stats.capacityPct}%</span>
                         </div>
-                        <div className="bg-zinc-50/50 p-2 border border-zinc-150 rounded">
-                          <span className="text-[9px] text-zinc-400 font-bold uppercase">APPROVED HOURS</span>
-                          <span className="text-xs font-bold block mt-0.5 text-zinc-800">{stats.approvedActualHours.toFixed(0)} Hrs</span>
+                        <div className="bg-surface-muted/60 p-2 border border-line rounded">
+                          <span className="text-[11px] text-ink-muted font-bold uppercase">APPROVED HOURS</span>
+                          <span className="text-xs font-bold block mt-0.5 text-ink">{stats.approvedActualHours.toFixed(0)} Hrs</span>
                         </div>
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex justify-end gap-1.5 border-t border-zinc-100 pt-3">
-                        <Button variant="outline" size="sm" className="text-[10px] h-7 px-2 cursor-pointer" onClick={() => handleOpenPassword(c)}>
+                      <div className="flex justify-end gap-1.5 border-t border-line pt-3">
+                        <Button variant="outline" size="sm" className="text-[11px] h-7 px-2 cursor-pointer" onClick={() => handleOpenPassword(c)}>
                           <KeyRound size={11} className="mr-1" /> Password
                         </Button>
-                        <Button variant="outline" size="sm" className="text-[10px] h-7 px-2 cursor-pointer" onClick={() => { setSelectedConsultant(c); }}>
+                        <Button variant="outline" size="sm" className="text-[11px] h-7 px-2 cursor-pointer" onClick={() => { setSelectedConsultant(c); }}>
                           <Eye size={11} className="mr-1" /> Inspect
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className={`text-[10px] h-7 px-2 cursor-pointer ${c.is_active ? 'text-amber-600 border-amber-200' : 'text-emerald-600 border-emerald-200'}`}
+                          className={`text-[11px] h-7 px-2 cursor-pointer ${c.is_active ? 'text-warning border-amber-200' : 'text-success border-emerald-200'}`}
                           onClick={() => toggleConsultantStatus(c)}
                         >
                           {c.is_active ? 'Disable' : 'Enable'}
                         </Button>
-                        <Button variant="outline" size="sm" className="text-[10px] h-7 px-2 text-red-650 border-red-200 cursor-pointer" onClick={() => deleteConsultant(c.id)}>
+                        <Button variant="outline" size="sm" className="text-[11px] h-7 px-2 text-critical border-red-200 cursor-pointer" onClick={() => deleteConsultant(c.id)}>
                           <Trash2 size={11} />
                         </Button>
                       </div>
@@ -574,12 +570,12 @@ export default function AdminConsultantsPage() {
           7-STEP CONSULTANT CREATION WIZARD
          ------------------------------------------------------------- */}
       <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
-        <DialogContent className="max-w-3xl bg-white border border-zinc-200 p-6 rounded-lg font-sans text-xs">
-          <DialogHeader className="border-b border-zinc-200 pb-3 mb-4">
-            <DialogTitle className="text-sm font-semibold uppercase tracking-wider text-zinc-900">
+        <DialogContent className="max-w-3xl bg-surface border border-line p-6 rounded-lg font-sans text-xs">
+          <DialogHeader className="border-b border-line pb-3 mb-4">
+            <DialogTitle className="text-sm font-semibold uppercase tracking-wider text-ink">
               Register Consultant Profile - Step {wizardStep} of 7
             </DialogTitle>
-            <DialogDescription className="text-[11px] text-zinc-500 pt-1">
+            <DialogDescription className="text-[11px] text-ink-secondary pt-1">
               Initialize the consultant directory profile and set system capacity parameters.
             </DialogDescription>
           </DialogHeader>
@@ -587,26 +583,26 @@ export default function AdminConsultantsPage() {
           {/* STEP 1: PERSONAL INFORMATION */}
           {wizardStep === 1 && (
             <div className="space-y-4">
-              <div className="font-semibold text-[10px] uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Section 1 - Personal Information</div>
+              <div className="font-semibold text-[11px] uppercase tracking-wider text-ink-muted border-b border-line pb-1.5">Section 1 - Personal Information</div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">First Name *</Label>
+                  <Label className="font-semibold text-ink-secondary">First Name *</Label>
                   <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" className="text-xs" required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Last Name *</Label>
+                  <Label className="font-semibold text-ink-secondary">Last Name *</Label>
                   <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" className="text-xs" required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Employee ID *</Label>
-                  <Input value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="EMP-4982" className="text-xs font-mono" required />
+                  <Label className="font-semibold text-ink-secondary">Employee ID *</Label>
+                  <Input value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="EMP-4982" className="text-xs" required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Date of Birth</Label>
-                  <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="text-xs font-mono" />
+                  <Label className="font-semibold text-ink-secondary">Date of Birth</Label>
+                  <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="text-xs" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Gender</Label>
+                  <Label className="font-semibold text-ink-secondary">Gender</Label>
                   <Select value={gender} onValueChange={setGender}>
                     <SelectTrigger className="text-xs">
                       <SelectValue />
@@ -625,18 +621,18 @@ export default function AdminConsultantsPage() {
           {/* STEP 2: CONTACT INFORMATION */}
           {wizardStep === 2 && (
             <div className="space-y-4">
-              <div className="font-semibold text-[10px] uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Section 2 - Contact Information</div>
+              <div className="font-semibold text-[11px] uppercase tracking-wider text-ink-muted border-b border-line pb-1.5">Section 2 - Contact Information</div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5 col-span-2">
-                  <Label className="font-semibold text-zinc-700">Email Address *</Label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john.doe@assist360.com" className="text-xs font-mono" required />
+                  <Label className="font-semibold text-ink-secondary">Email Address *</Label>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john.doe@assist360.com" className="text-xs" required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Mobile Phone</Label>
-                  <Input value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+1 (555) 019-4821" className="text-xs font-mono" />
+                  <Label className="font-semibold text-ink-secondary">Mobile Phone</Label>
+                  <Input value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+1 (555) 019-4821" className="text-xs" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Emergency Contact</Label>
+                  <Label className="font-semibold text-ink-secondary">Emergency Contact</Label>
                   <Input value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} placeholder="Jane Doe (+1 555-019-4822)" className="text-xs" />
                 </div>
               </div>
@@ -646,10 +642,10 @@ export default function AdminConsultantsPage() {
           {/* STEP 3: PROFESSIONAL INFORMATION */}
           {wizardStep === 3 && (
             <div className="space-y-4">
-              <div className="font-semibold text-[10px] uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Section 3 - Professional Information</div>
+              <div className="font-semibold text-[11px] uppercase tracking-wider text-ink-muted border-b border-line pb-1.5">Section 3 - Professional Information</div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Consultant Type</Label>
+                  <Label className="font-semibold text-ink-secondary">Consultant Type</Label>
                   <Select value={consultantType} onValueChange={(val: any) => setConsultantType(val)}>
                     <SelectTrigger className="text-xs">
                       <SelectValue />
@@ -661,15 +657,15 @@ export default function AdminConsultantsPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Designation *</Label>
+                  <Label className="font-semibold text-ink-secondary">Designation *</Label>
                   <Input value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="Senior ABAP Developer" className="text-xs" required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Experience (Years)</Label>
-                  <Input type="number" value={experience} onChange={(e) => setExperience(e.target.value)} className="text-xs font-mono" />
+                  <Label className="font-semibold text-ink-secondary">Experience (Years)</Label>
+                  <Input type="number" value={experience} onChange={(e) => setExperience(e.target.value)} className="text-xs" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Core Specialization / Certifications</Label>
+                  <Label className="font-semibold text-ink-secondary">Core Specialization / Certifications</Label>
                   <Input value={certification} onChange={(e) => setCertification(e.target.value)} placeholder="SAP Certified ABAP Architect" className="text-xs" />
                 </div>
               </div>
@@ -679,7 +675,7 @@ export default function AdminConsultantsPage() {
           {/* STEP 4: SAP MODULES */}
           {wizardStep === 4 && (
             <div className="space-y-4">
-              <div className="font-semibold text-[10px] uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Section 4 - Allocate SAP Modules</div>
+              <div className="font-semibold text-[11px] uppercase tracking-wider text-ink-muted border-b border-line pb-1.5">Section 4 - Allocate SAP Modules</div>
               <div className="grid grid-cols-3 gap-2">
                 {sapModulesList.map(mod => {
                   const isChecked = selectedModules.includes(mod);
@@ -689,8 +685,8 @@ export default function AdminConsultantsPage() {
                       onClick={() => toggleModule(mod)}
                       className={`p-2.5 border rounded cursor-pointer transition text-center font-semibold text-[11px] ${
                         isChecked 
-                          ? 'border-zinc-900 bg-zinc-50 text-zinc-950 font-bold' 
-                          : 'border-zinc-200 text-zinc-500 bg-white hover:bg-zinc-50/50'
+                          ? 'border-zinc-900 bg-surface-muted text-ink font-bold' 
+                          : 'border-line text-ink-secondary bg-surface hover:bg-surface-muted/60'
                       }`}
                     >
                       {mod}
@@ -704,18 +700,18 @@ export default function AdminConsultantsPage() {
           {/* STEP 5: CAPACITY SETTINGS */}
           {wizardStep === 5 && (
             <div className="space-y-4">
-              <div className="font-semibold text-[10px] uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Section 5 - Working Capacity Settings</div>
-              <div className="grid grid-cols-3 gap-4 font-mono">
+              <div className="font-semibold text-[11px] uppercase tracking-wider text-ink-muted border-b border-line pb-1.5">Section 5 - Working Capacity Settings</div>
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700 font-sans">Daily Capacity (Hours)</Label>
+                  <Label className="font-semibold text-ink-secondary font-sans">Daily Capacity (Hours)</Label>
                   <Input type="number" value={dailyCapacity} onChange={(e) => setDailyCapacity(e.target.value)} className="text-xs" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700 font-sans">Weekly Capacity (Hours)</Label>
+                  <Label className="font-semibold text-ink-secondary font-sans">Weekly Capacity (Hours)</Label>
                   <Input type="number" value={weeklyCapacity} onChange={(e) => setWeeklyCapacity(e.target.value)} className="text-xs" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700 font-sans">Monthly Capacity (Hours)</Label>
+                  <Label className="font-semibold text-ink-secondary font-sans">Monthly Capacity (Hours)</Label>
                   <Input type="number" value={monthlyCapacity} onChange={(e) => setMonthlyCapacity(e.target.value)} className="text-xs" />
                 </div>
               </div>
@@ -725,10 +721,10 @@ export default function AdminConsultantsPage() {
           {/* STEP 6: REPORTING STRUCTURE */}
           {wizardStep === 6 && (
             <div className="space-y-4">
-              <div className="font-semibold text-[10px] uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Section 6 - Reporting Structure & Hierarchy</div>
+              <div className="font-semibold text-[11px] uppercase tracking-wider text-ink-muted border-b border-line pb-1.5">Section 6 - Reporting Structure & Hierarchy</div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Reporting Manager</Label>
+                  <Label className="font-semibold text-ink-secondary">Reporting Manager</Label>
                   <Select value={reportingManager} onValueChange={setReportingManager}>
                     <SelectTrigger className="text-xs">
                       <SelectValue placeholder="Select manager" />
@@ -741,7 +737,7 @@ export default function AdminConsultantsPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-zinc-700">Team Lead</Label>
+                  <Label className="font-semibold text-ink-secondary">Team Lead</Label>
                   <Select value={teamLead} onValueChange={setTeamLead}>
                     <SelectTrigger className="text-xs">
                       <SelectValue placeholder="Select lead" />
@@ -760,10 +756,10 @@ export default function AdminConsultantsPage() {
           {/* STEP 7: ACCOUNT ACCESS */}
           {wizardStep === 7 && (
             <div className="space-y-4">
-              <div className="font-semibold text-[10px] uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Section 7 - Credential Setup</div>
+              <div className="font-semibold text-[11px] uppercase tracking-wider text-ink-muted border-b border-line pb-1.5">Section 7 - Credential Setup</div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5 col-span-2">
-                  <Label className="font-semibold text-zinc-700">Governance Method</Label>
+                  <Label className="font-semibold text-ink-secondary">Governance Method</Label>
                   <Select value={accessPwdOption} onValueChange={(val: any) => setAccessPwdOption(val)}>
                     <SelectTrigger className="text-xs">
                       <SelectValue />
@@ -776,8 +772,8 @@ export default function AdminConsultantsPage() {
                 </div>
                 {accessPwdOption === 'manual' && (
                   <div className="space-y-1.5 col-span-2">
-                    <Label className="font-semibold text-zinc-700">Manual Password</Label>
-                    <Input type="password" value={accessPassword} onChange={(e) => setAccessPassword(e.target.value)} placeholder="Min. 8 characters with numbers & symbols" className="text-xs font-mono" />
+                    <Label className="font-semibold text-ink-secondary">Manual Password</Label>
+                    <Input type="password" value={accessPassword} onChange={(e) => setAccessPassword(e.target.value)} placeholder="Min. 8 characters with numbers & symbols" className="text-xs" />
                   </div>
                 )}
               </div>
@@ -785,7 +781,7 @@ export default function AdminConsultantsPage() {
           )}
 
           {/* Footer controls */}
-          <DialogFooter className="mt-6 border-t border-zinc-200 pt-3 flex justify-between gap-2">
+          <DialogFooter className="mt-6 border-t border-line pt-3 flex justify-between gap-2">
             <div>
               {wizardStep > 1 && (
                 <Button variant="outline" size="sm" onClick={handlePrevStep} className="cursor-pointer">
@@ -798,7 +794,7 @@ export default function AdminConsultantsPage() {
                 Cancel
               </Button>
               {wizardStep < 7 ? (
-                <Button size="sm" onClick={handleNextStep} className="bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer">
+                <Button size="sm" onClick={handleNextStep} className="bg-ink text-white hover:bg-zinc-800 cursor-pointer">
                   Next <ChevronRight size={14} className="ml-1" />
                 </Button>
               ) : (
@@ -815,47 +811,47 @@ export default function AdminConsultantsPage() {
           DETAILS INSPECTION MODAL
          ------------------------------------------------------------- */}
       <Dialog open={!!selectedConsultant} onOpenChange={() => setSelectedConsultant(null)}>
-        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg font-sans text-xs">
+        <DialogContent className="max-w-md bg-surface border border-line p-6 rounded-lg font-sans text-xs">
           {selectedConsultant && (
             <>
-              <DialogHeader className="border-b border-zinc-200 pb-3 mb-4">
+              <DialogHeader className="border-b border-line pb-3 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border bg-zinc-150 flex items-center justify-center font-bold text-zinc-700 text-xs">
+                  <div className="w-10 h-10 rounded-full border bg-surface-subtle flex items-center justify-center font-bold text-ink-secondary text-xs">
                     {selectedConsultant.full_name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div>
-                    <DialogTitle className="text-sm font-semibold uppercase tracking-wider text-zinc-900">
+                    <DialogTitle className="text-sm font-semibold uppercase tracking-wider text-ink">
                       {selectedConsultant.full_name}
                     </DialogTitle>
-                    <span className="text-[10px] text-zinc-400 font-mono">Employee ID: {selectedConsultant.employee_id}</span>
+                    <span className="text-[11px] text-ink-muted">Employee ID: {selectedConsultant.employee_id}</span>
                   </div>
                 </div>
               </DialogHeader>
 
               <div className="space-y-4">
-                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded font-mono text-[11px] space-y-1">
-                  <span className="font-bold text-zinc-700 uppercase tracking-wider text-[9px] block mb-1">Personal Details</span>
+                <div className="p-3 bg-surface-muted border border-line rounded text-[11px] space-y-1">
+                  <span className="font-bold text-ink-secondary uppercase tracking-wider text-[11px] block mb-1">Personal Details</span>
                   <div className="flex justify-between"><span>Gender:</span><span>{selectedConsultant.gender || 'N/A'}</span></div>
                   <div className="flex justify-between"><span>Date of Birth:</span><span>{selectedConsultant.dob || 'N/A'}</span></div>
                   <div className="flex justify-between"><span>Designation:</span><span>{selectedConsultant.role_title}</span></div>
                   <div className="flex justify-between"><span>Emergency Contact:</span><span>{selectedConsultant.emergency_contact || 'N/A'}</span></div>
                 </div>
 
-                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded font-mono text-[11px] space-y-1">
-                  <span className="font-bold text-zinc-700 uppercase tracking-wider text-[9px] block mb-1">Capacity allocations</span>
+                <div className="p-3 bg-surface-muted border border-line rounded text-[11px] space-y-1">
+                  <span className="font-bold text-ink-secondary uppercase tracking-wider text-[11px] block mb-1">Capacity allocations</span>
                   <div className="flex justify-between"><span>Daily capacity limit:</span><span>{selectedConsultant.daily_capacity_hours || 8}h</span></div>
                   <div className="flex justify-between"><span>Weekly capacity limit:</span><span>{selectedConsultant.weekly_capacity_hours || 40}h</span></div>
                   <div className="flex justify-between"><span>Monthly capacity limit:</span><span>{selectedConsultant.monthly_capacity_hours || 160}h</span></div>
                 </div>
 
-                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded font-mono text-[11px] space-y-1">
-                  <span className="font-bold text-zinc-700 uppercase tracking-wider text-[9px] block mb-1">Structure hierarchies</span>
+                <div className="p-3 bg-surface-muted border border-line rounded text-[11px] space-y-1">
+                  <span className="font-bold text-ink-secondary uppercase tracking-wider text-[11px] block mb-1">Structure hierarchies</span>
                   <div className="flex justify-between"><span>Reporting Manager:</span><span>{profiles.find(p => p.id === selectedConsultant.reporting_manager_id)?.full_name || 'None Assigned'}</span></div>
                   <div className="flex justify-between"><span>Team Lead Advisor:</span><span>{profiles.find(p => p.id === selectedConsultant.team_lead_id)?.full_name || 'None Assigned'}</span></div>
                 </div>
               </div>
 
-              <DialogFooter className="mt-6 border-t border-zinc-200 pt-3">
+              <DialogFooter className="mt-6 border-t border-line pt-3">
                 <Button variant="outline" size="sm" onClick={() => setSelectedConsultant(null)} className="cursor-pointer">Close</Button>
               </DialogFooter>
             </>
@@ -867,22 +863,22 @@ export default function AdminConsultantsPage() {
           PASSWORD MANAGEMENT PANEL
          ------------------------------------------------------------- */}
       <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg font-sans text-xs">
-          <DialogHeader className="border-b border-zinc-200 pb-3 mb-4">
-            <DialogTitle className="text-sm font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
+        <DialogContent className="max-w-md bg-surface border border-line p-6 rounded-lg font-sans text-xs">
+          <DialogHeader className="border-b border-line pb-3 mb-4">
+            <DialogTitle className="text-sm font-semibold uppercase tracking-wider text-ink flex items-center gap-1.5">
               <Lock size={15} /> Credential Governance Panel
             </DialogTitle>
           </DialogHeader>
           
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div className="p-3 bg-zinc-50 border border-zinc-200 rounded font-mono text-[10px] text-zinc-650">
-              <span className="font-bold uppercase tracking-wider text-zinc-700 block mb-1">Target Account Profile:</span>
+            <div className="p-3 bg-surface-muted border border-line rounded text-[11px] text-ink-secondary">
+              <span className="font-bold uppercase tracking-wider text-ink-secondary block mb-1">Target Account Profile:</span>
               <div>Name: {pwdUserSelected?.full_name}</div>
               <div>Email: {pwdUserSelected?.email}</div>
             </div>
 
             <div className="space-y-2">
-              <Label className="font-semibold text-zinc-700 uppercase tracking-wider text-[10px]">Governance Policy</Label>
+              <Label className="font-semibold text-ink-secondary uppercase tracking-wider text-[11px]">Governance Policy</Label>
               <Select value={pwdResetOption} onValueChange={(val: any) => setPwdResetOption(val)}>
                 <SelectTrigger className="text-xs">
                   <SelectValue />
@@ -896,13 +892,13 @@ export default function AdminConsultantsPage() {
 
             {pwdResetOption === 'manual' && (
               <div className="space-y-1.5">
-                <Label className="font-semibold text-zinc-700">Overwrite Password</Label>
+                <Label className="font-semibold text-ink-secondary">Overwrite Password</Label>
                 <Input 
                   type="password" 
                   value={pwdManualValue} 
                   onChange={(e) => setPwdManualValue(e.target.value)} 
                   placeholder="Min. 8 characters" 
-                  className="text-xs font-mono" 
+                  className="text-xs" 
                   required
                 />
               </div>
@@ -910,17 +906,17 @@ export default function AdminConsultantsPage() {
 
             {pwdGeneratedTemp && (
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded text-center space-y-2">
-                <span className="text-[10px] text-emerald-800 font-bold block uppercase">Temporary Password Registry</span>
-                <span className="text-sm font-mono font-bold bg-white px-3 py-1.5 border border-emerald-250 rounded block select-all">
+                <span className="text-[11px] text-emerald-800 font-bold block uppercase">Temporary Password Registry</span>
+                <span className="text-sm font-bold bg-surface px-3 py-1.5 border border-emerald-250 rounded block select-all">
                   {pwdGeneratedTemp}
                 </span>
-                <span className="text-[9px] text-zinc-500 block">Copy this temporary password and deliver it to the user. They will be forced to change it on their next login.</span>
+                <span className="text-[11px] text-ink-secondary block">Copy this temporary password and deliver it to the user. They will be forced to change it on their next login.</span>
               </div>
             )}
 
-            <DialogFooter className="border-t border-zinc-200 pt-3">
+            <DialogFooter className="border-t border-line pt-3">
               <Button type="button" variant="outline" size="sm" onClick={() => setPasswordDialogOpen(false)} className="cursor-pointer">Close</Button>
-              <Button type="submit" size="sm" className="bg-zinc-900 hover:bg-zinc-800 text-white cursor-pointer">
+              <Button type="submit" size="sm" className="bg-ink hover:bg-zinc-800 text-white cursor-pointer">
                 {pwdResetOption === 'temp' ? 'Generate Password' : 'Apply Overwrite'}
               </Button>
             </DialogFooter>

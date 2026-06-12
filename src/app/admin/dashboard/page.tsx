@@ -23,6 +23,9 @@ import {
   Maximize2, Power
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
+import { PageHeader } from '../../../components/ui/page-header';
+import { StatCard } from '../../../components/ui/stat-card';
+import type { PillTone } from '../../../components/ui/status-pill';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
@@ -1378,10 +1381,10 @@ export default function AdminDashboardPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full bg-zinc-200 rounded-xl" />
+            <Skeleton key={i} className="h-28 w-full bg-zinc-200 rounded-lg" />
           ))}
         </div>
-        <Skeleton className="h-96 w-full bg-zinc-200 rounded-xl" />
+        <Skeleton className="h-96 w-full bg-zinc-200 rounded-lg" />
       </div>
     );
   }
@@ -1391,19 +1394,22 @@ export default function AdminDashboardPage() {
       
       {/* ── ESCALATION RED WARNING BANNER ── */}
       {escalationsQueue.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between shadow-sm animate-pulse">
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-critical-border bg-critical-soft p-4 shadow-card">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="text-red-500 shrink-0" size={18} />
+            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-critical/10">
+              <span className="absolute h-2 w-2 animate-ping rounded-full bg-critical opacity-60" />
+              <AlertTriangle className="relative text-critical" size={16} />
+            </span>
             <div>
-              <span className="font-mono text-xs font-bold text-red-700 block uppercase">Critical Escalations Alert</span>
-              <span className="text-[11px] text-red-600 block mt-0.5">
-                {escalationsQueue.length} tickets are currently escalated. Manager intervention required immediately.
+              <span className="type-widget block text-critical-strong">Critical Escalations Alert</span>
+              <span className="type-meta mt-0.5 block text-critical">
+                <span className="type-num font-semibold">{escalationsQueue.length}</span> tickets are currently escalated. Manager intervention required immediately.
               </span>
             </div>
           </div>
-          <Button 
-            onClick={() => setActiveTab('escalations')} 
-            className="h-7 text-[9px] uppercase font-bold font-mono bg-red-600 hover:bg-red-700 text-white rounded px-3"
+          <Button
+            onClick={() => setActiveTab('escalations')}
+            className="h-8 rounded-md bg-critical px-3 text-[11px] font-semibold text-white hover:bg-critical-strong"
           >
             Review Queue
           </Button>
@@ -1411,41 +1417,37 @@ export default function AdminDashboardPage() {
       )}
 
       {/* ── COMMAND CENTER HEADER ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-200 pb-5 gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 font-mono uppercase">Executive Command Center</h1>
-          <p className="text-[11px] text-zinc-400 mt-1 font-bold uppercase tracking-wider">
-            Assist360 Operations & Delivery Management Console · RLS Posture: <span className="text-zinc-900">{RLS_POSTURE}</span>
-          </p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          <Button 
-            onClick={refetchData} 
-            variant="outline" 
-            className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold flex items-center gap-2 rounded"
-          >
-            <RefreshCw size={12} />
+      <PageHeader
+        title="Executive Command Center"
+        description={
+          <>
+            Assist360 operations &amp; delivery management console · RLS posture:{' '}
+            <span className="font-medium text-ink">{RLS_POSTURE}</span>
+          </>
+        }
+        actions={
+          <Button onClick={refetchData} variant="outline" className="h-9 gap-2 rounded-md">
+            <RefreshCw size={13} />
             Sync Supabase
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── GLOBAL FILTERS COCKPIT ── */}
-      <Card className="border border-zinc-200 bg-white p-4 shadow-sm mb-6">
+      <Card className="border border-line bg-surface p-4 shadow-card mb-6">
         <div className="flex flex-wrap items-center gap-3">
           {/* Period */}
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Period</span>
-            <div className="flex border border-zinc-200 rounded-md overflow-hidden h-9 bg-zinc-50">
+            <span className="text-[11px] uppercase font-bold text-ink-muted">Period</span>
+            <div className="flex border border-line rounded-md overflow-hidden h-9 bg-surface-muted">
               {(['This Month', 'This Quarter', 'This Year', 'Custom'] as const).map((p) => (
                 <button
                   key={p}
                   onClick={() => setFilters(prev => ({ ...prev, period: p }))}
-                  className={`px-3 text-[10px] font-mono uppercase font-bold transition-all ${
+                  className={`px-3 text-[11px] uppercase font-bold transition-all ${
                     filters.period === p
                       ? 'bg-zinc-900 text-white'
-                      : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                      : 'text-ink-secondary hover:text-ink hover:bg-surface-subtle'
                   }`}
                 >
                   {p.replace('This ', '')}
@@ -1456,11 +1458,11 @@ export default function AdminDashboardPage() {
 
           {/* Customer */}
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Customer</span>
+            <span className="text-[11px] uppercase font-bold text-ink-muted">Customer</span>
             <select
               value={filters.customer}
               onChange={(e) => setFilters(prev => ({ ...prev, customer: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
             >
               <option value="All">ALL CUSTOMERS</option>
               {customerOrgsList.map(c => (
@@ -1471,11 +1473,11 @@ export default function AdminDashboardPage() {
 
           {/* Consultant */}
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Consultant</span>
+            <span className="text-[11px] uppercase font-bold text-ink-muted">Consultant</span>
             <select
               value={filters.consultant}
               onChange={(e) => setFilters(prev => ({ ...prev, consultant: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
             >
               <option value="All">ALL CONSULTANTS</option>
               {consultantsProfilesList.map(c => (
@@ -1486,11 +1488,11 @@ export default function AdminDashboardPage() {
 
           {/* Manager */}
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Manager</span>
+            <span className="text-[11px] uppercase font-bold text-ink-muted">Manager</span>
             <select
               value={filters.manager}
               onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
             >
               <option value="All">ALL MANAGERS</option>
               {managersProfilesList.map(m => (
@@ -1501,11 +1503,11 @@ export default function AdminDashboardPage() {
 
           {/* Module */}
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Module</span>
+            <span className="text-[11px] uppercase font-bold text-ink-muted">Module</span>
             <select
               value={filters.module}
               onChange={(e) => setFilters(prev => ({ ...prev, module: e.target.value }))}
-              className="h-9 min-w-[110px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="h-9 min-w-[110px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
             >
               <option value="All">ALL MODULES</option>
               {modulesList.map(m => (
@@ -1516,11 +1518,11 @@ export default function AdminDashboardPage() {
 
           {/* Priority */}
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Priority</span>
+            <span className="text-[11px] uppercase font-bold text-ink-muted">Priority</span>
             <select
               value={filters.priority}
               onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-              className="h-9 min-w-[110px] px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="h-9 min-w-[110px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
             >
               <option value="All">ALL PRIORITIES</option>
               <option value="Critical">CRITICAL</option>
@@ -1545,7 +1547,7 @@ export default function AdminDashboardPage() {
                 consultant: 'All',
                 manager: 'All'
               })}
-              className="h-9 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 font-mono text-[10px] uppercase font-bold rounded"
+              className="h-9 border-line bg-surface text-ink-secondary hover:bg-surface-muted text-[11px] uppercase font-bold rounded"
             >
               Reset
             </Button>
@@ -1553,8 +1555,8 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Dynamic Status Badges row */}
-        <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-2">
-          <span className="text-[9px] font-mono uppercase font-bold text-zinc-400 mr-2">Status Scope</span>
+        <div className="mt-3 pt-3 border-t border-line flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase font-bold text-ink-muted mr-2">Status Scope</span>
           {(['New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Reopened', 'Escalated'] as const).map(group => {
             const isSelected = filters.statuses.includes(group);
             return (
@@ -1569,10 +1571,10 @@ export default function AdminDashboardPage() {
                     return { ...prev, statuses: next };
                   });
                 }}
-                className={`h-7 px-2.5 rounded-full text-[10px] font-mono uppercase font-semibold transition-all border ${
+                className={`h-7 px-2.5 rounded-full text-[11px] uppercase font-semibold transition-all border ${
                   isSelected
-                    ? 'bg-zinc-950 border-zinc-950 text-white shadow-sm'
-                    : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                    ? 'bg-ink border-zinc-950 text-white shadow-card'
+                    : 'bg-surface-muted border-line text-ink-secondary hover:bg-surface-subtle hover:text-ink'
                 }`}
               >
                 {group}
@@ -1583,23 +1585,23 @@ export default function AdminDashboardPage() {
 
         {/* Row 2: Custom Date Picker Inputs */}
         {filters.period === 'Custom' && (
-          <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-4 animate-in fade-in duration-200">
+          <div className="mt-3 pt-3 border-t border-line flex flex-wrap items-center gap-4 animate-in fade-in duration-200">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date From</span>
+              <span className="text-[11px] uppercase font-bold text-ink-muted">Date From</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                className="h-9 px-3 border border-line rounded-md bg-surface text-[11px] text-ink-secondary focus:outline-none focus:ring-1 focus:ring-zinc-900"
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Date To</span>
+              <span className="text-[11px] uppercase font-bold text-ink-muted">Date To</span>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="h-9 px-3 border border-zinc-200 rounded-md bg-white text-[11px] font-mono text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                className="h-9 px-3 border border-line rounded-md bg-surface text-[11px] text-ink-secondary focus:outline-none focus:ring-1 focus:ring-zinc-900"
               />
             </div>
           </div>
@@ -1608,7 +1610,7 @@ export default function AdminDashboardPage() {
 
       {/* ── NAVIGATION TABS ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="flex flex-wrap h-auto bg-zinc-100 p-1 border border-zinc-200 rounded-lg font-mono text-[9px] gap-0.5">
+        <TabsList className="flex flex-wrap h-auto bg-surface-subtle p-1 border border-line rounded-lg text-[11px] gap-0.5">
           <TabsTrigger value="cockpit" className="py-2 px-3 uppercase font-bold rounded-md">Cockpit</TabsTrigger>
           <TabsTrigger value="customers" className="py-2 px-3 uppercase font-bold rounded-md">Customers</TabsTrigger>
           <TabsTrigger value="consultants" className="py-2 px-3 uppercase font-bold rounded-md">Consultants</TabsTrigger>
@@ -1616,7 +1618,7 @@ export default function AdminDashboardPage() {
           <TabsTrigger value="approvals" className="py-2 px-3 uppercase font-bold rounded-md">
             Approvals
             {approvalsQueue.length > 0 && (
-              <Badge className="bg-zinc-900 text-white text-[8px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
+              <Badge className="bg-zinc-900 text-white text-[11px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
                 {approvalsQueue.length}
               </Badge>
             )}
@@ -1624,7 +1626,7 @@ export default function AdminDashboardPage() {
           <TabsTrigger value="escalations" className="py-2 px-3 uppercase font-bold rounded-md">
             Escalations
             {escalationsQueue.length > 0 && (
-              <Badge className="bg-red-600 text-white text-[8px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
+              <Badge className="bg-red-600 text-white text-[11px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
                 {escalationsQueue.length}
               </Badge>
             )}
@@ -1636,7 +1638,7 @@ export default function AdminDashboardPage() {
 
         {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
         <TabsContent value="cockpit" className="space-y-6 outline-none">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 font-mono">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
               { label: 'Total Customers', value: globalStats.totalCustomers, icon: Building2, desc: 'Registered Organizations' },
               { label: 'Active Customers', value: globalStats.activeCustomers, icon: UserCheck, desc: 'With Active Contracts' },
@@ -1645,85 +1647,80 @@ export default function AdminDashboardPage() {
               { label: 'Total Contracts', value: globalStats.totalContracts, icon: FileText, desc: 'Support Agreements' },
               { label: 'Open Tickets', value: globalStats.openTicketsCount, icon: Ticket, desc: 'Active Queue backlog' },
               { label: 'Closed Tickets', value: globalStats.closedTicketsCount, icon: CheckCircle2, desc: 'SLA Resolved / Closed' },
-              { label: 'Escalated Tickets', value: globalStats.escalatedTicketsCount, icon: AlertTriangle, desc: 'Active Warning Alerts', color: globalStats.escalatedTicketsCount > 0 ? 'text-red-600' : 'text-zinc-900' },
-              { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, icon: Clock, desc: 'Awaiting Administrator Actions', color: globalStats.pendingApprovalsCount > 0 ? 'text-orange-600 font-bold' : 'text-zinc-900' },
-              { label: 'SLA Breaches', value: globalStats.slaBreachesCount, icon: ShieldAlert, desc: 'Violations Reported', color: globalStats.slaBreachesCount > 0 ? 'text-red-500 font-bold' : 'text-zinc-900' },
+              { label: 'Escalated Tickets', value: globalStats.escalatedTicketsCount, icon: AlertTriangle, desc: 'Active Warning Alerts', tone: (globalStats.escalatedTicketsCount > 0 ? 'critical' : 'neutral') as PillTone },
+              { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, icon: Clock, desc: 'Awaiting Administrator Actions', tone: (globalStats.pendingApprovalsCount > 0 ? 'warning' : 'neutral') as PillTone },
+              { label: 'SLA Breaches', value: globalStats.slaBreachesCount, icon: ShieldAlert, desc: 'Violations Reported', tone: (globalStats.slaBreachesCount > 0 ? 'critical' : 'neutral') as PillTone },
               { label: 'Total Approved Hours', value: `${globalStats.totalApprovedHours.toFixed(1)}h`, icon: DollarSign, desc: 'Accumulated Timesheet Hours' },
               { label: 'Current Month Utilized', value: `${globalStats.currentMonthUtilizedHours.toFixed(1)}h`, icon: Activity, desc: 'Logged this Month' },
               { label: 'Remaining Hours', value: `${globalStats.remainingContractHours.toFixed(1)}h`, icon: Sliders, desc: 'Active contracts pool' },
-              { label: 'Platform Health Score', value: `${globalStats.platformHealthScore}%`, icon: HeartHandshake, desc: 'Active health status check', color: globalStats.platformHealthScore > 90 ? 'text-emerald-600' : 'text-orange-500' }
-            ].map((kpi, i) => {
-              const Icon = kpi.icon;
-              return (
-                <Card key={i} className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm hover:border-zinc-400 transition-all flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
-                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">{kpi.label}</span>
-                    <Icon size={12} className="text-zinc-400" />
-                  </div>
-                  <div className="mt-3">
-                    <span className={`text-lg font-extrabold tracking-tight font-mono ${kpi.color || 'text-zinc-900'}`}>{kpi.value}</span>
-                    <span className="text-[8px] text-zinc-400 block mt-0.5 font-sans leading-relaxed">{kpi.desc}</span>
-                  </div>
-                </Card>
-              );
-            })}
+              { label: 'Platform Health Score', value: `${globalStats.platformHealthScore}%`, icon: HeartHandshake, desc: 'Active health status check', tone: (globalStats.platformHealthScore > 90 ? 'success' : 'warning') as PillTone }
+            ].map((kpi, i) => (
+              <StatCard
+                key={i}
+                label={kpi.label}
+                value={kpi.value}
+                icon={kpi.icon}
+                tone={kpi.tone ?? 'neutral'}
+                sub={kpi.desc}
+              />
+            ))}
           </div>
 
           {/* Core overview details */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Quick action checklist */}
-            <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-              <CardHeader className="border-b border-zinc-100 pb-3">
-                <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900 flex items-center gap-2">
+            <Card className="bg-surface border-line shadow-card rounded-lg">
+              <CardHeader className="border-b border-line pb-3">
+                <CardTitle className="type-widget flex items-center gap-2 text-ink uppercase">
                   <Sliders size={14} /> Administrator Quick Cockpit Actions
                 </CardTitle>
-                <CardDescription className="text-[10px] font-mono">Review system alerts requiring Super Admin sync</CardDescription>
+                <CardDescription className="text-[11px]">Review system alerts requiring Super Admin sync</CardDescription>
               </CardHeader>
-              <CardContent className="p-4 space-y-4 font-mono text-[10px]">
-                <div className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg">
+              <CardContent className="p-4 space-y-4 text-[11px]">
+                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
                   <div>
-                    <span className="font-bold text-zinc-900 block">System RLS Posture Check</span>
-                    <span className="text-[9px] text-zinc-400 mt-0.5 block">Verifies row-level security configuration across Postgres schemas</span>
+                    <span className="font-bold text-ink block">System RLS Posture Check</span>
+                    <span className="text-[11px] text-ink-muted mt-0.5 block">Verifies row-level security configuration across Postgres schemas</span>
                   </div>
-                  <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200">VERIFIED</Badge>
+                  <Badge className="bg-success-soft text-success-strong border border-success-border">VERIFIED</Badge>
                 </div>
                 
-                <div className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg">
+                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
                   <div>
-                    <span className="font-bold text-zinc-900 block">Expiring Contracts Warning</span>
-                    <span className="text-[9px] text-zinc-400 mt-0.5 block">
+                    <span className="font-bold text-ink block">Expiring Contracts Warning</span>
+                    <span className="text-[11px] text-ink-muted mt-0.5 block">
                       {contracts.filter(c => c.isActive && (new Date(c.endDate).getTime() - Date.now()) <= 30 * 24 * 60 * 60 * 1000).length} contracts expire within 30 days.
                     </span>
                   </div>
-                  <Button onClick={() => setActiveTab('customers')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Audit Contracts</Button>
+                  <Button onClick={() => setActiveTab('customers')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Audit Contracts</Button>
                 </div>
 
-                <div className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg">
+                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
                   <div>
-                    <span className="font-bold text-zinc-900 block">SLA Breaches Response</span>
-                    <span className="text-[9px] text-zinc-400 mt-0.5 block">Check active violation warnings</span>
+                    <span className="font-bold text-ink block">SLA Breaches Response</span>
+                    <span className="text-[11px] text-ink-muted mt-0.5 block">Check active violation warnings</span>
                   </div>
-                  <Button onClick={() => setActiveTab('escalations')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Audit Violations</Button>
+                  <Button onClick={() => setActiveTab('escalations')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Audit Violations</Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Quick status feed */}
-            <Card className="bg-[#09090b] text-zinc-400 border border-zinc-900 shadow-sm rounded-xl flex flex-col justify-between">
+            {/* Quick status feed — terminal-style log panel (mono is intentional here) */}
+            <Card className="flex flex-col justify-between rounded-lg border border-zinc-800 bg-ink text-ink-muted shadow-card">
               <CardHeader className="border-b border-zinc-800 pb-3">
-                <CardTitle className="text-xs font-bold font-mono uppercase text-white flex items-center gap-2">
+                <CardTitle className="type-widget flex items-center gap-2 text-white uppercase">
                   <Database size={14} /> Operations Log Stream
                 </CardTitle>
-                <CardDescription className="text-[10px] text-zinc-500 font-mono">Live database transactional events</CardDescription>
+                <CardDescription className="type-status text-zinc-500">Live database transactional events</CardDescription>
               </CardHeader>
-              <CardContent className="p-4 flex-1 font-mono text-[9px] space-y-1.5 overflow-y-auto max-h-56">
+              <CardContent className="max-h-56 flex-1 space-y-1.5 overflow-y-auto p-4 font-mono text-[11px]">
                 <p><span className="text-zinc-600">&gt;</span> Checking Row Level Security policies...</p>
-                <p><span className="text-emerald-500 font-bold">[OK]</span> Profiles partitions isolation active.</p>
+                <p><span className="font-bold text-success">[OK]</span> Profiles partitions isolation active.</p>
                 <p><span className="text-zinc-600">&gt;</span> Pulled {tickets.length} tickets from Supabase successfully.</p>
                 <p><span className="text-zinc-600">&gt;</span> Synchronized {contracts.length} active contracts.</p>
                 {escalationsQueue.slice(0, 2).map((esc, i) => (
                   <p key={i} className="text-red-400">
-                    <span className="text-red-500 font-bold">[ESCALATION]</span> Ticket {esc.ticketNumber} raised: {esc.reason}
+                    <span className="font-bold text-critical">[ESCALATION]</span> Ticket {esc.ticketNumber} raised: {esc.reason}
                   </p>
                 ))}
               </CardContent>
@@ -1731,10 +1728,10 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* ── 20 DISTINCT CHARTS INTEGRATED INTO COCKPIT ── */}
-          <div className="border-t border-zinc-250 pt-6 mt-6">
+          <div className="border-t border-line pt-6 mt-6">
             <div className="text-center max-w-xl mx-auto space-y-1 mb-6">
-              <h3 className="text-xs font-bold font-mono uppercase text-zinc-900">Assist360 Operations Analytics Wall</h3>
-              <p className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+              <h3 className="text-xs font-bold uppercase text-ink">Assist360 Operations Analytics Wall</h3>
+              <p className="text-[11px] text-ink-muted uppercase tracking-wider">
                 20 completely unique system visualizations and performance analysis charts
               </p>
             </div>
@@ -1742,42 +1739,42 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               
               {/* Chart 1: Ticket Volume Trend */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">1. Ticket Volume Trend (Area)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">1. Ticket Volume Trend (Area)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={analyticsWallData.ticketVolumeTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
-                      <Area type="monotone" dataKey="Requests" stroke="#09090b" fill="#09090b" fillOpacity={0.05} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
+                      <Area type="monotone" dataKey="Requests" stroke="#2563eb" fill="#2563eb" fillOpacity={0.05} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 2: Cumulative Ticket Growth */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">2. Cumulative Ticket Growth (Line)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">2. Cumulative Ticket Growth (Line)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={analyticsWallData.ticketGrowth} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
-                      <Line type="monotone" dataKey="total" stroke="#09090b" strokeWidth={2} dot={{ r: 3 }} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
+                      <Line type="monotone" dataKey="total" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 3: Open vs Closed Tickets */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">3. Open vs Closed Tickets (Bar)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">3. Open vs Closed Tickets (Bar)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={analyticsWallData.openVsClosed} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
-                      <Bar dataKey="Closed" fill="#09090b" radius={[2, 2, 0, 0]} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
+                      <Bar dataKey="Closed" fill="#2563eb" radius={[2, 2, 0, 0]} />
                       <Bar dataKey="Open" fill="#71717a" radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1785,13 +1782,13 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 4: Escalation Trend */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">4. Escalation Trend (Line)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">4. Escalation Trend (Line)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={analyticsWallData.escalationTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
                       <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -1799,26 +1796,26 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 5: SLA Compliance Trend */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">5. SLA Compliance Trend (Area)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">5. SLA Compliance Trend (Area)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={analyticsWallData.slaTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <YAxis domain={[90, 100]} fontSize={8} tickLine={false} />
-                      <Area type="monotone" dataKey="compliance" stroke="#09090b" fill="#09090b" fillOpacity={0.08} />
+                      <YAxis domain={[90, 100]} fontSize={10} tickLine={false} />
+                      <Area type="monotone" dataKey="compliance" stroke="#2563eb" fill="#2563eb" fillOpacity={0.08} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 6: Customer Case Activity */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">6. Customer Case Activity (Bar)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">6. Customer Case Activity (Bar)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={analyticsWallData.customerActivity} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
                       <Bar dataKey="tickets" fill="#18181b" radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1826,27 +1823,27 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 7: Consultant Utilization Spread */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">7. Consultant Utilization Spread (H-Bar)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">7. Consultant Utilization Spread (H-Bar)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={analyticsWallData.consultantUtilization} layout="vertical" margin={{ top: 2, right: 2, left: -22, bottom: 2 }}>
-                      <XAxis type="number" fontSize={8} tickLine={false} />
-                      <YAxis dataKey="name" type="category" fontSize={8} tickLine={false} />
-                      <Bar dataKey="utilization" fill="#09090b" radius={[0, 2, 2, 0]} />
+                      <XAxis type="number" fontSize={10} tickLine={false} />
+                      <YAxis dataKey="name" type="category" fontSize={10} tickLine={false} />
+                      <Bar dataKey="utilization" fill="#2563eb" radius={[0, 2, 2, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 8: Manager Case Allocation */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">8. Manager Case Allocation (Bar)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">8. Manager Case Allocation (Bar)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={analyticsWallData.managerWorkload} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
                       <Bar dataKey="tickets" fill="#27272a" radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1854,42 +1851,42 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 9: Contract Budget Consumption */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">9. Contract Budget Consumption (Stacked Bar)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">9. Contract Budget Consumption (Stacked Bar)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={analyticsWallData.contractConsumption} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
                       <Bar dataKey="Allocated" fill="#e4e4e7" stackId="a" />
-                      <Bar dataKey="Consumed" fill="#09090b" stackId="a" />
+                      <Bar dataKey="Consumed" fill="#2563eb" stackId="a" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 10: Resolution Time Trend */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">10. Resolution Time Trend (Line)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">10. Resolution Time Trend (Line)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={analyticsWallData.resolutionTimeTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
-                      <Line type="monotone" dataKey="hours" stroke="#09090b" strokeWidth={2} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
+                      <Line type="monotone" dataKey="hours" stroke="#2563eb" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 11: Approval Response Trend */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">11. Approval Response Trend (Area)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">11. Approval Response Trend (Area)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={analyticsWallData.approvalResponseTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
                       <Area type="monotone" dataKey="pendingApprovals" stroke="#71717a" fill="#71717a" fillOpacity={0.05} />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -1897,28 +1894,28 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 12: Approved Actual Hours */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">12. Approved Actual Hours (Area)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">12. Approved Actual Hours (Area)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={analyticsWallData.approvedHoursTrend} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
-                      <Area type="monotone" dataKey="hours" stroke="#09090b" fill="#09090b" fillOpacity={0.06} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
+                      <Area type="monotone" dataKey="hours" stroke="#2563eb" fill="#2563eb" fillOpacity={0.06} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 13: Estimated vs Actual Hours */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">13. Estimated vs Actual Hours (Composed)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">13. Estimated vs Actual Hours (Composed)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={analyticsWallData.estVsActual} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
                       <XAxis dataKey="name" fontSize={7} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
-                      <Bar dataKey="Actual" fill="#09090b" radius={[2, 2, 0, 0]} />
+                      <YAxis fontSize={10} tickLine={false} />
+                      <Bar dataKey="Actual" fill="#2563eb" radius={[2, 2, 0, 0]} />
                       <Line type="monotone" dataKey="Estimated" stroke="#71717a" strokeWidth={1.5} />
                     </ComposedChart>
                   </ResponsiveContainer>
@@ -1926,8 +1923,8 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 14: Priority Counts Distribution */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">14. Priority Counts Distribution (Pie)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">14. Priority Counts Distribution (Pie)</span>
                 <div className="h-44 w-full flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -1949,8 +1946,8 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 15: Ticket Categories Spread */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">15. Ticket Categories Spread (Donut)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">15. Ticket Categories Spread (Donut)</span>
                 <div className="h-44 w-full flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -1973,8 +1970,8 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 16: SAP Module Distribution */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">16. SAP Module Distribution (Pie)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">16. SAP Module Distribution (Pie)</span>
                 <div className="h-44 w-full flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -1995,22 +1992,22 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 17: Customer Health Score Spread */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">17. Customer Health Score Spread (Radar)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">17. Customer Health Score Spread (Radar)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="70%" data={analyticsWallData.healthScoreSpread}>
                       <PolarGrid />
                       <PolarAngleAxis dataKey="subject" fontSize={7} />
-                      <Radar dataKey="score" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
+                      <Radar dataKey="score" stroke="#2563eb" fill="#2563eb" fillOpacity={0.1} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 18: Operational Risk Heatmap */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">18. Operational Risk Heatmap (Radar)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">18. Operational Risk Heatmap (Radar)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="70%" data={analyticsWallData.riskHeatmap}>
@@ -2023,28 +2020,28 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Chart 19: Manager Delivery Health */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">19. Manager Delivery Health (Line)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">19. Manager Delivery Health (Line)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={analyticsWallData.managerDeliveryHealth} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="name" fontSize={8} tickLine={false} />
-                      <YAxis domain={[50, 100]} fontSize={8} tickLine={false} />
-                      <Line type="monotone" dataKey="score" stroke="#09090b" strokeWidth={2} />
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} />
+                      <YAxis domain={[50, 100]} fontSize={10} tickLine={false} />
+                      <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               {/* Chart 20: Resource Capacity Forecast */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-2">
-                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase block">20. Resource Capacity Forecast (Stacked Area)</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">20. Resource Capacity Forecast (Stacked Area)</span>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={analyticsWallData.capacityForecast} margin={{ top: 2, right: 2, left: -42, bottom: 2 }}>
-                      <XAxis dataKey="month" fontSize={8} tickLine={false} />
-                      <YAxis fontSize={8} tickLine={false} />
-                      <Area type="monotone" dataKey="Utilized" stackId="a" stroke="#09090b" fill="#09090b" fillOpacity={0.1} />
+                      <XAxis dataKey="month" fontSize={10} tickLine={false} />
+                      <YAxis fontSize={10} tickLine={false} />
+                      <Area type="monotone" dataKey="Utilized" stackId="a" stroke="#2563eb" fill="#2563eb" fillOpacity={0.1} />
                       <Area type="monotone" dataKey="Remaining" stackId="a" stroke="#e4e4e7" fill="#e4e4e7" />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -2057,56 +2054,56 @@ export default function AdminDashboardPage() {
 
         {/* ── CUSTOMER PORTFOLIO INTELLIGENCE ── */}
         <TabsContent value="customers" className="space-y-6 outline-none">
-          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-zinc-100 pb-3">
-              <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Customer Portfolio & Hour Consumption</CardTitle>
-              <CardDescription className="text-[10px] font-mono">
+          <Card className="bg-surface border-line shadow-card rounded-lg">
+            <CardHeader className="border-b border-line pb-3">
+              <CardTitle className="text-xs font-bold uppercase text-ink">Customer Portfolio & Hour Consumption</CardTitle>
+              <CardDescription className="text-[11px]">
                 Lists all registered customers, contract durations, allocated hours, and strictly manager approved utilized actual hours.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-zinc-50 font-mono text-[9px]">
-                    <TableRow className="border-b border-zinc-200">
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Customer</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Code</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Duration</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Contract Status</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Monthly Hours</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Annual Hours</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Approved Utilized</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Pending Approval</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Remaining</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Compliance</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Open / Closed</TableHead>
+                  <TableHeader className="bg-surface-muted text-[11px]">
+                    <TableRow className="border-b border-line">
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Customer</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Code</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Duration</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Contract Status</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Monthly Hours</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Annual Hours</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Approved Utilized</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Pending Approval</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Remaining</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Compliance</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Open / Closed</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="font-mono text-xs text-zinc-800">
+                  <TableBody className="text-xs text-ink">
                     {customerPortfolio.map((c, i) => (
-                      <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                        <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{c.name}</TableCell>
-                        <TableCell className="py-3 px-4 text-zinc-500">{c.code}</TableCell>
-                        <TableCell className="py-3 px-4 text-[10px] text-zinc-400">
+                      <TableRow key={i} className="border-b border-line hover:bg-surface-muted">
+                        <TableCell className="py-3 px-4 font-extrabold text-ink">{c.name}</TableCell>
+                        <TableCell className="py-3 px-4 text-ink-secondary">{c.code}</TableCell>
+                        <TableCell className="py-3 px-4 text-[11px] text-ink-muted">
                           {c.start} to {c.end}
                         </TableCell>
                         <TableCell className="py-3 px-4">
-                          <Badge className={c.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px]' : 'bg-zinc-100 text-zinc-700 border border-zinc-200 text-[9px]'}>
+                          <Badge className={c.status === 'Active' ? 'bg-success-soft text-success-strong border border-success-border text-[11px]' : 'bg-surface-subtle text-ink-secondary border border-line text-[11px]'}>
                             {c.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-3 px-4 text-center">{c.monthlyHours}h</TableCell>
                         <TableCell className="py-3 px-4 text-center">{c.annualHours}h</TableCell>
-                        <TableCell className="py-3 px-4 text-center font-bold text-zinc-950">{c.approvedHours.toFixed(1)}h</TableCell>
-                        <TableCell className="py-3 px-4 text-center text-zinc-400">{c.pendingHours.toFixed(1)}h</TableCell>
-                        <TableCell className="py-3 px-4 text-center font-bold text-zinc-950">{c.remainingHours.toFixed(1)}h</TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold text-ink">{c.approvedHours.toFixed(1)}h</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-ink-muted">{c.pendingHours.toFixed(1)}h</TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold text-ink">{c.remainingHours.toFixed(1)}h</TableCell>
                         <TableCell className="py-3 px-4 text-center">
-                          <span className={c.slaCompliance < 98 ? 'text-red-500 font-bold' : 'text-emerald-600 font-bold'}>
+                          <span className={c.slaCompliance < 98 ? 'text-critical font-bold' : 'text-success font-bold'}>
                             {c.slaCompliance.toFixed(1)}%
                           </span>
                         </TableCell>
                         <TableCell className="py-3 px-4 text-center text-[11px]">
-                          <span className="font-bold text-red-600">{c.openCount}</span> / <span className="text-zinc-400">{c.closedCount}</span>
+                          <span className="font-bold text-critical">{c.openCount}</span> / <span className="text-ink-muted">{c.closedCount}</span>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -2123,16 +2120,16 @@ export default function AdminDashboardPage() {
             
             {/* Heatmap & Risk Summary */}
             <div className="lg:col-span-4 space-y-6">
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm">
-                <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase block mb-3">Capacity Heatmap</span>
-                <div className="grid grid-cols-4 gap-2 font-mono text-[9px] text-center">
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block mb-3">Capacity Heatmap</span>
+                <div className="grid grid-cols-4 gap-2 text-[11px] text-center">
                   {consultantsPortfolio.map((c, idx) => (
                     <div 
                       key={idx} 
                       className={`p-2.5 rounded-lg border flex flex-col justify-between ${
                         c.workloadRisk === 'Overloaded' ? 'bg-red-50 border-red-200 text-red-700' :
                         c.workloadRisk === 'Near Capacity' ? 'bg-orange-50 border-orange-200 text-orange-700' :
-                        c.workloadRisk === 'Underutilized' ? 'bg-zinc-50 border-zinc-200 text-zinc-500' :
+                        c.workloadRisk === 'Underutilized' ? 'bg-surface-muted border-line text-ink-secondary' :
                         'bg-zinc-900 border-zinc-900 text-white'
                       }`}
                     >
@@ -2144,36 +2141,36 @@ export default function AdminDashboardPage() {
               </Card>
 
               {/* Overloaded List */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-3 font-mono text-xs">
-                <span className="text-[9px] font-bold text-zinc-400 uppercase block">Overloaded Consultants</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-3 text-xs">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Overloaded Consultants</span>
                 {overloadedConsultants.length > 0 ? (
                   <div className="space-y-2">
                     {overloadedConsultants.map((c, i) => (
                       <div key={i} className="flex justify-between items-center p-2 bg-red-50/50 border border-red-100 rounded-lg">
                         <span>{c.name} ({c.type})</span>
-                        <Badge className="bg-red-100 text-red-700 text-[8px] font-bold">{c.activeCount} open cases</Badge>
+                        <Badge className="bg-red-100 text-red-700 text-[11px] font-bold">{c.activeCount} open cases</Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-zinc-400 text-[10px]">No consultants overload reported.</p>
+                  <p className="text-ink-muted text-[11px]">No consultants overload reported.</p>
                 )}
               </Card>
 
               {/* Underutilized List */}
-              <Card className="bg-white border-zinc-200 p-4 rounded-xl shadow-sm space-y-3 font-mono text-xs">
-                <span className="text-[9px] font-bold text-zinc-400 uppercase block">Underutilized Specialists</span>
+              <Card className="bg-surface border-line p-4 rounded-lg shadow-card space-y-3 text-xs">
+                <span className="text-[11px] font-bold text-ink-muted uppercase block">Underutilized Specialists</span>
                 {underutilizedConsultants.length > 0 ? (
                   <div className="space-y-2">
                     {underutilizedConsultants.map((c, i) => (
-                      <div key={i} className="flex justify-between items-center p-2 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500">
+                      <div key={i} className="flex justify-between items-center p-2 bg-surface-muted border border-line rounded-lg text-ink-secondary">
                         <span>{c.name}</span>
-                        <Badge className="bg-zinc-100 text-zinc-600 border border-zinc-200 text-[8px] font-bold">{c.utilization.toFixed(0)}% load</Badge>
+                        <Badge className="bg-surface-subtle text-ink-secondary border border-line text-[11px] font-bold">{c.utilization.toFixed(0)}% load</Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-zinc-400 text-[10px]">All consultants optimized.</p>
+                  <p className="text-ink-muted text-[11px]">All consultants optimized.</p>
                 )}
               </Card>
 
@@ -2181,47 +2178,47 @@ export default function AdminDashboardPage() {
 
             {/* Main Consultant Table */}
             <div className="lg:col-span-8">
-              <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-                <CardHeader className="border-b border-zinc-100 pb-3">
-                  <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Consultant Command & Utilization Matrix</CardTitle>
-                  <CardDescription className="text-[10px] font-mono">
+              <Card className="bg-surface border-line shadow-card rounded-lg">
+                <CardHeader className="border-b border-line pb-3">
+                  <CardTitle className="text-xs font-bold uppercase text-ink">Consultant Command & Utilization Matrix</CardTitle>
+                  <CardDescription className="text-[11px]">
                     Monitors functional/technical credentials, ticket loads, billing hours, capacity (160h standard), and workload risks.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-zinc-50 font-mono text-[9px]">
-                        <TableRow className="border-b border-zinc-200">
-                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Consultant</TableHead>
-                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Type / Module</TableHead>
-                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Tickets (Open/Closed)</TableHead>
-                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Approved Hours</TableHead>
-                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Utilization</TableHead>
-                          <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Workload Risk</TableHead>
+                      <TableHeader className="bg-surface-muted text-[11px]">
+                        <TableRow className="border-b border-line">
+                          <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Consultant</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Type / Module</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Tickets (Open/Closed)</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Approved Hours</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Utilization</TableHead>
+                          <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Workload Risk</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody className="font-mono text-xs text-zinc-800">
+                      <TableBody className="text-xs text-ink">
                         {consultantsPortfolio.map((c, i) => (
-                          <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                            <TableCell className="py-3 px-4 font-extrabold text-zinc-900">
+                          <TableRow key={i} className="border-b border-line hover:bg-surface-muted">
+                            <TableCell className="py-3 px-4 font-extrabold text-ink">
                               <div>
                                 <span>{c.name}</span>
-                                <span className="text-[9px] text-zinc-400 block font-normal mt-0.5">{c.email}</span>
+                                <span className="text-[11px] text-ink-muted block font-normal mt-0.5">{c.email}</span>
                               </div>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-[10px] block font-bold text-zinc-500 uppercase">{c.type}</span>
-                              <span className="text-[9px] text-zinc-400 block mt-0.5">{c.modules.join(', ') || 'General'}</span>
+                              <span className="text-[11px] block font-bold text-ink-secondary uppercase">{c.type}</span>
+                              <span className="text-[11px] text-ink-muted block mt-0.5">{c.modules.join(', ') || 'General'}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-center">
-                              <span className="text-red-500 font-extrabold">{c.activeCount}</span> / <span className="text-zinc-400">{c.closedCount}</span>
+                              <span className="text-critical font-extrabold">{c.activeCount}</span> / <span className="text-ink-muted">{c.closedCount}</span>
                             </TableCell>
-                            <TableCell className="py-3 px-4 text-center font-bold text-zinc-900">{c.approvedHours.toFixed(1)}h</TableCell>
+                            <TableCell className="py-3 px-4 text-center font-bold text-ink">{c.approvedHours.toFixed(1)}h</TableCell>
                             <TableCell className="py-3 px-4 text-center">
                               <div className="w-20 mx-auto space-y-1">
-                                <span className="font-bold block text-[10px] text-zinc-900">{c.utilization.toFixed(0)}%</span>
-                                <div className="w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden">
+                                <span className="font-bold block text-[11px] text-ink">{c.utilization.toFixed(0)}%</span>
+                                <div className="w-full bg-surface-subtle h-1.5 rounded-full overflow-hidden">
                                   <div 
                                     className={`h-1.5 rounded-full ${c.utilization > 90 ? 'bg-red-500' : c.utilization > 75 ? 'bg-orange-500' : 'bg-zinc-900'}`} 
                                     style={{ width: `${Math.min(100, c.utilization)}%` }} 
@@ -2231,9 +2228,9 @@ export default function AdminDashboardPage() {
                             </TableCell>
                             <TableCell className="py-3 px-4 text-center">
                               <Badge className={
-                                c.workloadRisk === 'Overloaded' ? 'bg-red-50 text-red-700 border border-red-200 text-[9px]' :
-                                c.workloadRisk === 'Near Capacity' ? 'bg-orange-50 text-orange-700 border border-orange-200 text-[9px]' :
-                                'bg-zinc-100 text-zinc-700 border border-zinc-200 text-[9px]'
+                                c.workloadRisk === 'Overloaded' ? 'bg-critical-soft text-critical-strong border border-critical-border text-[11px]' :
+                                c.workloadRisk === 'Near Capacity' ? 'bg-warning-soft text-warning-strong border border-warning-border text-[11px]' :
+                                'bg-surface-subtle text-ink-secondary border border-line text-[11px]'
                               }>
                                 {c.workloadRisk}
                               </Badge>
@@ -2252,46 +2249,46 @@ export default function AdminDashboardPage() {
 
         {/* ── SAP MANAGER COMMAND CENTER ── */}
         <TabsContent value="managers" className="space-y-6 outline-none">
-          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-zinc-100 pb-3">
-              <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">SAP Manager Performance Ranks</CardTitle>
-              <CardDescription className="text-[10px] font-mono">
+          <Card className="bg-surface border-line shadow-card rounded-lg">
+            <CardHeader className="border-b border-line pb-3">
+              <CardTitle className="text-xs font-bold uppercase text-ink">SAP Manager Performance Ranks</CardTitle>
+              <CardDescription className="text-[11px]">
                 Lists all registered SAP Delivery Managers, team coverage size, pending approval loads, SLA warning risks, and overall delivery health scores.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-zinc-50 font-mono text-[9px]">
-                    <TableRow className="border-b border-zinc-200">
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Manager</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Tickets Managed</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Customers Managed</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Team size</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Pending Approvals</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Escalations</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">SLA Compliance</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">SLA Risks</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Avg Approval Speed</TableHead>
-                      <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Delivery Health</TableHead>
+                  <TableHeader className="bg-surface-muted text-[11px]">
+                    <TableRow className="border-b border-line">
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Manager</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Tickets Managed</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Customers Managed</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Team size</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Pending Approvals</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Escalations</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">SLA Compliance</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">SLA Risks</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Avg Approval Speed</TableHead>
+                      <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Delivery Health</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="font-mono text-xs text-zinc-800">
+                  <TableBody className="text-xs text-ink">
                     {managersPortfolio.map((m, i) => (
-                      <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                        <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{m.name}</TableCell>
+                      <TableRow key={i} className="border-b border-line hover:bg-surface-muted">
+                        <TableCell className="py-3 px-4 font-extrabold text-ink">{m.name}</TableCell>
                         <TableCell className="py-3 px-4 text-center">{m.ticketsManaged}</TableCell>
                         <TableCell className="py-3 px-4 text-center">{m.customersManaged}</TableCell>
-                        <TableCell className="py-3 px-4 text-center font-bold text-zinc-900">{m.teamSize} consultants</TableCell>
-                        <TableCell className="py-3 px-4 text-center text-orange-600 font-bold">{m.pendingApprovals}</TableCell>
-                        <TableCell className="py-3 px-4 text-center text-red-500 font-bold">{m.escalations}</TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold text-ink">{m.teamSize} consultants</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-warning font-bold">{m.pendingApprovals}</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-critical font-bold">{m.escalations}</TableCell>
                         <TableCell className="py-3 px-4 text-center font-bold">{m.slaCompliance.toFixed(1)}%</TableCell>
-                        <TableCell className="py-3 px-4 text-center text-red-500 font-bold">{m.slaRisks}</TableCell>
-                        <TableCell className="py-3 px-4 text-center text-zinc-500">
+                        <TableCell className="py-3 px-4 text-center text-critical font-bold">{m.slaRisks}</TableCell>
+                        <TableCell className="py-3 px-4 text-center text-ink-secondary">
                           {m.avgApprovalSpeedHours > 0 ? `${m.avgApprovalSpeedHours.toFixed(1)} hours` : 'Immediate'}
                         </TableCell>
                         <TableCell className="py-3 px-4 text-center">
-                          <span className={`font-extrabold ${m.deliveryHealth > 85 ? 'text-emerald-600' : 'text-orange-500'}`}>
+                          <span className={`font-extrabold ${m.deliveryHealth > 85 ? 'text-success' : 'text-warning'}`}>
                             {m.deliveryHealth}%
                           </span>
                         </TableCell>
@@ -2306,10 +2303,10 @@ export default function AdminDashboardPage() {
 
         {/* ── APPROVALS & REOPEN/DELETE QUEUE ── */}
         <TabsContent value="approvals" className="space-y-6 outline-none">
-          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-zinc-100 pb-3">
-              <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Pending Approvals Ledger Queue</CardTitle>
-              <CardDescription className="text-[10px] font-mono">
+          <Card className="bg-surface border-line shadow-card rounded-lg">
+            <CardHeader className="border-b border-line pb-3">
+              <CardTitle className="text-xs font-bold uppercase text-ink">Pending Approvals Ledger Queue</CardTitle>
+              <CardDescription className="text-[11px]">
                 Lists all timesheet approvals, ticket closure requests, reopen requests, unlock requests, and soft delete requests awaiting administrative audit confirmation.
               </CardDescription>
             </CardHeader>
@@ -2317,61 +2314,61 @@ export default function AdminDashboardPage() {
               {approvalsQueue.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader className="bg-zinc-50 font-mono text-[9px]">
-                      <TableRow className="border-b border-zinc-200">
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Ticket Number</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Type</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Details</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Requester</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Date Raised</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-right">Actions</TableHead>
+                    <TableHeader className="bg-surface-muted text-[11px]">
+                      <TableRow className="border-b border-line">
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Ticket Number</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Type</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Details</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Requester</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Date Raised</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="font-mono text-xs text-zinc-800">
+                    <TableBody className="text-xs text-ink">
                       {approvalsQueue.map((item, i) => (
-                        <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">
-                            <Link href={`/admin/tickets/${item.ticketId}`} className="hover:underline text-zinc-900">
+                        <TableRow key={i} className="border-b border-line hover:bg-surface-muted">
+                          <TableCell className="py-3 px-4 font-extrabold text-ink">
+                            <Link href={`/admin/tickets/${item.ticketId}`} className="hover:underline text-ink">
                               {item.ticketNumber}
                             </Link>
                           </TableCell>
                           <TableCell className="py-3 px-4">
                             <Badge className={
-                              item.type === 'Timesheet' ? 'bg-blue-50 text-blue-700 border border-blue-100 text-[9px]' :
-                              item.type === 'Closure' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 text-[9px]' :
-                              item.type === 'Unlock' ? 'bg-purple-50 text-purple-700 border border-purple-100 text-[9px]' :
-                              item.type === 'Delete' ? 'bg-red-50 text-red-700 border border-red-100 text-[9px]' :
-                              'bg-zinc-100 text-zinc-700 border border-zinc-200 text-[9px]'
+                              item.type === 'Timesheet' ? 'bg-blue-50 text-blue-700 border border-blue-100 text-[11px]' :
+                              item.type === 'Closure' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 text-[11px]' :
+                              item.type === 'Unlock' ? 'bg-purple-50 text-purple-700 border border-purple-100 text-[11px]' :
+                              item.type === 'Delete' ? 'bg-red-50 text-red-700 border border-red-100 text-[11px]' :
+                              'bg-surface-subtle text-ink-secondary border border-line text-[11px]'
                             }>
                               {item.type}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-3 px-4 text-zinc-600 max-w-sm truncate">{item.details}</TableCell>
-                          <TableCell className="py-3 px-4 text-zinc-500 font-bold">{item.requester}</TableCell>
-                          <TableCell className="py-3 px-4 text-[10px] text-zinc-400">
+                          <TableCell className="py-3 px-4 text-ink-secondary max-w-sm truncate">{item.details}</TableCell>
+                          <TableCell className="py-3 px-4 text-ink-secondary font-bold">{item.requester}</TableCell>
+                          <TableCell className="py-3 px-4 text-[11px] text-ink-muted">
                             {new Date(item.date).toLocaleString()}
                           </TableCell>
                           <TableCell className="py-3 px-4 text-right space-x-2">
                             {item.type === 'Timesheet' && (
                               <>
-                                <Button onClick={() => executeTimesheetApproval(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Approve</Button>
-                                <Button onClick={() => executeTimesheetApproval(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 rounded">Reject</Button>
+                                <Button onClick={() => executeTimesheetApproval(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Approve</Button>
+                                <Button onClick={() => executeTimesheetApproval(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-surface text-ink-secondary border border-line hover:bg-surface-muted rounded">Reject</Button>
                               </>
                             )}
                             {item.type === 'Closure' && (
                               <>
-                                <Button onClick={() => executeClosureApproval(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Approve</Button>
-                                <Button onClick={() => executeClosureApproval(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 rounded">Reject</Button>
+                                <Button onClick={() => executeClosureApproval(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Approve</Button>
+                                <Button onClick={() => executeClosureApproval(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-surface text-ink-secondary border border-line hover:bg-surface-muted rounded">Reject</Button>
                               </>
                             )}
                             {item.type === 'Delete' && (
                               <>
-                                <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-red-600 hover:bg-red-700 text-white rounded">Confirm Delete</Button>
-                                <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[8px] uppercase font-bold bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 rounded">Reject</Button>
+                                <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-red-600 hover:bg-red-700 text-white rounded">Confirm Delete</Button>
+                                <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-surface text-ink-secondary border border-line hover:bg-surface-muted rounded">Reject</Button>
                               </>
                             )}
                             {!['Timesheet', 'Closure', 'Delete'].includes(item.type) && (
-                              <Button asChild size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">
+                              <Button asChild size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">
                                 <Link href={`/admin/tickets/${item.ticketId}`}>Open Ticket</Link>
                               </Button>
                             )}
@@ -2382,7 +2379,7 @@ export default function AdminDashboardPage() {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-12 font-mono text-zinc-400 text-xs">
+                <div className="text-center py-12 text-ink-muted text-xs">
                   All approvals fully processed. No pending requests.
                 </div>
               )}
@@ -2392,10 +2389,10 @@ export default function AdminDashboardPage() {
 
         {/* ── ESCALATIONS CENTER ── */}
         <TabsContent value="escalations" className="space-y-6 outline-none">
-          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-zinc-100 pb-3">
-              <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Escalation Center Audit Queue</CardTitle>
-              <CardDescription className="text-[10px] font-mono">
+          <Card className="bg-surface border-line shadow-card rounded-lg">
+            <CardHeader className="border-b border-line pb-3">
+              <CardTitle className="text-xs font-bold uppercase text-ink">Escalation Center Audit Queue</CardTitle>
+              <CardDescription className="text-[11px]">
                 Lists all tickets currently flagged for manager or administrator attention.
               </CardDescription>
             </CardHeader>
@@ -2403,37 +2400,37 @@ export default function AdminDashboardPage() {
               {escalationsQueue.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader className="bg-zinc-50 font-mono text-[9px]">
-                      <TableRow className="border-b border-zinc-200">
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Ticket</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Title</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Customer</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Assignees</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Severity / Priority</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Escalation Reason</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Date Raised</TableHead>
+                    <TableHeader className="bg-surface-muted text-[11px]">
+                      <TableRow className="border-b border-line">
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Ticket</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Title</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Customer</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Assignees</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Severity / Priority</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Escalation Reason</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Date Raised</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="font-mono text-xs text-zinc-800">
+                    <TableBody className="text-xs text-ink">
                       {escalationsQueue.map((esc, i) => (
-                        <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">
+                        <TableRow key={i} className="border-b border-line hover:bg-surface-muted">
+                          <TableCell className="py-3 px-4 font-extrabold text-ink">
                             <Link href={`/admin/tickets/${esc.ticketId}`} className="hover:underline">
                               {esc.ticketNumber}
                             </Link>
                           </TableCell>
-                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{esc.title}</TableCell>
-                          <TableCell className="py-3 px-4 text-zinc-500 font-bold">{esc.customer}</TableCell>
+                          <TableCell className="py-3 px-4 font-extrabold text-ink">{esc.title}</TableCell>
+                          <TableCell className="py-3 px-4 text-ink-secondary font-bold">{esc.customer}</TableCell>
                           <TableCell className="py-3 px-4">
-                            <span className="text-[10px] text-zinc-400 block font-normal">Mgr: {esc.manager}</span>
-                            <span className="text-[10px] text-zinc-400 block font-normal">Cons: {esc.consultant}</span>
+                            <span className="text-[11px] text-ink-muted block font-normal">Mgr: {esc.manager}</span>
+                            <span className="text-[11px] text-ink-muted block font-normal">Cons: {esc.consultant}</span>
                           </TableCell>
                           <TableCell className="py-3 px-4 text-center space-y-1">
-                            <Badge className="bg-red-50 text-red-700 border border-red-200 text-[8px] font-bold block w-fit mx-auto">{esc.severity} Severity</Badge>
-                            <span className="text-[10px] text-zinc-400 block font-normal">Priority: {esc.priority}</span>
+                            <Badge className="bg-critical-soft text-critical-strong border border-critical-border text-[11px] font-bold block w-fit mx-auto">{esc.severity} Severity</Badge>
+                            <span className="text-[11px] text-ink-muted block font-normal">Priority: {esc.priority}</span>
                           </TableCell>
-                          <TableCell className="py-3 px-4 text-zinc-600 max-w-sm truncate">{esc.reason}</TableCell>
-                          <TableCell className="py-3 px-4 text-[10px] text-zinc-400">
+                          <TableCell className="py-3 px-4 text-ink-secondary max-w-sm truncate">{esc.reason}</TableCell>
+                          <TableCell className="py-3 px-4 text-[11px] text-ink-muted">
                             {new Date(esc.date).toLocaleString()}
                           </TableCell>
                         </TableRow>
@@ -2442,7 +2439,7 @@ export default function AdminDashboardPage() {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-12 font-mono text-zinc-400 text-xs">
+                <div className="text-center py-12 text-ink-muted text-xs">
                   Zero active escalations reported. All operations normal.
                 </div>
               )}
@@ -2451,31 +2448,31 @@ export default function AdminDashboardPage() {
         </TabsContent>
 
         {/* ── PLATFORM HEALTH ── */}
-        <TabsContent value="health" className="space-y-6 outline-none font-mono">
+        <TabsContent value="health" className="space-y-6 outline-none">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Health status checks */}
-            <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-              <CardHeader className="border-b border-zinc-100 pb-3 flex flex-row justify-between items-center">
+            <Card className="bg-surface border-line shadow-card rounded-lg">
+              <CardHeader className="border-b border-line pb-3 flex flex-row justify-between items-center">
                 <div>
-                  <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">System Posture Health Monitor</CardTitle>
-                  <CardDescription className="text-[10px] font-mono">Real-time pings checking active endpoints</CardDescription>
+                  <CardTitle className="text-xs font-bold uppercase text-ink">System Posture Health Monitor</CardTitle>
+                  <CardDescription className="text-[11px]">Real-time pings checking active endpoints</CardDescription>
                 </div>
                 <Button 
                   onClick={runPlatformHealthChecks} 
                   disabled={checkingHealth}
-                  className="h-7 text-[9px] uppercase font-bold bg-zinc-950 text-white rounded px-3"
+                  className="h-7 text-[11px] uppercase font-bold bg-ink text-white rounded px-3"
                 >
                   {checkingHealth ? 'Testing...' : 'Retest Health'}
                 </Button>
               </CardHeader>
               <CardContent className="p-4 space-y-3 text-xs">
                 {Object.entries(healthStatus).map(([key, h]) => (
-                  <div key={key} className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg">
-                    <span className="font-extrabold uppercase text-zinc-800">{key} Integration</span>
+                  <div key={key} className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                    <span className="font-extrabold uppercase text-ink">{key} Integration</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-zinc-400 font-normal">Latency: {h.latency}ms</span>
-                      <Badge className={h.status === 'Online' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}>
+                      <span className="text-[11px] text-ink-muted font-normal">Latency: {h.latency}ms</span>
+                      <Badge className={h.status === 'Online' ? 'bg-success-soft text-success-strong border border-success-border' : 'bg-critical-soft text-critical-strong border border-critical-border'}>
                         {h.status}
                       </Badge>
                     </div>
@@ -2485,8 +2482,8 @@ export default function AdminDashboardPage() {
             </Card>
 
             {/* Delivery Health center warning posture */}
-            <Card className="bg-white border-zinc-200 shadow-sm rounded-xl p-6 space-y-4">
-              <span className="text-[9px] font-bold text-zinc-400 uppercase block">Delivery Health Posture Status</span>
+            <Card className="bg-surface border-line shadow-card rounded-lg p-6 space-y-4">
+              <span className="text-[11px] font-bold text-ink-muted uppercase block">Delivery Health Posture Status</span>
               <div className="flex items-center gap-4">
                 <div className={`w-14 h-14 rounded-full flex items-center justify-center font-extrabold text-sm border-2 ${
                   deliveryHealthPostures.posture === 'Healthy' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' :
@@ -2496,8 +2493,8 @@ export default function AdminDashboardPage() {
                   {deliveryHealthPostures.posture}
                 </div>
                 <div>
-                  <span className="text-sm font-extrabold text-zinc-900 uppercase block">Operational Status: {deliveryHealthPostures.posture}</span>
-                  <span className="text-[10px] text-zinc-400 mt-1 block">
+                  <span className="text-sm font-extrabold text-ink uppercase block">Operational Status: {deliveryHealthPostures.posture}</span>
+                  <span className="text-[11px] text-ink-muted mt-1 block">
                     {deliveryHealthPostures.warnings.length > 0 
                       ? `Active concerns: ${deliveryHealthPostures.warnings.join(', ')}`
                       : 'All operations performing within SLA targets.'
@@ -2506,22 +2503,22 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="border-t border-zinc-100 pt-4 space-y-3 text-[10px]">
+              <div className="border-t border-line pt-4 space-y-3 text-[11px]">
                 <div className="flex justify-between">
                   <span>SLA Breaches Limit Posture:</span>
-                  <span className={globalStats.slaBreachesCount > 0 ? 'text-red-500 font-bold' : 'text-emerald-600 font-bold'}>
+                  <span className={globalStats.slaBreachesCount > 0 ? 'text-critical font-bold' : 'text-success font-bold'}>
                     {globalStats.slaBreachesCount > 0 ? 'WARN' : 'SECURE'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Approval queue backlog index:</span>
-                  <span className={globalStats.pendingApprovalsCount > 10 ? 'text-orange-500 font-bold' : 'text-emerald-600 font-bold'}>
+                  <span className={globalStats.pendingApprovalsCount > 10 ? 'text-warning font-bold' : 'text-success font-bold'}>
                     {globalStats.pendingApprovalsCount > 10 ? 'WARN' : 'SECURE'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Manager response compliance score:</span>
-                  <span className="text-zinc-900 font-bold">OPTIMAL</span>
+                  <span className="text-ink font-bold">OPTIMAL</span>
                 </div>
               </div>
             </Card>
@@ -2531,28 +2528,28 @@ export default function AdminDashboardPage() {
 
         {/* ── AUDIT LOGS HISTORY PANEL ── */}
         <TabsContent value="audits" className="space-y-6 outline-none">
-          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-zinc-100 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <Card className="bg-surface border-line shadow-card rounded-lg">
+            <CardHeader className="border-b border-line pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">Audit History Ledger Trails</CardTitle>
-                <CardDescription className="text-[10px] font-mono">
+                <CardTitle className="text-xs font-bold uppercase text-ink">Audit History Ledger Trails</CardTitle>
+                <CardDescription className="text-[11px]">
                   Search and review admin actions, password updates, deactivation changes, and system transaction logs.
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-3 w-full sm:w-auto font-mono text-xs">
+              <div className="flex items-center gap-3 w-full sm:w-auto text-xs">
                 <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-ink-muted" />
                   <input
                     type="text"
                     value={auditSearch}
                     onChange={(e) => setAuditSearch(e.target.value)}
                     placeholder="Search audits..."
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 pl-8 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
+                    className="w-full bg-surface-muted border border-line rounded p-2 pl-8 text-xs text-ink placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                   />
                 </div>
                 <Button 
                   onClick={handleExportAuditsCSV}
-                  className="h-8 text-[9px] uppercase font-bold bg-zinc-950 text-white rounded px-3 flex items-center gap-1.5"
+                  className="h-8 text-[11px] uppercase font-bold bg-ink text-white rounded px-3 flex items-center gap-1.5"
                 >
                   <Download size={12} /> Export CSV
                 </Button>
@@ -2560,31 +2557,31 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent className="p-0">
               {auditsLoading ? (
-                <div className="py-20 text-center font-mono text-xs text-zinc-400 animate-pulse">Loading audits...</div>
+                <div className="py-20 text-center text-xs text-ink-muted animate-pulse">Loading audits...</div>
               ) : filteredAuditLogs.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader className="bg-zinc-50 font-mono text-[9px]">
-                      <TableRow className="border-b border-zinc-200">
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Log ID</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Target User Email</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Action performed</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Performed By</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Timestamp</TableHead>
+                    <TableHeader className="bg-surface-muted text-[11px]">
+                      <TableRow className="border-b border-line">
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Log ID</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Target User Email</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Action performed</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Performed By</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Timestamp</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="font-mono text-xs text-zinc-800">
+                    <TableBody className="text-xs text-ink">
                       {filteredAuditLogs.map((log, i) => (
-                        <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                          <TableCell className="py-3 px-4 text-zinc-400 text-[10px]">{log.id.slice(0, 8).toUpperCase()}...</TableCell>
-                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{log.user_email}</TableCell>
+                        <TableRow key={i} className="border-b border-line hover:bg-surface-muted">
+                          <TableCell className="py-3 px-4 text-ink-muted text-[11px]">{log.id.slice(0, 8).toUpperCase()}...</TableCell>
+                          <TableCell className="py-3 px-4 font-extrabold text-ink">{log.user_email}</TableCell>
                           <TableCell className="py-3 px-4">
-                            <Badge className="bg-zinc-100 text-zinc-800 border border-zinc-200 text-[9px] font-bold">
+                            <Badge className="bg-surface-subtle text-ink border border-line text-[11px] font-bold">
                               {log.action}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-3 px-4 text-zinc-500 font-bold">{log.performed_by}</TableCell>
-                          <TableCell className="py-3 px-4 text-[10px] text-zinc-400">
+                          <TableCell className="py-3 px-4 text-ink-secondary font-bold">{log.performed_by}</TableCell>
+                          <TableCell className="py-3 px-4 text-[11px] text-ink-muted">
                             {new Date(log.created_at).toLocaleString()}
                           </TableCell>
                         </TableRow>
@@ -2593,7 +2590,7 @@ export default function AdminDashboardPage() {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-12 font-mono text-zinc-400 text-xs">No audit logs matched search criteria.</div>
+                <div className="text-center py-12 text-ink-muted text-xs">No audit logs matched search criteria.</div>
               )}
             </CardContent>
           </Card>
@@ -2601,19 +2598,19 @@ export default function AdminDashboardPage() {
 
         {/* ── PASSWORD MANAGEMENT & IAM ── */}
         <TabsContent value="iam" className="space-y-6 outline-none">
-          <Card className="bg-white border-zinc-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-zinc-100 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <Card className="bg-surface border-line shadow-card rounded-lg">
+            <CardHeader className="border-b border-line pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <CardTitle className="text-xs font-bold font-mono uppercase text-zinc-900">User Identity & Access Management (IAM)</CardTitle>
-                <CardDescription className="text-[10px] font-mono">
+                <CardTitle className="text-xs font-bold uppercase text-ink">User Identity & Access Management (IAM)</CardTitle>
+                <CardDescription className="text-[11px]">
                   Enforce password change requirements, toggle user account lock status, reset user credentials, or deactivate profiles.
                 </CardDescription>
               </div>
-              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto font-mono text-xs">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto text-xs">
                 <select 
                   value={selectedUserType}
                   onChange={(e) => setSelectedUserType(e.target.value as any)}
-                  className="bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none"
+                  className="bg-surface-muted border border-line rounded p-2 text-xs text-ink focus:outline-none"
                 >
                   <option value="All">All Roles</option>
                   <option value="Customer">Customers</option>
@@ -2623,13 +2620,13 @@ export default function AdminDashboardPage() {
                 </select>
 
                 <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-ink-muted" />
                   <input
                     type="text"
                     value={userSearchTerm}
                     onChange={(e) => setUserSearchTerm(e.target.value)}
                     placeholder="Search users..."
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 pl-8 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
+                    className="w-full bg-surface-muted border border-line rounded p-2 pl-8 text-xs text-ink placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                   />
                 </div>
               </div>
@@ -2638,39 +2635,39 @@ export default function AdminDashboardPage() {
               {filteredIAMUsers.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader className="bg-zinc-50 font-mono text-[9px]">
-                      <TableRow className="border-b border-zinc-200">
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Full Name</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">Email Address</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700">IAM Role</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Account Lock</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-center">Access Status</TableHead>
-                        <TableHead className="py-2.5 px-4 font-bold text-zinc-700 text-right">Actions</TableHead>
+                    <TableHeader className="bg-surface-muted text-[11px]">
+                      <TableRow className="border-b border-line">
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Full Name</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">Email Address</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary">IAM Role</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Account Lock</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-center">Access Status</TableHead>
+                        <TableHead className="py-2.5 px-4 font-bold text-ink-secondary text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="font-mono text-xs text-zinc-800">
+                    <TableBody className="text-xs text-ink">
                       {filteredIAMUsers.map((u, i) => (
-                        <TableRow key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                          <TableCell className="py-3 px-4 font-extrabold text-zinc-900">{u.full_name || 'N/A'}</TableCell>
-                          <TableCell className="py-3 px-4 text-zinc-500 font-bold">{u.email}</TableCell>
+                        <TableRow key={i} className="border-b border-line hover:bg-surface-muted">
+                          <TableCell className="py-3 px-4 font-extrabold text-ink">{u.full_name || 'N/A'}</TableCell>
+                          <TableCell className="py-3 px-4 text-ink-secondary font-bold">{u.email}</TableCell>
                           <TableCell className="py-3 px-4">
-                            <Badge className="bg-zinc-100 text-zinc-800 border border-zinc-200 text-[9px] font-bold">
+                            <Badge className="bg-surface-subtle text-ink border border-line text-[11px] font-bold">
                               {u.role}
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3 px-4 text-center">
-                            <Badge className={u.is_locked ? 'bg-red-50 text-red-700 border border-red-200 text-[9px]' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px]'}>
+                            <Badge className={u.is_locked ? 'bg-critical-soft text-critical-strong border border-critical-border text-[11px]' : 'bg-success-soft text-success-strong border border-success-border text-[11px]'}>
                               {u.is_locked ? 'LOCKED' : 'SECURE'}
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3 px-4 text-center">
-                            <Badge className={u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px]' : 'bg-zinc-100 text-zinc-700 border border-zinc-200 text-[9px]'}>
+                            <Badge className={u.is_active ? 'bg-success-soft text-success-strong border border-success-border text-[11px]' : 'bg-surface-subtle text-ink-secondary border border-line text-[11px]'}>
                               {u.is_active ? 'ENABLED' : 'DISABLED'}
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3 px-4 text-right space-x-2">
                             {u.is_locked && (
-                              <Button onClick={() => handleUserUnlock(u)} size="sm" className="h-6 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded">Unlock</Button>
+                              <Button onClick={() => handleUserUnlock(u)} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Unlock</Button>
                             )}
                             <Button 
                               onClick={() => {
@@ -2680,7 +2677,7 @@ export default function AdminDashboardPage() {
                                 setIsIAMModalOpen(true);
                               }} 
                               size="sm" 
-                              className="h-6 text-[8px] uppercase font-bold bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 rounded"
+                              className="h-6 text-[11px] uppercase font-bold bg-surface text-ink-secondary border border-line hover:bg-surface-muted rounded"
                             >
                               Password Actions
                             </Button>
@@ -2688,7 +2685,7 @@ export default function AdminDashboardPage() {
                               <Button 
                                 onClick={() => handleUserToggleActive(u)} 
                                 size="sm" 
-                                className={`h-6 text-[8px] uppercase font-bold rounded ${
+                                className={`h-6 text-[11px] uppercase font-bold rounded ${
                                   u.is_active ? 'bg-red-50 text-red-700 border border-red-100 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100'
                                 }`}
                               >
@@ -2702,7 +2699,7 @@ export default function AdminDashboardPage() {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-12 font-mono text-zinc-400 text-xs font-bold">No users found.</div>
+                <div className="text-center py-12 text-ink-muted text-xs font-bold">No users found.</div>
               )}
             </CardContent>
           </Card>
@@ -2711,31 +2708,31 @@ export default function AdminDashboardPage() {
 
       {/* ── IAM CREDENTIALS MANAGER MODAL ── */}
       <Dialog open={isIAMModalOpen} onOpenChange={setIsIAMModalOpen}>
-        <DialogContent className="bg-white border border-zinc-200 rounded-lg max-w-md p-6 text-zinc-900 shadow-xl font-mono text-xs">
+        <DialogContent className="bg-surface border border-line rounded-lg max-w-md p-6 text-ink shadow-xl text-xs">
           {selectedIAMUser && (
             <>
               <DialogHeader className="space-y-1">
-                <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-900">IAM Credentials override</DialogTitle>
-                <DialogDescription className="text-[10px] text-zinc-400 font-mono">
+                <DialogTitle className="text-sm font-bold uppercase tracking-wider text-ink">IAM Credentials override</DialogTitle>
+                <DialogDescription className="text-[11px] text-ink-muted">
                   Target Account: {selectedIAMUser.full_name || selectedIAMUser.email} ({selectedIAMUser.role})
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 pt-3">
-                <div className="p-3 bg-zinc-50 border border-zinc-100 rounded-lg space-y-1">
-                  <span className="text-[8px] text-zinc-400 font-bold uppercase block">Administrative Actions</span>
+                <div className="p-3 bg-surface-muted border border-line rounded-lg space-y-1">
+                  <span className="text-[11px] text-ink-muted font-bold uppercase block">Administrative Actions</span>
                   <div className="flex gap-2">
-                    <Button onClick={handleIAMActionReset} className="h-7 text-[9px] uppercase font-bold bg-zinc-950 text-white rounded px-3">
+                    <Button onClick={handleIAMActionReset} className="h-7 text-[11px] uppercase font-bold bg-ink text-white rounded px-3">
                       Reset Password
                     </Button>
-                    <span className="text-[10px] text-zinc-400 self-center">Generates secure temporary password</span>
+                    <span className="text-[11px] text-ink-muted self-center">Generates secure temporary password</span>
                   </div>
                 </div>
 
                 {generatedPassResult && (
-                  <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg space-y-1">
-                    <span className="text-[8px] text-emerald-700 font-bold uppercase block">Temporary Credentials Ready</span>
-                    <div className="flex justify-between items-center bg-white p-2 rounded border border-zinc-200 text-zinc-900 text-[11px] font-extrabold select-all">
+                  <div className="p-3 bg-surface-muted border border-line rounded-lg space-y-1">
+                    <span className="text-[11px] text-emerald-700 font-bold uppercase block">Temporary Credentials Ready</span>
+                    <div className="flex justify-between items-center bg-surface p-2 rounded border border-line text-ink text-[11px] font-extrabold select-all">
                       <span>{generatedPassResult}</span>
                       <Button 
                         onClick={() => {
@@ -2743,44 +2740,44 @@ export default function AdminDashboardPage() {
                           toast.success('Credentials copied to clipboard.');
                         }}
                         size="sm" 
-                        className="h-5 text-[8px] uppercase font-bold bg-zinc-950 text-white rounded px-2"
+                        className="h-5 text-[11px] uppercase font-bold bg-ink text-white rounded px-2"
                       >
                         Copy
                       </Button>
                     </div>
-                    <span className="text-[8px] text-zinc-400 block mt-1">Setup flags: force_password_change=true, first_login_completed=false</span>
+                    <span className="text-[11px] text-ink-muted block mt-1">Setup flags: force_password_change=true, first_login_completed=false</span>
                   </div>
                 )}
 
-                <div className="border-t border-zinc-100 pt-3 space-y-3">
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase block">Manual Password Override</span>
+                <div className="border-t border-line pt-3 space-y-3">
+                  <span className="text-[11px] font-bold text-ink-muted uppercase block">Manual Password Override</span>
                   <div className="space-y-1">
-                    <label className="text-[8px] uppercase font-bold text-zinc-500">New Secure Password</label>
+                    <label className="text-[11px] uppercase font-bold text-ink-secondary">New Secure Password</label>
                     <input 
                       type="password"
                       value={manualPassword}
                       onChange={(e) => setManualPassword(e.target.value)}
                       placeholder="Enter new password..."
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
+                      className="w-full bg-surface-muted border border-line rounded p-2 text-xs text-ink placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                     />
                   </div>
 
                   <div className="flex items-center justify-between p-1">
                     <div>
-                      <span className="font-bold text-zinc-800 block text-[10px]">Force Setup on Next Login</span>
-                      <span className="text-[8px] text-zinc-400 mt-0.5 block">Requires user to change password on authentication</span>
+                      <span className="font-bold text-ink block text-[11px]">Force Setup on Next Login</span>
+                      <span className="text-[11px] text-ink-muted mt-0.5 block">Requires user to change password on authentication</span>
                     </div>
                     <input 
                       type="checkbox" 
                       checked={forcePasswordChange}
                       onChange={(e) => setForcePasswordChange(e.target.checked)}
-                      className="w-4 h-4 rounded border-zinc-200 text-zinc-900 focus:ring-zinc-900"
+                      className="w-4 h-4 rounded border-line text-ink focus:ring-zinc-900"
                     />
                   </div>
 
                   <Button 
                     onClick={handleIAMActionUpdate}
-                    className="w-full h-8 text-[9px] uppercase font-bold bg-zinc-950 text-white rounded"
+                    className="w-full h-8 text-[11px] uppercase font-bold bg-ink text-white rounded"
                   >
                     Apply Manual Password Override
                   </Button>
@@ -2790,7 +2787,7 @@ export default function AdminDashboardPage() {
               <DialogFooter className="pt-4">
                 <Button 
                   onClick={() => setIsIAMModalOpen(false)}
-                  className="w-full bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-200 font-bold uppercase tracking-wider text-[9px] py-2 rounded"
+                  className="w-full bg-surface hover:bg-surface-muted text-ink-secondary border border-line font-bold uppercase tracking-wider text-[11px] py-2 rounded"
                 >
                   Close Manager View
                 </Button>

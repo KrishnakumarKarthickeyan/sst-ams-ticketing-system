@@ -91,6 +91,58 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
+  /* ──────────────────────────────────────────────────────────────────────
+     SEMANTIC DESIGN TOKENS (Phase 1 foundation)
+     Every color carries meaning. Pages use these — never raw hex, never
+     ad-hoc zinc shades.
+       brand    = Enterprise Blue  (actions, links, active/selection)
+       success  = Emerald          (resolved, approved, healthy)
+       warning  = Amber            (pending, awaiting approval, SLA risk)
+       critical = Red              (escalations, SLA breach, urgent)
+       info     = Indigo           (AI insights, forecasts, system info)
+       ink/surface/line = neutral scale (text, surfaces, borders)
+     ────────────────────────────────────────────────────────────────────── */
+  --color-brand: #2563eb;
+  --color-brand-soft: #eff6ff;
+  --color-brand-border: #bfdbfe;
+  --color-brand-strong: #1d4ed8;
+
+  --color-success: #059669;
+  --color-success-soft: #ecfdf5;
+  --color-success-border: #a7f3d0;
+  --color-success-strong: #047857;
+
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-warning-border: #fde68a;
+  --color-warning-strong: #b45309;
+
+  --color-critical: #dc2626;
+  --color-critical-soft: #fef2f2;
+  --color-critical-border: #fecaca;
+  --color-critical-strong: #b91c1c;
+
+  --color-info: #4f46e5;
+  --color-info-soft: #eef2ff;
+  --color-info-border: #c7d2fe;
+  --color-info-strong: #4338ca;
+
+  --color-surface: #ffffff;
+  --color-surface-muted: #fafafa;
+  --color-surface-subtle: #f4f4f5;
+
+  --color-ink: #09090b;
+  --color-ink-secondary: #52525b;
+  --color-ink-muted: #a1a1aa;
+
+  --color-line: #e4e4e7;
+  --color-line-strong: #d4d4d8;
+
+  /* Elevation scale — soft, layered, never harsh */
+  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  --shadow-raised: 0 1px 2px rgb(16 24 40 / 0.05), 0 4px 12px -2px rgb(16 24 40 / 0.08);
+  --shadow-overlay: 0 24px 48px -12px rgb(16 24 40 / 0.18);
+
   /* Landing page (Aceternity) animations */
   --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;
   --animate-marquee: marquee var(--animation-duration, 45s) linear infinite var(--animation-direction, forwards);
@@ -109,6 +161,66 @@
     to {
       transform: translate(calc(-50% - 0.5rem));
     }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   TYPE HIERARCHY (Phase 1 foundation)
+   Display > Page Title > Section Title > Widget Title > Body > Meta > Status
+   Nothing below 11px anywhere in the product.
+   ──────────────────────────────────────────────────────────────────────── */
+@utility type-display {
+  font-size: 1.875rem; /* 30px */
+  line-height: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+@utility type-title {
+  font-size: 1.25rem; /* 20px */
+  line-height: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+@utility type-section {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@utility type-widget {
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+@utility type-body {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.375rem;
+}
+@utility type-meta {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem;
+}
+@utility type-status {
+  font-size: 0.6875rem; /* 11px */
+  line-height: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+/* Tabular figures for every metric, ID, duration and counter */
+@utility type-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Interaction baseline */
+@utility card-hover {
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+  &:hover {
+    box-shadow: var(--shadow-raised);
+    border-color: var(--color-line-strong);
   }
 }
 

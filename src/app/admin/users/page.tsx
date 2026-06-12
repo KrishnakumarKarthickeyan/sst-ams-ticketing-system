@@ -26,6 +26,8 @@ import {
   DialogDescription,
   DialogFooter
 } from '../../../components/ui/dialog';
+import { PageHeader } from '../../../components/ui/page-header';
+import { Button } from '../../../components/ui/button';
 
 interface UserProfile {
   id: string;
@@ -642,54 +644,51 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
-        <div>
-          <h1 className="text-lg font-bold uppercase text-zinc-955 font-mono">User Management</h1>
-          <p className="text-zinc-500 mt-1">Manage platform authorization, issue roles, and assign organizational scopes.</p>
-        </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5 transition cursor-pointer"
-        >
-          <Plus size={12} />
-          Provision User
-        </button>
-      </div>
+    <div className="space-y-6 text-xs text-ink">
+      <PageHeader
+        title="User Management"
+        description="Manage platform authorization, issue roles, and assign organizational scopes."
+        actions={
+          <Button onClick={() => setShowAddForm(!showAddForm)} className="gap-1.5 rounded-md">
+            <Plus size={13} />
+            Provision User
+          </Button>
+        }
+      />
 
       {/* Invite User Form */}
       {showAddForm && (
-        <form onSubmit={handleAddUser} className="bg-white border border-zinc-200 rounded p-4 max-w-md space-y-4 shadow-sm">
-          <h3 className="font-bold text-[10px] uppercase tracking-wider text-zinc-950 border-b border-zinc-150 pb-2">
+        <form onSubmit={handleAddUser} className="bg-surface border border-line rounded p-4 max-w-md space-y-4 shadow-card">
+          <h3 className="font-bold text-[11px] uppercase tracking-wider text-ink border-b border-line pb-2">
             Provision New User Access
           </h3>
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Full Name</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Full Name</label>
             <input
               type="text"
               required
               placeholder="e.g. Elena Rostova"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             />
           </div>
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Email Address</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Email Address</label>
             <input
               type="email"
               required
               placeholder="e.g. elena@sap.com"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             />
           </div>
 
           {newRole === 'SuperAdmin' ? (
             <>
               <div className="space-y-1.5 pt-1">
-                <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Assignment</label>
+                <label className="font-bold text-ink-secondary uppercase text-[11px] block">Password Assignment</label>
                 <div className="flex items-center gap-4 text-xs font-sans">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -697,7 +696,7 @@ export default function AdminUsersPage() {
                       name="newPwdOption"
                       checked={pwdOption === 'auto'}
                       onChange={() => setPwdOption('auto')}
-                      className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
+                      className="w-3.5 h-3.5 text-ink focus:ring-brand/30"
                     />
                     <span>Generate Automatically</span>
                   </label>
@@ -707,7 +706,7 @@ export default function AdminUsersPage() {
                       name="newPwdOption"
                       checked={pwdOption === 'manual'}
                       onChange={() => setPwdOption('manual')}
-                      className="w-3.5 h-3.5 text-zinc-950 focus:ring-zinc-950"
+                      className="w-3.5 h-3.5 text-ink focus:ring-brand/30"
                     />
                     <span>Define Manually</span>
                   </label>
@@ -716,29 +715,29 @@ export default function AdminUsersPage() {
 
               {pwdOption === 'manual' && (
                 <div className="space-y-1">
-                  <label className="font-bold text-zinc-700 uppercase text-[9px]">Initial Password</label>
+                  <label className="font-bold text-ink-secondary uppercase text-[11px]">Initial Password</label>
                   <input
                     type="password"
                     required
                     placeholder="Assign manual initial password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                    className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
-                  <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
+                  <span className="text-[11px] text-ink-muted block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
                 </div>
               )}
             </>
           ) : (
             <div className="space-y-1 pt-1">
-              <label className="font-bold text-zinc-700 uppercase text-[9px] block">Password Assignment</label>
-              <p className="text-[10px] text-zinc-500 font-mono italic">A secure temporary password will be auto-generated for this role.</p>
+              <label className="font-bold text-ink-secondary uppercase text-[11px] block">Password Assignment</label>
+              <p className="text-[11px] text-ink-secondary italic">A secure temporary password will be auto-generated for this role.</p>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="font-bold text-zinc-700 uppercase text-[9px]">Role Group</label>
+              <label className="font-bold text-ink-secondary uppercase text-[11px]">Role Group</label>
               <select
                 value={newRole}
                 onChange={(e) => {
@@ -748,7 +747,7 @@ export default function AdminUsersPage() {
                     setNewOrg('Assist360 Operations');
                   }
                 }}
-                className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
               >
                 <option value="Customer">Customer Client</option>
                 <option value="Consultant">SAP Consultant</option>
@@ -757,12 +756,12 @@ export default function AdminUsersPage() {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="font-bold text-zinc-700 uppercase text-[9px]">Assigned Company</label>
+              <label className="font-bold text-ink-secondary uppercase text-[11px]">Assigned Company</label>
               <select
                 value={newOrg}
                 onChange={(e) => setNewOrg(e.target.value)}
                 disabled={newRole !== 'Customer'}
-                className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono disabled:opacity-50"
+                className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand disabled:opacity-50"
               >
                 <option value="Assist360 Operations">Assist360 Operations</option>
                 <option value="Apex Global Industries">Apex Global Industries</option>
@@ -775,13 +774,13 @@ export default function AdminUsersPage() {
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="px-3 py-1.5 border border-zinc-200 hover:bg-zinc-55 rounded uppercase tracking-wider text-[10px] cursor-pointer"
+              className="px-3 py-1.5 border border-line hover:bg-surface-muted rounded uppercase tracking-wider text-[11px] cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-3 py-1.5 bg-zinc-950 text-white hover:bg-zinc-800 rounded uppercase tracking-wider text-[10px] cursor-pointer"
+              className="px-3 py-1.5 bg-ink text-white hover:bg-zinc-800 rounded uppercase tracking-wider text-[11px] cursor-pointer"
             >
               Provision User
             </button>
@@ -790,10 +789,10 @@ export default function AdminUsersPage() {
       )}
 
       {/* Users Table List */}
-      <div className="bg-white border border-zinc-200 rounded overflow-hidden shadow-sm">
+      <div className="bg-surface border border-line rounded overflow-hidden shadow-card">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[9px] tracking-wider text-zinc-500">
+            <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
               <th className="p-4">Name</th>
               <th className="p-4">Email</th>
               <th className="p-4">SaaS Role</th>
@@ -802,48 +801,48 @@ export default function AdminUsersPage() {
               <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200">
+          <tbody className="divide-y divide-line">
             {usersList.map((u) => {
               const isAdmin = u.role === 'SuperAdmin';
               const isManager = u.role === 'Manager';
               const isConsultant = u.role === 'Consultant';
 
               return (
-                <tr key={u.id} className="hover:bg-zinc-50/50">
+                <tr key={u.id} className="hover:bg-surface-muted/60">
                   <td className="p-4 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-150 flex items-center justify-center text-zinc-900 font-bold uppercase shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-surface-subtle flex items-center justify-center text-ink font-bold uppercase shrink-0">
                       {u.name ? u.name.split(' ').map(n => n[0]).join('') : 'U'}
                     </div>
                     <div>
-                      <span className="font-bold text-zinc-800 text-xs block">{u.name}</span>
+                      <span className="font-bold text-ink text-xs block">{u.name}</span>
                       {user?.email === u.email && (
-                        <span className="text-[8px] bg-zinc-950 text-white font-mono px-1 rounded block w-max mt-0.5">YOUR SESSION</span>
+                        <span className="text-[11px] bg-ink text-white px-1 rounded block w-max mt-0.5">YOUR SESSION</span>
                       )}
                     </div>
                   </td>
-                  <td className="p-4 text-zinc-500 font-mono">
+                  <td className="p-4 text-ink-secondary">
                     <span className="flex items-center gap-1.5">
                       <Mail size={12} />
                       {u.email}
                     </span>
                   </td>
                   <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      isAdmin ? 'bg-zinc-950 text-white' :
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                      isAdmin ? 'bg-ink text-white' :
                       isManager ? 'bg-zinc-800 text-white' :
-                      isConsultant ? 'bg-zinc-100 text-zinc-850 border border-zinc-300' :
-                      'bg-white text-zinc-650 border border-zinc-200'
+                      isConsultant ? 'bg-surface-subtle text-ink border border-line-strong' :
+                      'bg-surface text-ink-secondary border border-line'
                     }`}>
                       {u.role}
                     </span>
                   </td>
-                  <td className="p-4 font-semibold text-zinc-600">{u.organization}</td>
+                  <td className="p-4 font-semibold text-ink-secondary">{u.organization}</td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-bold ${
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-bold ${
                       u.active ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-750'
                     }`}>
                       {u.active ? (
-                        <ShieldCheck size={11} className="text-emerald-600" />
+                        <ShieldCheck size={11} className="text-success" />
                       ) : (
                         <XCircle size={11} className="text-red-605" />
                       )}
@@ -862,7 +861,7 @@ export default function AdminUsersPage() {
                               setResetDone(false);
                               setResetDialogOpen(true);
                             }}
-                            className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-zinc-300 hover:border-zinc-950 hover:bg-zinc-50 transition cursor-pointer"
+                            className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-line-strong hover:border-line-strong hover:bg-surface-muted transition cursor-pointer"
                           >
                             Reset Password
                           </button>
@@ -874,7 +873,7 @@ export default function AdminUsersPage() {
                               setUpdateForceChange(false);
                               setUpdateDialogOpen(true);
                             }}
-                            className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-zinc-300 hover:border-zinc-950 hover:bg-zinc-50 transition cursor-pointer"
+                            className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-line-strong hover:border-line-strong hover:bg-surface-muted transition cursor-pointer"
                           >
                             Update Password
                           </button>
@@ -882,7 +881,7 @@ export default function AdminUsersPage() {
                       )}
                       <button
                         onClick={() => handleOpenUserModal(u, 'view')}
-                        className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded border border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800 transition cursor-pointer"
+                        className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded border border-ink bg-ink text-white hover:bg-zinc-800 transition cursor-pointer"
                       >
                         Manage
                       </button>
@@ -897,31 +896,31 @@ export default function AdminUsersPage() {
 
       {/* Unified User Management Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono text-xs text-zinc-900">
-          <div className="bg-white border border-zinc-200 rounded-lg shadow-lg w-full max-w-2xl overflow-hidden flex flex-col h-[550px]">
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 text-xs text-ink">
+          <div className="bg-surface border border-line rounded-lg shadow-lg w-full max-w-2xl overflow-hidden flex flex-col h-[550px]">
             {/* Header */}
-            <div className="bg-zinc-50 border-b border-zinc-150 px-6 py-4 flex items-center justify-between">
+            <div className="bg-surface-muted border-b border-line px-6 py-4 flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-sm uppercase text-zinc-950 tracking-wide">
+                <h3 className="font-bold text-sm uppercase text-ink tracking-wide">
                   IAM Operations: {selectedUser.name}
                 </h3>
-                <span className="text-[10px] text-zinc-400 block mt-0.5 select-all">{selectedUser.email}</span>
+                <span className="text-[11px] text-ink-muted block mt-0.5 select-all">{selectedUser.email}</span>
               </div>
               <button
                 onClick={() => setSelectedUser(null)}
-                className="w-6 h-6 border border-zinc-200 hover:border-zinc-950 text-zinc-550 hover:text-zinc-950 rounded flex items-center justify-center text-xs font-bold transition cursor-pointer"
+                className="w-6 h-6 border border-line hover:border-line-strong text-ink-secondary hover:text-ink rounded flex items-center justify-center text-xs font-bold transition cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             {/* Tab Links */}
-            <div className="bg-zinc-50/50 border-b border-zinc-150 px-6 flex gap-1">
+            <div className="bg-surface-muted/60 border-b border-line px-6 flex gap-1">
               <button
                 type="button"
                 onClick={() => { setActiveTab('view'); setGeneratedPassResult(''); }}
-                className={`py-2 px-3 border-b-2 font-bold uppercase text-[9px] tracking-wider transition cursor-pointer ${
-                  activeTab === 'view' ? 'border-zinc-950 text-zinc-950' : 'border-transparent text-zinc-400 hover:text-zinc-650'
+                className={`py-2 px-3 border-b-2 font-bold uppercase text-[11px] tracking-wider transition cursor-pointer ${
+                  activeTab === 'view' ? 'border-ink text-ink' : 'border-transparent text-ink-muted hover:text-ink-secondary'
                 }`}
               >
                 Diagnostic
@@ -929,8 +928,8 @@ export default function AdminUsersPage() {
               <button
                 type="button"
                 onClick={() => { setActiveTab('edit'); setGeneratedPassResult(''); }}
-                className={`py-2 px-3 border-b-2 font-bold uppercase text-[9px] tracking-wider transition cursor-pointer ${
-                  activeTab === 'edit' ? 'border-zinc-950 text-zinc-950' : 'border-transparent text-zinc-400 hover:text-zinc-650'
+                className={`py-2 px-3 border-b-2 font-bold uppercase text-[11px] tracking-wider transition cursor-pointer ${
+                  activeTab === 'edit' ? 'border-ink text-ink' : 'border-transparent text-ink-muted hover:text-ink-secondary'
                 }`}
               >
                 Edit Profile
@@ -938,8 +937,8 @@ export default function AdminUsersPage() {
               <button
                 type="button"
                 onClick={() => { setActiveTab('credentials'); setGeneratedPassResult(''); }}
-                className={`py-2 px-3 border-b-2 font-bold uppercase text-[9px] tracking-wider transition cursor-pointer ${
-                  activeTab === 'credentials' ? 'border-zinc-950 text-zinc-950' : 'border-transparent text-zinc-400 hover:text-zinc-650'
+                className={`py-2 px-3 border-b-2 font-bold uppercase text-[11px] tracking-wider transition cursor-pointer ${
+                  activeTab === 'credentials' ? 'border-ink text-ink' : 'border-transparent text-ink-muted hover:text-ink-secondary'
                 }`}
               >
                 Credentials (IAM)
@@ -947,8 +946,8 @@ export default function AdminUsersPage() {
               <button
                 type="button"
                 onClick={() => { setActiveTab('danger'); setGeneratedPassResult(''); }}
-                className={`py-2 px-3 border-b-2 font-bold uppercase text-[9px] tracking-wider transition cursor-pointer ${
-                  activeTab === 'danger' ? 'border-zinc-950 text-zinc-950' : 'border-transparent text-zinc-400 hover:text-zinc-650'
+                className={`py-2 px-3 border-b-2 font-bold uppercase text-[11px] tracking-wider transition cursor-pointer ${
+                  activeTab === 'danger' ? 'border-ink text-ink' : 'border-transparent text-ink-muted hover:text-ink-secondary'
                 }`}
               >
                 Danger Zone
@@ -961,13 +960,13 @@ export default function AdminUsersPage() {
               {/* Tab 1: Diagnostic */}
               {activeTab === 'view' && (
                 <div className="space-y-3.5">
-                  <h4 className="font-bold uppercase tracking-wider text-[10px] text-zinc-450 border-b border-zinc-100 pb-1.5">
+                  <h4 className="font-bold uppercase tracking-wider text-[11px] text-ink-muted border-b border-line pb-1.5">
                     Account Metadata Status
                   </h4>
-                  <div className="grid grid-cols-2 gap-4 text-zinc-700">
+                  <div className="grid grid-cols-2 gap-4 text-ink-secondary">
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">Setup Status:</span>
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      <span className="text-[11px] uppercase text-ink-muted font-bold block">Setup Status:</span>
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold ${
                         selectedUser.first_login_completed ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
                       }`}>
                         {selectedUser.first_login_completed ? 'Setup Completed' : 'Pending Initial Reset'}
@@ -975,9 +974,9 @@ export default function AdminUsersPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">IAM Lockout Status:</span>
+                      <span className="text-[11px] uppercase text-ink-muted font-bold block">IAM Lockout Status:</span>
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold ${
                           selectedUser.is_locked ? 'bg-red-50 text-red-750 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                         }`}>
                           {selectedUser.is_locked ? 'Account Locked' : 'Account Active'}
@@ -986,7 +985,7 @@ export default function AdminUsersPage() {
                           <button
                             type="button"
                             onClick={() => handleUnlockUser(selectedUser.id, selectedUser.email, selectedUser.active)}
-                            className="px-2 py-0.5 border border-zinc-300 hover:border-zinc-950 hover:bg-zinc-50 rounded text-[9px] font-bold uppercase tracking-wide cursor-pointer"
+                            className="px-2 py-0.5 border border-line-strong hover:border-line-strong hover:bg-surface-muted rounded text-[11px] font-bold uppercase tracking-wide cursor-pointer"
                           >
                             Unlock Account
                           </button>
@@ -995,15 +994,15 @@ export default function AdminUsersPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">Last Password Update:</span>
-                      <span className="font-mono text-zinc-800 text-[11px] font-bold">
+                      <span className="text-[11px] uppercase text-ink-muted font-bold block">Last Password Update:</span>
+                      <span className="text-ink text-[11px] font-bold">
                         {selectedUser.password_changed_at ? new Date(selectedUser.password_changed_at).toLocaleString() : 'Never Changed'}
                       </span>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">Account Status:</span>
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      <span className="text-[11px] uppercase text-ink-muted font-bold block">Account Status:</span>
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold ${
                         selectedUser.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-750 border border-red-100'
                       }`}>
                         {selectedUser.active ? 'Access Enabled' : 'Access Disabled'}
@@ -1011,39 +1010,39 @@ export default function AdminUsersPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">SaaS Identity ID:</span>
-                      <span className="font-mono text-zinc-500 text-[10px] select-all block mt-0.5">{selectedUser.id}</span>
+                      <span className="text-[11px] uppercase text-ink-muted font-bold block">SaaS Identity ID:</span>
+                      <span className="text-ink-secondary text-[11px] select-all block mt-0.5">{selectedUser.id}</span>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase text-zinc-400 font-bold block">RLS Policy Gate:</span>
-                      <span className="font-bold text-zinc-800 uppercase text-[10px]">
+                      <span className="text-[11px] uppercase text-ink-muted font-bold block">RLS Policy Gate:</span>
+                      <span className="font-bold text-ink uppercase text-[11px]">
                         {isSupabaseConfigured ? 'Enforced (Tenant Isolation)' : 'State Simulated'}
                       </span>
                     </div>
                   </div>
 
                   {selectedUser.role === 'Consultant' && (
-                    <div className="space-y-3 pt-3 border-t border-zinc-150">
-                      <h4 className="font-bold uppercase tracking-wider text-[10px] text-zinc-450">
+                    <div className="space-y-3 pt-3 border-t border-line">
+                      <h4 className="font-bold uppercase tracking-wider text-[11px] text-ink-muted">
                         Consultant Expertise Mappings
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <span className="text-[9px] uppercase text-zinc-400 font-bold block">Consultant Category:</span>
-                          <span className="font-bold text-zinc-800 text-[11px] block mt-0.5">{selectedUser.consultant_type || 'Functional'}</span>
+                          <span className="text-[11px] uppercase text-ink-muted font-bold block">Consultant Category:</span>
+                          <span className="font-bold text-ink text-[11px] block mt-0.5">{selectedUser.consultant_type || 'Functional'}</span>
                         </div>
                         <div>
-                          <span className="text-[9px] uppercase text-zinc-400 font-bold block">Assigned SAP Modules:</span>
+                          <span className="text-[11px] uppercase text-ink-muted font-bold block">Assigned SAP Modules:</span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {selectedUser.sap_modules && selectedUser.sap_modules.length > 0 ? (
                               selectedUser.sap_modules.map((m: string) => (
-                                <span key={m} className="bg-zinc-100 border border-zinc-200 text-zinc-800 px-1 rounded text-[10px] font-bold">
+                                <span key={m} className="bg-surface-subtle border border-line text-ink px-1 rounded text-[11px] font-bold">
                                   {m}
                                 </span>
                               ))
                             ) : (
-                              <span className="text-zinc-400 italic">None assigned</span>
+                              <span className="text-ink-muted italic">None assigned</span>
                             )}
                           </div>
                         </div>
@@ -1057,34 +1056,34 @@ export default function AdminUsersPage() {
               {activeTab === 'edit' && (
                 <form onSubmit={handleEditUserSubmit} className="space-y-4">
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px]">Full Name</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px]">Full Name</label>
                     <input
                       type="text"
                       required
                       value={modalFormName}
                       onChange={(e) => setModalFormName(e.target.value)}
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                      className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px]">Contact Phone</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px]">Contact Phone</label>
                     <input
                       type="text"
                       value={modalFormPhone}
                       onChange={(e) => setModalFormPhone(e.target.value)}
                       placeholder="e.g. +1 555-0199"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                      className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px]">Role Group</label>
+                      <label className="font-bold text-ink-secondary uppercase text-[11px]">Role Group</label>
                       <select
                         value={modalFormRole}
                         onChange={(e) => setModalFormRole(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                        className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                       >
                         <option value="Customer">Customer Client</option>
                         <option value="Consultant">SAP Consultant</option>
@@ -1094,12 +1093,12 @@ export default function AdminUsersPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px]">Assigned Company (Customers only)</label>
+                      <label className="font-bold text-ink-secondary uppercase text-[11px]">Assigned Company (Customers only)</label>
                       <select
                         value={modalFormOrgId}
                         onChange={(e) => setModalFormOrgId(e.target.value)}
                         disabled={modalFormRole !== 'Customer'}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono disabled:opacity-50"
+                        className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand disabled:opacity-50"
                       >
                         <option value="">Select Company</option>
                         {organizationsList.map(org => (
@@ -1112,7 +1111,7 @@ export default function AdminUsersPage() {
                   <div className="flex justify-end pt-2">
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-zinc-950 text-white hover:bg-zinc-800 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                      className="px-4 py-2 bg-ink text-white hover:bg-zinc-800 rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                     >
                       Update Profile
                     </button>
@@ -1125,42 +1124,42 @@ export default function AdminUsersPage() {
                 <div className="space-y-6">
                   
                   {/* Reset Password */}
-                  <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5 border border-zinc-200 bg-zinc-50/30 rounded p-4">
-                    <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5 flex items-center gap-1">
-                      <Lock size={12} className="text-zinc-550" />
+                  <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5 border border-line bg-surface-muted/30 rounded p-4">
+                    <h5 className="font-bold uppercase text-[11px] text-ink border-b border-line pb-1.5 flex items-center gap-1">
+                      <Lock size={12} className="text-ink-secondary" />
                       Reset Password (Forces Setup on Next Login)
                     </h5>
                     
                     {generatedPassResult && (
-                      <div className="bg-zinc-950 text-white border border-zinc-900 rounded p-4 text-[11px] font-bold space-y-2">
-                        <span className="text-[10px] text-emerald-400 font-normal uppercase block">Password Reset Successful!</span>
-                        <div className="flex items-center justify-between gap-2 bg-zinc-900/60 p-2.5 rounded border border-zinc-800">
-                          <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-400">{generatedPassResult}</span>
+                      <div className="bg-ink text-white border border-zinc-900 rounded p-4 text-[11px] font-bold space-y-2">
+                        <span className="text-[11px] text-emerald-400 font-normal uppercase block">Password Reset Successful!</span>
+                        <div className="flex items-center justify-between gap-2 bg-ink/60 p-2.5 rounded border border-zinc-800">
+                          <span className="text-xs tracking-wider select-all font-extrabold text-emerald-400">{generatedPassResult}</span>
                           <button
                             type="button"
                             onClick={() => {
                               navigator.clipboard.writeText(generatedPassResult);
                               toast.success('Password copied to clipboard!');
                             }}
-                            className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 rounded text-[9px] font-bold uppercase transition"
+                            className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 rounded text-[11px] font-bold uppercase transition"
                           >
                             Copy Pass
                           </button>
                         </div>
-                        <span className="text-[9px] text-zinc-500 block font-normal pt-1 leading-normal">
+                        <span className="text-[11px] text-ink-secondary block font-normal pt-1 leading-normal">
                           Notice: Provide this password to the user. They will be forced to change it immediately upon next login.
                         </span>
                       </div>
                     )}
 
-                    <p className="text-[10px] text-zinc-500 leading-relaxed">
+                    <p className="text-[11px] text-ink-secondary leading-relaxed">
                       Resets user credentials and redirects them to the force password setup screen on their next login.
                     </p>
 
                     <div className="flex justify-end pt-1">
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-zinc-950 text-white hover:bg-zinc-800 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                        className="px-4 py-2 bg-ink text-white hover:bg-zinc-800 rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                       >
                         Reset Password & Force Setup
                       </button>
@@ -1168,29 +1167,29 @@ export default function AdminUsersPage() {
                   </form>
 
                   {/* Update Password (Direct) */}
-                  <form onSubmit={handleUpdatePasswordSubmit} className="space-y-3.5 border border-zinc-200 bg-zinc-50/30 rounded p-4">
-                    <h5 className="font-bold uppercase text-[10px] text-zinc-950 border-b border-zinc-150 pb-1.5 flex items-center gap-1">
-                      <KeyRound size={12} className="text-zinc-550" />
+                  <form onSubmit={handleUpdatePasswordSubmit} className="space-y-3.5 border border-line bg-surface-muted/30 rounded p-4">
+                    <h5 className="font-bold uppercase text-[11px] text-ink border-b border-line pb-1.5 flex items-center gap-1">
+                      <KeyRound size={12} className="text-ink-secondary" />
                       Direct Password Update (No Force Setup)
                     </h5>
                     
                     <div className="space-y-1">
-                      <label className="font-bold text-zinc-750 uppercase text-[9px]">Set Manual Password</label>
+                      <label className="font-bold text-ink-secondary uppercase text-[11px]">Set Manual Password</label>
                       <input
                         type="text"
                         required
                         placeholder="Assign final manual password"
                         value={modalPassInput}
                         onChange={(e) => setModalPassInput(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                        className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                       />
-                      <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.</span>
+                      <span className="text-[11px] text-ink-muted block pt-0.5">Password Policy: Min. 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.</span>
                     </div>
 
                     <div className="flex justify-end">
                       <button
                         type="submit"
-                        className="px-4 py-2 border border-zinc-900 text-zinc-900 hover:bg-zinc-950 hover:text-white rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                        className="px-4 py-2 border border-zinc-900 text-ink hover:bg-ink hover:text-white rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                       >
                         Direct Password Save
                       </button>
@@ -1198,24 +1197,24 @@ export default function AdminUsersPage() {
                   </form>
 
                   {/* Setup & Lock Adjusters */}
-                  <div className="grid grid-cols-2 gap-4 border border-zinc-200 bg-zinc-50/30 rounded p-4">
+                  <div className="grid grid-cols-2 gap-4 border border-line bg-surface-muted/30 rounded p-4">
                     <div className="space-y-2">
-                      <span className="font-bold uppercase text-[9px] text-zinc-450 block">Force Setup redirection</span>
+                      <span className="font-bold uppercase text-[11px] text-ink-muted block">Force Setup redirection</span>
                       <button
                         type="button"
                         onClick={() => handleForcePasswordChange(selectedUser.id, selectedUser.email)}
-                        className="w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                        className="w-full py-2 bg-ink hover:bg-zinc-800 text-white rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                       >
                         Force Password Change
                       </button>
                     </div>
 
                     <div className="space-y-2">
-                      <span className="font-bold uppercase text-[9px] text-zinc-450 block">Lifts failed attempts lockout</span>
+                      <span className="font-bold uppercase text-[11px] text-ink-muted block">Lifts failed attempts lockout</span>
                       <button
                         type="button"
                         onClick={() => handleUnlockUser(selectedUser.id, selectedUser.email, selectedUser.active)}
-                        className="w-full py-2 border border-zinc-350 hover:bg-zinc-950 hover:text-white rounded text-zinc-700 font-bold uppercase text-[10px] tracking-wider transition cursor-pointer disabled:opacity-50"
+                        className="w-full py-2 border border-line-strong hover:bg-ink hover:text-white rounded text-ink-secondary font-bold uppercase text-[11px] tracking-wider transition cursor-pointer disabled:opacity-50"
                         disabled={!selectedUser.is_locked}
                       >
                         Unlock Account
@@ -1231,18 +1230,18 @@ export default function AdminUsersPage() {
                 <div className="space-y-6">
                   
                   {/* Disable account block */}
-                  <div className="border border-zinc-200 bg-zinc-50/30 rounded p-4 space-y-3">
-                    <h5 className="font-mono text-xs font-bold uppercase text-zinc-900">
+                  <div className="border border-line bg-surface-muted/30 rounded p-4 space-y-3">
+                    <h5 className="text-xs font-bold uppercase text-ink">
                       Enable / Disable Account Access
                     </h5>
-                    <p className="text-zinc-500 leading-relaxed text-[11px]">
+                    <p className="text-ink-secondary leading-relaxed text-[11px]">
                       Disabling the account bans the user in Supabase Auth, terminates all active sessions, and blocks logins.
                     </p>
                     <div className="flex justify-end">
                       <button
                         type="button"
                         onClick={() => handleToggleUserStatus(selectedUser.id, selectedUser.email, selectedUser.active)}
-                        className={`px-4 py-2 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer ${
+                        className={`px-4 py-2 rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer ${
                           selectedUser.active ? 'bg-amber-50 border border-amber-300 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100'
                         }`}
                       >
@@ -1254,7 +1253,7 @@ export default function AdminUsersPage() {
                   {/* Remove Account Block */}
                   {user?.email !== selectedUser.email && (
                     <div className="border border-red-200 bg-red-50/30 rounded p-4 space-y-3">
-                      <h5 className="font-mono text-xs font-bold uppercase text-red-900">
+                      <h5 className="text-xs font-bold uppercase text-red-900">
                         Prune Account Registration
                       </h5>
                       <p className="text-red-700/80 leading-relaxed text-[11px]">
@@ -1264,7 +1263,7 @@ export default function AdminUsersPage() {
                         <button
                           type="button"
                           onClick={() => handleDeleteUser(selectedUser.id, selectedUser.email)}
-                          className="px-4 py-2 bg-red-650 text-white hover:bg-red-700 rounded font-bold uppercase text-[10px] tracking-wider transition cursor-pointer"
+                          className="px-4 py-2 bg-red-650 text-white hover:bg-red-700 rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                         >
                           Prune User Account
                         </button>
@@ -1281,39 +1280,39 @@ export default function AdminUsersPage() {
       )}
       {/* USER CREATED SUCCESSFULLY MODAL */}
       {creationSuccessModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono text-xs text-zinc-900 animate-fade-in">
-          <div className="bg-white border border-zinc-200 rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
-            <div className="border-b border-zinc-150 pb-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 text-xs text-ink animate-fade-in">
+          <div className="bg-surface border border-line rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
+            <div className="border-b border-line pb-2">
               <h3 className="font-bold text-xs uppercase text-emerald-800 tracking-wide flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 User Created Successfully
               </h3>
             </div>
             
-            <div className="space-y-3 font-mono">
+            <div className="space-y-3">
               <div className="space-y-1">
-                <span className="text-[9px] uppercase text-zinc-400 font-bold block">Email Address:</span>
-                <span className="font-bold text-zinc-800 select-all block text-xs bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5">{creationSuccessModal.email}</span>
+                <span className="text-[11px] uppercase text-ink-muted font-bold block">Email Address:</span>
+                <span className="font-bold text-ink select-all block text-xs bg-surface-muted border border-line rounded px-2.5 py-1.5">{creationSuccessModal.email}</span>
               </div>
               
               <div className="space-y-1">
-                <span className="text-[9px] uppercase text-zinc-400 font-bold block">Temporary Password:</span>
-                <span className="font-mono text-xs tracking-wider select-all font-extrabold text-zinc-950 bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5 block">{creationSuccessModal.tempPass}</span>
+                <span className="text-[11px] uppercase text-ink-muted font-bold block">Temporary Password:</span>
+                <span className="text-xs tracking-wider select-all font-extrabold text-ink bg-surface-muted border border-line rounded px-2.5 py-1.5 block">{creationSuccessModal.tempPass}</span>
               </div>
             </div>
             
-            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[10px] text-amber-800 leading-normal">
+            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[11px] text-amber-800 leading-normal">
               <span className="font-bold">Important Notice:</span> Provide this temporary password to the user. They will be forced to change it immediately upon their first login to access the workspace.
             </div>
             
-            <div className="flex gap-2 justify-end pt-2 border-t border-zinc-150">
+            <div className="flex gap-2 justify-end pt-2 border-t border-line">
               <button
                 type="button"
                 onClick={() => {
                   navigator.clipboard.writeText(creationSuccessModal.tempPass);
                   toast.success('Temporary password copied to clipboard!');
                 }}
-                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
               >
                 Copy Password
               </button>
@@ -1323,14 +1322,14 @@ export default function AdminUsersPage() {
                   navigator.clipboard.writeText(`Email: ${creationSuccessModal.email}\nPassword: ${creationSuccessModal.tempPass}`);
                   toast.success('Credentials copied to clipboard!');
                 }}
-                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
               >
                 Copy Credentials
               </button>
               <button
                 type="button"
                 onClick={() => setCreationSuccessModal(null)}
-                className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                className="px-3 py-1.5 bg-ink text-white rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
               >
                 Close
               </button>
@@ -1340,7 +1339,7 @@ export default function AdminUsersPage() {
       )}
       {/* Reset Password Dialog */}
       <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg text-zinc-955 font-mono text-xs">
+        <DialogContent className="max-w-md bg-surface border border-line p-6 rounded-lg text-ink text-xs">
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
             <DialogDescription>
@@ -1350,41 +1349,41 @@ export default function AdminUsersPage() {
 
           {resetTargetUser && (
             <div className="space-y-4 my-2">
-              <div className="grid grid-cols-3 gap-1 border-b border-zinc-100 pb-2">
-                <span className="font-bold text-zinc-400 uppercase text-[9px]">User Name</span>
-                <span className="col-span-2 text-zinc-900 font-bold">{resetTargetUser.name}</span>
+              <div className="grid grid-cols-3 gap-1 border-b border-line pb-2">
+                <span className="font-bold text-ink-muted uppercase text-[11px]">User Name</span>
+                <span className="col-span-2 text-ink font-bold">{resetTargetUser.name}</span>
               </div>
-              <div className="grid grid-cols-3 gap-1 border-b border-zinc-100 pb-2">
-                <span className="font-bold text-zinc-400 uppercase text-[9px]">User Email</span>
-                <span className="col-span-2 text-zinc-900 font-bold break-all">{resetTargetUser.email}</span>
+              <div className="grid grid-cols-3 gap-1 border-b border-line pb-2">
+                <span className="font-bold text-ink-muted uppercase text-[11px]">User Email</span>
+                <span className="col-span-2 text-ink font-bold break-all">{resetTargetUser.email}</span>
               </div>
-              <div className="grid grid-cols-3 gap-1 border-b border-zinc-100 pb-2">
-                <span className="font-bold text-zinc-400 uppercase text-[9px]">User Role</span>
-                <span className="col-span-2 text-zinc-900 font-bold">{resetTargetUser.role}</span>
+              <div className="grid grid-cols-3 gap-1 border-b border-line pb-2">
+                <span className="font-bold text-ink-muted uppercase text-[11px]">User Role</span>
+                <span className="col-span-2 text-ink font-bold">{resetTargetUser.role}</span>
               </div>
 
               {!resetDone ? (
                 <>
-                  <div className="bg-zinc-955 text-white rounded p-4 text-[11px] font-bold space-y-2">
-                    <span className="text-[9px] text-zinc-400 font-normal uppercase block">Auto Generated Temporary Password</span>
-                    <div className="flex items-center justify-between gap-2 bg-zinc-900/60 p-2.5 rounded border border-zinc-800">
-                      <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-400">{resetGeneratedPassword}</span>
+                  <div className="bg-ink text-white rounded p-4 text-[11px] font-bold space-y-2">
+                    <span className="text-[11px] text-ink-muted font-normal uppercase block">Auto Generated Temporary Password</span>
+                    <div className="flex items-center justify-between gap-2 bg-ink/60 p-2.5 rounded border border-zinc-800">
+                      <span className="text-xs tracking-wider select-all font-extrabold text-emerald-400">{resetGeneratedPassword}</span>
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] block">Set Manual Temporary Password</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] block">Set Manual Temporary Password</label>
                     <input
                       type="text"
                       placeholder="Enter custom temporary password"
                       value={resetManualPassword}
                       onChange={(e) => setResetManualPassword(e.target.value)}
-                      className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-955 font-mono"
+                      className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                     />
-                    <span className="text-[9px] text-zinc-450 block pt-0.5">Leave empty to use the system-generated password.</span>
+                    <span className="text-[11px] text-ink-muted block pt-0.5">Leave empty to use the system-generated password.</span>
                   </div>
 
-                  <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150">
+                  <div className="flex gap-2 justify-end pt-3 border-t border-line">
                     <button
                       type="button"
                       onClick={() => {
@@ -1392,7 +1391,7 @@ export default function AdminUsersPage() {
                         navigator.clipboard.writeText(pwd);
                         toast.success('Password copied to clipboard!');
                       }}
-                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                      className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                     >
                       Copy Password
                     </button>
@@ -1403,21 +1402,21 @@ export default function AdminUsersPage() {
                         navigator.clipboard.writeText(`Email: ${resetTargetUser.email}\nPassword: ${pwd}`);
                         toast.success('Credentials copied to clipboard!');
                       }}
-                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                      className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                     >
                       Copy Credentials
                     </button>
                     <button
                       type="button"
                       onClick={handleDirectResetPassword}
-                      className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                      className="px-3 py-1.5 bg-ink text-white rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                     >
                       Confirm Reset
                     </button>
                     <button
                       type="button"
                       onClick={() => setResetDialogOpen(false)}
-                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-350 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                      className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -1426,18 +1425,18 @@ export default function AdminUsersPage() {
               ) : (
                 <>
                   <div className="bg-emerald-50 border border-emerald-250 text-emerald-900 rounded p-4 text-[11px] font-bold space-y-2">
-                    <span className="text-[10px] text-emerald-800 uppercase block">Password Reset Successful!</span>
-                    <div className="flex items-center justify-between gap-2 bg-white p-2.5 rounded border border-emerald-200">
-                      <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-700">
+                    <span className="text-[11px] text-emerald-800 uppercase block">Password Reset Successful!</span>
+                    <div className="flex items-center justify-between gap-2 bg-surface p-2.5 rounded border border-emerald-200">
+                      <span className="text-xs tracking-wider select-all font-extrabold text-emerald-700">
                         {resetManualPassword.trim() !== '' ? resetManualPassword.trim() : resetGeneratedPassword}
                       </span>
                     </div>
-                    <span className="text-[9px] text-emerald-700 block font-normal pt-1 leading-normal">
+                    <span className="text-[11px] text-emerald-700 block font-normal pt-1 leading-normal">
                       User must login with this password and create a new password on their next login.
                     </span>
                   </div>
 
-                  <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150">
+                  <div className="flex gap-2 justify-end pt-3 border-t border-line">
                     <button
                       type="button"
                       onClick={() => {
@@ -1445,7 +1444,7 @@ export default function AdminUsersPage() {
                         navigator.clipboard.writeText(pwd);
                         toast.success('Password copied to clipboard!');
                       }}
-                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-350 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                      className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                     >
                       Copy Password
                     </button>
@@ -1456,14 +1455,14 @@ export default function AdminUsersPage() {
                         navigator.clipboard.writeText(`Email: ${resetTargetUser.email}\nPassword: ${pwd}`);
                         toast.success('Credentials copied to clipboard!');
                       }}
-                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-350 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                      className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                     >
                       Copy Credentials
                     </button>
                     <button
                       type="button"
                       onClick={() => setResetDialogOpen(false)}
-                      className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                      className="px-3 py-1.5 bg-ink text-white rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                     >
                       Close
                     </button>
@@ -1477,7 +1476,7 @@ export default function AdminUsersPage() {
 
       {/* Update Password Dialog */}
       <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
-        <DialogContent className="max-w-md bg-white border border-zinc-200 p-6 rounded-lg text-zinc-955 font-mono text-xs">
+        <DialogContent className="max-w-md bg-surface border border-line p-6 rounded-lg text-ink text-xs">
           <DialogHeader>
             <DialogTitle>Update Password</DialogTitle>
             <DialogDescription>
@@ -1488,26 +1487,26 @@ export default function AdminUsersPage() {
           {updateTargetUser && (
             <form onSubmit={handleDirectUpdatePassword} className="space-y-4 my-2">
               <div className="space-y-1">
-                <label className="font-bold text-zinc-700 uppercase text-[9px] block">New Password</label>
+                <label className="font-bold text-ink-secondary uppercase text-[11px] block">New Password</label>
                 <input
                   type="password"
                   required
                   placeholder="Enter new password"
                   value={updateNewPassword}
                   onChange={(e) => setUpdateNewPassword(e.target.value)}
-                  className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                  className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-zinc-700 uppercase text-[9px] block">Confirm Password</label>
+                <label className="font-bold text-ink-secondary uppercase text-[11px] block">Confirm Password</label>
                 <input
                   type="password"
                   required
                   placeholder="Confirm new password"
                   value={updateConfirmPassword}
                   onChange={(e) => setUpdateConfirmPassword(e.target.value)}
-                  className="w-full bg-white border border-zinc-250 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                  className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                 />
               </div>
 
@@ -1517,26 +1516,26 @@ export default function AdminUsersPage() {
                   id="force-change-checkbox"
                   checked={updateForceChange}
                   onChange={(e) => setUpdateForceChange(e.target.checked)}
-                  className="w-4 h-4 text-zinc-955 focus:ring-zinc-955 border-zinc-300 rounded cursor-pointer"
+                  className="w-4 h-4 text-ink focus:ring-brand/30 border-line-strong rounded cursor-pointer"
                 />
-                <label htmlFor="force-change-checkbox" className="font-bold text-zinc-700 uppercase text-[9px] cursor-pointer select-none">
+                <label htmlFor="force-change-checkbox" className="font-bold text-ink-secondary uppercase text-[11px] cursor-pointer select-none">
                   Force user to change password on next login
                 </label>
               </div>
 
-              <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.</span>
+              <span className="text-[11px] text-ink-muted block pt-0.5">Password Policy: Min. 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.</span>
 
-              <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150">
+              <div className="flex gap-2 justify-end pt-3 border-t border-line">
                 <button
                   type="submit"
-                  className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                  className="px-3 py-1.5 bg-ink text-white rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                 >
                   Save Password
                 </button>
                 <button
                   type="button"
                   onClick={() => setUpdateDialogOpen(false)}
-                  className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-350 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                  className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                 >
                   Cancel
                 </button>
