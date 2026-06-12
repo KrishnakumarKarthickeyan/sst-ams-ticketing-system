@@ -85,66 +85,66 @@ export default function AdminEffortLogsPage() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900">
+    <div className="space-y-6 text-xs text-ink">
       
       {/* Top Navigation */}
       <div className="flex items-center justify-between">
-        <Link href="/admin/dashboard" className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-950 transition">
+        <Link href="/admin/dashboard" className="inline-flex items-center gap-1 text-ink-secondary hover:text-ink transition">
           <ArrowLeft size={12} />
           Back to Dashboard
         </Link>
-        <div className="bg-zinc-100 px-2 py-1 rounded text-zinc-600 border border-zinc-200 uppercase tracking-widest text-[9px] flex items-center gap-1 font-bold">
+        <div className="bg-surface-subtle px-2 py-1 rounded text-ink-secondary border border-line uppercase tracking-widest text-[11px] flex items-center gap-1 font-bold">
           <Shield size={10} />
           Super Admin Console
         </div>
       </div>
 
-      <div className="border-b border-zinc-200 pb-4">
-        <h1 className="text-lg font-bold uppercase text-zinc-950">Consultant Timesheets & Effort Logs</h1>
-        <p className="text-zinc-500 mt-1">Audit billing items, view work breakdowns, and track project efforts globally.</p>
+      <div className="border-b border-line pb-4">
+        <h1 className="type-title text-ink">Consultant Timesheets & Effort Logs</h1>
+        <p className="type-meta mt-1 text-ink-secondary">Audit billing items, view work breakdowns, and track project efforts globally.</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-white border border-zinc-200 p-4 rounded-lg shadow-sm space-y-1">
-          <div className="text-zinc-400 font-bold text-[9px] uppercase">Total Hours</div>
-          <div className="text-lg font-bold text-zinc-950 flex items-baseline gap-1">
-            {totalLoggedHours.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">h</span>
+        <div className="bg-surface border border-line p-4 rounded-lg shadow-card space-y-1">
+          <div className="text-ink-muted font-bold text-[11px] uppercase">Total Hours</div>
+          <div className="text-lg font-bold text-ink flex items-baseline gap-1">
+            {totalLoggedHours.toFixed(1)} <span className="text-[11px] font-normal text-ink-muted">h</span>
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 p-4 rounded-lg shadow-sm space-y-1">
-          <div className="text-zinc-400 font-bold text-[9px] uppercase">Billable</div>
-          <div className="text-lg font-bold text-zinc-950 flex items-baseline gap-1">
-            {totalBillableHours.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">h</span>
+        <div className="bg-surface border border-line p-4 rounded-lg shadow-card space-y-1">
+          <div className="text-ink-muted font-bold text-[11px] uppercase">Billable</div>
+          <div className="text-lg font-bold text-ink flex items-baseline gap-1">
+            {totalBillableHours.toFixed(1)} <span className="text-[11px] font-normal text-ink-muted">h</span>
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 p-4 rounded-lg shadow-sm space-y-1">
-          <div className="text-zinc-400 font-bold text-[9px] uppercase">Non-Billable</div>
-          <div className="text-lg font-bold text-zinc-500 flex items-baseline gap-1">
-            {totalNonBillableHours.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">h</span>
+        <div className="bg-surface border border-line p-4 rounded-lg shadow-card space-y-1">
+          <div className="text-ink-muted font-bold text-[11px] uppercase">Non-Billable</div>
+          <div className="text-lg font-bold text-ink-secondary flex items-baseline gap-1">
+            {totalNonBillableHours.toFixed(1)} <span className="text-[11px] font-normal text-ink-muted">h</span>
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 p-4 rounded-lg shadow-sm space-y-1 border-l-4 border-l-emerald-500">
-          <div className="text-zinc-400 font-bold text-[9px] uppercase">Approved</div>
+        <div className="bg-surface border border-line p-4 rounded-lg shadow-card space-y-1 border-l-4 border-l-emerald-500">
+          <div className="text-ink-muted font-bold text-[11px] uppercase">Approved</div>
           <div className="text-lg font-bold text-emerald-700 flex items-baseline gap-1">
-            {approvedHours.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">h</span>
+            {approvedHours.toFixed(1)} <span className="text-[11px] font-normal text-ink-muted">h</span>
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 p-4 rounded-lg shadow-sm space-y-1 border-l-4 border-l-amber-500">
-          <div className="text-zinc-400 font-bold text-[9px] uppercase">Pending</div>
-          <div className="text-lg font-bold text-amber-600 flex items-baseline gap-1">
-            {pendingHours.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">h</span>
+        <div className="bg-surface border border-line p-4 rounded-lg shadow-card space-y-1 border-l-4 border-l-amber-500">
+          <div className="text-ink-muted font-bold text-[11px] uppercase">Pending</div>
+          <div className="text-lg font-bold text-warning flex items-baseline gap-1">
+            {pendingHours.toFixed(1)} <span className="text-[11px] font-normal text-ink-muted">h</span>
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 p-4 rounded-lg shadow-sm space-y-1 border-l-4 border-l-red-500">
-          <div className="text-zinc-400 font-bold text-[9px] uppercase">Rejected</div>
-          <div className="text-lg font-bold text-red-600 flex items-baseline gap-1">
-            {rejectedHours.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">h</span>
+        <div className="bg-surface border border-line p-4 rounded-lg shadow-card space-y-1 border-l-4 border-l-red-500">
+          <div className="text-ink-muted font-bold text-[11px] uppercase">Rejected</div>
+          <div className="text-lg font-bold text-critical flex items-baseline gap-1">
+            {rejectedHours.toFixed(1)} <span className="text-[11px] font-normal text-ink-muted">h</span>
           </div>
         </div>
       </div>
@@ -152,21 +152,21 @@ export default function AdminEffortLogsPage() {
       {/* Aggregate Grouping Summaries */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Ticket Summary */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3 shadow-sm">
-          <h3 className="font-bold uppercase tracking-wider text-[10px] text-zinc-950 border-b border-zinc-100 pb-2">By Ticket</h3>
+        <div className="bg-surface border border-line rounded-lg p-4 space-y-3 shadow-card">
+          <h3 className="font-bold uppercase tracking-wider text-[11px] text-ink border-b border-line pb-2">By Ticket</h3>
           <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
             {Object.keys(ticketBreakdown).length === 0 ? (
-              <p className="text-zinc-400 italic text-[10px]">No efforts logged.</p>
+              <p className="text-ink-muted italic text-[11px]">No efforts logged.</p>
             ) : (
               Object.entries(ticketBreakdown).map(([ticketId, info]) => (
                 <div key={ticketId} className="flex justify-between items-start text-[11px]">
                   <div className="truncate w-3/4">
-                    <Link href={`/admin/tickets/${ticketId}`} className="font-bold text-zinc-900 hover:underline">
+                    <Link href={`/admin/tickets/${ticketId}`} className="font-bold text-ink hover:underline">
                       {info.ticketNumber || ticketId}
                     </Link>
-                    <div className="text-zinc-400 truncate text-[9px]">{info.title}</div>
+                    <div className="text-ink-muted truncate text-[11px]">{info.title}</div>
                   </div>
-                  <span className="font-bold text-zinc-950 text-right">{info.hours.toFixed(1)}h</span>
+                  <span className="font-bold text-ink text-right">{info.hours.toFixed(1)}h</span>
                 </div>
               ))
             )}
@@ -174,16 +174,16 @@ export default function AdminEffortLogsPage() {
         </div>
 
         {/* Consultant Summary */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3 shadow-sm">
-          <h3 className="font-bold uppercase tracking-wider text-[10px] text-zinc-950 border-b border-zinc-100 pb-2">By Consultant</h3>
+        <div className="bg-surface border border-line rounded-lg p-4 space-y-3 shadow-card">
+          <h3 className="font-bold uppercase tracking-wider text-[11px] text-ink border-b border-line pb-2">By Consultant</h3>
           <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
             {Object.keys(consultantBreakdown).length === 0 ? (
-              <p className="text-zinc-400 italic text-[10px]">No efforts logged.</p>
+              <p className="text-ink-muted italic text-[11px]">No efforts logged.</p>
             ) : (
               Object.entries(consultantBreakdown).map(([consultant, hours]) => (
                 <div key={consultant} className="flex justify-between items-center text-[11px]">
-                  <span className="text-zinc-700 font-bold">{consultant}</span>
-                  <span className="font-bold text-zinc-950">{hours.toFixed(1)}h</span>
+                  <span className="text-ink-secondary font-bold">{consultant}</span>
+                  <span className="font-bold text-ink">{hours.toFixed(1)}h</span>
                 </div>
               ))
             )}
@@ -191,16 +191,16 @@ export default function AdminEffortLogsPage() {
         </div>
 
         {/* Customer Summary */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3 shadow-sm">
-          <h3 className="font-bold uppercase tracking-wider text-[10px] text-zinc-950 border-b border-zinc-100 pb-2">By Organization</h3>
+        <div className="bg-surface border border-line rounded-lg p-4 space-y-3 shadow-card">
+          <h3 className="font-bold uppercase tracking-wider text-[11px] text-ink border-b border-line pb-2">By Organization</h3>
           <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
             {Object.keys(customerBreakdown).length === 0 ? (
-              <p className="text-zinc-400 italic text-[10px]">No efforts logged.</p>
+              <p className="text-ink-muted italic text-[11px]">No efforts logged.</p>
             ) : (
               Object.entries(customerBreakdown).map(([org, hours]) => (
                 <div key={org} className="flex justify-between items-center text-[11px]">
-                  <span className="text-zinc-700 font-bold truncate max-w-[150px]">{org}</span>
-                  <span className="font-bold text-zinc-950">{hours.toFixed(1)}h</span>
+                  <span className="text-ink-secondary font-bold truncate max-w-[150px]">{org}</span>
+                  <span className="font-bold text-ink">{hours.toFixed(1)}h</span>
                 </div>
               ))
             )}
@@ -208,16 +208,16 @@ export default function AdminEffortLogsPage() {
         </div>
 
         {/* Month Summary */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3 shadow-sm">
-          <h3 className="font-bold uppercase tracking-wider text-[10px] text-zinc-950 border-b border-zinc-100 pb-2">By Month</h3>
+        <div className="bg-surface border border-line rounded-lg p-4 space-y-3 shadow-card">
+          <h3 className="font-bold uppercase tracking-wider text-[11px] text-ink border-b border-line pb-2">By Month</h3>
           <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
             {Object.keys(monthBreakdown).length === 0 ? (
-              <p className="text-zinc-400 italic text-[10px]">No efforts logged.</p>
+              <p className="text-ink-muted italic text-[11px]">No efforts logged.</p>
             ) : (
               Object.entries(monthBreakdown).map(([month, hours]) => (
                 <div key={month} className="flex justify-between items-center text-[11px]">
-                  <span className="text-zinc-700 font-bold">{month}</span>
-                  <span className="font-bold text-zinc-950">{hours.toFixed(1)}h</span>
+                  <span className="text-ink-secondary font-bold">{month}</span>
+                  <span className="font-bold text-ink">{hours.toFixed(1)}h</span>
                 </div>
               ))
             )}
@@ -226,9 +226,9 @@ export default function AdminEffortLogsPage() {
       </div>
 
       {/* Filter and Search controls */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-surface border border-line rounded-lg p-4 shadow-card flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-80">
-          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-zinc-400">
+          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-ink-muted">
             <Search size={12} />
           </span>
           <input
@@ -236,18 +236,18 @@ export default function AdminEffortLogsPage() {
             placeholder="Search logs by ID, title, consultant..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-zinc-200 pl-8 pr-3 py-1.5 rounded text-xs text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
+            className="w-full bg-surface border border-line pl-8 pr-3 py-1.5 rounded text-xs text-ink focus:outline-none focus:border-brand"
           />
         </div>
 
         <div className="flex flex-wrap gap-3 w-full md:w-auto items-center justify-end">
           <div className="flex items-center gap-1.5">
-            <Filter size={10} className="text-zinc-400" />
-            <span className="font-bold text-zinc-500 uppercase text-[9px]">Organization:</span>
+            <Filter size={10} className="text-ink-muted" />
+            <span className="font-bold text-ink-secondary uppercase text-[11px]">Organization:</span>
             <select
               value={selectedOrg}
               onChange={(e) => setSelectedOrg(e.target.value)}
-              className="bg-white border border-zinc-200 rounded p-1 text-[11px] font-mono focus:outline-none"
+              className="bg-surface border border-line rounded p-1 text-[11px] focus:outline-none"
             >
               {organizations.map(org => (
                 <option key={org} value={org}>{org}</option>
@@ -256,11 +256,11 @@ export default function AdminEffortLogsPage() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-zinc-500 uppercase text-[9px]">Consultant:</span>
+            <span className="font-bold text-ink-secondary uppercase text-[11px]">Consultant:</span>
             <select
               value={selectedConsultant}
               onChange={(e) => setSelectedConsultant(e.target.value)}
-              className="bg-white border border-zinc-200 rounded p-1 text-[11px] font-mono focus:outline-none"
+              className="bg-surface border border-line rounded p-1 text-[11px] focus:outline-none"
             >
               {consultants.map(c => (
                 <option key={c} value={c}>{c}</option>
@@ -269,11 +269,11 @@ export default function AdminEffortLogsPage() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-zinc-500 uppercase text-[9px]">Status:</span>
+            <span className="font-bold text-ink-secondary uppercase text-[11px]">Status:</span>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-white border border-zinc-200 rounded p-1 text-[11px] font-mono focus:outline-none"
+              className="bg-surface border border-line rounded p-1 text-[11px] focus:outline-none"
             >
               <option value="All">All Statuses</option>
               <option value="Approved">Approved</option>
@@ -285,10 +285,10 @@ export default function AdminEffortLogsPage() {
       </div>
 
       {/* Main Effort Logs Table */}
-      <div className="bg-white border border-zinc-200 rounded-lg shadow-sm overflow-x-auto">
+      <div className="bg-surface border border-line rounded-lg shadow-card overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-600 font-bold uppercase text-[9px] tracking-wider">
+            <tr className="bg-surface-muted border-b border-line text-ink-secondary font-bold uppercase text-[11px] tracking-wider">
               <th className="py-2.5 px-4">Ticket</th>
               <th className="py-2.5 px-4">Consultant</th>
               <th className="py-2.5 px-4">Organization</th>
@@ -300,69 +300,69 @@ export default function AdminEffortLogsPage() {
               <th className="py-2.5 px-4 text-right">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 text-[11px]">
+          <tbody className="divide-y divide-line text-[11px]">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-8 text-center text-zinc-400 italic">
+                <td colSpan={9} className="py-8 text-center text-ink-muted italic">
                   No effort logs match the active query filters.
                 </td>
               </tr>
             ) : (
               filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-zinc-50 transition">
+                <tr key={log.id} className="hover:bg-surface-muted transition">
                   <td className="py-2.5 px-4 whitespace-nowrap">
-                    <Link href={`/admin/tickets/${log.ticketId}`} className="font-bold text-zinc-900 hover:underline">
+                    <Link href={`/admin/tickets/${log.ticketId}`} className="font-bold text-ink hover:underline">
                       {log.ticketNumber || log.ticketId}
                     </Link>
-                    <span className="ml-1.5 px-1 py-0.5 bg-zinc-100 text-zinc-500 rounded text-[9px]">
+                    <span className="ml-1.5 px-1 py-0.5 bg-surface-subtle text-ink-secondary rounded text-[11px]">
                       {log.sapModule}
                     </span>
                   </td>
-                  <td className="py-2.5 px-4 font-bold text-zinc-800 whitespace-nowrap">
+                  <td className="py-2.5 px-4 font-bold text-ink whitespace-nowrap">
                     {log.consultantName}
                   </td>
-                  <td className="py-2.5 px-4 text-zinc-500 max-w-[130px] truncate">
+                  <td className="py-2.5 px-4 text-ink-secondary max-w-[130px] truncate">
                     {log.organization}
                   </td>
-                  <td className="py-2.5 px-4 text-zinc-600 whitespace-nowrap">
+                  <td className="py-2.5 px-4 text-ink-secondary whitespace-nowrap">
                     <div>{log.activityDate}</div>
-                    <div className="text-[9px] text-zinc-400 font-normal">
+                    <div className="text-[11px] text-ink-muted font-normal">
                       {log.startTime} - {log.endTime}
                     </div>
                   </td>
                   <td className="py-2.5 px-4">
-                    <span className="px-1.5 py-0.5 border border-zinc-300 bg-zinc-50 rounded text-zinc-700 text-[9px] font-bold uppercase">
+                    <span className="px-1.5 py-0.5 border border-line-strong bg-surface-muted rounded text-ink-secondary text-[11px] font-bold uppercase">
                       {log.activityType}
                     </span>
                   </td>
-                  <td className="py-2.5 px-4 text-zinc-650 max-w-[200px] truncate" title={log.description}>
+                  <td className="py-2.5 px-4 text-ink-secondary max-w-[200px] truncate" title={log.description}>
                     {log.description}
                   </td>
-                  <td className="py-2.5 px-4 text-center font-bold text-zinc-950">
+                  <td className="py-2.5 px-4 text-center font-bold text-ink">
                     {log.hoursLogged.toFixed(1)}h
                   </td>
                   <td className="py-2.5 px-4 text-center whitespace-nowrap">
                     {log.billable ? (
                       <span className="text-emerald-700 font-bold">Billable</span>
                     ) : (
-                      <span className="text-zinc-400">Non-Billable</span>
+                      <span className="text-ink-muted">Non-Billable</span>
                     )}
                   </td>
                   <td className="py-2.5 px-4 text-right whitespace-nowrap">
                     {log.status === 'Approved' && (
                       <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
-                        <CheckCircle2 size={10} className="text-emerald-500" />
+                        <CheckCircle2 size={10} className="text-success" />
                         Approved
                       </span>
                     )}
                     {log.status === 'Pending' && (
-                      <span className="inline-flex items-center gap-1 text-amber-600 font-bold bg-amber-50 px-1 py-0.5 border border-amber-200 rounded text-[9px]">
+                      <span className="inline-flex items-center gap-1 text-warning font-bold bg-amber-50 px-1 py-0.5 border border-amber-200 rounded text-[11px]">
                         Pending
                       </span>
                     )}
                     {log.status === 'Rejected' && (
-                      <span className="inline-flex items-center gap-1 text-red-600 font-bold">
-                        <XCircle size={10} className="text-red-500" />
+                      <span className="inline-flex items-center gap-1 text-critical font-bold">
+                        <XCircle size={10} className="text-critical" />
                         Rejected
                       </span>
                     )}

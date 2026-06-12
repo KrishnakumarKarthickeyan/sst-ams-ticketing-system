@@ -173,36 +173,36 @@ export default function AdminCreateTicketPage() {
   const selectedCustomers = dbCustomers.filter(c => c.orgId === selectedOrgObj?.id);
 
   return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900 max-w-2xl mx-auto">
+    <div className="space-y-6 text-xs text-ink max-w-2xl mx-auto">
       
       {/* Navigation */}
-      <Link href="/admin/dashboard" className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-950 font-mono transition">
+      <Link href="/admin/dashboard" className="inline-flex items-center gap-1 text-ink-secondary hover:text-ink transition">
         <ArrowLeft size={12} />
         Back to Admin Dashboard
       </Link>
 
-      <div className="border-b border-zinc-200 pb-4">
-        <h1 className="text-lg font-bold uppercase text-zinc-950 font-mono">Create Ticket on Behalf of Customer</h1>
-        <p className="text-zinc-500 mt-1">Submit, categorize, and optionally assign a new incident or service request directly.</p>
+      <div className="border-b border-line pb-4">
+        <h1 className="type-title text-ink">Create Ticket on Behalf of Customer</h1>
+        <p className="type-meta mt-1 text-ink-secondary">Submit, categorize, and optionally assign a new incident or service request directly.</p>
       </div>
 
       {success && (
-        <div className="bg-emerald-50 border border-emerald-500 rounded p-3 text-emerald-800 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5 animate-fade-in">
-          <Check size={14} className="text-emerald-600" />
+        <div className="bg-emerald-50 border border-emerald-500 rounded p-3 text-emerald-800 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5 animate-fade-in">
+          <Check size={14} className="text-success" />
           Ticket registered on behalf of customer. Redirecting to queue...
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white border border-zinc-200 rounded-lg p-6 space-y-4 shadow-sm">
+      <form onSubmit={handleSubmit} className="bg-surface border border-line rounded-lg p-6 space-y-4 shadow-card">
         
         {/* Customer Organization & Requester */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Customer Organization</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Customer Organization</label>
             <select
               value={organization}
               onChange={handleOrgChange}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             >
               {dbOrganizations.map((org) => (
                 <option key={org.id} value={org.name}>{org.name}</option>
@@ -211,11 +211,11 @@ export default function AdminCreateTicketPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Requested By (Customer User)</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Requested By (Customer User)</label>
             <select
               value={customerIndex}
               onChange={(e) => setCustomerIndex(Number(e.target.value))}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             >
               {selectedCustomers.map((cust, idx) => (
                 <option key={idx} value={idx}>
@@ -228,25 +228,25 @@ export default function AdminCreateTicketPage() {
 
         {/* Title */}
         <div className="space-y-1">
-          <label className="font-bold text-zinc-700 uppercase text-[9px]">Brief Summary / Title</label>
+          <label className="font-bold text-ink-secondary uppercase text-[11px]">Brief Summary / Title</label>
           <input
             type="text"
             required
             placeholder="e.g. FICO AFAB depreciation balance invalid error AA617"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
+            className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
           />
         </div>
 
         {/* Parameters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">SAP Module</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">SAP Module</label>
             <select
               value={sapModule}
               onChange={(e) => setSapModule(e.target.value as SAPModule)}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             >
               <option value="FICO">FICO</option>
               <option value="MM">MM</option>
@@ -267,11 +267,11 @@ export default function AdminCreateTicketPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Issue Category</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Issue Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as IssueCategory)}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             >
               <option value="Functional Issue">Functional Issue</option>
               <option value="Technical Issue">Technical Issue</option>
@@ -287,11 +287,11 @@ export default function AdminCreateTicketPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Severity Priority</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Severity Priority</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as TicketPriority)}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             >
               <option value="Low">Low (P4)</option>
               <option value="Medium">Medium (P3)</option>
@@ -302,13 +302,13 @@ export default function AdminCreateTicketPage() {
         </div>
 
         {/* Assignment Overrides */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-b border-zinc-100 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-b border-line py-4">
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Optionally Assign Manager</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Optionally Assign Manager</label>
             <select
               value={assignedManager}
               onChange={(e) => setAssignedManager(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             >
               <option value="">-- Leave Unassigned --</option>
               {dbManagers.map((mgr) => (
@@ -320,11 +320,11 @@ export default function AdminCreateTicketPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="font-bold text-zinc-700 uppercase text-[9px]">Optionally Assign Consultant</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Optionally Assign Consultant</label>
             <select
               value={assignedConsultant}
               onChange={(e) => setAssignedConsultant(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+              className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
             >
               <option value="">-- Leave Unassigned --</option>
               {dbConsultants.map((c) => (
@@ -334,29 +334,29 @@ export default function AdminCreateTicketPage() {
               ))}
             </select>
             {assignedConsultant && (
-              <p className="text-[10px] text-emerald-600 mt-1">Ticket will be auto-set to "Assigned" status.</p>
+              <p className="text-[11px] text-success mt-1">Ticket will be auto-set to "Assigned" status.</p>
             )}
           </div>
         </div>
 
         {/* Description */}
         <div className="space-y-1">
-          <label className="font-bold text-zinc-700 uppercase text-[9px]">Detailed Description & Error Logs</label>
+          <label className="font-bold text-ink-secondary uppercase text-[11px]">Detailed Description & Error Logs</label>
           <textarea
             required
             rows={5}
             placeholder="Explain error codes, steps to reproduce, or enhancement specifications..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-955 focus:outline-none focus:border-zinc-950 font-mono"
+            className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
           />
         </div>
 
         {/* Attachment Upload (Simulated) */}
         <div className="space-y-2">
-          <label className="font-bold text-zinc-700 uppercase text-[9px]">Attachments</label>
+          <label className="font-bold text-ink-secondary uppercase text-[11px]">Attachments</label>
           <div className="flex items-center gap-3">
-            <label className="cursor-pointer py-1.5 px-3 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5 transition">
+            <label className="cursor-pointer py-1.5 px-3 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5 transition">
               <Paperclip size={12} />
               {isUploading ? 'Uploading...' : 'Choose File'}
               <input
@@ -367,21 +367,21 @@ export default function AdminCreateTicketPage() {
                 className="hidden"
               />
             </label>
-            <span className="text-zinc-500 text-[10px]">Maximum file size: 10MB. Allowed: PDF, Images, TXT, CSV, LOG.</span>
+            <span className="text-ink-secondary text-[11px]">Maximum file size: 10MB. Allowed: PDF, Images, TXT, CSV, LOG.</span>
           </div>
 
           {attachments.length > 0 && (
-            <div className="mt-2 space-y-1 bg-zinc-50 border border-zinc-200 rounded p-3">
+            <div className="mt-2 space-y-1 bg-surface-muted border border-line rounded p-3">
               {attachments.map((att, idx) => (
-                <div key={idx} className="flex items-center justify-between text-[11px] py-1 border-b border-zinc-100 last:border-b-0">
-                  <span className="text-zinc-700 flex items-center gap-1.5 truncate">
-                    <Paperclip size={10} className="text-zinc-400" />
-                    {att.fileName} <span className="text-zinc-400">({(att.fileSize / 1024).toFixed(1)} KB)</span>
+                <div key={idx} className="flex items-center justify-between text-[11px] py-1 border-b border-line last:border-b-0">
+                  <span className="text-ink-secondary flex items-center gap-1.5 truncate">
+                    <Paperclip size={10} className="text-ink-muted" />
+                    {att.fileName} <span className="text-ink-muted">({(att.fileSize / 1024).toFixed(1)} KB)</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => removeAttachment(idx)}
-                    className="text-zinc-400 hover:text-red-600 transition"
+                    className="text-ink-muted hover:text-critical transition"
                   >
                     <X size={12} />
                   </button>
@@ -393,7 +393,7 @@ export default function AdminCreateTicketPage() {
 
         <button
           type="submit"
-          className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase tracking-wider text-[10px] flex items-center justify-center gap-1.5 transition"
+          className="w-full py-2.5 bg-ink hover:bg-zinc-800 text-white rounded font-bold uppercase tracking-wider text-[11px] flex items-center justify-center gap-1.5 transition"
         >
           <Send size={12} />
           Create Ticket on Behalf of Customer

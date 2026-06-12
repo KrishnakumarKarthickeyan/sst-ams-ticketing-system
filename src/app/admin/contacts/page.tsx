@@ -317,82 +317,82 @@ export default function AdminContactsPage() {
   };
 
   return (
-    <div className="space-y-6 font-mono text-xs text-zinc-900">
+    <div className="space-y-6 text-xs text-ink">
       {/* Page Header */}
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-4 bg-white">
+      <div className="flex items-center justify-between border-b border-line pb-4 bg-surface">
         <div>
-          <h1 className="text-lg font-bold uppercase tracking-tight text-zinc-950 font-mono flex items-center gap-2">
+          <h1 className="type-title text-ink flex items-center gap-2">
             <Users size={20} />
             Contacts Directory
           </h1>
-          <p className="text-zinc-500 mt-1">Manage system-wide organization contacts, support roles, and tenant tagging controls.</p>
+          <p className="type-meta mt-1 text-ink-secondary">Manage system-wide organization contacts, support roles, and tenant tagging controls.</p>
         </div>
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if(!open) resetFormFields(); }}>
           <DialogTrigger asChild>
             <button
-              className="px-3 py-2 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+              className="px-3 py-2 bg-ink hover:bg-zinc-800 text-white rounded font-bold uppercase text-[11px] tracking-wider flex items-center gap-1.5 transition cursor-pointer"
             >
               <Plus size={12} />
               Add Contact
             </button>
           </DialogTrigger>
-          <DialogContent className="bg-white border border-zinc-200 font-mono text-xs max-w-md">
+          <DialogContent className="bg-surface border border-line text-xs max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-xs font-bold uppercase tracking-wider text-zinc-950">Add Contact Profile</DialogTitle>
-              <DialogDescription className="text-[11px] font-mono text-zinc-500">
+              <DialogTitle className="text-xs font-bold uppercase tracking-wider text-ink">Add Contact Profile</DialogTitle>
+              <DialogDescription className="text-[11px] text-ink-secondary">
                 Register a new authorized customer contact and assign organization tags.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddSubmit} className="space-y-4 pt-2">
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Full Name *</Label>
+                <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Full Name *</Label>
                 <Input
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="text-xs font-mono h-9"
+                  className="text-xs h-9"
                   placeholder="e.g. John Miller"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Email Address *</Label>
+                  <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Email Address *</Label>
                   <Input
                     required
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="text-xs font-mono h-9"
+                    className="text-xs h-9"
                     placeholder="e.g. john@company.com"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Phone Number</Label>
+                  <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Phone Number</Label>
                   <Input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="text-xs font-mono h-9"
+                    className="text-xs h-9"
                     placeholder="e.g. +1 (555) 0142"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Designation *</Label>
+                  <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Designation *</Label>
                   <Input
                     required
                     value={designation}
                     onChange={(e) => setDesignation(e.target.value)}
-                    className="text-xs font-mono h-9"
+                    className="text-xs h-9"
                     placeholder="e.g. IT Director"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Contact Role</Label>
+                  <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Contact Role</Label>
                   <select
                     value={roleType}
                     onChange={(e: any) => setRoleType(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 rounded px-2.5 h-9 text-xs font-mono text-zinc-900 focus:outline-none focus:border-zinc-950 shadow-sm"
+                    className="w-full bg-surface border border-line rounded px-2.5 h-9 text-xs text-ink focus:outline-none focus:border-brand shadow-card"
                   >
                     <option value="normal">Authorized Requester</option>
                     <option value="primary">Primary Support Lead</option>
@@ -403,8 +403,8 @@ export default function AdminContactsPage() {
 
               {/* Tags Area */}
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider block">Tagged Organizations</Label>
-                <div className="border border-zinc-200 rounded-lg p-2.5 max-h-36 overflow-y-auto space-y-1.5 bg-zinc-50/50">
+                <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider block">Tagged Organizations</Label>
+                <div className="border border-line rounded-lg p-2.5 max-h-36 overflow-y-auto space-y-1.5 bg-surface-muted/60">
                   {organizations.map(org => {
                     const isChecked = selectedOrgs.includes(org);
                     return (
@@ -412,16 +412,16 @@ export default function AdminContactsPage() {
                         key={org}
                         onClick={() => handleTagToggle(org)}
                         className={`flex items-center justify-between p-2 rounded border text-[11px] font-sans font-medium cursor-pointer transition ${
-                          isChecked ? 'bg-zinc-950 border-zinc-950 text-white' : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                          isChecked ? 'bg-ink border-ink text-white' : 'bg-surface border-line text-ink-secondary hover:bg-surface-muted'
                         }`}
                       >
                         <span>{org}</span>
-                        {isChecked && <Badge className="bg-white text-zinc-900 border-none font-bold text-[8px] px-1 py-0 shadow-none leading-tight hover:bg-white">TAGGED</Badge>}
+                        {isChecked && <Badge className="bg-surface text-ink border-none font-bold text-[11px] px-1 py-0 shadow-none leading-tight hover:bg-surface">TAGGED</Badge>}
                       </div>
                     );
                   })}
                   {organizations.length === 0 && (
-                    <p className="text-[10px] text-zinc-450 italic py-2 text-center">No active organizations found to tag.</p>
+                    <p className="text-[11px] text-ink-muted italic py-2 text-center">No active organizations found to tag.</p>
                   )}
                 </div>
               </div>
@@ -431,13 +431,13 @@ export default function AdminContactsPage() {
                   type="button" 
                   variant="outline" 
                   onClick={() => setShowAddDialog(false)}
-                  className="font-mono text-[10px] font-bold uppercase h-9"
+                  className="text-[11px] font-bold uppercase h-9"
                 >
                   Cancel
                 </Button>
                 <Button 
                   type="submit" 
-                  className="bg-zinc-950 hover:bg-zinc-800 text-white font-mono font-bold uppercase tracking-wider text-[10px] h-9"
+                  className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9"
                 >
                   Save Profile
                 </Button>
@@ -448,10 +448,10 @@ export default function AdminContactsPage() {
       </div>
 
       {/* Main Table Card */}
-      <Card className="bg-white border border-zinc-200 rounded overflow-hidden shadow-sm">
+      <Card className="bg-surface border border-line rounded overflow-hidden shadow-card">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[9px] tracking-wider text-zinc-500">
+            <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
               <th className="p-4">Contact Info</th>
               <th className="p-4">Designation</th>
               <th className="p-4">Metadata / Role</th>
@@ -459,50 +459,50 @@ export default function AdminContactsPage() {
               <th className="p-4 text-right">Operations</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200">
+          <tbody className="divide-y divide-line">
             {loading ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-zinc-450 font-mono">
+                <td colSpan={5} className="p-8 text-center text-ink-muted">
                   Loading contacts directory telemetry...
                 </td>
               </tr>
             ) : contacts.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-zinc-450 font-mono">
+                <td colSpan={5} className="p-8 text-center text-ink-muted">
                   No organization contacts registered.
                 </td>
               </tr>
             ) : (
               contacts.map((c) => (
-                <tr key={c.id} className="hover:bg-zinc-50/50 transition-colors">
+                <tr key={c.id} className="hover:bg-surface-muted/60 transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-900 font-bold uppercase shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-surface-subtle border border-line flex items-center justify-center text-ink font-bold uppercase shrink-0">
                         {c.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                       </div>
                       <div>
-                        <span className="font-bold text-zinc-800 text-xs block">{c.name}</span>
-                        <div className="flex items-center gap-3 text-[10px] text-zinc-400 font-mono mt-0.5">
+                        <span className="font-bold text-ink text-xs block">{c.name}</span>
+                        <div className="flex items-center gap-3 text-[11px] text-ink-muted mt-0.5">
                           <span className="flex items-center gap-1"><Mail size={11} /> {c.email}</span>
                           {c.phone && <span className="flex items-center gap-1"><Phone size={11} /> {c.phone}</span>}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="p-4 font-semibold text-zinc-700">{c.designation}</td>
+                  <td className="p-4 font-semibold text-ink-secondary">{c.designation}</td>
                   <td className="p-4">
                     {c.is_primary ? (
-                      <Badge className="bg-zinc-950 text-white text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-950 border-0 leading-none h-5">
+                      <Badge className="bg-ink text-white text-[11px] tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-ink border-0 leading-none h-5">
                         <ShieldCheck size={11} />
                         <span>Primary Lead</span>
                       </Badge>
                     ) : c.is_secondary ? (
-                      <Badge className="bg-zinc-100 text-zinc-800 border-zinc-200 text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-100 leading-none h-5">
-                        <UserCheck size={11} className="text-zinc-500" />
+                      <Badge className="bg-surface-subtle text-ink border-line text-[11px] tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-surface-subtle leading-none h-5">
+                        <UserCheck size={11} className="text-ink-secondary" />
                         <span>Secondary</span>
                       </Badge>
                     ) : (
-                      <Badge className="bg-zinc-50 text-zinc-550 border-zinc-200 text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-50 leading-none h-5">
+                      <Badge className="bg-surface-muted text-ink-secondary border-line text-[11px] tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-surface-muted leading-none h-5">
                         <span>Requester</span>
                       </Badge>
                     )}
@@ -512,13 +512,13 @@ export default function AdminContactsPage() {
                       {c.tags.map(org => (
                         <span 
                           key={org} 
-                          className="bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded font-mono text-[9px] font-semibold border border-zinc-200"
+                          className="bg-surface-subtle text-ink-secondary px-2 py-0.5 rounded text-[11px] font-semibold border border-line"
                         >
                           {org}
                         </span>
                       ))}
                       {c.tags.length === 0 && (
-                        <span className="text-zinc-400 italic">No organizations tagged</span>
+                        <span className="text-ink-muted italic">No organizations tagged</span>
                       )}
                     </div>
                   </td>
@@ -528,7 +528,7 @@ export default function AdminContactsPage() {
                         size="icon"
                         variant="outline"
                         onClick={() => handleEditClick(c)}
-                        className="h-7 w-7 border-zinc-200 text-zinc-600 hover:text-zinc-900 cursor-pointer"
+                        className="h-7 w-7 border-line text-ink-secondary hover:text-ink cursor-pointer"
                         title="Edit Contact"
                       >
                         <Edit size={12} />
@@ -537,7 +537,7 @@ export default function AdminContactsPage() {
                         size="icon"
                         variant="outline"
                         onClick={() => handleDeleteClick(c)}
-                        className="h-7 w-7 hover:bg-red-50 text-zinc-400 hover:text-red-750 border-zinc-200 cursor-pointer"
+                        className="h-7 w-7 hover:bg-red-50 text-ink-muted hover:text-red-750 border-line cursor-pointer"
                         title="Remove Contact"
                       >
                         <Trash2 size={12} />
@@ -553,59 +553,59 @@ export default function AdminContactsPage() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if(!open) resetFormFields(); }}>
-        <DialogContent className="bg-white border border-zinc-200 font-mono text-xs max-w-md">
+        <DialogContent className="bg-surface border border-line text-xs max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xs font-bold uppercase tracking-wider text-zinc-950">Edit Contact Profile</DialogTitle>
-            <DialogDescription className="text-[11px] font-mono text-zinc-500">
+            <DialogTitle className="text-xs font-bold uppercase tracking-wider text-ink">Edit Contact Profile</DialogTitle>
+            <DialogDescription className="text-[11px] text-ink-secondary">
               Update authorized customer contact details and organization mapping.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Full Name *</Label>
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Full Name *</Label>
               <Input
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="text-xs font-mono h-9"
+                className="text-xs h-9"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Email Address *</Label>
+                <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Email Address *</Label>
                 <Input
                   required
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="text-xs font-mono h-9"
+                  className="text-xs h-9"
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Phone Number</Label>
+                <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Phone Number</Label>
                 <Input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="text-xs font-mono h-9"
+                  className="text-xs h-9"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Designation *</Label>
+                <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Designation *</Label>
                 <Input
                   required
                   value={designation}
                   onChange={(e) => setDesignation(e.target.value)}
-                  className="text-xs font-mono h-9"
+                  className="text-xs h-9"
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider">Contact Role</Label>
+                <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Contact Role</Label>
                 <select
                   value={roleType}
                   onChange={(e: any) => setRoleType(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded px-2.5 h-9 text-xs font-mono text-zinc-900 focus:outline-none focus:border-zinc-950 shadow-sm"
+                  className="w-full bg-surface border border-line rounded px-2.5 h-9 text-xs text-ink focus:outline-none focus:border-brand shadow-card"
                 >
                   <option value="normal">Authorized Requester</option>
                   <option value="primary">Primary Support Lead</option>
@@ -616,8 +616,8 @@ export default function AdminContactsPage() {
 
             {/* Tags Area */}
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider block">Tagged Organizations</Label>
-              <div className="border border-zinc-200 rounded-lg p-2.5 max-h-36 overflow-y-auto space-y-1.5 bg-zinc-50/50">
+              <Label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider block">Tagged Organizations</Label>
+              <div className="border border-line rounded-lg p-2.5 max-h-36 overflow-y-auto space-y-1.5 bg-surface-muted/60">
                 {organizations.map(org => {
                   const isChecked = selectedOrgs.includes(org);
                   return (
@@ -625,11 +625,11 @@ export default function AdminContactsPage() {
                       key={org}
                       onClick={() => handleTagToggle(org)}
                       className={`flex items-center justify-between p-2 rounded border text-[11px] font-sans font-medium cursor-pointer transition ${
-                        isChecked ? 'bg-zinc-950 border-zinc-950 text-white' : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                        isChecked ? 'bg-ink border-ink text-white' : 'bg-surface border-line text-ink-secondary hover:bg-surface-muted'
                       }`}
                     >
                       <span>{org}</span>
-                      {isChecked && <Badge className="bg-white text-zinc-900 border-none font-bold text-[8px] px-1 py-0 shadow-none leading-tight hover:bg-white">TAGGED</Badge>}
+                      {isChecked && <Badge className="bg-surface text-ink border-none font-bold text-[11px] px-1 py-0 shadow-none leading-tight hover:bg-surface">TAGGED</Badge>}
                     </div>
                   );
                 })}
@@ -641,13 +641,13 @@ export default function AdminContactsPage() {
                 type="button" 
                 variant="outline" 
                 onClick={() => setShowEditDialog(false)}
-                className="font-mono text-[10px] font-bold uppercase h-9"
+                className="text-[11px] font-bold uppercase h-9"
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
-                className="bg-zinc-950 hover:bg-zinc-800 text-white font-mono font-bold uppercase tracking-wider text-[10px] h-9"
+                className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9"
               >
                 Update Details
               </Button>
