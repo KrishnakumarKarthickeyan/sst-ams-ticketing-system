@@ -54,6 +54,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
+import { PageHeader } from '../../../components/ui/page-header';
+import { AICard, AIInsightRow } from '../../../components/ui/ai-card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { Textarea } from '../../../components/ui/textarea';
@@ -126,33 +128,33 @@ const QueueTicketRow = ({
     : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
 
   return (
-    <div className={`p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
+    <div className={`p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
       <div className="flex justify-between items-center">
-        <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">
+        <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-bold text-ink hover:underline">
           {ticket.ticketNumber}
         </Link>
         <div className="flex gap-1 items-center">
           {showEscalatedBadge && (
-            <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">
+            <Badge variant="destructive" className="text-[11px] font-bold py-0 px-1 uppercase leading-none h-4">
               Escalated
             </Badge>
           )}
           {slaInfo && (
-            <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
+            <Badge className={`text-[11px] font-bold py-0 px-1 uppercase leading-none h-4 ${
               slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
             }`}>{slaInfo.label}</Badge>
           )}
-          <Badge className="bg-zinc-100 text-zinc-800 border-none font-bold text-[7px] py-0 px-1 uppercase">{ticket.priority}</Badge>
+          <Badge className="bg-surface-subtle text-ink border-none font-bold text-[11px] py-0 px-1 uppercase">{ticket.priority}</Badge>
         </div>
       </div>
-      <span className="text-zinc-700 truncate block font-sans">{ticket.title}</span>
-      <div className="flex justify-between items-center text-[8px] text-zinc-400">
+      <span className="text-ink-secondary truncate block font-sans">{ticket.title}</span>
+      <div className="flex justify-between items-center text-[11px] text-ink-muted">
         <span>Org: {ticket.organization}</span>
         <span>Module: {ticket.sapModule}</span>
       </div>
       {isEscalated && (
         ticket.escalationAcknowledgedAt ? (
-          <div className="text-[8px] text-zinc-500 font-sans mt-0.5 pt-0.5 border-t border-zinc-100 flex justify-between items-center">
+          <div className="text-[11px] text-ink-secondary font-sans mt-0.5 pt-0.5 border-t border-line flex justify-between items-center">
             <span>Ack: {ticket.escalationAcknowledgedByName || 'Manager'}</span>
             <span>{formatRelativeTime(ticket.escalationAcknowledgedAt)}</span>
           </div>
@@ -161,7 +163,7 @@ const QueueTicketRow = ({
             <Button 
               size="sm" 
               onClick={() => acknowledgeEscalation(ticket.id, user?.id || '', user?.name || '')} 
-              className="h-5 text-[8px] font-mono font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2"
+              className="h-5 text-[11px] font-bold bg-ink hover:bg-zinc-800 text-white rounded px-2"
             >
               Acknowledge
             </Button>
@@ -189,25 +191,25 @@ const EscalationTicketRow = ({
   const escReason = ticket.escalationReason || (ticket.escalations && ticket.escalations.length > 0 ? ticket.escalations[ticket.escalations.length - 1].reason : null) || 'No reason provided';
 
   return (
-    <div className="p-3 bg-zinc-50/50 border border-zinc-200 rounded-xl flex flex-col gap-2.5">
+    <div className="p-3 bg-surface-muted/60 border border-line rounded-lg flex flex-col gap-2.5">
       {/* Row 1: Ticket Number, ESCALATED Badge, Priority Badge */}
       <div className="flex items-center gap-2 flex-wrap text-xs">
-        <span className="font-mono font-medium text-zinc-900">
+        <span className="font-medium text-ink">
           <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="hover:underline">
             {ticket.ticketNumber}
           </Link>
         </span>
-        <span className="text-zinc-300">·</span>
-        <Badge variant="outline" className="text-[9px] font-semibold bg-amber-50 text-amber-800 border-amber-200 uppercase py-0.5 px-1.5 leading-none h-5">
+        <span className="text-ink-muted">·</span>
+        <Badge variant="outline" className="text-[11px] font-semibold bg-amber-50 text-amber-800 border-amber-200 uppercase py-0.5 px-1.5 leading-none h-5">
           ESCALATED
         </Badge>
-        <Badge variant="outline" className="text-[9px] font-semibold bg-zinc-50 text-zinc-700 border-zinc-200 uppercase py-0.5 px-1.5 leading-none h-5">
+        <Badge variant="outline" className="text-[11px] font-semibold bg-surface-muted text-ink-secondary border-line uppercase py-0.5 px-1.5 leading-none h-5">
           {ticket.priority}
         </Badge>
       </div>
       
       {/* Row 2: Title */}
-      <div className="text-sm font-medium text-zinc-800 font-sans line-clamp-1">
+      <div className="text-sm font-medium text-ink font-sans line-clamp-1">
         {ticket.title}
       </div>
       
@@ -217,7 +219,7 @@ const EscalationTicketRow = ({
       </div>
 
       {/* Row 4: Escalation Reason quote block */}
-      <div className="border-l-2 border-zinc-300 pl-2.5 italic text-xs text-zinc-500 font-sans leading-relaxed">
+      <div className="border-l-2 border-line-strong pl-2.5 italic text-xs text-ink-secondary font-sans leading-relaxed">
         "{escReason}"
       </div>
       
@@ -226,7 +228,7 @@ const EscalationTicketRow = ({
         <Button 
           variant="default" 
           size="sm" 
-          className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold rounded-lg text-xs py-1.5 px-4"
+          className="bg-ink hover:bg-zinc-800 text-white font-semibold rounded-lg text-xs py-1.5 px-4"
           onClick={() => acknowledgeEscalation(ticket.id, user?.id || '', user?.name || '')}
         >
           Acknowledge
@@ -255,6 +257,32 @@ export default function ManagerDashboardPage() {
   } = useTickets();
 
   const { user } = useAuth();
+
+  // AI operations briefing — every value below is derived live from the queue;
+  // nothing is static or sampled.
+  const aiBriefing = useMemo(() => {
+    const now = Date.now();
+    const open = tickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
+    const hasSla = (t: { slaDueAt: string }) => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable';
+    const atRisk = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() - now > 0 && new Date(t.slaDueAt).getTime() - now < 12 * 3600e3);
+    const breached = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() < now);
+    const unackedEscalations = tickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt);
+    const unassigned = open.filter(t => !t.assignedConsultant);
+    const loadMap: Record<string, number> = {};
+    open.forEach(t => {
+      if (t.assignedConsultant) loadMap[t.assignedConsultant] = (loadMap[t.assignedConsultant] || 0) + 1;
+    });
+    const ranked = Object.entries(loadMap).sort((a, b) => b[1] - a[1]);
+    return {
+      openCount: open.length,
+      atRisk,
+      breached,
+      unackedEscalations,
+      unassigned,
+      busiest: ranked[0] ?? null,
+      lightest: ranked.length > 1 ? ranked[ranked.length - 1] : null,
+    };
+  }, [tickets]);
 
   // Password Request States
   interface PasswordChangeRequest {
@@ -1908,10 +1936,10 @@ export default function ManagerDashboardPage() {
     return (
       <div className="space-y-6 pb-12 animate-pulse">
         {/* Page Header Skeleton */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-zinc-200 pb-5 gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-line pb-5 gap-4">
           <div className="space-y-2">
             <Skeleton className="h-8 w-64 bg-zinc-200" />
-            <Skeleton className="h-4 w-80 bg-zinc-100" />
+            <Skeleton className="h-4 w-80 bg-surface-subtle" />
           </div>
           <div className="flex gap-2">
             <Skeleton className="h-10 w-24 bg-zinc-200 rounded-lg" />
@@ -1922,20 +1950,20 @@ export default function ManagerDashboardPage() {
         {/* Stats Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="border border-zinc-200 rounded-xl p-5 bg-white space-y-3 shadow-sm">
+            <div key={idx} className="border border-line rounded-lg p-5 bg-surface space-y-3 shadow-card">
               <div className="flex justify-between items-center">
-                <Skeleton className="h-4 w-24 bg-zinc-150" />
-                <Skeleton className="h-4 w-4 rounded-full bg-zinc-150" />
+                <Skeleton className="h-4 w-24 bg-surface-subtle" />
+                <Skeleton className="h-4 w-4 rounded-full bg-surface-subtle" />
               </div>
               <Skeleton className="h-8 w-16 bg-zinc-200" />
-              <Skeleton className="h-3 w-32 bg-zinc-100" />
+              <Skeleton className="h-3 w-32 bg-surface-subtle" />
             </div>
           ))}
         </div>
 
         {/* Dynamic tabs/sections skeleton */}
-        <div className="border border-zinc-200 rounded-xl p-6 bg-white space-y-6 shadow-sm">
-          <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
+        <div className="border border-line rounded-lg p-6 bg-surface space-y-6 shadow-card">
+          <div className="flex items-center gap-3 border-b border-line pb-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-8 w-24 bg-zinc-200 rounded" />
             ))}
@@ -1943,16 +1971,16 @@ export default function ManagerDashboardPage() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <Skeleton className="h-6 w-48 bg-zinc-200" />
-              <Skeleton className="h-8 w-32 bg-zinc-100" />
+              <Skeleton className="h-8 w-32 bg-surface-subtle" />
             </div>
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, idx) => (
                 <div key={idx} className="flex justify-between items-center border-b border-zinc-50 pb-3 last:border-b-0">
                   <div className="space-y-2 flex-1">
                     <Skeleton className="h-4 w-1/3 bg-zinc-200" />
-                    <Skeleton className="h-3 w-1/2 bg-zinc-100" />
+                    <Skeleton className="h-3 w-1/2 bg-surface-subtle" />
                   </div>
-                  <Skeleton className="h-6 w-16 bg-zinc-150 rounded" />
+                  <Skeleton className="h-6 w-16 bg-surface-subtle rounded" />
                 </div>
               ))}
             </div>
@@ -1963,43 +1991,37 @@ export default function ManagerDashboardPage() {
   }
 
   return (
-    <div className="space-y-6 font-mono text-xs text-[#09090b]">
+    <div className="space-y-6 text-xs text-[#09090b]">
       {/* --- COMMAND CENTER HEADER --- */}
-      <div className="border-b border-zinc-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-950 uppercase font-sans">
-            AMS Management Command Center
-          </h1>
-          <p className="text-zinc-500 text-xs mt-1 font-sans">
-            Unified operations cockpit for client SLAs, resource capacity, approvals, and performance metrics.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Badge className="bg-zinc-900 text-white font-mono text-[9px] tracking-wider uppercase px-2.5 py-1 shrink-0">
-            LIVE COCKPIT
-          </Badge>
-        </div>
-      </div>
+      <PageHeader
+        title="AMS Management Command Center"
+        description="Unified operations cockpit for client SLAs, resource capacity, approvals, and performance metrics."
+        actions={
+          <span className="type-status inline-flex items-center gap-1.5 rounded-full border border-success-border bg-success-soft px-2.5 py-1 font-semibold text-success-strong uppercase">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+            Live Cockpit
+          </span>
+        }
+      />
 
       {/* Filter Bar */}
-      <Card className="border border-zinc-200 rounded-lg p-4 mb-6 shadow-sm bg-white">
+      <Card className="border border-line rounded-lg p-4 mb-6 shadow-card bg-surface">
         {/* ROW 1 */}
         <div className="flex flex-wrap gap-3 items-end w-full">
           
           {/* 1. PERIOD */}
           <div className="flex flex-col w-full md:w-auto">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
-            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 h-9 items-center min-w-[320px]">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
+            <div className="flex bg-surface-subtle p-0.5 rounded-lg border border-line h-9 items-center min-w-[320px]">
               {['This Month', 'This Quarter', 'This Year', 'Custom'].map(p => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setFilters(prev => ({ ...prev, period: p }))}
-                  className={`flex-1 h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer whitespace-nowrap px-2 ${
+                  className={`flex-1 h-full flex items-center justify-center text-[11px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer whitespace-nowrap px-2 ${
                     filters.period === p
-                      ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200/50'
-                      : 'text-zinc-550 hover:text-zinc-800'
+                      ? 'bg-surface text-ink shadow-card border border-line/50'
+                      : 'text-ink-secondary hover:text-ink'
                   }`}
                 >
                   {p}
@@ -2010,25 +2032,25 @@ export default function ManagerDashboardPage() {
 
           {/* 2. STATUS */}
           <div className="relative flex flex-col flex-1 min-w-[140px]" ref={statusDropdownRef}>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
             <button
               type="button"
               onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-              className="bg-white border border-zinc-200 rounded-md px-3 h-9 text-xs text-zinc-950 transition font-sans w-full shadow-sm flex items-center justify-between cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-950"
+              className="bg-surface border border-line rounded-md px-3 h-9 text-xs text-ink transition font-sans w-full shadow-card flex items-center justify-between cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand/30"
             >
               <span className="truncate">
                 {filters.statuses.includes('All') 
                   ? 'All Statuses' 
                   : `${filters.statuses.length} selected`}
               </span>
-              <ChevronRight size={12} className="text-zinc-455 shrink-0 rotate-90" />
+              <ChevronRight size={12} className="text-ink-muted shrink-0 rotate-90" />
             </button>
             {showStatusDropdown && (
-              <div className="absolute z-50 mt-16 w-full min-w-[160px] bg-white border border-zinc-200 rounded-md shadow-lg p-2 space-y-1">
+              <div className="absolute z-50 mt-16 w-full min-w-[160px] bg-surface border border-line rounded-md shadow-lg p-2 space-y-1">
                 {['All', 'New', 'Assigned', 'In Progress', 'Pending Closure', 'Closed', 'Escalated', 'Reopened'].map(st => {
                   const isSelected = filters.statuses.includes(st);
                   return (
-                    <label key={st} className="flex items-center gap-2 p-1.5 hover:bg-zinc-50 rounded cursor-pointer text-xs font-sans text-zinc-700">
+                    <label key={st} className="flex items-center gap-2 p-1.5 hover:bg-surface-muted rounded cursor-pointer text-xs font-sans text-ink-secondary">
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -2046,7 +2068,7 @@ export default function ManagerDashboardPage() {
                              setFilters(prev => ({ ...prev, statuses: next }));
                            }
                         }}
-                        className="rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950"
+                        className="rounded border-line-strong text-ink focus:ring-brand/30"
                       />
                       <span>{st}</span>
                     </label>
@@ -2058,12 +2080,12 @@ export default function ManagerDashboardPage() {
 
           {/* 3. PRIORITY */}
           <div className="flex flex-col flex-1 min-w-[140px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
             <Select
               value={filters.priority}
               onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -2078,12 +2100,12 @@ export default function ManagerDashboardPage() {
 
           {/* 4. MODULE */}
           <div className="flex flex-col flex-1 min-w-[140px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Module</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Module</span>
             <Select
               value={filters.module}
               onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Module" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -2097,12 +2119,12 @@ export default function ManagerDashboardPage() {
 
           {/* 5. CUSTOMER */}
           <div className="flex flex-col flex-1 min-w-[140px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Customer</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Customer</span>
             <Select
               value={filters.customer}
               onValueChange={(val) => setFilters(prev => ({ ...prev, customer: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-950 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-950">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Customer" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -2127,7 +2149,7 @@ export default function ManagerDashboardPage() {
               module: 'All',
               customer: 'All'
             })}
-            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200 shadow-sm font-sans"
+            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-surface-subtle hover:text-ink border border-line shadow-card font-sans"
           >
             <RotateCcw size={14} />
             Reset
@@ -2137,23 +2159,23 @@ export default function ManagerDashboardPage() {
 
         {/* ROW 2 - Custom range From/To inputs */}
         {filters.period === 'Custom' && (
-          <div className="border-t border-zinc-200 mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="border-t border-line mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex flex-col flex-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-950 w-full cursor-pointer font-sans"
+                className="h-9 border border-line rounded-md bg-surface px-3 py-1.5 text-xs text-ink shadow-card focus:outline-none focus:ring-1 focus:ring-brand/30 w-full cursor-pointer font-sans"
               />
             </div>
             <div className="flex flex-col flex-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-950 w-full cursor-pointer font-sans"
+                className="h-9 border border-line rounded-md bg-surface px-3 py-1.5 text-xs text-ink shadow-card focus:outline-none focus:ring-1 focus:ring-brand/30 w-full cursor-pointer font-sans"
               />
             </div>
           </div>
@@ -2162,25 +2184,25 @@ export default function ManagerDashboardPage() {
 
       {/* ── PRODUCTION READINESS STATUS CHECKLIST ── */}
       {checklistData && (
-        <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3 font-sans text-xs shadow-sm">
-          <div className="flex items-center gap-2 border-b border-zinc-150 pb-2">
-            <AlertCircle size={14} className="text-zinc-500" />
-            <span className="font-bold text-zinc-950 uppercase tracking-wider text-[9px] font-mono">[Database Status]: Production Readiness Status Checklist</span>
+        <div className="bg-surface-muted border border-line rounded-lg p-4 space-y-3 font-sans text-xs shadow-card">
+          <div className="flex items-center gap-2 border-b border-line pb-2">
+            <AlertCircle size={14} className="text-ink-secondary" />
+            <span className="font-bold text-ink uppercase tracking-wider text-[11px]">[Database Status]: Production Readiness Status Checklist</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
             
             {/* Customers Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
               checklistData.customers.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.customers.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+              checklistData.customers.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
             }`}>
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-zinc-700">Customers</span>
-                {checklistData.customers.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.customers.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
-                {checklistData.customers.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
+                <span className="font-semibold text-ink-secondary">Customers</span>
+                {checklistData.customers.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.customers.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.customers.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+              <p className="text-[11px] text-ink-secondary mt-1">
                 {checklistData.customers.status === 'ERROR' ? 'Query failed' : `${checklistData.customers.count} customers active`}
               </p>
             </div>
@@ -2188,15 +2210,15 @@ export default function ManagerDashboardPage() {
             {/* Consultants Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
               checklistData.consultants.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.consultants.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+              checklistData.consultants.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
             }`}>
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-zinc-700">Consultants</span>
-                {checklistData.consultants.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.consultants.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
-                {checklistData.consultants.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
+                <span className="font-semibold text-ink-secondary">Consultants</span>
+                {checklistData.consultants.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.consultants.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.consultants.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+              <p className="text-[11px] text-ink-secondary mt-1">
                 {checklistData.consultants.status === 'ERROR' ? 'Query failed' : `${checklistData.consultants.count} consultants active`}
               </p>
             </div>
@@ -2204,15 +2226,15 @@ export default function ManagerDashboardPage() {
             {/* Tickets Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
               checklistData.tickets.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.tickets.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+              checklistData.tickets.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
             }`}>
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-zinc-700">Tickets</span>
-                {checklistData.tickets.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.tickets.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
-                {checklistData.tickets.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
+                <span className="font-semibold text-ink-secondary">Tickets</span>
+                {checklistData.tickets.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.tickets.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.tickets.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+              <p className="text-[11px] text-ink-secondary mt-1">
                 {checklistData.tickets.status === 'ERROR' ? 'Query failed' : `${checklistData.tickets.count} tickets logged`}
               </p>
             </div>
@@ -2220,15 +2242,15 @@ export default function ManagerDashboardPage() {
             {/* Approvals Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
               checklistData.approvals.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.approvals.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+              checklistData.approvals.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
             }`}>
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-zinc-700">Approvals</span>
-                {checklistData.approvals.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.approvals.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
-                {checklistData.approvals.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
+                <span className="font-semibold text-ink-secondary">Approvals</span>
+                {checklistData.approvals.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.approvals.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.approvals.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+              <p className="text-[11px] text-ink-secondary mt-1">
                 {checklistData.approvals.status === 'ERROR' ? 'Query failed' : `${checklistData.approvals.count} pending approvals`}
               </p>
             </div>
@@ -2236,15 +2258,15 @@ export default function ManagerDashboardPage() {
             {/* Reports Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
               checklistData.reports.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.reports.status === 'EMPTY' ? 'border-dashed border-zinc-200 bg-white' : 'border-red-200 bg-red-50/10'
+              checklistData.reports.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
             }`}>
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-zinc-700">Reports</span>
-                {checklistData.reports.status === 'ACTIVE' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.reports.status === 'EMPTY' && <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
-                {checklistData.reports.status === 'ERROR' && <Badge className="text-[7px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
+                <span className="font-semibold text-ink-secondary">Reports</span>
+                {checklistData.reports.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.reports.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.reports.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+              <p className="text-[11px] text-ink-secondary mt-1">
                 {checklistData.reports.status === 'ERROR' ? 'System offline' : 'System online'}
               </p>
             </div>
@@ -2253,36 +2275,86 @@ export default function ManagerDashboardPage() {
         </div>
       )}
 
+      {/* ── AI OPERATIONS BRIEFING (all values derived live from the queue) ── */}
+      <AICard title="AI Operations Briefing">
+        <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
+          <AIInsightRow
+            icon={ShieldAlert}
+            label={aiBriefing.breached.length > 0 ? 'SLA breaches needing action' : 'SLA breaches'}
+            value={
+              <span className={aiBriefing.breached.length > 0 ? 'text-critical' : 'text-success'}>
+                {aiBriefing.breached.length}
+              </span>
+            }
+          />
+          <AIInsightRow
+            icon={Timer}
+            label="Breach risk in next 12h"
+            value={
+              <span className={aiBriefing.atRisk.length > 0 ? 'text-warning-strong' : 'text-success'}>
+                {aiBriefing.atRisk.length}
+              </span>
+            }
+          />
+          <AIInsightRow
+            icon={Users}
+            label={
+              aiBriefing.busiest
+                ? `Heaviest load: ${aiBriefing.busiest[0]}`
+                : 'No consultant load registered'
+            }
+            value={aiBriefing.busiest ? `${aiBriefing.busiest[1]} open` : '—'}
+          />
+          <AIInsightRow
+            icon={TrendingUp}
+            label="Unassigned in queue"
+            value={
+              <span className={aiBriefing.unassigned.length > 0 ? 'text-warning-strong' : 'text-success'}>
+                {aiBriefing.unassigned.length}
+              </span>
+            }
+          />
+        </div>
+        {(aiBriefing.unackedEscalations.length > 0 || (aiBriefing.busiest && aiBriefing.lightest && aiBriefing.busiest[1] - aiBriefing.lightest[1] >= 3)) && (
+          <p className="type-meta mt-2 border-t border-info-border/50 pt-2 text-info-strong">
+            {aiBriefing.unackedEscalations.length > 0 &&
+              `${aiBriefing.unackedEscalations.length} escalation${aiBriefing.unackedEscalations.length === 1 ? '' : 's'} await acknowledgement. `}
+            {aiBriefing.busiest && aiBriefing.lightest && aiBriefing.busiest[1] - aiBriefing.lightest[1] >= 3 &&
+              `Workload is skewed — consider moving tickets from ${aiBriefing.busiest[0]} to ${aiBriefing.lightest[0]}.`}
+          </p>
+        )}
+      </AICard>
+
       {/* ── CORE WORKSPACE TABS INTERFACE ── */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <div className="w-full overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-1 border-b border-zinc-200/40">
-          <TabsList className="inline-flex h-auto items-center justify-start gap-1 bg-zinc-100/80 p-1 border border-zinc-200/60 rounded-xl">
-            <TabsTrigger value="analytics" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
-              <TrendingUp size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+        <div className="w-full overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-1 border-b border-line/40">
+          <TabsList className="inline-flex h-auto items-center justify-start gap-1 bg-surface-subtle/80 p-1 border border-line/60 rounded-lg">
+            <TabsTrigger value="analytics" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[11px] tracking-wider font-semibold uppercase">
+              <TrendingUp size={12} className="text-ink-muted group-hover:text-ink-secondary group-data-[state=active]:text-ink transition-colors duration-150" />
               Analytics Command Center
             </TabsTrigger>
-            <TabsTrigger value="health" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
-              <CheckSquare size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            <TabsTrigger value="health" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[11px] tracking-wider font-semibold uppercase">
+              <CheckSquare size={12} className="text-ink-muted group-hover:text-ink-secondary group-data-[state=active]:text-ink transition-colors duration-150" />
               Executive Operations
             </TabsTrigger>
-            <TabsTrigger value="tickets" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
-              <Timer size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            <TabsTrigger value="tickets" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[11px] tracking-wider font-semibold uppercase">
+              <Timer size={12} className="text-ink-muted group-hover:text-ink-secondary group-data-[state=active]:text-ink transition-colors duration-150" />
               Ticket Control Center
             </TabsTrigger>
-            <TabsTrigger value="resources" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
-              <Users size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            <TabsTrigger value="resources" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[11px] tracking-wider font-semibold uppercase">
+              <Users size={12} className="text-ink-muted group-hover:text-ink-secondary group-data-[state=active]:text-ink transition-colors duration-150" />
               Consultant Load & Capacity
             </TabsTrigger>
-            <TabsTrigger value="customers" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
-              <ShieldAlert size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            <TabsTrigger value="customers" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[11px] tracking-wider font-semibold uppercase">
+              <ShieldAlert size={12} className="text-ink-muted group-hover:text-ink-secondary group-data-[state=active]:text-ink transition-colors duration-150" />
               Customer Risk Map
             </TabsTrigger>
-            <TabsTrigger value="approvals" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
-              <Lock size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            <TabsTrigger value="approvals" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[11px] tracking-wider font-semibold uppercase">
+              <Lock size={12} className="text-ink-muted group-hover:text-ink-secondary group-data-[state=active]:text-ink transition-colors duration-150" />
               Governance & Financials
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[10px] tracking-wider font-semibold uppercase">
-              <Calendar size={12} className="text-zinc-400 group-hover:text-zinc-600 group-data-[state=active]:text-zinc-950 transition-colors duration-150" />
+            <TabsTrigger value="timeline" className="group shrink-0 px-4 py-2 flex items-center gap-2 text-[11px] tracking-wider font-semibold uppercase">
+              <Calendar size={12} className="text-ink-muted group-hover:text-ink-secondary group-data-[state=active]:text-ink transition-colors duration-150" />
               Activity & Audit Feed
             </TabsTrigger>
           </TabsList>
@@ -2293,28 +2365,28 @@ export default function ManagerDashboardPage() {
           
           {/* SECTION 1: REBUILT EXECUTIVE HEALTH OVERVIEW */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">
               1. Executive Health Overview
             </span>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               
               {/* Card 1: Ticket Operations */}
-              <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
+              <Card className="border border-line bg-surface p-4 shadow-card hover:border-line-strong transition flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-400 uppercase text-[8px] tracking-wider block font-mono">Ticket Operations</span>
-                  <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
-                    <div className="flex justify-between"><span>Open Tickets:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length}</span></div>
-                    <div className="flex justify-between"><span>In Progress:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.status.startsWith('In Progress') || t.status === 'In Progress').length}</span></div>
-                    <div className="flex justify-between"><span>Awaiting Assignment:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').length}</span></div>
-                    <div className="flex justify-between"><span>Pending Approval:</span><span className="font-bold text-zinc-900">{pendingApprovalsCount}</span></div>
-                    <div className="flex justify-between"><span>Pending Closure:</span><span className="font-bold text-zinc-900">{pendingClosureRequests.length}</span></div>
-                    <div className="flex justify-between"><span>Escalated:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.escalationFlag).length}</span></div>
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Ticket Operations</span>
+                  <div className="mt-3 space-y-1.5 text-[11px] text-ink-secondary">
+                    <div className="flex justify-between"><span>Open Tickets:</span><span className="font-bold text-ink">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length}</span></div>
+                    <div className="flex justify-between"><span>In Progress:</span><span className="font-bold text-ink">{filteredDashboardTickets.filter(t => t.status.startsWith('In Progress') || t.status === 'In Progress').length}</span></div>
+                    <div className="flex justify-between"><span>Awaiting Assignment:</span><span className="font-bold text-ink">{filteredDashboardTickets.filter(t => !t.assignedConsultant && t.status !== 'Closed' && t.status !== 'Resolved').length}</span></div>
+                    <div className="flex justify-between"><span>Pending Approval:</span><span className="font-bold text-ink">{pendingApprovalsCount}</span></div>
+                    <div className="flex justify-between"><span>Pending Closure:</span><span className="font-bold text-ink">{pendingClosureRequests.length}</span></div>
+                    <div className="flex justify-between"><span>Escalated:</span><span className="font-bold text-ink">{filteredDashboardTickets.filter(t => t.escalationFlag).length}</span></div>
                     <div className="flex justify-between"><span>Closed This Month:</span><span className="font-bold text-green-700">{filteredDashboardTickets.filter(t => (t.status === 'Closed' || t.status === 'Resolved') && new Date(t.createdAt).getMonth() === new Date(SYSTEM_NOW).getMonth()).length}</span></div>
-                    <div className="flex justify-between"><span>Reopened:</span><span className="font-bold text-red-600">{filteredDashboardTickets.filter(t => t.status === 'Reopened').length}</span></div>
-                    <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
+                    <div className="flex justify-between"><span>Reopened:</span><span className="font-bold text-critical">{filteredDashboardTickets.filter(t => t.status === 'Reopened').length}</span></div>
+                    <div className="flex justify-between pt-1.5 border-t border-line mt-1">
                       <span>Avg Resolution Time:</span>
-                      <span className="font-bold text-zinc-900">
+                      <span className="font-bold text-ink">
                         {dashboardData.executive.averageResolutionTime} hrs
                       </span>
                     </div>
@@ -2323,22 +2395,22 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Card 2: Resource Operations */}
-              <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
+              <Card className="border border-line bg-surface p-4 shadow-card hover:border-line-strong transition flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block font-mono">Resource Operations</span>
-                  <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
-                    <div className="flex justify-between"><span>Total Consultants:</span><span className="font-bold text-zinc-900">{profiles.filter(p => p.role === 'Consultant').length}</span></div>
-                    <div className="flex justify-between"><span>Functional:</span><span className="font-bold text-zinc-900">{profiles.filter(p => p.role === 'Consultant' && p.consultant_type === 'Functional').length}</span></div>
-                    <div className="flex justify-between"><span>Technical:</span><span className="font-bold text-zinc-900">{profiles.filter(p => p.role === 'Consultant' && p.consultant_type === 'Technical').length}</span></div>
-                    <div className="flex justify-between"><span>Allocated Staff:</span><span className="font-bold text-zinc-900">{consultantsLoad.filter(c => c.activeCount > 0).length}</span></div>
-                    <div className="flex justify-between"><span>Unallocated Staff:</span><span className="font-bold text-zinc-900">{consultantsLoad.filter(c => c.activeCount === 0).length}</span></div>
-                    <div className="flex justify-between"><span>Overloaded Staff:</span><span className="font-bold text-red-600">{consultantsLoad.filter(c => c.loadStatus === 'Overloaded').length}</span></div>
-                    <div className="flex justify-between"><span>Available Capacity:</span><span className="font-bold text-zinc-900">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Resource Operations</span>
+                  <div className="mt-3 space-y-1.5 text-[11px] text-ink-secondary">
+                    <div className="flex justify-between"><span>Total Consultants:</span><span className="font-bold text-ink">{profiles.filter(p => p.role === 'Consultant').length}</span></div>
+                    <div className="flex justify-between"><span>Functional:</span><span className="font-bold text-ink">{profiles.filter(p => p.role === 'Consultant' && p.consultant_type === 'Functional').length}</span></div>
+                    <div className="flex justify-between"><span>Technical:</span><span className="font-bold text-ink">{profiles.filter(p => p.role === 'Consultant' && p.consultant_type === 'Technical').length}</span></div>
+                    <div className="flex justify-between"><span>Allocated Staff:</span><span className="font-bold text-ink">{consultantsLoad.filter(c => c.activeCount > 0).length}</span></div>
+                    <div className="flex justify-between"><span>Unallocated Staff:</span><span className="font-bold text-ink">{consultantsLoad.filter(c => c.activeCount === 0).length}</span></div>
+                    <div className="flex justify-between"><span>Overloaded Staff:</span><span className="font-bold text-critical">{consultantsLoad.filter(c => c.loadStatus === 'Overloaded').length}</span></div>
+                    <div className="flex justify-between"><span>Available Capacity:</span><span className="font-bold text-ink">
                       {Math.max(0, (profiles.filter(p => p.role === 'Consultant').length * workingDaysInMonth * 8) - filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0)).toFixed(0)} hrs
                     </span></div>
-                    <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
+                    <div className="flex justify-between pt-1.5 border-t border-line mt-1">
                       <span>Avg Utilization %:</span>
-                      <span className="font-bold text-zinc-900">
+                      <span className="font-bold text-ink">
                         {consultantsLoad.length > 0 ? Math.round(consultantsLoad.reduce((sum, c) => sum + c.loadPercentage, 0) / consultantsLoad.length) : 0}%
                       </span>
                     </div>
@@ -2347,17 +2419,17 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Card 3: SLA Governance */}
-              <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
+              <Card className="border border-line bg-surface p-4 shadow-card hover:border-line-strong transition flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block font-mono">SLA Governance</span>
-                  <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">SLA Governance</span>
+                  <div className="mt-3 space-y-1.5 text-[11px] text-ink-secondary">
                     <div className="flex justify-between"><span>SLA Healthy:</span><span className="font-bold text-green-700">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Healthy').length}</span></div>
-                    <div className="flex justify-between"><span>SLA Warning:</span><span className="font-bold text-amber-600">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Warning').length}</span></div>
-                    <div className="flex justify-between"><span>SLA Breached:</span><span className="font-bold text-red-600">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Breached').length}</span></div>
-                    <div className="flex justify-between"><span>Total SLA Monitored:</span><span className="font-bold text-zinc-900">{filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length}</span></div>
-                    <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
+                    <div className="flex justify-between"><span>SLA Warning:</span><span className="font-bold text-warning">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Warning').length}</span></div>
+                    <div className="flex justify-between"><span>SLA Breached:</span><span className="font-bold text-critical">{filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Breached').length}</span></div>
+                    <div className="flex justify-between"><span>Total SLA Monitored:</span><span className="font-bold text-ink">{filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length}</span></div>
+                    <div className="flex justify-between pt-1.5 border-t border-line mt-1">
                       <span>Avg SLA Compliance:</span>
-                      <span className="font-bold text-zinc-900">
+                      <span className="font-bold text-ink">
                         {filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length > 0
                           ? Math.round(((filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length - filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) === 'Breached').length) / filteredDashboardTickets.filter(t => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable').length) * 100)
                           : 100}%
@@ -2368,19 +2440,19 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Card 4: Customer Operations */}
-              <Card className="border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-350 transition flex flex-col justify-between">
+              <Card className="border border-line bg-surface p-4 shadow-card hover:border-line-strong transition flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block font-mono">Customer Operations</span>
-                  <div className="mt-3 space-y-1.5 text-[10px] text-zinc-700 font-mono">
-                    <div className="flex justify-between"><span>Total Customers:</span><span className="font-bold text-zinc-900">{filters.customer === 'All' ? customersList.length : customersList.includes(filters.customer) ? 1 : 0}</span></div>
-                    <div className="flex justify-between"><span>With Open Tickets:</span><span className="font-bold text-zinc-900">{new Set(filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').map(t => t.organization)).size}</span></div>
-                    <div className="flex justify-between"><span>With Escalations:</span><span className="font-bold text-zinc-900">{new Set(filteredDashboardTickets.filter(t => t.escalationFlag).map(t => t.organization)).size}</span></div>
-                    <div className="flex justify-between"><span>Contract Expiring &lt;30d:</span><span className="font-bold text-zinc-900">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Customer Operations</span>
+                  <div className="mt-3 space-y-1.5 text-[11px] text-ink-secondary">
+                    <div className="flex justify-between"><span>Total Customers:</span><span className="font-bold text-ink">{filters.customer === 'All' ? customersList.length : customersList.includes(filters.customer) ? 1 : 0}</span></div>
+                    <div className="flex justify-between"><span>With Open Tickets:</span><span className="font-bold text-ink">{new Set(filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').map(t => t.organization)).size}</span></div>
+                    <div className="flex justify-between"><span>With Escalations:</span><span className="font-bold text-ink">{new Set(filteredDashboardTickets.filter(t => t.escalationFlag).map(t => t.organization)).size}</span></div>
+                    <div className="flex justify-between"><span>Contract Expiring &lt;30d:</span><span className="font-bold text-ink">
                       {contracts.filter(c => c.endDate && c.isActive && (filters.customer === 'All' || c.organizationName === filters.customer) && (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30).length}
                     </span></div>
-                    <div className="flex justify-between pt-1.5 border-t border-zinc-100 mt-1">
+                    <div className="flex justify-between pt-1.5 border-t border-line mt-1">
                       <span>Mthly Hours (Logged/Approved):</span>
-                      <span className="font-bold text-zinc-900">
+                      <span className="font-bold text-ink">
                         {filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => new Date(ah.createdAt || '').getMonth() === new Date(SYSTEM_NOW).getMonth()).reduce((sum, ah) => sum + ah.actualHours, 0).toFixed(0)}h / {filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved' && new Date(ah.approvedAt || '').getMonth() === new Date(SYSTEM_NOW).getMonth()).reduce((sum, ah) => sum + ah.actualHours, 0).toFixed(0)}h
                       </span>
                     </div>
@@ -2393,20 +2465,20 @@ export default function ManagerDashboardPage() {
 
           {/* SECTION 2: TODAY'S MANAGER ACTION CENTER */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">
               2. Today&apos;s Manager Action Center
             </span>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-[11px]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[11px]">
               
               {/* Box 1: Immediate Assignment Queue */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[340px] justify-between">
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider flex items-center gap-1">
+                  <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                    <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider flex items-center gap-1">
                       Immediate Assignment Queue ({filteredDashboardTickets.filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved').length})
                     </span>
-                    <Badge className="bg-zinc-100 text-zinc-800 text-[8px] font-bold">UNASSIGNED</Badge>
+                    <Badge className="bg-surface-subtle text-ink text-[11px] font-bold">UNASSIGNED</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                     {filteredDashboardTickets
@@ -2426,79 +2498,79 @@ export default function ManagerDashboardPage() {
                         );
                       })}
                     {filteredDashboardTickets.filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved').length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                      <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-10 font-sans">
                         All active workload allocated.
                       </div>
                     )}
                   </div>
                 </div>
                 <Link href="/manager/tickets?tab=unassigned" className="mt-3">
-                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  <Button variant="outline" className="w-full text-[11px] uppercase font-bold py-1.5 border-line-strong hover:bg-ink hover:text-white transition">
                     Dispatch Backlog &rarr;
                   </Button>
                 </Link>
               </Card>
 
               {/* Box 2: Approval Queue */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[340px] justify-between">
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                  <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                    <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider">
                       Pending Approvals ({pendingApprovalsCount})
                     </span>
-                    <Badge className="bg-amber-100 text-amber-800 text-[8px] font-bold">SIGN-OFF</Badge>
+                    <Badge className="bg-amber-100 text-amber-800 text-[11px] font-bold">SIGN-OFF</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                     {/* Closure Requests */}
                     {pendingClosureRequests.slice(0, 3).map(r => (
-                      <div key={r.requestId} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
+                      <div key={r.requestId} className="p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-zinc-900">Closure: {r.ticketNumber}</span>
-                          <span className="text-[7px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase">Closure Approval</span>
+                          <span className="font-bold text-ink">Closure: {r.ticketNumber}</span>
+                          <span className="text-[11px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase">Closure Approval</span>
                         </div>
-                        <span className="text-zinc-650 truncate block font-sans">Total Hours: {r.funcHours + r.techHours}h</span>
+                        <span className="text-ink-secondary truncate block font-sans">Total Hours: {r.funcHours + r.techHours}h</span>
                         <div className="flex justify-end gap-1 mt-1">
-                          <Button size="sm" onClick={() => triggerClosureVerify(r.ticketId, r.requestId)} className="h-5 text-[8px] font-mono font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2">Verify</Button>
+                          <Button size="sm" onClick={() => triggerClosureVerify(r.ticketId, r.requestId)} className="h-5 text-[11px] font-bold bg-ink hover:bg-zinc-800 text-white rounded px-2">Verify</Button>
                         </div>
                       </div>
                     ))}
                     {/* Effort Logs */}
                     {pendingEffortLogs.slice(0, 3).map(log => (
-                      <div key={log.logId} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1">
+                      <div key={log.logId} className="p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-zinc-900">Effort: {log.hours}h by {log.consultantName}</span>
-                          <span className="text-[7px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold uppercase">Timesheet Effort</span>
+                          <span className="font-bold text-ink">Effort: {log.hours}h by {log.consultantName}</span>
+                          <span className="text-[11px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold uppercase">Timesheet Effort</span>
                         </div>
-                        <span className="text-zinc-650 truncate block font-sans">{log.description}</span>
+                        <span className="text-ink-secondary truncate block font-sans">{log.description}</span>
                         <div className="flex justify-end gap-1 mt-1">
-                          <Button size="sm" onClick={() => handleApproveEffort(log.ticketId, log.logId, log.consultantName)} className="h-5 text-[8px] font-mono font-bold bg-green-600 hover:bg-green-750 text-white rounded px-2">Approve</Button>
-                          <Button size="sm" onClick={() => triggerRejection('effort', log.ticketId, log.logId)} className="h-5 text-[8px] font-mono font-bold bg-red-600 hover:bg-red-750 text-white rounded px-2">Reject</Button>
+                          <Button size="sm" onClick={() => handleApproveEffort(log.ticketId, log.logId, log.consultantName)} className="h-5 text-[11px] font-bold bg-green-600 hover:bg-green-750 text-white rounded px-2">Approve</Button>
+                          <Button size="sm" onClick={() => triggerRejection('effort', log.ticketId, log.logId)} className="h-5 text-[11px] font-bold bg-red-600 hover:bg-red-750 text-white rounded px-2">Reject</Button>
                         </div>
                       </div>
                     ))}
                     {pendingApprovalsCount === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                      <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-10 font-sans">
                         No approvals pending decision.
                       </div>
                     )}
                   </div>
                 </div>
-                <Button onClick={() => setSelectedTab('approvals')} variant="outline" className="mt-3 w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                <Button onClick={() => setSelectedTab('approvals')} variant="outline" className="mt-3 w-full text-[11px] uppercase font-bold py-1.5 border-line-strong hover:bg-ink hover:text-white transition">
                   Open Approvals Console &rarr;
                 </Button>
               </Card>
 
               {/* Box 3: Escalation Center */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[340px] justify-between">
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                  <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
                     <div className="flex items-center gap-1.5">
-                      <AlertTriangle className="size-3.5 text-zinc-500" />
-                      <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider font-mono">
+                      <AlertTriangle className="size-3.5 text-ink-secondary" />
+                      <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider">
                         ESCALATION CENTER ({filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).length})
                       </span>
                     </div>
-                    <Badge className="bg-zinc-100 text-zinc-800 text-[8px] font-bold border border-zinc-200">EXPOSURE</Badge>
+                    <Badge className="bg-surface-subtle text-ink text-[11px] font-bold border border-line">EXPOSURE</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                     {/* Active Escalations List */}
@@ -2517,7 +2589,7 @@ export default function ManagerDashboardPage() {
                         );
                       })}
                       {filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).length === 0 && (
-                        <div className="text-zinc-400 italic text-center py-2 font-sans text-[10px]">
+                        <div className="text-ink-muted italic text-center py-2 font-sans text-[11px]">
                           No active escalations.
                         </div>
                       )}
@@ -2525,8 +2597,8 @@ export default function ManagerDashboardPage() {
 
                     {/* Recently Acknowledged Escalations Sub-list */}
                     {filteredDashboardTickets.filter(t => t.isEscalated && t.escalationAcknowledgedAt).length > 0 && (
-                      <div className="mt-3 pt-2 border-t border-zinc-100 space-y-2">
-                        <span className="font-bold text-zinc-650 uppercase text-[8px] tracking-wider font-mono block">
+                      <div className="mt-3 pt-2 border-t border-line space-y-2">
+                        <span className="font-bold text-ink-secondary uppercase text-[11px] tracking-wider block">
                           Recently Acknowledged
                         </span>
                         {filteredDashboardTickets
@@ -2534,18 +2606,18 @@ export default function ManagerDashboardPage() {
                           .sort((a, b) => new Date(b.escalationAcknowledgedAt || 0).getTime() - new Date(a.escalationAcknowledgedAt || 0).getTime())
                           .slice(0, 3)
                           .map(t => (
-                            <div key={t.id} className="p-2 bg-zinc-50/50 border border-zinc-200 rounded-lg flex flex-col justify-between gap-1">
+                            <div key={t.id} className="p-2 bg-surface-muted/60 border border-line rounded-lg flex flex-col justify-between gap-1">
                               <div className="flex justify-between items-center">
-                                <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-semibold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                                <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-semibold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
                                 <div className="flex gap-1.5 items-center">
-                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-150 text-[7px] font-semibold py-0.5 px-1.5 uppercase leading-none h-4.5 flex items-center gap-1">
-                                    <Check className="size-2.5 text-emerald-600" /> Ack
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-150 text-[11px] font-semibold py-0.5 px-1.5 uppercase leading-none h-4.5 flex items-center gap-1">
+                                    <Check className="size-2.5 text-success" /> Ack
                                   </Badge>
-                                  <span className="text-[7px] bg-zinc-100 text-zinc-800 px-1 py-0.2 rounded font-bold uppercase leading-none h-4 flex items-center">{t.priority}</span>
+                                  <span className="text-[11px] bg-surface-subtle text-ink px-1 py-0.2 rounded font-bold uppercase leading-none h-4 flex items-center">{t.priority}</span>
                                 </div>
                               </div>
-                              <span className="text-zinc-700 truncate block font-sans text-[11px]">{t.title}</span>
-                              <div className="text-[8px] text-zinc-500 font-mono mt-0.5 pt-0.5 border-t border-zinc-100/50 flex justify-between items-center">
+                              <span className="text-ink-secondary truncate block font-sans text-[11px]">{t.title}</span>
+                              <div className="text-[11px] text-ink-secondary mt-0.5 pt-0.5 border-t border-line/50 flex justify-between items-center">
                                 <span>Ack: {t.escalationAcknowledgedByName || 'Manager'}</span>
                                 <span>{formatRelativeTime(t.escalationAcknowledgedAt)}</span>
                               </div>
@@ -2553,7 +2625,7 @@ export default function ManagerDashboardPage() {
                           ))}
                         {filteredDashboardTickets.filter(t => t.isEscalated && t.escalationAcknowledgedAt).length > 3 && (
                           <div className="text-right">
-                            <Link href="/manager/tickets?tab=escalated" className="text-[9px] text-zinc-500 hover:text-zinc-900 font-bold hover:underline">
+                            <Link href="/manager/tickets?tab=escalated" className="text-[11px] text-ink-secondary hover:text-ink font-bold hover:underline">
                               View full history &rarr;
                             </Link>
                           </div>
@@ -2563,20 +2635,20 @@ export default function ManagerDashboardPage() {
                   </div>
                 </div>
                 <Link href="/manager/tickets?tab=escalated" className="mt-3">
-                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  <Button variant="outline" className="w-full text-[11px] uppercase font-bold py-1.5 border-line-strong hover:bg-ink hover:text-white transition">
                     Inspect Escalations &rarr;
                   </Button>
                 </Link>
               </Card>
 
               {/* Box 4: SLA Risk Center */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[340px] justify-between">
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                  <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                    <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider">
                       SLA Risk Center ({filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length})
                     </span>
-                    <Badge className="bg-red-100 text-red-800 text-[8px] font-bold">WARNING</Badge>
+                    <Badge className="bg-red-100 text-red-800 text-[11px] font-bold">WARNING</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                     {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').slice(0, 5).map(t => {
@@ -2586,21 +2658,21 @@ export default function ManagerDashboardPage() {
                         ? 'border-l-4 border-l-destructive pl-2' 
                         : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
                       return (
-                        <div key={t.id} className={`p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
+                        <div key={t.id} className={`p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
                           <div className="flex justify-between items-center">
-                            <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-zinc-900 hover:underline">{t.ticketNumber || t.id}</Link>
+                            <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
                             <div className="flex gap-1 items-center">
-                              {isEscalated && <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
+                              {isEscalated && <Badge variant="destructive" className="text-[11px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
                               {slaInfo && (
-                                <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
+                                <Badge className={`text-[11px] font-bold py-0 px-1 uppercase leading-none h-4 ${
                                   slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
                                 }`}>{slaInfo.label}</Badge>
                               )}
-                              <span className={`text-[7px] px-1 py-0.2 rounded font-bold uppercase leading-none h-4 ${getSlaStatus(t, SYSTEM_NOW) === 'Breached' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{getSlaStatus(t, SYSTEM_NOW)}</span>
+                              <span className={`text-[11px] px-1 py-0.2 rounded font-bold uppercase leading-none h-4 ${getSlaStatus(t, SYSTEM_NOW) === 'Breached' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{getSlaStatus(t, SYSTEM_NOW)}</span>
                             </div>
                           </div>
-                          <span className="text-zinc-700 truncate block font-sans">{t.title}</span>
-                          <div className="flex justify-between items-center text-[8px] text-zinc-400">
+                          <span className="text-ink-secondary truncate block font-sans">{t.title}</span>
+                          <div className="flex justify-between items-center text-[11px] text-ink-muted">
                             <span>Org: {t.organization}</span>
                             <span>Due: {t.slaDueAt ? new Date(t.slaDueAt).toLocaleDateString() : 'N/A'}</span>
                           </div>
@@ -2608,80 +2680,80 @@ export default function ManagerDashboardPage() {
                       );
                     })}
                     {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                      <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-10 font-sans">
                         All SLAs running in healthy range.
                       </div>
                     )}
                   </div>
                 </div>
                 <Link href="/manager/tickets?tab=slaBreached" className="mt-3">
-                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  <Button variant="outline" className="w-full text-[11px] uppercase font-bold py-1.5 border-line-strong hover:bg-ink hover:text-white transition">
                     Inspect SLA Risks &rarr;
                   </Button>
                 </Link>
               </Card>
 
               {/* Box 5: Workload Balancer */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[340px] justify-between">
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                  <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                    <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider">
                       Workload Balancer
                     </span>
-                    <Badge className="bg-zinc-100 text-zinc-800 text-[8px] font-bold">CAPACITY</Badge>
+                    <Badge className="bg-surface-subtle text-ink text-[11px] font-bold">CAPACITY</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[9px]">
-                    <div className="flex justify-between border-b border-zinc-100 pb-1.5 text-zinc-500 font-bold uppercase text-[7px]">
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[11px]">
+                    <div className="flex justify-between border-b border-line pb-1.5 text-ink-secondary font-bold uppercase text-[11px]">
                       <span>Consultant</span>
                       <span>Active Tickets</span>
                       <span>Utilization %</span>
                     </div>
                     {consultantsLoad.slice(0, 5).map(c => (
-                      <div key={c.name} className="flex justify-between items-center py-1 hover:bg-zinc-50 px-1 rounded">
-                        <span className="font-bold text-zinc-900">{c.name}</span>
-                        <span className="text-zinc-650">{c.activeCount} open</span>
-                        <span className={`font-bold ${c.loadStatus === 'Overloaded' ? 'text-red-600' : c.loadStatus === 'Underutilized' ? 'text-amber-600' : 'text-green-700'}`}>{c.loadPercentage}%</span>
+                      <div key={c.name} className="flex justify-between items-center py-1 hover:bg-surface-muted px-1 rounded">
+                        <span className="font-bold text-ink">{c.name}</span>
+                        <span className="text-ink-secondary">{c.activeCount} open</span>
+                        <span className={`font-bold ${c.loadStatus === 'Overloaded' ? 'text-critical' : c.loadStatus === 'Underutilized' ? 'text-warning' : 'text-green-700'}`}>{c.loadPercentage}%</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <Button onClick={() => setSelectedTab('resources')} variant="outline" className="mt-3 w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                <Button onClick={() => setSelectedTab('resources')} variant="outline" className="mt-3 w-full text-[11px] uppercase font-bold py-1.5 border-line-strong hover:bg-ink hover:text-white transition">
                   Balance Resources &rarr;
                 </Button>
               </Card>
 
               {/* Box 6: Contract Alerts */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[340px] justify-between">
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[340px] justify-between">
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                    <span className="font-extrabold text-zinc-900 uppercase text-[9px] tracking-wider">
+                  <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                    <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider">
                       Contract Alerts ({contracts.filter(c => c.isActive && ((c.usedHours / c.totalHours) >= 0.9 || (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30)).length})
                     </span>
-                    <Badge className="bg-amber-100 text-amber-800 text-[8px] font-bold">BUDGET</Badge>
+                    <Badge className="bg-amber-100 text-amber-800 text-[11px] font-bold">BUDGET</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[10px]">
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[11px]">
                     {contracts.filter(c => c.isActive && ((c.usedHours / c.totalHours) >= 0.9 || (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30)).map(c => {
                       const consumption = (c.usedHours / c.totalHours) * 100;
                       const daysRemaining = (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24);
                       return (
-                        <div key={c.id} className="p-2 bg-zinc-50 border border-zinc-150 rounded-lg flex flex-col gap-1">
-                          <span className="font-bold text-zinc-900">{c.organizationName}</span>
-                          <span className="text-zinc-500 text-[8px] font-mono">FTE Total: {c.totalHours}h</span>
-                          <div className="flex justify-between text-[8px]">
-                            <span>Usage: <span className="font-bold text-zinc-800">{consumption.toFixed(0)}%</span></span>
-                            <span>Ends in: <span className="font-bold text-zinc-850">{daysRemaining.toFixed(0)} days</span></span>
+                        <div key={c.id} className="p-2 bg-surface-muted border border-line rounded-lg flex flex-col gap-1">
+                          <span className="font-bold text-ink">{c.organizationName}</span>
+                          <span className="text-ink-secondary text-[11px]">FTE Total: {c.totalHours}h</span>
+                          <div className="flex justify-between text-[11px]">
+                            <span>Usage: <span className="font-bold text-ink">{consumption.toFixed(0)}%</span></span>
+                            <span>Ends in: <span className="font-bold text-ink">{daysRemaining.toFixed(0)} days</span></span>
                           </div>
                         </div>
                       );
                     })}
                     {contracts.filter(c => c.isActive && ((c.usedHours / c.totalHours) >= 0.9 || (new Date(c.endDate).getTime() - SYSTEM_NOW) / (1000 * 60 * 60 * 24) <= 30)).length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-10 font-sans">
+                      <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-10 font-sans">
                         All client contracts are within budget constraints.
                       </div>
                     )}
                   </div>
                 </div>
-                <Button onClick={() => setSelectedTab('customers')} variant="outline" className="mt-3 w-full text-[9px] uppercase font-bold py-1.5 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                <Button onClick={() => setSelectedTab('customers')} variant="outline" className="mt-3 w-full text-[11px] uppercase font-bold py-1.5 border-line-strong hover:bg-ink hover:text-white transition">
                   Inspect Contract Ledger &rarr;
                 </Button>
               </Card>
@@ -2691,23 +2763,23 @@ export default function ManagerDashboardPage() {
 
           {/* SECTION 3: RECHARTS 10 DISTINCT ANALYTICS SHOWCASE */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">
               3. Operational Analytics Showcase (10 Distinct Charts)
             </span>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Chart 1: Ticket volume trend */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                  <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider">1. Ticket Creation Trend</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                  <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider">1. Ticket Creation Trend</span>
                   <div className="flex gap-1">
                     {['daily', 'weekly', 'monthly', 'yearly'].map(group => (
                       <button
                         key={group}
                         onClick={() => setTrendGrouping(group as any)}
-                        className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded font-mono border ${
-                          trendGrouping === group ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50'
+                        className={`text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                          trendGrouping === group ? 'bg-ink text-white border-zinc-900' : 'bg-surface text-ink-secondary border-line hover:bg-surface-muted'
                         }`}
                       >
                         {group}
@@ -2729,8 +2801,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 2: Open vs Closed */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">2. Active vs Closed Monthly Trend</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">2. Active vs Closed Monthly Trend</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.openVsClosedTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -2747,8 +2819,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 3: SLA Compliance */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">3. SLA Compliance % Achievement</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">3. SLA Compliance % Achievement</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartsData.slaComplianceTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -2769,8 +2841,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 4: Escalation Trend */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">4. Monthly SLA Escalations Trend</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">4. Monthly SLA Escalations Trend</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartsData.escalationTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -2785,8 +2857,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 5: Customer Ticket Distribution */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">5. Customer Ticket Volume Distribution</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">5. Customer Ticket Volume Distribution</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -2812,8 +2884,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 6: Module Wise Tickets */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">6. SAP Module Tickets Volume</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">6. SAP Module Tickets Volume</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.moduleWiseTickets} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -2828,8 +2900,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 7: Consultant Utilization */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">7. Consultant Utilization Ratio (%)</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">7. Consultant Utilization Ratio (%)</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart layout="vertical" data={chartsData.consultantUtilizationData} margin={{ top: 5, right: 15, left: 10, bottom: 5 }}>
@@ -2844,8 +2916,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 8: Resolution Time Trend */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">8. Average Ticket Resolution Time (Hours)</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">8. Average Ticket Resolution Time (Hours)</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartsData.resolutionTimeTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -2866,8 +2938,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 9: Approval Volume */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">9. Completed Approvals Stacked Volume</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">9. Completed Approvals Stacked Volume</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.approvalVolumeData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -2885,8 +2957,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Chart 10: Customer Consumption */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">10. Customer Support Contract Hours Consumption</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">10. Customer Support Contract Hours Consumption</span>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.customerConsumptionData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -2913,33 +2985,33 @@ export default function ManagerDashboardPage() {
           
           {/* SECTION 1: EXECUTIVE HEALTH OVERVIEW */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">1. Executive Health Overview</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">1. Executive Health Overview</span>
             
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               
               {/* Group A: Customer KPIs */}
-              <Card className="border-l-4 border-l-blue-500 border border-zinc-200 bg-white p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border-l-4 border-l-blue-500 border border-line bg-surface p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Customer KPIs</span>
-                  <div className="mt-3 space-y-1.5 font-bold text-zinc-800 text-[10px]">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Customer KPIs</span>
+                  <div className="mt-3 space-y-1.5 font-bold text-ink text-[11px]">
                     <div className="flex justify-between"><span>Total Customers:</span><span>{dashboardData.executive.totalCustomers}</span></div>
                     <div className="flex justify-between"><span>Active:</span><span className="text-green-700">{dashboardData.executive.activeCustomers}</span></div>
                     <div className="flex justify-between"><span>With Open Tickets:</span><span>{dashboardData.executive.customersWithOpenTickets}</span></div>
-                    <div className="flex justify-between"><span>With P1s:</span><span className={dashboardData.executive.customersWithCriticalTickets > 0 ? 'text-red-650 animate-pulse' : ''}>{dashboardData.executive.customersWithCriticalTickets}</span></div>
-                    <div className="flex justify-between"><span>With SLA Breach:</span><span className={dashboardData.executive.customersWithSlaBreaches > 0 ? 'text-red-650' : ''}>{dashboardData.executive.customersWithSlaBreaches}</span></div>
+                    <div className="flex justify-between"><span>With P1s:</span><span className={dashboardData.executive.customersWithCriticalTickets > 0 ? 'text-critical animate-pulse' : ''}>{dashboardData.executive.customersWithCriticalTickets}</span></div>
+                    <div className="flex justify-between"><span>With SLA Breach:</span><span className={dashboardData.executive.customersWithSlaBreaches > 0 ? 'text-critical' : ''}>{dashboardData.executive.customersWithSlaBreaches}</span></div>
                     <div className="flex justify-between"><span>Awaiting Closure:</span><span>{dashboardData.executive.customersAwaitingClosure}</span></div>
                   </div>
                 </div>
               </Card>
 
               {/* Group B: Ticket KPIs */}
-              <Card className="border-l-4 border-l-amber-500 border border-zinc-200 bg-white p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border-l-4 border-l-amber-500 border border-line bg-surface p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Ticket KPIs</span>
-                  <div className="mt-3 space-y-1 text-zinc-800 text-[9px] font-bold">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Ticket KPIs</span>
+                  <div className="mt-3 space-y-1 text-ink text-[11px] font-bold">
                     <div className="flex justify-between"><span>Raised:</span><span>{dashboardData.executive.totalTicketsRaised}</span></div>
                     <div className="flex justify-between"><span>Open Backlog:</span><span className="text-blue-600">{dashboardData.executive.openTickets}</span></div>
-                    <div className="flex justify-between"><span>Unassigned:</span><span className={dashboardData.executive.unassignedTickets > 0 ? 'text-amber-600 font-black' : ''}>{dashboardData.executive.unassignedTickets}</span></div>
+                    <div className="flex justify-between"><span>Unassigned:</span><span className={dashboardData.executive.unassignedTickets > 0 ? 'text-warning font-black' : ''}>{dashboardData.executive.unassignedTickets}</span></div>
                     <div className="flex justify-between"><span>Req. Gathering:</span><span>{dashboardData.executive.reqGathering}</span></div>
                     <div className="flex justify-between"><span>IP Functional:</span><span>{dashboardData.executive.ipFunc}</span></div>
                     <div className="flex justify-between"><span>IP Technical:</span><span>{dashboardData.executive.ipTech}</span></div>
@@ -2948,33 +3020,33 @@ export default function ManagerDashboardPage() {
                     <div className="flex justify-between"><span>Raised to SAP:</span><span>{dashboardData.executive.raisedToSap}</span></div>
                     <div className="flex justify-between"><span>Req. Closure:</span><span>{dashboardData.executive.requestClosure}</span></div>
                     <div className="flex justify-between text-green-700"><span>Closed:</span><span>{dashboardData.executive.closedTickets}</span></div>
-                    <div className="flex justify-between text-red-600"><span>Reopened:</span><span>{dashboardData.executive.reopenedTickets}</span></div>
+                    <div className="flex justify-between text-critical"><span>Reopened:</span><span>{dashboardData.executive.reopenedTickets}</span></div>
                   </div>
                 </div>
               </Card>
 
               {/* Group C: Consultant KPIs */}
-              <Card className="border-l-4 border-l-green-500 border border-zinc-200 bg-white p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border-l-4 border-l-green-500 border border-line bg-surface p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Consultant KPIs</span>
-                  <div className="mt-3 space-y-1.5 font-bold text-zinc-800 text-[10px]">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Consultant KPIs</span>
+                  <div className="mt-3 space-y-1.5 font-bold text-ink text-[11px]">
                     <div className="flex justify-between"><span>Total Staff:</span><span>{dashboardData.executive.totalConsultants}</span></div>
                     <div className="flex justify-between"><span>Functional:</span><span>{dashboardData.executive.funcConsultants}</span></div>
                     <div className="flex justify-between"><span>Technical:</span><span>{dashboardData.executive.techConsultants}</span></div>
                     <div className="flex justify-between"><span>Active:</span><span>{dashboardData.executive.activeConsultants}</span></div>
-                    <div className="flex justify-between"><span>Overloaded:</span><span className={dashboardData.executive.overloadedConsultants > 0 ? 'text-red-650 font-black' : ''}>{dashboardData.executive.overloadedConsultants}</span></div>
+                    <div className="flex justify-between"><span>Overloaded:</span><span className={dashboardData.executive.overloadedConsultants > 0 ? 'text-critical font-black' : ''}>{dashboardData.executive.overloadedConsultants}</span></div>
                     <div className="flex justify-between"><span>Underutilized:</span><span>{dashboardData.executive.underutilizedConsultants}</span></div>
                   </div>
                 </div>
               </Card>
 
               {/* Group D: Approval KPIs */}
-              <Card className="border-l-4 border-l-zinc-500 border border-zinc-200 bg-white p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border-l-4 border-l-zinc-500 border border-line bg-surface p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Approval KPIs</span>
-                  <div className="mt-3 space-y-1.5 font-bold text-zinc-800 text-[10px]">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Approval KPIs</span>
+                  <div className="mt-3 space-y-1.5 font-bold text-ink text-[11px]">
                     <div className="flex justify-between"><span>Est. Hours Pending:</span><span>{dashboardData.executive.estPendingApproval}</span></div>
-                    <div className="flex justify-between"><span>Act. Hours Pending:</span><span className={dashboardData.executive.actPendingApproval > 0 ? 'text-amber-600' : ''}>{dashboardData.executive.actPendingApproval}</span></div>
+                    <div className="flex justify-between"><span>Act. Hours Pending:</span><span className={dashboardData.executive.actPendingApproval > 0 ? 'text-warning' : ''}>{dashboardData.executive.actPendingApproval}</span></div>
                     <div className="flex justify-between"><span>Closures Pending:</span><span className={dashboardData.executive.closurePendingApproval > 0 ? 'text-red-605' : ''}>{dashboardData.executive.closurePendingApproval}</span></div>
                     <div className="flex justify-between"><span>Reopens Pending:</span><span>{dashboardData.executive.reopenPendingApproval}</span></div>
                     <div className="flex justify-between"><span>Unlocks Pending:</span><span>{dashboardData.executive.resourceChangePending}</span></div>
@@ -2983,16 +3055,16 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Group E: SLA KPIs */}
-              <Card className="border-l-4 border-l-red-500 border border-zinc-200 bg-white p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border-l-4 border-l-red-500 border border-line bg-surface p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">SLA Compliance</span>
-                  <div className="mt-3 space-y-1.5 font-bold text-zinc-800 text-[10px]">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">SLA Compliance</span>
+                  <div className="mt-3 space-y-1.5 font-bold text-ink text-[11px]">
                     <div className="flex justify-between"><span>SLA Healthy:</span><span className="text-green-700">{dashboardData.executive.slaHealthy}</span></div>
-                    <div className="flex justify-between"><span>SLA Warning:</span><span className="text-amber-600">{dashboardData.executive.slaWarning}</span></div>
-                    <div className="flex justify-between"><span>SLA Breached:</span><span className={dashboardData.executive.slaBreached > 0 ? 'text-red-600 font-black animate-pulse' : ''}>{dashboardData.executive.slaBreached}</span></div>
-                    <div className="border-t border-zinc-200 pt-2 flex justify-between items-center mt-2.5">
-                      <span className="text-[9px] uppercase">Compliance Index:</span>
-                      <span className={`text-sm font-black ${dashboardData.executive.averageSlaCompliance >= 95 ? 'text-green-700' : 'text-red-650'}`}>{dashboardData.executive.averageSlaCompliance}%</span>
+                    <div className="flex justify-between"><span>SLA Warning:</span><span className="text-warning">{dashboardData.executive.slaWarning}</span></div>
+                    <div className="flex justify-between"><span>SLA Breached:</span><span className={dashboardData.executive.slaBreached > 0 ? 'text-critical font-black animate-pulse' : ''}>{dashboardData.executive.slaBreached}</span></div>
+                    <div className="border-t border-line pt-2 flex justify-between items-center mt-2.5">
+                      <span className="text-[11px] uppercase">Compliance Index:</span>
+                      <span className={`text-sm font-black ${dashboardData.executive.averageSlaCompliance >= 95 ? 'text-green-700' : 'text-critical'}`}>{dashboardData.executive.averageSlaCompliance}%</span>
                     </div>
                   </div>
                 </div>
@@ -3003,67 +3075,67 @@ export default function ManagerDashboardPage() {
 
           {/* SECTION 2: TODAY'S MANAGER ACTION CENTER */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">2. Today&apos;s Manager Action Center</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">2. Today&apos;s Manager Action Center</span>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               
               {/* Box A: Unassigned Queue */}
-              <Card className="border border-zinc-200 bg-zinc-50/50 p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border border-line bg-surface-muted/60 p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Staffing Dispatch</span>
+                  <span className="text-[11px] text-ink-muted uppercase font-black tracking-wider block">Staffing Dispatch</span>
                   <div className="mt-3 flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-zinc-950">{dashboardData.actionCenter.ticketsAwaitingAssign.length}</span>
-                    <span className="text-zinc-500 font-medium">tickets need allocation</span>
+                    <span className="text-2xl font-black text-ink">{dashboardData.actionCenter.ticketsAwaitingAssign.length}</span>
+                    <span className="text-ink-secondary font-medium">tickets need allocation</span>
                   </div>
                 </div>
                 <Link href="/manager/tickets?tab=unassigned" className="mt-4">
-                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  <Button variant="outline" className="w-full text-[11px] uppercase font-bold py-1 border-line-strong hover:bg-ink hover:text-white transition">
                     Dispatch Backlog <ArrowRight size={10} className="ml-1" />
                   </Button>
                 </Link>
               </Card>
 
               {/* Box B: Actionable Approvals */}
-              <Card className="border border-zinc-200 bg-zinc-50/50 p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border border-line bg-surface-muted/60 p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Audits Pending Sign-off</span>
+                  <span className="text-[11px] text-ink-muted uppercase font-black tracking-wider block">Audits Pending Sign-off</span>
                   <div className="mt-3 flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-zinc-950">{dashboardData.executive.totalApprovals}</span>
-                    <span className="text-zinc-500 font-medium">approvals waiting manager</span>
+                    <span className="text-2xl font-black text-ink">{dashboardData.executive.totalApprovals}</span>
+                    <span className="text-ink-secondary font-medium">approvals waiting manager</span>
                   </div>
                 </div>
-                <Button onClick={() => setSelectedTab('approvals')} variant="outline" className="mt-4 w-full text-[9px] uppercase font-bold py-1 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                <Button onClick={() => setSelectedTab('approvals')} variant="outline" className="mt-4 w-full text-[11px] uppercase font-bold py-1 border-line-strong hover:bg-ink hover:text-white transition">
                   Open Approvals Console <ArrowRight size={10} className="ml-1" />
                 </Button>
               </Card>
 
               {/* Box C: SLA Mitigation */}
-              <Card className="border border-zinc-200 bg-zinc-50/50 p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border border-line bg-surface-muted/60 p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Active Delivery Exposure</span>
+                  <span className="text-[11px] text-ink-muted uppercase font-black tracking-wider block">Active Delivery Exposure</span>
                   <div className="mt-3 flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-red-650">{dashboardData.actionCenter.slaBreachTickets.length + dashboardData.actionCenter.slaDueToday.length}</span>
-                    <span className="text-zinc-500 font-medium">at-risk incident SLA boundaries</span>
+                    <span className="text-2xl font-black text-critical">{dashboardData.actionCenter.slaBreachTickets.length + dashboardData.actionCenter.slaDueToday.length}</span>
+                    <span className="text-ink-secondary font-medium">at-risk incident SLA boundaries</span>
                   </div>
                 </div>
                 <Link href="/manager/tickets?tab=slaBreached" className="mt-4">
-                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  <Button variant="outline" className="w-full text-[11px] uppercase font-bold py-1 border-line-strong hover:bg-ink hover:text-white transition">
                     Inspect Risks <ArrowRight size={10} className="ml-1" />
                   </Button>
                 </Link>
               </Card>
 
               {/* Box D: Aging Action */}
-              <Card className="border border-zinc-200 bg-zinc-50/50 p-4 shadow-sm flex flex-col justify-between">
+              <Card className="border border-line bg-surface-muted/60 p-4 shadow-card flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] text-zinc-450 uppercase font-black tracking-wider block">Stuck / Stalled Backlog</span>
+                  <span className="text-[11px] text-ink-muted uppercase font-black tracking-wider block">Stuck / Stalled Backlog</span>
                   <div className="mt-3 flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-amber-600">{dashboardData.actionCenter.ticketsAging7Days.length}</span>
-                    <span className="text-zinc-500 font-medium">tickets aging beyond 7 days</span>
+                    <span className="text-2xl font-black text-warning">{dashboardData.actionCenter.ticketsAging7Days.length}</span>
+                    <span className="text-ink-secondary font-medium">tickets aging beyond 7 days</span>
                   </div>
                 </div>
                 <Link href="/manager/tickets" className="mt-4">
-                  <Button variant="outline" className="w-full text-[9px] uppercase font-bold py-1 border-zinc-300 hover:bg-zinc-900 hover:text-white transition font-mono">
+                  <Button variant="outline" className="w-full text-[11px] uppercase font-bold py-1 border-line-strong hover:bg-ink hover:text-white transition">
                     Audit Aging Backlog <ArrowRight size={10} className="ml-1" />
                   </Button>
                 </Link>
@@ -3074,36 +3146,36 @@ export default function ManagerDashboardPage() {
 
           {/* SECTION 13: ALERTS & RISK INTELLIGENCE PANEL */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">3. Executive Risk Intelligence Alerts</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">3. Executive Risk Intelligence Alerts</span>
             
             <div className="space-y-3">
               {systemAlerts.map((alert, idx) => (
                 <div
                   key={idx}
-                  className={`border p-3.5 rounded-lg flex items-start justify-between gap-4 bg-white ${
-                    alert.severity === 'Critical' ? 'border-red-200 bg-red-50/10' : 'border-zinc-200'
+                  className={`border p-3.5 rounded-lg flex items-start justify-between gap-4 bg-surface ${
+                    alert.severity === 'Critical' ? 'border-red-200 bg-red-50/10' : 'border-line'
                   }`}
                 >
                   <div className="flex items-start gap-2.5">
                     {alert.severity === 'Critical' ? (
-                      <ShieldAlert className="text-red-500 shrink-0 mt-0.5" size={15} />
+                      <ShieldAlert className="text-critical shrink-0 mt-0.5" size={15} />
                     ) : (
                       <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={15} />
                     )}
                     <div>
-                      <span className="font-bold text-zinc-900 block">{alert.reason}</span>
-                      <span className="text-zinc-500 text-[10px] block mt-0.5">Recommended Manager Action: {alert.action}</span>
+                      <span className="font-bold text-ink block">{alert.reason}</span>
+                      <span className="text-ink-secondary text-[11px] block mt-0.5">Recommended Manager Action: {alert.action}</span>
                     </div>
                   </div>
                   <Link href={alert.link}>
-                    <Button variant="outline" className="text-[9px] uppercase font-bold h-7 py-1 px-3 border-zinc-300 hover:bg-zinc-50 font-mono">
+                    <Button variant="outline" className="text-[11px] uppercase font-bold h-7 py-1 px-3 border-line-strong hover:bg-surface-muted">
                       Mitigate
                     </Button>
                   </Link>
                 </div>
               ))}
               {systemAlerts.length === 0 && (
-                <div className="text-center py-8 border border-dashed border-zinc-200 rounded-lg text-zinc-400 italic">No system alerts flagged today. Incident delivery SLAs are running healthy.</div>
+                <div className="text-center py-8 border border-dashed border-line rounded-lg text-ink-muted italic">No system alerts flagged today. Incident delivery SLAs are running healthy.</div>
               )}
             </div>
           </div>
@@ -3115,45 +3187,45 @@ export default function ManagerDashboardPage() {
           
           {/* SECTION 3: TICKET OPERATIONS COMMAND CENTER */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">1. Ticket Operations Command Center</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">1. Ticket Operations Command Center</span>
             
             {/* Counters */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
-              <Card className="p-3 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Active Backlog</span>
-                <span className="text-lg font-bold text-zinc-950 block mt-1">{dashboardData.executive.openTickets}</span>
+              <Card className="p-3 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Active Backlog</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.executive.openTickets}</span>
               </Card>
-              <Card className="p-3 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">No Owner</span>
-                <span className="text-lg font-bold text-amber-600 block mt-1">{dashboardData.executive.unassignedTickets}</span>
+              <Card className="p-3 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">No Owner</span>
+                <span className="text-lg font-bold text-warning block mt-1">{dashboardData.executive.unassignedTickets}</span>
               </Card>
-              <Card className="p-3 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Stalled (3d+)</span>
-                <span className="text-lg font-bold text-zinc-950 block mt-1">{dashboardData.actionCenter.ticketsNoUpdate3Days.length}</span>
+              <Card className="p-3 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Stalled (3d+)</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.actionCenter.ticketsNoUpdate3Days.length}</span>
               </Card>
-              <Card className="p-3 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Aging 7d+</span>
-                <span className="text-lg font-bold text-zinc-950 block mt-1">{dashboardData.actionCenter.ticketsAging7Days.length}</span>
+              <Card className="p-3 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Aging 7d+</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.actionCenter.ticketsAging7Days.length}</span>
               </Card>
-              <Card className="p-3 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Aging 15d+</span>
-                <span className="text-lg font-bold text-zinc-950 block mt-1">{dashboardData.actionCenter.ticketsAging15Days.length}</span>
+              <Card className="p-3 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Aging 15d+</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.actionCenter.ticketsAging15Days.length}</span>
               </Card>
-              <Card className="p-3 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Aging 30d+</span>
-                <span className="text-lg font-bold text-zinc-950 block mt-1">{dashboardData.actionCenter.ticketsAging30Days.length}</span>
+              <Card className="p-3 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Aging 30d+</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.actionCenter.ticketsAging30Days.length}</span>
               </Card>
-              <Card className="p-3 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Raised to SAP</span>
-                <span className="text-lg font-bold text-zinc-950 block mt-1">{dashboardData.executive.raisedToSap}</span>
+              <Card className="p-3 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Raised to SAP</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.executive.raisedToSap}</span>
               </Card>
             </div>
 
             {/* Recharts grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
-              <Card className="border border-zinc-200 p-4 bg-white shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Ticket Status Distribution</span>
+              <Card className="border border-line p-4 bg-surface shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Ticket Status Distribution</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.statusData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -3167,8 +3239,8 @@ export default function ManagerDashboardPage() {
                 </div>
               </Card>
 
-              <Card className="border border-zinc-200 p-4 bg-white shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Ticket Priority Backlog Split</span>
+              <Card className="border border-line p-4 bg-surface shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Ticket Priority Backlog Split</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.priorityData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -3182,8 +3254,8 @@ export default function ManagerDashboardPage() {
                 </div>
               </Card>
 
-              <Card className="border border-zinc-200 p-4 bg-white shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Open vs Closed Monthly Trend</span>
+              <Card className="border border-line p-4 bg-surface shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Open vs Closed Monthly Trend</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartsData.trendData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -3203,8 +3275,8 @@ export default function ManagerDashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <Card className="border border-zinc-200 p-4 bg-white shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Ticket Type Distribution</span>
+              <Card className="border border-line p-4 bg-surface shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Ticket Type Distribution</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.typeData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -3218,8 +3290,8 @@ export default function ManagerDashboardPage() {
                 </div>
               </Card>
 
-              <Card className="border border-zinc-200 p-4 bg-white shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Active Incident Aging buckets</span>
+              <Card className="border border-line p-4 bg-surface shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Active Incident Aging buckets</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.agingData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -3238,34 +3310,34 @@ export default function ManagerDashboardPage() {
 
           {/* SECTION 6: SLA & AGING CONTROL CENTER */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">2. SLA & Aging Control Center (Incidents Specific)</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">2. SLA & Aging Control Center (Incidents Specific)</span>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between col-span-1">
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between col-span-1">
                 <div>
-                  <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Incident SLA Indicators</span>
-                  <div className="mt-4 space-y-3 font-bold text-zinc-850 text-[10px]">
+                  <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Incident SLA Indicators</span>
+                  <div className="mt-4 space-y-3 font-bold text-ink text-[11px]">
                     <div className="flex justify-between"><span>SLA Met/Healthy Incidents:</span><span className="text-green-700">{dashboardData.executive.slaHealthy}</span></div>
-                    <div className="flex justify-between"><span>SLA Warning Incidents (&lt;24h):</span><span className="text-amber-600">{dashboardData.executive.slaWarning}</span></div>
-                    <div className="flex justify-between"><span>SLA Breached Incidents:</span><span className="text-red-650 font-black animate-pulse">{dashboardData.executive.slaBreached}</span></div>
-                    <div className="flex justify-between pt-2 border-t border-zinc-100">
+                    <div className="flex justify-between"><span>SLA Warning Incidents (&lt;24h):</span><span className="text-warning">{dashboardData.executive.slaWarning}</span></div>
+                    <div className="flex justify-between"><span>SLA Breached Incidents:</span><span className="text-critical font-black animate-pulse">{dashboardData.executive.slaBreached}</span></div>
+                    <div className="flex justify-between pt-2 border-t border-line">
                       <span>SLA Compliance Index:</span>
-                      <span className={`text-md font-black ${dashboardData.executive.averageSlaCompliance >= 95 ? 'text-green-700' : 'text-red-650'}`}>{dashboardData.executive.averageSlaCompliance}%</span>
+                      <span className={`text-md font-black ${dashboardData.executive.averageSlaCompliance >= 95 ? 'text-green-700' : 'text-critical'}`}>{dashboardData.executive.averageSlaCompliance}%</span>
                     </div>
                   </div>
                 </div>
               </Card>
 
               {/* Top SLA Risk incident list */}
-              <Card className="col-span-2 border border-zinc-200 bg-white shadow-sm overflow-hidden">
-                <div className="p-3.5 bg-zinc-50 border-b border-zinc-200">
-                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Top Incident SLA Risk Tickets</span>
+              <Card className="col-span-2 border border-line bg-surface shadow-card overflow-hidden">
+                <div className="p-3.5 bg-surface-muted border-b border-line">
+                  <span className="font-bold text-ink uppercase text-[11px] tracking-wider">Top Incident SLA Risk Tickets</span>
                 </div>
                 <div className="p-0">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-[10px]">
-                      <thead className="bg-zinc-100 text-zinc-500 font-bold uppercase text-[8px] border-b border-zinc-200">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-surface-subtle text-ink-secondary font-bold uppercase text-[11px] border-b border-line">
                         <tr>
                           <th className="py-2 px-3">Ticket ID</th>
                           <th className="py-2 px-3">Customer</th>
@@ -3275,7 +3347,7 @@ export default function ManagerDashboardPage() {
                           <th className="py-2 px-3 text-center">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-zinc-150">
+                      <tbody className="divide-y divide-line">
                         {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable').slice(0, 4).map(t => {
                           const slaInfo = getSlaBreachInfo(t);
                           const isEscalated = t.escalationFlag;
@@ -3283,31 +3355,31 @@ export default function ManagerDashboardPage() {
                             ? 'border-l-4 border-l-destructive' 
                             : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500' : '');
                           return (
-                            <tr key={t.id} className="hover:bg-zinc-50/50">
-                              <td className={`py-2 px-3 font-bold text-zinc-950 ${borderClass}`}>
+                            <tr key={t.id} className="hover:bg-surface-muted/60">
+                              <td className={`py-2 px-3 font-bold text-ink ${borderClass}`}>
                                 <div className="flex items-center gap-1.5">
                                   <Link href={`/manager/tickets/${t.id}`} className="hover:underline">{t.ticketNumber || t.id}</Link>
-                                  {isEscalated && <Badge variant="destructive" className="text-[7px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
+                                  {isEscalated && <Badge variant="destructive" className="text-[11px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
                                   {slaInfo && (
-                                    <Badge className={`text-[7px] font-bold py-0 px-1 uppercase leading-none h-4 ${
+                                    <Badge className={`text-[11px] font-bold py-0 px-1 uppercase leading-none h-4 ${
                                       slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
                                     }`}>{slaInfo.label}</Badge>
                                   )}
                                 </div>
                               </td>
-                              <td className="py-2 px-3 font-semibold text-zinc-650 truncate max-w-[100px]">{t.organization}</td>
-                              <td className="py-2 px-3 text-center font-bold text-red-650">{t.priority}</td>
-                              <td className="py-2 px-3 text-zinc-500 whitespace-nowrap">{new Date(t.slaDueAt).toLocaleString()}</td>
-                              <td className="py-2 px-3 text-zinc-650 font-semibold">{t.assignedConsultant || 'Unassigned'}</td>
+                              <td className="py-2 px-3 font-semibold text-ink-secondary truncate max-w-[100px]">{t.organization}</td>
+                              <td className="py-2 px-3 text-center font-bold text-critical">{t.priority}</td>
+                              <td className="py-2 px-3 text-ink-secondary whitespace-nowrap">{new Date(t.slaDueAt).toLocaleString()}</td>
+                              <td className="py-2 px-3 text-ink-secondary font-semibold">{t.assignedConsultant || 'Unassigned'}</td>
                               <td className="py-2 px-3 text-center">
-                                <span className="px-1.5 py-0.2 rounded font-bold border text-[8px] uppercase text-blue-700 bg-blue-50 border-blue-200">{t.status}</span>
+                                <span className="px-1.5 py-0.2 rounded font-bold border text-[11px] uppercase text-blue-700 bg-blue-50 border-blue-200">{t.status}</span>
                               </td>
                             </tr>
                           );
                         })}
                         {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable').length === 0 && (
                           <tr>
-                            <td colSpan={6} className="py-8 text-center text-zinc-400 italic">No incident SLA risks found.</td>
+                            <td colSpan={6} className="py-8 text-center text-ink-muted italic">No incident SLA risks found.</td>
                           </tr>
                         )}
                       </tbody>
@@ -3326,29 +3398,29 @@ export default function ManagerDashboardPage() {
           
           {/* SECTION 7: CONSULTANT WORKLOAD & CAPACITY CENTER */}
           <div className="space-y-4" id="loadCockpit">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">1. Consultant Workload & Capacity Control</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">1. Consultant Workload & Capacity Control</span>
             
             {/* Working capacity descriptors */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 bg-zinc-50 p-4 border border-zinc-200 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 bg-surface-muted p-4 border border-line rounded-lg">
               <div>
-                <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Expectation Policy</span>
-                <span className="font-semibold text-zinc-700 block mt-1">Expected work days: Sun to Thu</span>
-                <span className="text-[10px] text-zinc-500 block">Friday & Saturday skipped. Daily capacity: 8 hours.</span>
+                <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Expectation Policy</span>
+                <span className="font-semibold text-ink-secondary block mt-1">Expected work days: Sun to Thu</span>
+                <span className="text-[11px] text-ink-secondary block">Friday & Saturday skipped. Daily capacity: 8 hours.</span>
               </div>
               <div>
-                <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Expected Month Hours</span>
-                <span className="text-base font-bold text-zinc-950 block mt-1">{workingDaysInMonth * 8} Hours / FTE</span>
-                <span className="text-[10px] text-zinc-500 block">Based on {workingDaysInMonth} active expected working days.</span>
+                <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Expected Month Hours</span>
+                <span className="text-base font-bold text-ink block mt-1">{workingDaysInMonth * 8} Hours / FTE</span>
+                <span className="text-[11px] text-ink-secondary block">Based on {workingDaysInMonth} active expected working days.</span>
               </div>
               <div>
-                <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Active Engineers allocated</span>
-                <span className="text-base font-bold text-zinc-950 block mt-1">{consultantsLoad.filter(c => c.activeCount > 0).length} Consultants</span>
-                <span className="text-[10px] text-zinc-500 block">Out of {consultantsLoad.length} total staff index.</span>
+                <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Active Engineers allocated</span>
+                <span className="text-base font-bold text-ink block mt-1">{consultantsLoad.filter(c => c.activeCount > 0).length} Consultants</span>
+                <span className="text-[11px] text-ink-secondary block">Out of {consultantsLoad.length} total staff index.</span>
               </div>
               <div>
-                <span className="font-bold text-zinc-450 uppercase text-[8px] tracking-wider block">Capacity Overload States</span>
-                <span className="text-base font-bold text-red-650 block mt-1">{consultantsLoad.filter(c => c.loadStatus === 'Overloaded').length} Consultants overloaded</span>
-                <span className="text-[10px] text-zinc-500 block">Load exceeding 85% capacity limits.</span>
+                <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Capacity Overload States</span>
+                <span className="text-base font-bold text-critical block mt-1">{consultantsLoad.filter(c => c.loadStatus === 'Overloaded').length} Consultants overloaded</span>
+                <span className="text-[11px] text-ink-secondary block">Load exceeding 85% capacity limits.</span>
               </div>
             </div>
 
@@ -3359,27 +3431,27 @@ export default function ManagerDashboardPage() {
                 const isUnder = c.loadStatus === 'Underutilized';
                 
                 return (
-                  <Card key={c.name} className={`p-4 bg-white border shadow-sm flex flex-col justify-between transition cursor-pointer hover:border-zinc-350 ${
-                    selectedConsultant === c.name ? 'border-zinc-950 ring-1 ring-zinc-150' : 'border-zinc-200'
+                  <Card key={c.name} className={`p-4 bg-surface border shadow-card flex flex-col justify-between transition cursor-pointer hover:border-line-strong ${
+                    selectedConsultant === c.name ? 'border-ink ring-1 ring-zinc-150' : 'border-line'
                   }`} onClick={() => setSelectedConsultant(selectedConsultant === c.name ? null : c.name)}>
                     <div className="flex items-start justify-between">
                       <div>
-                        <span className="font-bold text-zinc-900 text-xs block">{c.name}</span>
-                        <span className="text-[8px] text-zinc-450 uppercase font-black tracking-widest">{c.type} • {c.expertise.join('/')}</span>
+                        <span className="font-bold text-ink text-xs block">{c.name}</span>
+                        <span className="text-[11px] text-ink-muted uppercase font-black tracking-widest">{c.type} • {c.expertise.join('/')}</span>
                       </div>
-                      <Badge className={`border-none font-bold text-[8px] uppercase ${
-                        isOver ? 'bg-red-100 text-red-800 animate-pulse' : isUnder ? 'bg-zinc-100 text-zinc-800' : 'bg-green-100 text-green-800'
+                      <Badge className={`border-none font-bold text-[11px] uppercase ${
+                        isOver ? 'bg-red-100 text-red-800 animate-pulse' : isUnder ? 'bg-surface-subtle text-ink' : 'bg-green-100 text-green-800'
                       }`}>
                         {c.loadStatus}
                       </Badge>
                     </div>
 
                     <div className="mt-4">
-                      <div className="flex justify-between items-center mb-1 text-[9px] font-bold text-zinc-650">
+                      <div className="flex justify-between items-center mb-1 text-[11px] font-bold text-ink-secondary">
                         <span>Load level:</span>
                         <span>{c.activeCount} active ({c.loadPercentage}%)</span>
                       </div>
-                      <div className="w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-surface-subtle h-1.5 rounded-full overflow-hidden">
                         <div
                           className={`h-full transition-all duration-300 ${
                             isOver ? 'bg-red-500' : isUnder ? 'bg-amber-400' : 'bg-green-500'
@@ -3390,16 +3462,16 @@ export default function ManagerDashboardPage() {
                     </div>
 
                     {selectedConsultant === c.name && (
-                      <div className="mt-3.5 pt-2.5 border-t border-zinc-200 space-y-1.5">
-                        <span className="text-[8px] text-zinc-400 uppercase font-black block">Backlog Queue List</span>
+                      <div className="mt-3.5 pt-2.5 border-t border-line space-y-1.5">
+                        <span className="text-[11px] text-ink-muted uppercase font-black block">Backlog Queue List</span>
                         {filteredDashboardTickets.filter(t => 
                           t.status !== 'Closed' && 
                           t.status !== 'Resolved' && 
                           (t.assignedConsultant === c.name || t.consultantEfforts?.some(e => e.consultantName === c.name && !e.isDeleted))
                         ).map(t => (
-                          <div key={t.id} className="flex justify-between items-center text-[9px] py-1 border-b border-zinc-100 last:border-0 hover:bg-zinc-100/50 px-1 rounded">
-                            <Link href={`/manager/tickets/${t.id}`} className="font-bold text-zinc-800 hover:underline truncate max-w-[120px]">{t.ticketNumber || t.id} - {t.title}</Link>
-                            <Badge className="bg-zinc-100 text-zinc-700 border-none font-bold text-[8px] py-0 px-1 uppercase">{t.priority}</Badge>
+                          <div key={t.id} className="flex justify-between items-center text-[11px] py-1 border-b border-line last:border-0 hover:bg-surface-subtle/50 px-1 rounded">
+                            <Link href={`/manager/tickets/${t.id}`} className="font-bold text-ink hover:underline truncate max-w-[120px]">{t.ticketNumber || t.id} - {t.title}</Link>
+                            <Badge className="bg-surface-subtle text-ink-secondary border-none font-bold text-[11px] py-0 px-1 uppercase">{t.priority}</Badge>
                           </div>
                         ))}
                       </div>
@@ -3411,8 +3483,8 @@ export default function ManagerDashboardPage() {
 
             {/* Charts section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3">
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Consultant Load Distribution</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Consultant Load Distribution</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={consultantsLoad.map(c => ({ name: c.name, value: c.activeCount }))} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -3426,8 +3498,8 @@ export default function ManagerDashboardPage() {
                 </div>
               </Card>
 
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">FTE Hours Consumption variance</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">FTE Hours Consumption variance</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={consultantsLoad.map(c => {
@@ -3461,17 +3533,17 @@ export default function ManagerDashboardPage() {
           
           {/* SECTION 6: CUSTOMER HEALTH & RISK CENTER */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">1. Customer Health Command Center</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">1. Customer Health Command Center</span>
             
             {/* Risk Ledger table */}
-            <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden">
-              <div className="p-3.5 bg-zinc-50 border-b border-zinc-200">
-                <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Operational Customer health & SLA Ledger</span>
+            <Card className="border border-line bg-surface shadow-card overflow-hidden">
+              <div className="p-3.5 bg-surface-muted border-b border-line">
+                <span className="font-bold text-ink uppercase text-[11px] tracking-wider">Operational Customer health & SLA Ledger</span>
               </div>
               <div className="p-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-[10px]">
-                    <thead className="bg-zinc-100 text-zinc-500 font-bold uppercase text-[7px] border-b border-zinc-200">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="bg-surface-subtle text-ink-secondary font-bold uppercase text-[11px] border-b border-line">
                       <tr>
                         <th className="py-2.5 px-4 font-bold">Customer Name</th>
                         <th className="py-2.5 px-4 font-bold text-center">Contract Period</th>
@@ -3485,39 +3557,39 @@ export default function ManagerDashboardPage() {
                         <th className="py-2.5 px-4 font-bold text-center">Health Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-150">
+                    <tbody className="divide-y divide-line">
                       {dashboardData.customerRiskLedger.map((c) => (
-                        <tr key={c.name} className="hover:bg-zinc-50/50">
-                          <td className="py-2.5 px-4 font-bold text-zinc-950">{c.name}</td>
-                          <td className="py-2.5 px-4 text-center font-mono whitespace-nowrap text-zinc-500">
+                        <tr key={c.name} className="hover:bg-surface-muted/60">
+                          <td className="py-2.5 px-4 font-bold text-ink">{c.name}</td>
+                          <td className="py-2.5 px-4 text-center whitespace-nowrap text-ink-secondary">
                             {c.startDate} to {c.endDate}
                           </td>
                           <td className="py-2.5 px-4 text-center whitespace-nowrap">
-                            <div className="font-semibold text-zinc-700 text-[9px]">{c.contractType}</div>
-                            <div className="text-[7px] font-bold text-zinc-400 mt-0.5">{c.contractStatus}</div>
+                            <div className="font-semibold text-ink-secondary text-[11px]">{c.contractType}</div>
+                            <div className="text-[11px] font-bold text-ink-muted mt-0.5">{c.contractStatus}</div>
                           </td>
-                          <td className="py-2.5 px-4 text-center font-mono text-zinc-650">
+                          <td className="py-2.5 px-4 text-center text-ink-secondary">
                             {c.totalHours}h / {c.monthlyHours}h
                           </td>
-                          <td className="py-2.5 px-4 text-center font-mono font-bold text-zinc-900">
+                          <td className="py-2.5 px-4 text-center font-bold text-ink">
                             {c.approvedHours.toFixed(1)}h
                           </td>
-                          <td className="py-2.5 px-4 text-center font-mono text-zinc-600">
+                          <td className="py-2.5 px-4 text-center text-ink-secondary">
                             {c.remainingHours.toFixed(1)}h
                           </td>
-                          <td className="py-2.5 px-4 text-center font-mono">
-                            <span className={`font-bold ${c.utilizationPercent >= 90 ? 'text-red-650 font-black' : c.utilizationPercent >= 75 ? 'text-amber-600' : 'text-green-700'}`}>
+                          <td className="py-2.5 px-4 text-center">
+                            <span className={`font-bold ${c.utilizationPercent >= 90 ? 'text-critical font-black' : c.utilizationPercent >= 75 ? 'text-warning' : 'text-green-700'}`}>
                               {c.utilizationPercent.toFixed(1)}%
                             </span>
                           </td>
-                          <td className="py-2.5 px-4 text-center font-mono text-zinc-700">
+                          <td className="py-2.5 px-4 text-center text-ink-secondary">
                             {c.openTickets} / {c.closedTickets} / {c.reopened} / {c.escalated}
                           </td>
-                          <td className={`py-2.5 px-4 text-center font-mono font-bold ${c.breached > 0 ? 'text-red-650 font-black animate-pulse' : 'text-zinc-500'}`}>
+                          <td className={`py-2.5 px-4 text-center font-bold ${c.breached > 0 ? 'text-critical font-black animate-pulse' : 'text-ink-secondary'}`}>
                             {c.breached}
                           </td>
                           <td className="py-2.5 px-4 text-center">
-                            <Badge className={`border-none font-bold text-[7px] uppercase tracking-wider ${
+                            <Badge className={`border-none font-bold text-[11px] uppercase tracking-wider ${
                               c.level === 'Critical' ? 'bg-red-605 text-white animate-pulse bg-red-600' :
                               c.level === 'Warning' ? 'bg-amber-100 text-amber-800 bg-amber-200' : 'bg-green-150 text-green-800 bg-green-200'
                             }`}>
@@ -3533,8 +3605,8 @@ export default function ManagerDashboardPage() {
             </Card>
 
             <div className="pt-3">
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Customer Ticket Volume Share</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Customer Ticket Volume Share</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dashboardData.topCustomersVolume} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -3557,23 +3629,23 @@ export default function ManagerDashboardPage() {
           
           {/* SECTION 9: APPROVAL & CLOSURE CONTROL CENTER */}
           <div className="space-y-4" id="governanceApproval">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">1. Approval & Closure Control Center</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">1. Approval & Closure Control Center</span>
             
             {/* Grouped approvals list */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
               {/* Timesheets List */}
-              <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96">
-                <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
-                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Timesheet Approvals Queue ({pendingEffortLogs.length})</span>
+              <Card className="border border-line bg-surface shadow-card overflow-hidden flex flex-col justify-between h-96">
+                <div className="p-3 bg-surface-muted border-b border-line flex justify-between items-center">
+                  <span className="font-bold text-ink uppercase text-[11px] tracking-wider">Timesheet Approvals Queue ({pendingEffortLogs.length})</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-0">
                   {pendingEffortLogs.map(log => (
-                    <div key={log.logId} className="p-3 border-b border-zinc-100 flex justify-between items-start hover:bg-zinc-50/50">
+                    <div key={log.logId} className="p-3 border-b border-line flex justify-between items-start hover:bg-surface-muted/60">
                       <div>
-                        <span className="font-bold text-zinc-800 block text-[10px]">{log.consultantName} logged {log.hours}h</span>
-                        <span className="text-zinc-450 block text-[8px] font-mono">{log.ticketNumber} • {log.activityType}</span>
-                        <span className="text-zinc-500 block mt-1 leading-relaxed text-[9px] truncate max-w-[180px]" title={log.description}>{log.description}</span>
+                        <span className="font-bold text-ink block text-[11px]">{log.consultantName} logged {log.hours}h</span>
+                        <span className="text-ink-muted block text-[11px]">{log.ticketNumber} • {log.activityType}</span>
+                        <span className="text-ink-secondary block mt-1 leading-relaxed text-[11px] truncate max-w-[180px]" title={log.description}>{log.description}</span>
                       </div>
                       <div className="flex gap-1">
                         <Button size="icon" className="h-6 w-6 bg-green-600 hover:bg-green-700 text-white rounded cursor-pointer" onClick={() => handleApproveEffort(log.ticketId, log.logId, log.consultantName)}>
@@ -3586,30 +3658,30 @@ export default function ManagerDashboardPage() {
                     </div>
                   ))}
                   {pendingEffortLogs.length === 0 && (
-                    <div className="py-20 text-center text-zinc-400 italic">No effort log audits pending.</div>
+                    <div className="py-20 text-center text-ink-muted italic">No effort log audits pending.</div>
                   )}
                 </div>
               </Card>
 
               {/* Closures List */}
-              <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96">
-                <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
-                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Closure Requests ({pendingClosureRequests.length})</span>
+              <Card className="border border-line bg-surface shadow-card overflow-hidden flex flex-col justify-between h-96">
+                <div className="p-3 bg-surface-muted border-b border-line flex justify-between items-center">
+                  <span className="font-bold text-ink uppercase text-[11px] tracking-wider">Closure Requests ({pendingClosureRequests.length})</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-0">
                   {pendingClosureRequests.map(r => (
-                    <div key={r.requestId} className="p-3 border-b border-zinc-100 flex justify-between items-start hover:bg-zinc-50/50">
+                    <div key={r.requestId} className="p-3 border-b border-line flex justify-between items-start hover:bg-surface-muted/60">
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-zinc-800 text-[10px]">{r.ticketNumber}</span>
-                          <span className="text-zinc-400 text-[8px] font-semibold font-mono">({r.customerName})</span>
+                          <span className="font-bold text-ink text-[11px]">{r.ticketNumber}</span>
+                          <span className="text-ink-muted text-[11px] font-semibold">({r.customerName})</span>
                         </div>
-                        <span className="text-zinc-900 block text-[9px] font-bold truncate max-w-[180px] mt-0.5">{r.ticketTitle}</span>
-                        <span className="text-zinc-450 block text-[8px] font-mono mt-0.5">By: {r.requestedBy} • Total: {r.funcHours + r.techHours}h</span>
-                        <span className="text-zinc-500 block mt-1 leading-relaxed text-[9px] truncate max-w-[180px]">{r.summary}</span>
+                        <span className="text-ink block text-[11px] font-bold truncate max-w-[180px] mt-0.5">{r.ticketTitle}</span>
+                        <span className="text-ink-muted block text-[11px] mt-0.5">By: {r.requestedBy} • Total: {r.funcHours + r.techHours}h</span>
+                        <span className="text-ink-secondary block mt-1 leading-relaxed text-[11px] truncate max-w-[180px]">{r.summary}</span>
                       </div>
                       <div className="flex gap-1.5">
-                        <Button size="sm" className="h-6 bg-zinc-950 hover:bg-zinc-800 text-white text-[9px] uppercase font-bold px-2 rounded cursor-pointer font-mono" onClick={() => triggerClosureVerify(r.ticketId, r.requestId)}>
+                        <Button size="sm" className="h-6 bg-ink hover:bg-zinc-800 text-white text-[11px] uppercase font-bold px-2 rounded cursor-pointer" onClick={() => triggerClosureVerify(r.ticketId, r.requestId)}>
                           Verify
                         </Button>
                         <Button size="icon" className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer" onClick={() => triggerRejection('closure', r.ticketId, r.requestId)}>
@@ -3619,23 +3691,23 @@ export default function ManagerDashboardPage() {
                     </div>
                   ))}
                   {pendingClosureRequests.length === 0 && (
-                    <div className="py-20 text-center text-zinc-400 italic">No closure verifications pending.</div>
+                    <div className="py-20 text-center text-ink-muted italic">No closure verifications pending.</div>
                   )}
                 </div>
               </Card>
 
               {/* Unlocks List */}
-              <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96">
-                <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
-                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Work Log Unlock Requests ({pendingUnlockRequests.length})</span>
+              <Card className="border border-line bg-surface shadow-card overflow-hidden flex flex-col justify-between h-96">
+                <div className="p-3 bg-surface-muted border-b border-line flex justify-between items-center">
+                  <span className="font-bold text-ink uppercase text-[11px] tracking-wider">Work Log Unlock Requests ({pendingUnlockRequests.length})</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-0">
                   {pendingUnlockRequests.map(u => (
-                    <div key={u.requestId} className="p-3 border-b border-zinc-100 flex justify-between items-start hover:bg-zinc-50/50">
+                    <div key={u.requestId} className="p-3 border-b border-line flex justify-between items-start hover:bg-surface-muted/60">
                       <div>
-                        <span className="font-bold text-zinc-800 block text-[10px]">Unlock Log: {u.ticketNumber}</span>
-                        <span className="text-zinc-450 block text-[8px] font-mono">Requester: {u.requestedBy}</span>
-                        <span className="text-zinc-550 block mt-1 text-[9px] truncate max-w-[180px]" title={u.reason}>{u.reason}</span>
+                        <span className="font-bold text-ink block text-[11px]">Unlock Log: {u.ticketNumber}</span>
+                        <span className="text-ink-muted block text-[11px]">Requester: {u.requestedBy}</span>
+                        <span className="text-ink-secondary block mt-1 text-[11px] truncate max-w-[180px]" title={u.reason}>{u.reason}</span>
                       </div>
                       <div className="flex gap-1">
                         <Button size="icon" className="h-6 w-6 bg-green-600 hover:bg-green-700 text-white rounded cursor-pointer" onClick={() => handleApproveUnlock(u.ticketId, u.requestId, u.requestedBy)}>
@@ -3648,7 +3720,7 @@ export default function ManagerDashboardPage() {
                     </div>
                   ))}
                   {pendingUnlockRequests.length === 0 && (
-                    <div className="py-20 text-center text-zinc-400 italic">No timesheet unlock requests pending.</div>
+                    <div className="py-20 text-center text-ink-muted italic">No timesheet unlock requests pending.</div>
                   )}
                 </div>
               </Card>
@@ -3659,47 +3731,47 @@ export default function ManagerDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               
               {/* Password Reset Requests */}
-              <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96">
-                <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
-                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Password Reset Requests ({passwordRequests.length})</span>
+              <Card className="border border-line bg-surface shadow-card overflow-hidden flex flex-col justify-between h-96">
+                <div className="p-3 bg-surface-muted border-b border-line flex justify-between items-center">
+                  <span className="font-bold text-ink uppercase text-[11px] tracking-wider">Password Reset Requests ({passwordRequests.length})</span>
                 </div>
-                <div className="flex-1 overflow-y-auto p-0 font-mono text-[10px]">
+                <div className="flex-1 overflow-y-auto p-0 text-[11px]">
                   <table className="w-full border-collapse text-left">
                     <thead>
-                      <tr className="bg-zinc-50 border-b border-zinc-150 uppercase font-bold text-[8px] tracking-wider text-zinc-500">
+                      <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
                         <th className="p-2.5">User</th>
                         <th className="p-2.5">Organization</th>
                         <th className="p-2.5">Requested At</th>
                         <th className="p-2.5 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100">
+                    <tbody className="divide-y divide-line">
                       {loadingRequests ? (
                         <tr>
-                          <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-mono">Querying reset requests...</td>
+                          <td colSpan={4} className="p-6 text-center text-ink-muted italic">Querying reset requests...</td>
                         </tr>
                       ) : passwordRequests.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-sans">No pending password reset requests.</td>
+                          <td colSpan={4} className="p-6 text-center text-ink-muted italic font-sans">No pending password reset requests.</td>
                         </tr>
                       ) : (
                         passwordRequests.map((req) => (
-                          <tr key={req.id} className="hover:bg-zinc-50/50">
+                          <tr key={req.id} className="hover:bg-surface-muted/60">
                             <td className="p-2.5">
                               <div>
-                                <span className="font-bold text-zinc-800 block text-[10px]">{req.requester_name}</span>
-                                <span className="text-zinc-450 block text-[9px]">{req.requester_email}</span>
+                                <span className="font-bold text-ink block text-[11px]">{req.requester_name}</span>
+                                <span className="text-ink-muted block text-[11px]">{req.requester_email}</span>
                               </div>
                             </td>
-                            <td className="p-2.5 text-zinc-650 font-semibold">{req.organization}</td>
-                            <td className="p-2.5 text-zinc-550 font-mono">
+                            <td className="p-2.5 text-ink-secondary font-semibold">{req.organization}</td>
+                            <td className="p-2.5 text-ink-secondary">
                               {new Date(req.requested_at).toLocaleString()}
                             </td>
                             <td className="p-2.5 text-right">
                               <div className="flex justify-end gap-1.5">
                                 <Button
                                   size="sm"
-                                  className="h-6 bg-zinc-950 hover:bg-zinc-800 text-white text-[9px] uppercase font-bold px-2 rounded cursor-pointer font-mono"
+                                  className="h-6 bg-ink hover:bg-zinc-800 text-white text-[11px] uppercase font-bold px-2 rounded cursor-pointer"
                                   onClick={() => handleApprovePasswordRequest(req)}
                                 >
                                   Approve
@@ -3722,47 +3794,47 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Ticket Reopen Requests */}
-              <Card className="border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between h-96">
-                <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex justify-between items-center">
-                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider">Ticket Reopen Requests ({reopenRequests.length})</span>
+              <Card className="border border-line bg-surface shadow-card overflow-hidden flex flex-col justify-between h-96">
+                <div className="p-3 bg-surface-muted border-b border-line flex justify-between items-center">
+                  <span className="font-bold text-ink uppercase text-[11px] tracking-wider">Ticket Reopen Requests ({reopenRequests.length})</span>
                 </div>
-                <div className="flex-1 overflow-y-auto p-0 font-mono text-[10px]">
+                <div className="flex-1 overflow-y-auto p-0 text-[11px]">
                   <table className="w-full border-collapse text-left">
                     <thead>
-                      <tr className="bg-zinc-50 border-b border-zinc-150 uppercase font-bold text-[8px] tracking-wider text-zinc-500">
+                      <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
                         <th className="p-2.5">Ticket</th>
                         <th className="p-2.5">Requester</th>
                         <th className="p-2.5">Reason</th>
                         <th className="p-2.5 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100">
+                    <tbody className="divide-y divide-line">
                       {loadingReopens ? (
                         <tr>
-                          <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-mono">Querying reopen requests...</td>
+                          <td colSpan={4} className="p-6 text-center text-ink-muted italic">Querying reopen requests...</td>
                         </tr>
                       ) : reopenRequests.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="p-6 text-center text-zinc-450 italic font-sans">No pending ticket reopen requests.</td>
+                          <td colSpan={4} className="p-6 text-center text-ink-muted italic font-sans">No pending ticket reopen requests.</td>
                         </tr>
                       ) : (
                         reopenRequests.map((req) => (
-                          <tr key={req.id} className="hover:bg-zinc-50/50">
+                          <tr key={req.id} className="hover:bg-surface-muted/60">
                             <td className="p-2.5">
                               <div>
-                                <span className="font-bold text-zinc-800 block text-[10px]">{req.ticket_number}</span>
-                                <span className="text-zinc-450 block text-[9px] truncate max-w-[120px]" title={req.ticket_title}>{req.ticket_title}</span>
+                                <span className="font-bold text-ink block text-[11px]">{req.ticket_number}</span>
+                                <span className="text-ink-muted block text-[11px] truncate max-w-[120px]" title={req.ticket_title}>{req.ticket_title}</span>
                               </div>
                             </td>
-                            <td className="p-2.5 text-zinc-650 font-semibold">{req.requester_name}</td>
-                            <td className="p-2.5 text-zinc-550 font-mono">
+                            <td className="p-2.5 text-ink-secondary font-semibold">{req.requester_name}</td>
+                            <td className="p-2.5 text-ink-secondary">
                               <span className="truncate max-w-[120px] block" title={req.reason}>{req.reason}</span>
                             </td>
                             <td className="p-2.5 text-right">
                               <div className="flex justify-end gap-1.5">
                                 <Button
                                   size="sm"
-                                  className="h-6 bg-zinc-950 hover:bg-zinc-800 text-white text-[9px] uppercase font-bold px-2 rounded cursor-pointer font-mono"
+                                  className="h-6 bg-ink hover:bg-zinc-800 text-white text-[11px] uppercase font-bold px-2 rounded cursor-pointer"
                                   onClick={() => handleApproveReopenRequest(req)}
                                 >
                                   Approve
@@ -3789,38 +3861,38 @@ export default function ManagerDashboardPage() {
 
           {/* SECTION 11: HOURS, EFFORT & BILLING INSIGHT CENTER */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">2. Hours, Effort & Billing Insight Center</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">2. Hours, Effort & Billing Insight Center</span>
             
             <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Total Estimated Hours</span>
-                <span className="text-lg font-bold text-zinc-900 block mt-1">{dashboardData.financials.totalEstHrs}h</span>
+              <Card className="p-4 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Total Estimated Hours</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.financials.totalEstHrs}h</span>
               </Card>
               
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Logged Hours (Total)</span>
-                <span className="text-lg font-bold text-zinc-900 block mt-1">{dashboardData.financials.totalActHrs}h</span>
+              <Card className="p-4 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Logged Hours (Total)</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.financials.totalActHrs}h</span>
               </Card>
 
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Approved Hours</span>
-                <span className="text-lg font-bold text-zinc-900 block mt-1">{dashboardData.financials.approvedActHrs}h</span>
+              <Card className="p-4 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Approved Hours</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.financials.approvedActHrs}h</span>
               </Card>
               
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Billable Hours Logged</span>
+              <Card className="p-4 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Billable Hours Logged</span>
                 <span className="text-lg font-bold text-green-700 block mt-1">{dashboardData.financials.billableHrs}h</span>
               </Card>
 
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Non-Billable Hours Logged</span>
-                <span className="text-lg font-bold text-zinc-905 block mt-1">{dashboardData.financials.nonBillableHrs}h</span>
+              <Card className="p-4 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Non-Billable Hours Logged</span>
+                <span className="text-lg font-bold text-ink block mt-1">{dashboardData.financials.nonBillableHrs}h</span>
               </Card>
 
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm text-center">
-                <span className="font-bold text-zinc-450 uppercase text-[8px] block">Est vs Act Hours Variance</span>
-                <span className={`text-lg font-bold block mt-1 ${dashboardData.financials.variance > 0 ? 'text-red-600' : 'text-green-700'}`}>
+              <Card className="p-4 bg-surface border border-line shadow-card text-center">
+                <span className="font-bold text-ink-muted uppercase text-[11px] block">Est vs Act Hours Variance</span>
+                <span className={`text-lg font-bold block mt-1 ${dashboardData.financials.variance > 0 ? 'text-critical' : 'text-green-700'}`}>
                   {dashboardData.financials.variance >= 0 ? `+${dashboardData.financials.variance}` : dashboardData.financials.variance}h
                 </span>
               </Card>
@@ -3828,8 +3900,8 @@ export default function ManagerDashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3">
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Estimated vs Actual Hours Comparison</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Estimated vs Actual Hours Comparison</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={[
@@ -3847,8 +3919,8 @@ export default function ManagerDashboardPage() {
                 </div>
               </Card>
 
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">FTE Billing Split (Billable vs Non-Billable)</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">FTE Billing Split (Billable vs Non-Billable)</span>
                 <div className="h-48 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -3878,18 +3950,18 @@ export default function ManagerDashboardPage() {
 
           {/* SECTION 10: SAP MODULE PERFORMANCE CENTER */}
           <div className="space-y-4">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">3. SAP Module Performance Center</span>
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">3. SAP Module Performance Center</span>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
               {/* Module counts table */}
-              <Card className="col-span-2 border border-zinc-200 bg-white shadow-sm overflow-hidden">
-                <div className="p-3 bg-zinc-50 border-b border-zinc-200">
-                  <span className="font-bold text-zinc-900 uppercase text-[9px] tracking-wider font-mono">Module Ticket and Load Ratios</span>
+              <Card className="col-span-2 border border-line bg-surface shadow-card overflow-hidden">
+                <div className="p-3 bg-surface-muted border-b border-line">
+                  <span className="font-bold text-ink uppercase text-[11px] tracking-wider">Module Ticket and Load Ratios</span>
                 </div>
                 <div className="p-0">
-                  <table className="w-full text-left text-[10px]">
-                    <thead className="bg-zinc-100 text-zinc-500 font-bold uppercase text-[8px] border-b border-zinc-200">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="bg-surface-subtle text-ink-secondary font-bold uppercase text-[11px] border-b border-line">
                       <tr>
                         <th className="py-2.5 px-4 font-bold">SAP Module</th>
                         <th className="py-2.5 px-4 font-bold text-center">Active Backlog Count</th>
@@ -3897,18 +3969,18 @@ export default function ManagerDashboardPage() {
                         <th className="py-2.5 px-4 font-bold text-center">Critical Issues</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-150">
+                    <tbody className="divide-y divide-line">
                       {SAP_MODULES_LIST.map(m => {
                         const mTickets = filteredDashboardTickets.filter(t => t.sapModule === m);
                         const mHours = mTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0);
                         const mCritical = mTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed' && t.status !== 'Resolved').length;
 
                         return (
-                          <tr key={m} className="hover:bg-zinc-50/50">
-                            <td className="py-2.5 px-4 font-bold text-zinc-900">{m}</td>
+                          <tr key={m} className="hover:bg-surface-muted/60">
+                            <td className="py-2.5 px-4 font-bold text-ink">{m}</td>
                             <td className="py-2.5 px-4 text-center font-semibold">{mTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length}</td>
                             <td className="py-2.5 px-4 text-center font-bold">{mHours}h</td>
-                            <td className={`py-2.5 px-4 text-center font-bold ${mCritical > 0 ? 'text-red-650' : 'text-zinc-400'}`}>{mCritical}</td>
+                            <td className={`py-2.5 px-4 text-center font-bold ${mCritical > 0 ? 'text-critical' : 'text-ink-muted'}`}>{mCritical}</td>
                           </tr>
                         );
                       })}
@@ -3918,8 +3990,8 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Module share chart */}
-              <Card className="p-4 bg-white border border-zinc-200 shadow-sm flex flex-col justify-between">
-                <span className="font-bold text-[9px] text-zinc-500 uppercase tracking-wider block mb-3 pb-1 border-b border-zinc-100">Live SAP Modules Backlog distribution</span>
+              <Card className="p-4 bg-surface border border-line shadow-card flex flex-col justify-between">
+                <span className="font-bold text-[11px] text-ink-secondary uppercase tracking-wider block mb-3 pb-1 border-b border-line">Live SAP Modules Backlog distribution</span>
                 <div className="h-64 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.moduleData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
@@ -3944,60 +4016,60 @@ export default function ManagerDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* SECTION 12: RECENT ACTIVITY & AUDIT TIMELINE */}
-            <Card className="col-span-2 border border-zinc-200 bg-white shadow-sm rounded-lg">
-              <CardHeader className="bg-zinc-55 border-b border-zinc-200 py-3.5 px-4">
-                <CardTitle className="text-xs font-bold text-zinc-900 uppercase tracking-wider font-mono">Recent Activity & Audit Timeline Feed</CardTitle>
-                <CardDescription className="text-[10px] text-zinc-500 mt-0.5">Real-time log of ticketing updates, lead allocations, and hours approval changes.</CardDescription>
+            <Card className="col-span-2 border border-line bg-surface shadow-card rounded-lg">
+              <CardHeader className="bg-surface-muted border-b border-line py-3.5 px-4">
+                <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Recent Activity & Audit Timeline Feed</CardTitle>
+                <CardDescription className="text-[11px] text-ink-secondary mt-0.5">Real-time log of ticketing updates, lead allocations, and hours approval changes.</CardDescription>
               </CardHeader>
               <CardContent className="p-4">
-                <div className="relative border-l border-zinc-200 pl-4 ml-2 space-y-5">
+                <div className="relative border-l border-line pl-4 ml-2 space-y-5">
                   {auditTimelineFeed.map((item, idx) => (
                     <div key={idx} className="relative">
                       {/* Timeline dot */}
                       <span className="absolute -left-[21px] top-0.5 w-2 h-2 rounded-full bg-zinc-400 border border-white" />
-                      <div className="text-[10px]">
-                        <span className="font-bold text-zinc-900">{item.actor}</span>
-                        <span className="text-zinc-500 font-bold mx-1">({item.role})</span>
-                        <span className="text-zinc-700">{item.action}</span>
-                        <span className="text-zinc-400 font-bold ml-1 font-mono">[{item.ticketId}]</span>
-                        <span className="text-zinc-400 block text-[8px] mt-0.5">{item.time}</span>
+                      <div className="text-[11px]">
+                        <span className="font-bold text-ink">{item.actor}</span>
+                        <span className="text-ink-secondary font-bold mx-1">({item.role})</span>
+                        <span className="text-ink-secondary">{item.action}</span>
+                        <span className="text-ink-muted font-bold ml-1">[{item.ticketId}]</span>
+                        <span className="text-ink-muted block text-[11px] mt-0.5">{item.time}</span>
                       </div>
                     </div>
                   ))}
                   {auditTimelineFeed.length === 0 && (
-                    <div className="text-center py-10 text-zinc-450 italic">No recent timeline logs recorded.</div>
+                    <div className="text-center py-10 text-ink-muted italic">No recent timeline logs recorded.</div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
             {/* SECTION 11: REOPEN & ESCALATION INSIGHT CENTER */}
-            <Card className="border border-zinc-200 bg-white shadow-sm rounded-lg flex flex-col justify-between">
+            <Card className="border border-line bg-surface shadow-card rounded-lg flex flex-col justify-between">
               <div>
-                <CardHeader className="bg-zinc-55 border-b border-zinc-200 py-3.5 px-4">
-                  <CardTitle className="text-xs font-bold text-zinc-900 uppercase tracking-wider font-mono">Reopen & Escalation Control Panel</CardTitle>
+                <CardHeader className="bg-surface-muted border-b border-line py-3.5 px-4">
+                  <CardTitle className="text-xs font-bold text-ink uppercase tracking-wider">Reopen & Escalation Control Panel</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
-                      <span className="font-semibold text-zinc-700">Total Reopened Tickets:</span>
-                      <Badge className="bg-red-100 text-red-800 font-bold text-[9px] border-none">{dashboardData.executive.reopenedTickets}</Badge>
+                    <div className="flex justify-between items-center py-1.5 border-b border-line">
+                      <span className="font-semibold text-ink-secondary">Total Reopened Tickets:</span>
+                      <Badge className="bg-red-100 text-red-800 font-bold text-[11px] border-none">{dashboardData.executive.reopenedTickets}</Badge>
                     </div>
-                    <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
-                      <span className="font-semibold text-zinc-700">Reopen rate:</span>
-                      <span className="font-black text-zinc-900">
+                    <div className="flex justify-between items-center py-1.5 border-b border-line">
+                      <span className="font-semibold text-ink-secondary">Reopen rate:</span>
+                      <span className="font-black text-ink">
                         {dashboardData.executive.totalTicketsRaised > 0 
                           ? ((dashboardData.executive.reopenedTickets / dashboardData.executive.totalTicketsRaised) * 100).toFixed(1) 
                           : '0'}%
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
-                      <span className="font-semibold text-zinc-700">OSS Raised Tickets:</span>
-                      <Badge className="bg-zinc-100 text-zinc-800 font-bold text-[9px] border-none">{dashboardData.executive.raisedToSap}</Badge>
+                    <div className="flex justify-between items-center py-1.5 border-b border-line">
+                      <span className="font-semibold text-ink-secondary">OSS Raised Tickets:</span>
+                      <Badge className="bg-surface-subtle text-ink font-bold text-[11px] border-none">{dashboardData.executive.raisedToSap}</Badge>
                     </div>
                     <div className="flex justify-between items-center py-1.5">
-                      <span className="font-semibold text-zinc-700">Audit Unlock Requests:</span>
-                      <Badge className="bg-zinc-100 text-zinc-800 font-bold text-[9px] border-none">{dashboardData.executive.resourceChangePending}</Badge>
+                      <span className="font-semibold text-ink-secondary">Audit Unlock Requests:</span>
+                      <Badge className="bg-surface-subtle text-ink font-bold text-[11px] border-none">{dashboardData.executive.resourceChangePending}</Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -4007,46 +4079,46 @@ export default function ManagerDashboardPage() {
           </div>
 
           {/* SECTION 4: WORKFLOW MANAGEMENT CONSOLE */}
-          <div className="space-y-4 pt-4 border-t border-zinc-200">
-            <span className="text-[10px] font-bold text-zinc-950 uppercase tracking-widest block font-mono border-b border-zinc-200 pb-1">
+          <div className="space-y-4 pt-4 border-t border-line">
+            <span className="text-[11px] font-bold text-ink uppercase tracking-widest block border-b border-line pb-1">
               4. Operational Workflow Management Console
             </span>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-mono text-[11px]">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-[11px]">
               
               {/* Widget 1: Waiting Assignment */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[380px]">
-                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                  <span className="font-extrabold text-zinc-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <Users size={12} className="text-zinc-500" />
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[380px]">
+                <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                  <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                    <Users size={12} className="text-ink-secondary" />
                     Waiting Assignment ({waitingAssignmentTickets.length})
                   </span>
-                  <Badge className="bg-zinc-100 text-zinc-800 text-[9px] font-bold px-1.5 py-0.5">NEW / UNASSIGNED</Badge>
+                  <Badge className="bg-surface-subtle text-ink text-[11px] font-bold px-1.5 py-0.5">NEW / UNASSIGNED</Badge>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                   {waitingAssignmentTickets.map((t) => (
-                    <div key={t.id} className="p-2.5 bg-zinc-50 border border-zinc-150 rounded-lg hover:border-zinc-350 transition flex flex-col justify-between gap-1.5">
+                    <div key={t.id} className="p-2.5 bg-surface-muted border border-line rounded-lg hover:border-line-strong transition flex flex-col justify-between gap-1.5">
                       <div className="flex justify-between items-start">
-                        <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-extrabold text-zinc-900 hover:underline text-[10px] uppercase">
+                        <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-extrabold text-ink hover:underline text-[11px] uppercase">
                           {t.ticketNumber}
                         </Link>
-                        <span className={`text-[8px] font-extrabold uppercase px-1 py-0.5 rounded ${
-                          t.priority === 'Critical' ? 'bg-red-50 text-red-700' : 'bg-zinc-100 text-zinc-700'
+                        <span className={`text-[11px] font-extrabold uppercase px-1 py-0.5 rounded ${
+                          t.priority === 'Critical' ? 'bg-red-50 text-red-700' : 'bg-surface-subtle text-ink-secondary'
                         }`}>
                           {t.priority}
                         </span>
                       </div>
-                      <span className="text-zinc-700 font-semibold line-clamp-1">{t.title}</span>
-                      <div className="flex justify-between items-center text-[9px] text-zinc-400">
+                      <span className="text-ink-secondary font-semibold line-clamp-1">{t.title}</span>
+                      <div className="flex justify-between items-center text-[11px] text-ink-muted">
                         <span>Org: {t.organization}</span>
-                        <span className="text-zinc-500">{t.sapModule}</span>
+                        <span className="text-ink-secondary">{t.sapModule}</span>
                       </div>
                     </div>
                   ))}
                   {waitingAssignmentTickets.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-12">
-                      <CheckCircle size={24} className="text-emerald-500 mb-2" />
+                    <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-12">
+                      <CheckCircle size={24} className="text-success mb-2" />
                       All tickets assigned successfully.
                     </div>
                   )}
@@ -4054,29 +4126,29 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Widget 2: Approvals Queue */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[380px]">
-                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                  <span className="font-extrabold text-zinc-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <Timer size={12} className="text-zinc-500" />
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[380px]">
+                <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                  <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                    <Timer size={12} className="text-ink-secondary" />
                     Approvals & Governance ({approvalsQueueList.length})
                   </span>
-                  <Badge className="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5">PENDING SIGN-OFF</Badge>
+                  <Badge className="bg-amber-100 text-amber-800 text-[11px] font-bold px-1.5 py-0.5">PENDING SIGN-OFF</Badge>
                 </div>
 
                 <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                   {approvalsQueueList.map((app, idx) => (
-                    <div key={idx} className="p-2.5 bg-zinc-50 border border-zinc-150 rounded-lg hover:border-zinc-350 transition flex flex-col justify-between gap-1.5">
+                    <div key={idx} className="p-2.5 bg-surface-muted border border-line rounded-lg hover:border-line-strong transition flex flex-col justify-between gap-1.5">
                       <div className="flex justify-between items-center">
-                        <span className="font-extrabold text-[9px] uppercase tracking-wider text-zinc-500">{app.type}</span>
-                        <span className="font-bold text-zinc-900 text-[9px]">{app.ticketNumber}</span>
+                        <span className="font-extrabold text-[11px] uppercase tracking-wider text-ink-secondary">{app.type}</span>
+                        <span className="font-bold text-ink text-[11px]">{app.ticketNumber}</span>
                       </div>
-                      <span className="text-zinc-700 font-semibold line-clamp-1">{app.title}</span>
-                      <p className="text-[9px] text-zinc-500 bg-zinc-100/50 p-1 rounded font-mono break-all">{app.detail}</p>
+                      <span className="text-ink-secondary font-semibold line-clamp-1">{app.title}</span>
+                      <p className="text-[11px] text-ink-secondary bg-surface-subtle/50 p-1 rounded break-all">{app.detail}</p>
                       <div className="flex justify-end gap-1.5 pt-1">
                         <Button
                           onClick={() => setSelectedTab(app.actionTab)}
                           size="sm"
-                          className="h-5 text-[8px] uppercase font-bold bg-zinc-950 hover:bg-zinc-800 text-white rounded px-2"
+                          className="h-5 text-[11px] uppercase font-bold bg-ink hover:bg-zinc-800 text-white rounded px-2"
                         >
                           Resolve Approval
                         </Button>
@@ -4084,8 +4156,8 @@ export default function ManagerDashboardPage() {
                     </div>
                   ))}
                   {approvalsQueueList.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-12">
-                      <CheckCircle size={24} className="text-emerald-500 mb-2" />
+                    <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-12">
+                      <CheckCircle size={24} className="text-success mb-2" />
                       No approvals pending decision.
                     </div>
                   )}
@@ -4093,34 +4165,34 @@ export default function ManagerDashboardPage() {
               </Card>
 
               {/* Widget 3: Escalations & SLA Breaches */}
-              <Card className="bg-white border border-zinc-200 shadow-sm rounded-xl p-4 flex flex-col h-[380px]">
-                <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
-                  <span className="font-extrabold text-zinc-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <ShieldAlert size={12} className="text-zinc-500" />
+              <Card className="bg-surface border border-line shadow-card rounded-lg p-4 flex flex-col h-[380px]">
+                <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
+                  <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                    <ShieldAlert size={12} className="text-ink-secondary" />
                     Escalations & SLA Breaches ({escalationsAndBreachesList.length})
                   </span>
-                  <Badge className="bg-red-100 text-red-800 text-[9px] font-bold px-1.5 py-0.5">EXPOSURE WARNING</Badge>
+                  <Badge className="bg-red-100 text-red-800 text-[11px] font-bold px-1.5 py-0.5">EXPOSURE WARNING</Badge>
                 </div>
 
                 <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                   {escalationsAndBreachesList.map((esc, idx) => (
                     <div key={idx} className="p-2.5 bg-red-50/10 border border-red-100 rounded-lg hover:border-red-200 transition flex flex-col justify-between gap-1.5">
                       <div className="flex justify-between items-start">
-                        <span className={`text-[8px] font-extrabold uppercase px-1 py-0.5 rounded border ${esc.badgeColor}`}>
+                        <span className={`text-[11px] font-extrabold uppercase px-1 py-0.5 rounded border ${esc.badgeColor}`}>
                           {esc.type}
                         </span>
-                        <span className="font-bold text-zinc-950 text-[9px]">{esc.ticketNumber}</span>
+                        <span className="font-bold text-ink text-[11px]">{esc.ticketNumber}</span>
                       </div>
-                      <span className="text-zinc-800 font-semibold line-clamp-1">{esc.title}</span>
-                      <div className="flex justify-between items-center text-[9px] text-zinc-400">
-                        <span className="text-red-650 font-bold">{esc.detail}</span>
-                        <span className="text-zinc-500 font-bold">Priority: {esc.priority}</span>
+                      <span className="text-ink font-semibold line-clamp-1">{esc.title}</span>
+                      <div className="flex justify-between items-center text-[11px] text-ink-muted">
+                        <span className="text-critical font-bold">{esc.detail}</span>
+                        <span className="text-ink-secondary font-bold">Priority: {esc.priority}</span>
                       </div>
                     </div>
                   ))}
                   {escalationsAndBreachesList.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-zinc-400 italic text-center py-12">
-                      <CheckCircle size={24} className="text-emerald-500 mb-2" />
+                    <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-12">
+                      <CheckCircle size={24} className="text-success mb-2" />
                       All delivery agreements are running healthy.
                     </div>
                   )}
@@ -4134,18 +4206,18 @@ export default function ManagerDashboardPage() {
       </Tabs>
 
       {/* ── FOOTER ACTIONS ── */}
-      <Card className="bg-white border border-zinc-200 rounded-lg shadow-sm p-6">
+      <Card className="bg-surface border border-line rounded-lg shadow-card p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans text-xs">
           <div>
-            <h4 className="font-bold text-zinc-900 uppercase text-[10px] tracking-wider font-mono">Download Command Center Snapshots</h4>
-            <p className="text-zinc-500 text-[11px] mt-0.5 font-mono">Export current metric structures, active allocations audit sheet, or SLA health summaries.</p>
+            <h4 className="font-bold text-ink uppercase text-[11px] tracking-wider">Download Command Center Snapshots</h4>
+            <p className="text-ink-secondary text-[11px] mt-0.5">Export current metric structures, active allocations audit sheet, or SLA health summaries.</p>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <Button variant="outline" className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer font-mono">
+            <Button variant="outline" className="text-[11px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-line-strong hover:bg-surface-muted text-ink-secondary cursor-pointer">
               <Download size={12} />
               Delivery Audit (.CSV)
             </Button>
-            <Button variant="outline" className="text-[10px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-zinc-300 hover:bg-zinc-50 text-zinc-700 cursor-pointer font-mono">
+            <Button variant="outline" className="text-[11px] font-bold uppercase py-1.5 flex items-center gap-1.5 border border-line-strong hover:bg-surface-muted text-ink-secondary cursor-pointer">
               <Download size={12} />
               SLA Compliance (.CSV)
             </Button>
@@ -4156,9 +4228,9 @@ export default function ManagerDashboardPage() {
       {/* ── WORKFLOW MODALS ── */}
 
       <Dialog open={closureDialog.isOpen} onOpenChange={(open) => !open && setClosureDialog(prev => ({ ...prev, isOpen: false }))}>
-        <DialogContent className="max-w-lg font-mono text-xs">
+        <DialogContent className="max-w-lg text-xs">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-955">Verify & Approve Closure</DialogTitle>
+            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-ink">Verify & Approve Closure</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-3">
             {activeTicketForClosure && activeRequestForClosure && (() => {
@@ -4186,42 +4258,42 @@ export default function ManagerDashboardPage() {
               const varTotal = actTotal - estTotal;
 
               return (
-                <div className="bg-zinc-50 border border-zinc-200 rounded p-3.5 space-y-3 font-mono text-[10px]">
-                  <div className="grid grid-cols-2 gap-2 border-b border-zinc-200 pb-2">
+                <div className="bg-surface-muted border border-line rounded p-3.5 space-y-3 text-[11px]">
+                  <div className="grid grid-cols-2 gap-2 border-b border-line pb-2">
                     <div>
-                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Ticket Number</span>
-                      <span className="font-bold text-zinc-900">{activeTicketForClosure.ticketNumber}</span>
+                      <span className="text-ink-muted block uppercase font-bold text-[11px]">Ticket Number</span>
+                      <span className="font-bold text-ink">{activeTicketForClosure.ticketNumber}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Customer Name</span>
-                      <span className="font-bold text-zinc-900">{activeTicketForClosure.organization}</span>
+                      <span className="text-ink-muted block uppercase font-bold text-[11px]">Customer Name</span>
+                      <span className="font-bold text-ink">{activeTicketForClosure.organization}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Submitted By</span>
-                      <span className="font-bold text-zinc-900">{activeRequestForClosure.requestedBy}</span>
+                      <span className="text-ink-muted block uppercase font-bold text-[11px]">Submitted By</span>
+                      <span className="font-bold text-ink">{activeRequestForClosure.requestedBy}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Submission Date</span>
-                      <span className="font-bold text-zinc-900">
+                      <span className="text-ink-muted block uppercase font-bold text-[11px]">Submission Date</span>
+                      <span className="font-bold text-ink">
                         {activeRequestForClosure.createdAt ? new Date(activeRequestForClosure.createdAt).toLocaleDateString() : 'N/A'}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 pb-1">
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold border border-zinc-200 bg-zinc-100 text-zinc-700 font-mono">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-bold border border-line bg-surface-subtle text-ink-secondary">
                       FUNC: {actFunc}h Logged / {estFunc}h Quoted
                     </span>
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold border border-zinc-200 bg-zinc-100 text-zinc-700 font-mono">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-bold border border-line bg-surface-subtle text-ink-secondary">
                       TECH: {actTech}h Logged / {estTech}h Quoted
                     </span>
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-zinc-450 block uppercase font-bold text-[8px]">Per-Consultant Efforts Breakdown</span>
-                    <div className="border border-zinc-200 rounded bg-white overflow-hidden">
-                      <table className="w-full text-left text-[9px] border-collapse font-mono">
-                        <thead className="bg-zinc-50 border-b border-zinc-200 font-bold uppercase text-zinc-500">
+                    <span className="text-ink-muted block uppercase font-bold text-[11px]">Per-Consultant Efforts Breakdown</span>
+                    <div className="border border-line rounded bg-surface overflow-hidden">
+                      <table className="w-full text-left text-[11px] border-collapse">
+                        <thead className="bg-surface-muted border-b border-line font-bold uppercase text-ink-secondary">
                           <tr>
                             <th className="py-1 px-2">Consultant</th>
                             <th className="py-1 px-2">Type</th>
@@ -4229,7 +4301,7 @@ export default function ManagerDashboardPage() {
                             <th className="py-1 px-2 text-right">Quoted Hours</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-150">
+                        <tbody className="divide-y divide-line">
                           {(() => {
                             const efforts = (activeTicketForClosure.consultantEfforts || []).filter(e => !e.isDeleted).map(e => {
                               const actLog = requestLogs.find((ah: any) => ah.consultantId === e.consultantId);
@@ -4240,17 +4312,17 @@ export default function ManagerDashboardPage() {
                             });
                             return efforts.map((e, idx) => (
                               <tr key={e.id || idx}>
-                                <td className="py-1 px-2 font-semibold text-zinc-900">
+                                <td className="py-1 px-2 font-semibold text-ink">
                                   {e.consultantName}{e.isPrimary ? ' (Lead)' : ''}
                                 </td>
-                                <td className="py-1 px-2 text-zinc-500">{e.consultantType}</td>
-                                <td className="py-1 px-2 text-right font-bold text-zinc-900">{e.actualHours}h</td>
-                                <td className="py-1 px-2 text-right text-zinc-600">{e.estimatedHours}h</td>
+                                <td className="py-1 px-2 text-ink-secondary">{e.consultantType}</td>
+                                <td className="py-1 px-2 text-right font-bold text-ink">{e.actualHours}h</td>
+                                <td className="py-1 px-2 text-right text-ink-secondary">{e.estimatedHours}h</td>
                               </tr>
                             ));
                           })()}
-                          <tr className="bg-zinc-100 font-extrabold border-t border-zinc-250">
-                            <td className="py-1 px-2 uppercase text-[8px]" colSpan={2}>Total</td>
+                          <tr className="bg-surface-subtle font-extrabold border-t border-line">
+                            <td className="py-1 px-2 uppercase text-[11px]" colSpan={2}>Total</td>
                             <td className="py-1 px-2 text-right">{actTotal}h</td>
                             <td className="py-1 px-2 text-right">{estTotal}h</td>
                           </tr>
@@ -4259,19 +4331,19 @@ export default function ManagerDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-2 pt-1 border-t border-zinc-200">
+                  <div className="grid grid-cols-1 gap-2 pt-1 border-t border-line">
                     <div>
-                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Root Cause</span>
-                      <p className="text-zinc-800 leading-normal">{activeRequestForClosure.rootCause || 'N/A'}</p>
+                      <span className="text-ink-muted block uppercase font-bold text-[11px]">Root Cause</span>
+                      <p className="text-ink leading-normal">{activeRequestForClosure.rootCause || 'N/A'}</p>
                     </div>
                     <div>
-                      <span className="text-zinc-450 block uppercase font-bold text-[8px]">Resolution Summary</span>
-                      <p className="text-zinc-800 leading-normal whitespace-pre-line">{activeRequestForClosure.resolutionSummary || 'N/A'}</p>
+                      <span className="text-ink-muted block uppercase font-bold text-[11px]">Resolution Summary</span>
+                      <p className="text-ink leading-normal whitespace-pre-line">{activeRequestForClosure.resolutionSummary || 'N/A'}</p>
                     </div>
                     {activeRequestForClosure.pendingItems && (
                       <div>
-                        <span className="text-zinc-450 block uppercase font-bold text-[8px]">Pending Items</span>
-                        <p className="text-zinc-800 leading-normal">{activeRequestForClosure.pendingItems}</p>
+                        <span className="text-ink-muted block uppercase font-bold text-[11px]">Pending Items</span>
+                        <p className="text-ink leading-normal">{activeRequestForClosure.pendingItems}</p>
                       </div>
                     )}
                   </div>
@@ -4281,7 +4353,7 @@ export default function ManagerDashboardPage() {
 
 
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-zinc-500">Closure Audit Comments & Feedback *</Label>
+              <Label className="text-[11px] uppercase font-bold text-ink-secondary">Closure Audit Comments & Feedback *</Label>
               <Textarea
                 required
                 placeholder="Details of verification, SLA review, or satisfaction comments..."
@@ -4294,13 +4366,13 @@ export default function ManagerDashboardPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="text-[10px] uppercase font-bold h-8 cursor-pointer font-mono"
+              className="text-[11px] uppercase font-bold h-8 cursor-pointer"
               onClick={() => setClosureDialog(prev => ({ ...prev, isOpen: false }))}
             >
               Cancel
             </Button>
             <Button
-              className="bg-zinc-950 hover:bg-zinc-800 text-white text-[10px] uppercase font-bold h-8 cursor-pointer font-mono"
+              className="bg-ink hover:bg-zinc-800 text-white text-[11px] uppercase font-bold h-8 cursor-pointer"
               onClick={handleConfirmClosure}
             >
               Close Ticket
@@ -4311,32 +4383,32 @@ export default function ManagerDashboardPage() {
 
       {/* Rejection Comments Dialog */}
       <Dialog open={rejectDialog.isOpen} onOpenChange={(open) => !open && setRejectDialog(prev => ({ ...prev, isOpen: false }))}>
-        <DialogContent className="max-w-md font-mono text-xs">
+        <DialogContent className="max-w-md text-xs">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-red-650">Provide Rejection Reason</DialogTitle>
+            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-critical">Provide Rejection Reason</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-3">
             <div className="space-y-1.5">
-              <Label className="text-[10px] uppercase font-bold text-zinc-500">Audit Rejection comments *</Label>
+              <Label className="text-[11px] uppercase font-bold text-ink-secondary">Audit Rejection comments *</Label>
               <Textarea
                 required
                 placeholder="Describe why this effort/closure/unlock request is being rejected or sent back for revision..."
                 value={rejectDialog.reason}
                 onChange={e => setRejectDialog(prev => ({ ...prev, reason: e.target.value }))}
-                className="w-full text-[11px] focus:outline-none min-h-[90px] border-red-200 focus:border-red-400 font-mono"
+                className="w-full text-[11px] focus:outline-none min-h-[90px] border-red-200 focus:border-red-400"
               />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              className="text-[10px] uppercase font-bold h-8 cursor-pointer font-mono"
+              className="text-[11px] uppercase font-bold h-8 cursor-pointer"
               onClick={() => setRejectDialog(prev => ({ ...prev, isOpen: false }))}
             >
               Cancel
             </Button>
             <Button
-              className="bg-red-650 hover:bg-red-700 text-white text-[10px] uppercase font-bold h-8 cursor-pointer font-mono"
+              className="bg-red-650 hover:bg-red-700 text-white text-[11px] uppercase font-bold h-8 cursor-pointer"
               onClick={handleConfirmRejection}
             >
               Confirm Rejection
