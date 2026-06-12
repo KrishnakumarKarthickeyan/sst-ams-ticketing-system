@@ -69,67 +69,67 @@ export default function ManagerSlaMonitoringPage() {
     const daysRemaining = hoursRemaining / 24;
     return {
       label: `${Math.round(daysRemaining)}d remaining`,
-      style: 'bg-zinc-100 text-zinc-650 border-zinc-200 font-semibold',
-      textStyle: 'text-zinc-600 font-normal'
+      style: 'bg-surface-subtle text-ink-secondary border-line font-semibold',
+      textStyle: 'text-ink-secondary font-normal'
     };
   };
 
   return (
-    <div className="space-y-6 font-mono text-xs text-[#09090b]">
+    <div className="space-y-6 text-xs text-[#09090b]">
       
       {/* Title */}
-      <div className="border-b border-zinc-200 pb-4">
-        <h1 className="text-lg font-bold uppercase text-zinc-950 tracking-wider">Real-Time SLA Monitor</h1>
-        <p className="text-zinc-500 mt-1">Live incident countdown registry tracking response and resolution windows across active contracts.</p>
+      <div className="border-b border-line pb-4">
+        <h1 className="type-title text-ink">Real-Time SLA Monitor</h1>
+        <p className="text-ink-secondary mt-1">Live incident countdown registry tracking response and resolution windows across active contracts.</p>
       </div>
 
       {/* SLA Health KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         
         {/* Total Active Incidents */}
-        <Card className="border border-zinc-200 shadow-sm p-4 space-y-1">
-          <span className="text-[9px] uppercase font-bold text-zinc-550">Under SLA Monitoring</span>
+        <Card className="border border-line shadow-card p-4 space-y-1">
+          <span className="text-[11px] uppercase font-bold text-ink-secondary">Under SLA Monitoring</span>
           <div className="text-xl font-bold flex items-center justify-between">
             <span>{slaMetrics.total}</span>
-            <Clock size={14} className="text-zinc-400" />
+            <Clock size={14} className="text-ink-muted" />
           </div>
         </Card>
 
         {/* SLA Breaches */}
-        <Card className="border border-zinc-200 shadow-sm p-4 space-y-1">
-          <span className="text-[9px] uppercase font-bold text-zinc-550">SLA Breach Overdue</span>
+        <Card className="border border-line shadow-card p-4 space-y-1">
+          <span className="text-[11px] uppercase font-bold text-ink-secondary">SLA Breach Overdue</span>
           <div className="text-xl font-bold flex items-center justify-between">
-            <span className={slaMetrics.breached > 0 ? 'text-red-650' : 'text-zinc-900'}>{slaMetrics.breached}</span>
-            <ShieldAlert size={14} className={slaMetrics.breached > 0 ? 'text-red-500' : 'text-zinc-400'} />
+            <span className={slaMetrics.breached > 0 ? 'text-critical' : 'text-ink'}>{slaMetrics.breached}</span>
+            <ShieldAlert size={14} className={slaMetrics.breached > 0 ? 'text-critical' : 'text-ink-muted'} />
           </div>
         </Card>
 
         {/* SLA Warning */}
-        <Card className="border border-zinc-200 shadow-sm p-4 space-y-1">
-          <span className="text-[9px] uppercase font-bold text-zinc-550">Approaching Breach (&lt;24h)</span>
+        <Card className="border border-line shadow-card p-4 space-y-1">
+          <span className="text-[11px] uppercase font-bold text-ink-secondary">Approaching Breach (&lt;24h)</span>
           <div className="text-xl font-bold flex items-center justify-between">
-            <span className={slaMetrics.warning > 0 ? 'text-amber-600' : 'text-zinc-900'}>{slaMetrics.warning}</span>
-            <AlertTriangle size={14} className={slaMetrics.warning > 0 ? 'text-amber-500' : 'text-zinc-400'} />
+            <span className={slaMetrics.warning > 0 ? 'text-warning' : 'text-ink'}>{slaMetrics.warning}</span>
+            <AlertTriangle size={14} className={slaMetrics.warning > 0 ? 'text-amber-500' : 'text-ink-muted'} />
           </div>
         </Card>
 
         {/* SLA Healthy */}
-        <Card className="border border-zinc-200 shadow-sm p-4 space-y-1">
-          <span className="text-[9px] uppercase font-bold text-zinc-550">Healthy Response State</span>
+        <Card className="border border-line shadow-card p-4 space-y-1">
+          <span className="text-[11px] uppercase font-bold text-ink-secondary">Healthy Response State</span>
           <div className="text-xl font-bold flex items-center justify-between">
-            <span className={slaMetrics.healthy > 0 ? 'text-emerald-700' : 'text-zinc-900'}>{slaMetrics.healthy}</span>
-            <CheckCircle size={14} className={slaMetrics.healthy > 0 ? 'text-emerald-650' : 'text-zinc-400'} />
+            <span className={slaMetrics.healthy > 0 ? 'text-emerald-700' : 'text-ink'}>{slaMetrics.healthy}</span>
+            <CheckCircle size={14} className={slaMetrics.healthy > 0 ? 'text-emerald-650' : 'text-ink-muted'} />
           </div>
         </Card>
 
       </div>
 
       {/* SLA Countdown Ledger Table */}
-      <Card className="border border-zinc-200 shadow-sm overflow-hidden">
+      <Card className="border border-line shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200 uppercase font-bold text-[9px] tracking-wider text-zinc-550">
+              <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
                 <th className="py-3 px-4">Ticket Number</th>
                 <th className="py-3 px-4">Subject</th>
                 <th className="py-3 px-4">SAP Module</th>
@@ -139,10 +139,10 @@ export default function ManagerSlaMonitoringPage() {
                 <th className="py-3 px-4 text-right">SLA Countdown Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-150 text-[11px]">
+            <tbody className="divide-y divide-line text-[11px]">
               {activeTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-400 italic font-mono uppercase">
+                  <td colSpan={7} className="py-12 text-center text-ink-muted italic uppercase">
                     All active tickets fully comply with SLA resolution rules
                   </td>
                 </tr>
@@ -150,41 +150,41 @@ export default function ManagerSlaMonitoringPage() {
                 activeTickets.map((t) => {
                   const sla = getSlaDetails(t.slaDueAt);
                   return (
-                    <tr key={t.id} className="hover:bg-zinc-50/40 transition">
+                    <tr key={t.id} className="hover:bg-surface-muted/40 transition">
                       
                       {/* Ticket ID */}
-                      <td className="py-3 px-4 font-bold text-zinc-900 font-mono">
+                      <td className="py-3 px-4 font-bold text-ink">
                         <Link href={`/tickets/${t.id}`} className="hover:underline">{t.ticketNumber}</Link>
                       </td>
 
                       {/* Ticket Title */}
-                      <td className="py-3 px-4 font-bold text-zinc-800 max-w-[240px] truncate" title={t.title}>
+                      <td className="py-3 px-4 font-bold text-ink max-w-[240px] truncate" title={t.title}>
                         {t.title}
                       </td>
 
                       {/* SAP Module */}
                       <td className="py-3 px-4">
-                        <Badge className="bg-zinc-100 text-zinc-700 hover:bg-zinc-100 font-bold border-none text-[8px] py-0.5 px-1.5 uppercase">
+                        <Badge className="bg-surface-subtle text-ink-secondary hover:bg-surface-subtle font-bold border-none text-[11px] py-0.5 px-1.5 uppercase">
                           {t.sapModule}
                         </Badge>
                       </td>
 
                       {/* Customer Account */}
-                      <td className="py-3 px-4 font-semibold text-zinc-650">{t.organization}</td>
+                      <td className="py-3 px-4 font-semibold text-ink-secondary">{t.organization}</td>
 
                       {/* Assigned Consultant */}
-                      <td className="py-3 px-4 font-semibold text-zinc-600">
-                        {t.assignedConsultant || <span className="text-zinc-400 font-normal italic">Unassigned</span>}
+                      <td className="py-3 px-4 font-semibold text-ink-secondary">
+                        {t.assignedConsultant || <span className="text-ink-muted font-normal italic">Unassigned</span>}
                       </td>
 
                       {/* SLA Deadline Time */}
-                      <td className="py-3 px-4 text-zinc-500 font-mono">
+                      <td className="py-3 px-4 text-ink-secondary">
                         {new Date(t.slaDueAt).toLocaleString()}
                       </td>
 
                       {/* SLA Countdown Status */}
                       <td className="py-3 px-4 text-right">
-                        <span className={`inline-block px-2.5 py-0.5 rounded border text-[9px] uppercase ${sla.style}`}>
+                        <span className={`inline-block px-2.5 py-0.5 rounded border text-[11px] uppercase ${sla.style}`}>
                           {sla.label}
                         </span>
                       </td>

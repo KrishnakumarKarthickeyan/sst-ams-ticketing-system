@@ -29,12 +29,12 @@ export default function ManagerTicketDetailErrorBoundary({ error, reset }: Error
         </CardHeader>
         
         <CardContent className="bg-zinc-50 border-y border-zinc-100 py-4 px-6 text-center space-y-2">
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Error Details</p>
-          <p className="text-sm font-mono text-red-650 bg-red-50/50 border border-red-100/60 p-3 rounded-lg overflow-x-auto text-left whitespace-pre-wrap leading-relaxed max-h-32">
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Error Details</p>
+          <p className="text-sm font-mono text-critical bg-red-50/50 border border-red-100/60 p-3 rounded-lg overflow-x-auto text-left whitespace-pre-wrap leading-relaxed max-h-32">
             {error.message || 'An unexpected error occurred while fetching data from Supabase.'}
           </p>
           {error.digest && (
-            <p className="text-[10px] text-zinc-400 font-mono">Digest: {error.digest}</p>
+            <p className="text-[11px] text-ink-muted font-mono">Digest: {error.digest}</p>
           )}
         </CardContent>
 

@@ -828,20 +828,20 @@ export default function ManagerConsultantsPage() {
   };
 
   return (
-    <div className="space-y-6 text-zinc-900 font-sans">
+    <div className="space-y-6 text-ink font-sans">
 
       {/* Header Banner */}
-      <div className="border-b border-zinc-200 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="border-b border-line pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-955 uppercase font-sans">
+          <h1 className="type-title text-ink">
             AMS Resources & Stakeholders 360 Workspace
           </h1>
-          <p className="text-zinc-500 text-xs mt-1">
+          <p className="text-ink-secondary text-xs mt-1">
             Administrative workspace to audit profiles, allocate resource roles, trace contracts, and manage accounts.
           </p>
         </div>
 
-        <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
+        <div className="flex bg-surface-subtle p-0.5 rounded-lg border border-line">
           {[
             { id: 'consultants', label: 'Consultants 360' },
             { id: 'customers', label: 'Customers 360' },
@@ -850,10 +850,10 @@ export default function ManagerConsultantsPage() {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id as any); setSearchQuery(''); }}
-              className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
+              className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
                 activeTab === tab.id
-                  ? 'bg-white text-zinc-955 shadow-sm'
-                  : 'text-zinc-500 hover:text-zinc-800'
+                  ? 'bg-surface text-ink shadow-card'
+                  : 'text-ink-secondary hover:text-ink'
               }`}
             >
               {tab.label}
@@ -864,15 +864,15 @@ export default function ManagerConsultantsPage() {
 
       {/* --- Filter / Search header (for active tab lists) --- */}
       {activeTab !== 'audit' && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="bg-surface border border-line rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-card">
           <div className="relative w-full sm:max-w-xs">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={activeTab === 'consultants' ? 'Search consultant name, skills, modules...' : 'Search company, main contact, email...'}
-              className="w-full bg-white border border-zinc-200 rounded pl-9 pr-4 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-sans"
+              className="w-full bg-surface border border-line rounded pl-9 pr-4 py-1.5 text-xs text-ink focus:outline-none focus:border-brand font-sans"
             />
           </div>
 
@@ -881,7 +881,7 @@ export default function ManagerConsultantsPage() {
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="bg-white border border-zinc-200 rounded px-2.5 py-1.5 text-xs text-zinc-700 focus:outline-none font-sans"
+                className="bg-surface border border-line rounded px-2.5 py-1.5 text-xs text-ink-secondary focus:outline-none font-sans"
               >
                 <option value="All">All Types</option>
                 <option value="Functional">Functional Specialist</option>
@@ -896,7 +896,7 @@ export default function ManagerConsultantsPage() {
                   setActiveAction({ type: 'add_customer', targetId: null });
                 }
               }}
-              className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+              className="px-3 py-1.5 bg-ink hover:bg-zinc-800 text-white rounded font-bold uppercase text-[11px] tracking-wider flex items-center gap-1.5 transition cursor-pointer"
             >
               <Plus size={12} />
               {activeTab === 'consultants' ? 'Create Consultant' : 'Create Customer'}
@@ -908,10 +908,10 @@ export default function ManagerConsultantsPage() {
       {/* --- TAB 1: CONSULTANTS 360 WORKSPACE --- */}
       {activeTab === 'consultants' && (
         filteredConsultants.length === 0 ? (
-          <div className="bg-white border border-zinc-200 rounded-2xl p-8 text-center shadow-sm space-y-3">
-            <Users className="mx-auto text-zinc-400" size={32} />
-            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No consultants created yet.</h3>
-            <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Create SAP consultants to assign tickets and manage functional or technical workflows.</p>
+          <div className="bg-surface border border-line rounded-2xl p-8 text-center shadow-card space-y-3">
+            <Users className="mx-auto text-ink-muted" size={32} />
+            <h3 className="text-sm font-bold text-ink uppercase tracking-wider">No consultants created yet.</h3>
+            <p className="text-xs text-ink-secondary max-w-sm mx-auto">Create SAP consultants to assign tickets and manage functional or technical workflows.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -976,86 +976,86 @@ export default function ManagerConsultantsPage() {
               })();
 
               return (
-                <Card key={c.id} className={`bg-white border border-zinc-200/80 rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition duration-300 flex flex-col justify-between ${!c.active ? 'opacity-65 border-dashed bg-zinc-50/50' : ''}`}>
+                <Card key={c.id} className={`bg-surface border border-line/80 rounded-2xl shadow-card overflow-hidden hover:shadow-md transition duration-300 flex flex-col justify-between ${!c.active ? 'opacity-65 border-dashed bg-surface-muted/60' : ''}`}>
                   {/* Profile Header */}
-                  <div className="p-5 border-b border-zinc-100 flex justify-between items-start gap-4">
+                  <div className="p-5 border-b border-line flex justify-between items-start gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center font-bold text-zinc-800 text-sm">
+                      <div className="w-10 h-10 rounded-full bg-surface-subtle flex items-center justify-center font-bold text-ink text-sm">
                         {c.name.split(' ').map(n => n[0]).join('')}
                       </div>
                       <div>
-                        <h3 className="font-bold text-sm text-zinc-950">{c.name}</h3>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">{c.role}</p>
+                        <h3 className="font-bold text-sm text-ink">{c.name}</h3>
+                        <p className="text-[11px] text-ink-muted mt-0.5">{c.role}</p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
-                      <Badge variant="outline" className={`text-[8px] font-bold font-mono px-1.5 py-0.5 ${
+                      <Badge variant="outline" className={`text-[11px] font-bold px-1.5 py-0.5 ${
                         c.consultantType === 'Functional' ? 'bg-indigo-50/50 text-indigo-700 border-indigo-100' : 'bg-violet-50/50 text-violet-700 border-violet-100'
                       }`}>
                         {c.consultantType}
                       </Badge>
-                      <span className="text-[9px] font-mono text-zinc-450">Join: {c.joiningDate}</span>
+                      <span className="text-[11px] text-ink-muted">Join: {c.joiningDate}</span>
                     </div>
                   </div>
 
                   {/* 360 Core Performance Metrics */}
-                  <div className="p-5 bg-zinc-50/30 border-b border-zinc-100 grid grid-cols-4 gap-3 text-center">
-                    <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">Backlog</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{backlogCount} active</strong>
+                  <div className="p-5 bg-surface-muted/30 border-b border-line grid grid-cols-4 gap-3 text-center">
+                    <div className="bg-surface border border-line/50 p-2.5 rounded-lg">
+                      <span className="text-[11px] text-ink-muted uppercase block">Backlog</span>
+                      <strong className="text-sm font-bold text-ink block mt-1">{backlogCount} active</strong>
                     </div>
-                    <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">Utilization</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{utilRateStr}</strong>
+                    <div className="bg-surface border border-line/50 p-2.5 rounded-lg">
+                      <span className="text-[11px] text-ink-muted uppercase block">Utilization</span>
+                      <strong className="text-sm font-bold text-ink block mt-1">{utilRateStr}</strong>
                     </div>
-                    <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">SLA Rate</span>
-                      <strong className={`text-sm font-bold block mt-1 font-mono ${slaRateStr === 'N/A' ? 'text-zinc-900' : 'text-emerald-600'}`}>{slaRateStr}</strong>
+                    <div className="bg-surface border border-line/50 p-2.5 rounded-lg">
+                      <span className="text-[11px] text-ink-muted uppercase block">SLA Rate</span>
+                      <strong className={`text-sm font-bold block mt-1 ${slaRateStr === 'N/A' ? 'text-ink' : 'text-success'}`}>{slaRateStr}</strong>
                     </div>
-                    <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">Res. Speed</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{avgResTimeStr}</strong>
+                    <div className="bg-surface border border-line/50 p-2.5 rounded-lg">
+                      <span className="text-[11px] text-ink-muted uppercase block">Res. Speed</span>
+                      <strong className="text-sm font-bold text-ink block mt-1">{avgResTimeStr}</strong>
                     </div>
                   </div>
 
                   {/* Body details: Modules, skills */}
-                  <div className="p-5 space-y-3.5 text-xs text-zinc-700 flex-1">
+                  <div className="p-5 space-y-3.5 text-xs text-ink-secondary flex-1">
                     <div className="flex items-center gap-2">
-                      <Layers size={13} className="text-zinc-400 shrink-0" />
-                      <span>SAP Modules: <strong className="font-mono text-zinc-900">{c.modules.join(', ')}</strong></span>
+                      <Layers size={13} className="text-ink-muted shrink-0" />
+                      <span>SAP Modules: <strong className="text-ink">{c.modules.join(', ')}</strong></span>
                     </div>
                     <div className="flex items-start gap-2">
-                      <Award size={13} className="text-zinc-450 shrink-0 mt-0.5" />
-                      <p className="text-[11px] leading-relaxed text-zinc-550">
+                      <Award size={13} className="text-ink-muted shrink-0 mt-0.5" />
+                      <p className="text-[11px] leading-relaxed text-ink-secondary">
                         <strong>Skills:</strong> {c.skills}
                       </p>
                     </div>
 
                     {/* Live Ticket & Hours Stats Grid (Requirement 10) */}
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] pt-3 border-t border-zinc-100 font-sans">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] pt-3 border-t border-line font-sans">
                       <div>
-                        <span className="text-zinc-400">Assigned Tickets:</span>{' '}
-                        <strong className="text-zinc-800 font-mono">{consultantTickets.length}</strong>
+                        <span className="text-ink-muted">Assigned Tickets:</span>{' '}
+                        <strong className="text-ink">{consultantTickets.length}</strong>
                       </div>
                       <div>
-                        <span className="text-zinc-400">Open Tickets:</span>{' '}
-                        <strong className="text-zinc-800 font-mono">{backlogCount}</strong>
+                        <span className="text-ink-muted">Open Tickets:</span>{' '}
+                        <strong className="text-ink">{backlogCount}</strong>
                       </div>
                       <div>
-                        <span className="text-zinc-400">Closed Tickets:</span>{' '}
-                        <strong className="text-zinc-800 font-mono">{closedTicketsCount}</strong>
+                        <span className="text-ink-muted">Closed Tickets:</span>{' '}
+                        <strong className="text-ink">{closedTicketsCount}</strong>
                       </div>
                       <div>
-                        <span className="text-zinc-400">Approved Hours:</span>{' '}
-                        <strong className="text-zinc-800 font-mono">{totalHours.toFixed(1)}h</strong>
+                        <span className="text-ink-muted">Approved Hours:</span>{' '}
+                        <strong className="text-ink">{totalHours.toFixed(1)}h</strong>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-zinc-400 font-medium">Last Activity:</span>{' '}
-                        <strong className="text-zinc-800 font-mono text-[10px]">{lastActivityDate}</strong>
+                        <span className="text-ink-muted font-medium">Last Activity:</span>{' '}
+                        <strong className="text-ink text-[11px]">{lastActivityDate}</strong>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-zinc-400 pt-2 border-t border-zinc-50">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-ink-muted pt-2 border-t border-zinc-50">
                       <div className="flex items-center gap-1.5">
                         <Mail size={11} />
                         <span className="truncate">{c.email}</span>
@@ -1068,7 +1068,7 @@ export default function ManagerConsultantsPage() {
                   </div>
 
                   {/* Footer buttons & actions */}
-                  <div className="border-t border-zinc-100 p-4 bg-zinc-50/50 flex justify-between items-center">
+                  <div className="border-t border-line p-4 bg-surface-muted/60 flex justify-between items-center">
                     <div className="flex gap-2">
                       <Button
                         onClick={() => {
@@ -1083,7 +1083,7 @@ export default function ManagerConsultantsPage() {
                         }}
                         size="sm"
                         variant="outline"
-                        className="text-[10px] font-bold uppercase h-7 cursor-pointer"
+                        className="text-[11px] font-bold uppercase h-7 cursor-pointer"
                       >
                         Edit Profile
                       </Button>
@@ -1092,7 +1092,7 @@ export default function ManagerConsultantsPage() {
                     <div className="flex gap-2 items-center">
                       <button
                         onClick={() => toggleConsultantStatus(c.id)}
-                        className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
+                        className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
                           c.active ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-750'
                         }`}
                       >
@@ -1100,7 +1100,7 @@ export default function ManagerConsultantsPage() {
                       </button>
                       <button
                         onClick={() => deleteConsultant(c.id)}
-                        className="p-1 rounded hover:bg-red-50 text-zinc-400 hover:text-red-600 transition cursor-pointer"
+                        className="p-1 rounded hover:bg-red-50 text-ink-muted hover:text-critical transition cursor-pointer"
                         title="Remove Profile"
                       >
                         <XCircle size={15} />
@@ -1117,10 +1117,10 @@ export default function ManagerConsultantsPage() {
       {/* --- TAB 2: CUSTOMERS 360 WORKSPACE --- */}
       {activeTab === 'customers' && (
         filteredCustomers.length === 0 ? (
-          <div className="bg-white border border-zinc-200 rounded-2xl p-8 text-center shadow-sm space-y-3">
-            <Building2 className="mx-auto text-zinc-400" size={32} />
-            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-mono">No customers created yet.</h3>
-            <p className="text-xs text-zinc-500 max-w-sm mx-auto font-mono">Add organizations and contracts to setup tenant configurations and SLAs.</p>
+          <div className="bg-surface border border-line rounded-2xl p-8 text-center shadow-card space-y-3">
+            <Building2 className="mx-auto text-ink-muted" size={32} />
+            <h3 className="text-sm font-bold text-ink uppercase tracking-wider">No customers created yet.</h3>
+            <p className="text-xs text-ink-secondary max-w-sm mx-auto">Add organizations and contracts to setup tenant configurations and SLAs.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -1141,57 +1141,57 @@ export default function ManagerConsultantsPage() {
               const slaCompliance = 93.8 + (seed % 3) * 1.2;
 
               return (
-                <Card key={c.id} className={`bg-white border border-zinc-200/80 rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition duration-300 flex flex-col justify-between ${!c.active ? 'opacity-65 border-dashed bg-zinc-50/50' : ''}`}>
+                <Card key={c.id} className={`bg-surface border border-line/80 rounded-2xl shadow-card overflow-hidden hover:shadow-md transition duration-300 flex flex-col justify-between ${!c.active ? 'opacity-65 border-dashed bg-surface-muted/60' : ''}`}>
                   
                   {/* Profile Header */}
-                  <div className="p-5 border-b border-zinc-100 flex justify-between items-start gap-4">
+                  <div className="p-5 border-b border-line flex justify-between items-start gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-zinc-50 border border-zinc-150 flex items-center justify-center font-bold text-zinc-800 text-sm">
-                        <Building2 size={18} className="text-zinc-650" />
+                      <div className="w-10 h-10 rounded-lg bg-surface-muted border border-line flex items-center justify-center font-bold text-ink text-sm">
+                        <Building2 size={18} className="text-ink-secondary" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-sm text-zinc-950 flex items-center gap-1.5">
+                        <h3 className="font-bold text-sm text-ink flex items-center gap-1.5">
                           {c.company}
                           {c.customerShortCode && (
-                            <span className="font-mono bg-zinc-150 text-zinc-700 px-1.5 py-0.5 rounded text-[8px] font-bold">
+                            <span className="bg-surface-subtle text-ink-secondary px-1.5 py-0.5 rounded text-[11px] font-bold">
                               {c.customerShortCode}
                             </span>
                           )}
                         </h3>
-                        <p className="text-[10px] text-zinc-450 mt-0.5">SLA Plan: <strong className="text-zinc-700 font-medium">{c.contractType}</strong></p>
+                        <p className="text-[11px] text-ink-muted mt-0.5">SLA Plan: <strong className="text-ink-secondary font-medium">{c.contractType}</strong></p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
-                      <Badge className="bg-zinc-900 text-white font-mono text-[8px] tracking-wider uppercase px-2 py-0.5">
+                      <Badge className="bg-ink text-white text-[11px] tracking-wider uppercase px-2 py-0.5">
                         {c.expectedHours}h SLA Cap
                       </Badge>
-                      <span className="text-[9px] font-mono text-zinc-450 font-bold uppercase tracking-wider text-emerald-600">SLA: {slaCompliance.toFixed(1)}%</span>
+                      <span className="text-[11px] text-ink-muted font-bold uppercase tracking-wider text-success">SLA: {slaCompliance.toFixed(1)}%</span>
                     </div>
                   </div>
 
                   {/* 360 Core Contract Metrics */}
-                  <div className="p-5 bg-zinc-50/30 border-b border-zinc-100 grid grid-cols-3 gap-3 text-center">
-                    <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">Open Backlog</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{activeTickets.length} active</strong>
+                  <div className="p-5 bg-surface-muted/30 border-b border-line grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-surface border border-line/50 p-2.5 rounded-lg">
+                      <span className="text-[11px] text-ink-muted uppercase block">Open Backlog</span>
+                      <strong className="text-sm font-bold text-ink block mt-1">{activeTickets.length} active</strong>
                     </div>
-                    <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">Critical Vol</span>
-                      <strong className={`text-sm font-bold block mt-1 font-mono ${criticalTickets > 0 ? 'text-red-600 animate-pulse' : 'text-zinc-900'}`}>{criticalTickets}</strong>
+                    <div className="bg-surface border border-line/50 p-2.5 rounded-lg">
+                      <span className="text-[11px] text-ink-muted uppercase block">Critical Vol</span>
+                      <strong className={`text-sm font-bold block mt-1 ${criticalTickets > 0 ? 'text-critical animate-pulse' : 'text-ink'}`}>{criticalTickets}</strong>
                     </div>
-                    <div className="bg-white border border-zinc-200/50 p-2.5 rounded-lg">
-                      <span className="text-[8px] text-zinc-450 uppercase font-mono block">Logged (Approved)</span>
-                      <strong className="text-sm font-bold text-zinc-900 block mt-1 font-mono">{approvedHours.toFixed(1)}h</strong>
+                    <div className="bg-surface border border-line/50 p-2.5 rounded-lg">
+                      <span className="text-[11px] text-ink-muted uppercase block">Logged (Approved)</span>
+                      <strong className="text-sm font-bold text-ink block mt-1">{approvedHours.toFixed(1)}h</strong>
                     </div>
                   </div>
 
                   {/* Profile Details */}
-                  <div className="p-5 space-y-3.5 text-xs text-zinc-700 flex-1">
+                  <div className="p-5 space-y-3.5 text-xs text-ink-secondary flex-1">
                     <div className="flex items-center gap-2">
-                      <User size={13} className="text-zinc-450 shrink-0" />
-                      <span>Main Contact Agent: <strong className="font-semibold text-zinc-900">{c.contact}</strong></span>
+                      <User size={13} className="text-ink-muted shrink-0" />
+                      <span>Main Contact Agent: <strong className="font-semibold text-ink">{c.contact}</strong></span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-zinc-400 pt-2 border-t border-zinc-50">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-ink-muted pt-2 border-t border-zinc-50">
                       <div className="flex items-center gap-1.5">
                         <Mail size={11} />
                         <span className="truncate">{c.email}</span>
@@ -1204,7 +1204,7 @@ export default function ManagerConsultantsPage() {
                   </div>
 
                   {/* Footer buttons & actions */}
-                  <div className="border-t border-zinc-100 p-4 bg-zinc-50/50 flex justify-between items-center">
+                  <div className="border-t border-line p-4 bg-surface-muted/60 flex justify-between items-center">
                     <div className="flex gap-2">
                       <Button
                         onClick={() => {
@@ -1219,7 +1219,7 @@ export default function ManagerConsultantsPage() {
                         }}
                         size="sm"
                         variant="outline"
-                        className="text-[10px] font-bold uppercase h-7 cursor-pointer"
+                        className="text-[11px] font-bold uppercase h-7 cursor-pointer"
                       >
                         Edit Account
                       </Button>
@@ -1228,7 +1228,7 @@ export default function ManagerConsultantsPage() {
                     <div className="flex gap-2 items-center">
                       <button
                         onClick={() => toggleCustomerStatus(c.id)}
-                        className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
+                        className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
                           c.active ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-750'
                         }`}
                       >
@@ -1236,7 +1236,7 @@ export default function ManagerConsultantsPage() {
                       </button>
                       <button
                         onClick={() => deleteCustomer(c.id)}
-                        className="p-1 rounded hover:bg-red-50 text-zinc-400 hover:text-red-600 transition cursor-pointer"
+                        className="p-1 rounded hover:bg-red-50 text-ink-muted hover:text-critical transition cursor-pointer"
                         title="Remove Account"
                       >
                         <XCircle size={15} />
@@ -1252,13 +1252,13 @@ export default function ManagerConsultantsPage() {
 
       {/* --- TAB 3: GOVERNANCE & AUDITING CENTER --- */}
       {activeTab === 'audit' && (
-        <Card className="bg-white border border-zinc-200 rounded-2xl shadow-sm p-6 space-y-6">
-          <div className="border-b border-zinc-150 pb-3">
-            <h2 className="text-base font-bold text-zinc-950 font-sans uppercase">Governance & Operational Audit Logs</h2>
-            <p className="text-zinc-500 text-xs mt-1">Download official AMS support log transcripts, modifications records, and manager override histories.</p>
+        <Card className="bg-surface border border-line rounded-2xl shadow-card p-6 space-y-6">
+          <div className="border-b border-line pb-3">
+            <h2 className="text-base font-bold text-ink font-sans uppercase">Governance & Operational Audit Logs</h2>
+            <p className="text-ink-secondary text-xs mt-1">Download official AMS support log transcripts, modifications records, and manager override histories.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs text-zinc-700 font-sans">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs text-ink-secondary font-sans">
             {[
               { id: 'assignments', title: 'Ticket Assignments Log', desc: 'Complete historical tracking of consultant assignments, routings, and reassignments.' },
               { id: 'approvals', title: 'Approvals & Timesheets Audit', desc: 'Audited log of effort approvals, estimate revisions, closures, and unlock overrides.' },
@@ -1266,15 +1266,15 @@ export default function ManagerConsultantsPage() {
               { id: 'security', title: 'Security & Access Logs', desc: 'Log of password resets, account disabling, and user creations.' },
               { id: 'overrides', title: 'Manager Overrides Log', desc: 'Tracks exceptions, bypass rules, and manager SLA updates.' }
             ].map((audit) => (
-              <Card key={audit.id} className="bg-zinc-50/50 border border-zinc-200 p-4 flex flex-col justify-between h-40">
+              <Card key={audit.id} className="bg-surface-muted/60 border border-line p-4 flex flex-col justify-between h-40">
                 <div className="space-y-1">
-                  <strong className="text-zinc-900 block font-semibold">{audit.title}</strong>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed mt-1">{audit.desc}</p>
+                  <strong className="text-ink block font-semibold">{audit.title}</strong>
+                  <p className="text-[11px] text-ink-secondary leading-relaxed mt-1">{audit.desc}</p>
                 </div>
                 <Button
                   onClick={() => downloadAuditCSV(audit.id)}
                   size="sm"
-                  className="w-full bg-zinc-950 hover:bg-zinc-800 text-white font-bold uppercase text-[9px] tracking-wider py-1.5 flex items-center gap-1.5 justify-center mt-3 cursor-pointer"
+                  className="w-full bg-ink hover:bg-zinc-800 text-white font-bold uppercase text-[11px] tracking-wider py-1.5 flex items-center gap-1.5 justify-center mt-3 cursor-pointer"
                 >
                   <Download size={11} />
                   Download Audit Log (.CSV)
@@ -1288,14 +1288,14 @@ export default function ManagerConsultantsPage() {
       {/* --- FORM ACTIONS DIALOGS / MODALS (STATE CONTROLLED) --- */}
       {activeAction.type && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <Card className={`bg-white border border-zinc-200 w-full overflow-hidden rounded-2xl shadow-2xl text-zinc-950 transition-all ${
+          <Card className={`bg-surface border border-line w-full overflow-hidden rounded-2xl shadow-2xl text-ink transition-all ${
             (activeAction.type === 'add_customer' || activeAction.type === 'edit_customer') ? 'max-w-3xl' : 'max-w-md'
           }`}>
             {/* Header */}
-            <div className="bg-zinc-50 border-b border-zinc-200 px-5 py-4 flex justify-between items-center">
+            <div className="bg-surface-muted border-b border-line px-5 py-4 flex justify-between items-center">
               <div>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest font-sans">Operational Console</span>
-                <h3 className="text-sm font-bold text-zinc-900 mt-0.5">
+                <span className="text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">Operational Console</span>
+                <h3 className="text-sm font-bold text-ink mt-0.5">
                   {activeAction.type === 'add_consultant' && 'Publish New Consultant Profile'}
                   {activeAction.type === 'edit_consultant' && 'Modify Consultant Profile'}
                   {activeAction.type === 'add_customer' && 'Create Customer Record'}
@@ -1303,7 +1303,7 @@ export default function ManagerConsultantsPage() {
                   {activeAction.type === 'reset_password' && 'Password Override Authorization'}
                 </h3>
               </div>
-              <button onClick={closeActionModal} className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-700 transition cursor-pointer">
+              <button onClick={closeActionModal} className="p-1 hover:bg-surface-subtle rounded text-ink-muted hover:text-ink-secondary transition cursor-pointer">
                 <XCircle size={16} />
               </button>
             </div>
@@ -1313,34 +1313,34 @@ export default function ManagerConsultantsPage() {
               {/* PASSWORD RESET FORM */}
               {activeAction.type === 'reset_password' && (
                 <form onSubmit={handlePasswordResetSubmit} className="space-y-4 text-xs font-sans">
-                  <p className="text-zinc-550 leading-relaxed">
+                  <p className="text-ink-secondary leading-relaxed">
                     You are authorizing a secure password override for account ID: **{activeAction.targetId}**.
                   </p>
                   
                   {generatedPassResult ? (
-                    <div className="bg-zinc-950 text-white border border-zinc-900 rounded p-4 text-[11px] font-bold space-y-2">
-                      <span className="text-[10px] text-emerald-400 font-normal uppercase block">Password Reset Successful!</span>
-                      <div className="flex items-center justify-between gap-2 bg-zinc-900/60 p-2.5 rounded border border-zinc-800">
-                        <span className="font-mono text-xs tracking-wider select-all font-extrabold text-emerald-400">{generatedPassResult}</span>
+                    <div className="bg-ink text-white border border-zinc-900 rounded p-4 text-[11px] font-bold space-y-2">
+                      <span className="text-[11px] text-emerald-400 font-normal uppercase block">Password Reset Successful!</span>
+                      <div className="flex items-center justify-between gap-2 bg-ink/60 p-2.5 rounded border border-zinc-800">
+                        <span className="text-xs tracking-wider select-all font-extrabold text-emerald-400">{generatedPassResult}</span>
                         <button
                           type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(generatedPassResult);
                             toast.success('Password copied to clipboard!');
                           }}
-                          className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 rounded text-[9px] font-bold uppercase transition"
+                          className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 rounded text-[11px] font-bold uppercase transition"
                         >
                           Copy Pass
                         </button>
                       </div>
-                      <span className="text-[9px] text-zinc-500 block font-normal pt-1 leading-normal">
+                      <span className="text-[11px] text-ink-secondary block font-normal pt-1 leading-normal">
                         Notice: Provide this temporary password to the user. They will be forced to change it immediately upon their next login.
                       </span>
                     </div>
                   ) : (
                     <>
                       <div className="space-y-1.5 pt-1">
-                        <label className="font-bold text-zinc-700 uppercase text-[9px] block">Reset Option</label>
+                        <label className="font-bold text-ink-secondary uppercase text-[11px] block">Reset Option</label>
                         <div className="flex items-center gap-4 text-xs font-sans">
                           <label className="flex items-center gap-1.5 cursor-pointer">
                             <input
@@ -1348,7 +1348,7 @@ export default function ManagerConsultantsPage() {
                               name="managerResetOption"
                               checked={resetPwdOption === 'auto'}
                               onChange={() => setResetPwdOption('auto')}
-                              className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
+                              className="w-3.5 h-3.5 text-ink focus:ring-brand/30"
                             />
                             <span>Generate Automatically</span>
                           </label>
@@ -1358,7 +1358,7 @@ export default function ManagerConsultantsPage() {
                               name="managerResetOption"
                               checked={resetPwdOption === 'manual'}
                               onChange={() => setResetPwdOption('manual')}
-                              className="w-3.5 h-3.5 text-zinc-955 focus:ring-zinc-955"
+                              className="w-3.5 h-3.5 text-ink focus:ring-brand/30"
                             />
                             <span>Define Manually</span>
                           </label>
@@ -1367,31 +1367,31 @@ export default function ManagerConsultantsPage() {
 
                       {resetPwdOption === 'manual' ? (
                         <div className="space-y-1">
-                          <label className="font-bold text-zinc-750 uppercase text-[9px] block">Manual Reset Password *</label>
+                          <label className="font-bold text-ink-secondary uppercase text-[11px] block">Manual Reset Password *</label>
                           <input
                             type="text"
                             required
                             placeholder="Assign manual reset password"
                             value={passwordResetValue}
                             onChange={(e) => setPasswordResetValue(e.target.value)}
-                            className="w-full bg-white border border-zinc-200 rounded p-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 font-mono"
+                            className="w-full bg-surface border border-line rounded p-2 text-xs text-ink focus:outline-none focus:border-brand"
                           />
-                          <span className="text-[9px] text-zinc-400 block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
+                          <span className="text-[11px] text-ink-muted block pt-0.5">Password Policy: Min. 8 characters with complexity.</span>
                         </div>
                       ) : (
-                        <p className="text-[11px] text-zinc-500 bg-zinc-50 border border-zinc-200 rounded p-3">
+                        <p className="text-[11px] text-ink-secondary bg-surface-muted border border-line rounded p-3">
                           This will reset the credentials to a secure system-generated temporary password, forcing the user to create a new password upon their next sign-in.
                         </p>
                       )}
                     </>
                   )}
 
-                  <div className="flex justify-end gap-2 border-t border-zinc-150 pt-3 mt-4">
-                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">
+                  <div className="flex justify-end gap-2 border-t border-line pt-3 mt-4">
+                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8">
                       {generatedPassResult ? 'Close' : 'Cancel'}
                     </Button>
                     {!generatedPassResult && (
-                      <Button type="submit" className="bg-red-650 hover:bg-red-750 text-white text-[10px] font-bold uppercase h-8 cursor-pointer">
+                      <Button type="submit" className="bg-red-650 hover:bg-red-750 text-white text-[11px] font-bold uppercase h-8 cursor-pointer">
                         {resetPwdOption === 'manual' ? 'Set Password & Reset' : 'Generate Temporary Password & Reset'}
                       </Button>
                     )}
@@ -1403,87 +1403,87 @@ export default function ManagerConsultantsPage() {
               {(activeAction.type === 'add_consultant' || activeAction.type === 'edit_consultant') && (
                 <form onSubmit={activeAction.type === 'add_consultant' ? handleAddConsultant : handleEditConsultantSubmit} className="space-y-3.5 text-xs">
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Full Name</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] tracking-wider">Full Name</label>
                     <input
                       type="text"
                       required
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       placeholder="e.g. Priya Raman"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      className="w-full bg-surface border border-line rounded p-2 text-xs focus:outline-none focus:border-brand"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Role Title</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] tracking-wider">Role Title</label>
                     <input
                       type="text"
                       required
                       value={formRole}
                       onChange={(e) => setFormRole(e.target.value)}
                       placeholder="e.g. Functional MM Specialist"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      className="w-full bg-surface border border-line rounded p-2 text-xs focus:outline-none focus:border-brand"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Specialization Type</label>
+                      <label className="font-bold text-ink-secondary uppercase text-[11px] tracking-wider">Specialization Type</label>
                       <select
                         value={formType}
                         onChange={(e) => setFormType(e.target.value as any)}
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                        className="w-full bg-surface border border-line rounded p-2 text-xs focus:outline-none focus:border-brand"
                       >
                         <option value="Functional">Functional</option>
                         <option value="Technical">Technical</option>
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Phone</label>
+                      <label className="font-bold text-ink-secondary uppercase text-[11px] tracking-wider">Phone</label>
                       <input
                         type="text"
                         value={formPhone}
                         onChange={(e) => setFormPhone(e.target.value)}
                         placeholder="e.g. +91 98765 00000"
-                        className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none"
+                        className="w-full bg-surface border border-line rounded p-2 text-xs focus:outline-none"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Email Address</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] tracking-wider">Email Address</label>
                     <input
                       type="email"
                       required
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                       placeholder="e.g. consultant@sap.com"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      className="w-full bg-surface border border-line rounded p-2 text-xs focus:outline-none focus:border-brand"
                     />
                   </div>
 
 
 
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">SAP Module Tags (Comma Separated)</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] tracking-wider">SAP Module Tags (Comma Separated)</label>
                     <input
                       type="text"
                       value={formModules}
                       onChange={(e) => setFormModules(e.target.value)}
                       placeholder="e.g. FICO, MM, SD"
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950 font-mono"
+                      className="w-full bg-surface border border-line rounded p-2 text-xs focus:outline-none focus:border-brand"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-zinc-700 uppercase text-[9px] tracking-wider">Skills Summary Description</label>
+                    <label className="font-bold text-ink-secondary uppercase text-[11px] tracking-wider">Skills Summary Description</label>
                     <textarea
                       value={formSkills}
                       onChange={(e) => setFormSkills(e.target.value)}
                       placeholder="List technical configurations, SAP versions worked, enhancements..."
                       rows={3}
-                      className="w-full bg-white border border-zinc-200 rounded p-2 text-xs focus:outline-none focus:border-zinc-950"
+                      className="w-full bg-surface border border-line rounded p-2 text-xs focus:outline-none focus:border-brand"
                     />
                   </div>
-                  <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 mt-4">
-                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8">Cancel</Button>
-                    <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 cursor-pointer">
+                  <div className="flex justify-end gap-2 border-t border-line pt-3 mt-4">
+                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
+                    <Button type="submit" className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 cursor-pointer">
                       {activeAction.type === 'add_consultant' ? 'Create Profile' : 'Save Changes'}
                     </Button>
                   </div>
@@ -1496,23 +1496,23 @@ export default function ManagerConsultantsPage() {
                   
                   {/* Section 1: Company Information */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-zinc-950 uppercase tracking-wider border-b border-zinc-200 pb-2">
+                    <h3 className="text-xs font-bold text-ink uppercase tracking-wider border-b border-line pb-2">
                       Company Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Company Name *</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Company Name *</label>
                         <input
                           type="text"
                           required
                           value={formCompany}
                           onChange={(e) => setFormCompany(e.target.value)}
                           placeholder="e.g. Apex Global Industries"
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Customer Short Code *</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Customer Short Code *</label>
                         <input
                           type="text"
                           required
@@ -1521,27 +1521,27 @@ export default function ManagerConsultantsPage() {
                           onChange={(e) => setFormShortCode(e.target.value.toUpperCase())}
                           maxLength={6}
                           disabled={activeAction.type === 'edit_customer'}
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150 font-mono uppercase disabled:bg-zinc-50 disabled:text-zinc-500 disabled:border-zinc-200"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150 uppercase disabled:bg-surface-muted disabled:text-ink-secondary disabled:border-line"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Industry</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Industry</label>
                         <input
                           type="text"
                           value={formIndustry}
                           onChange={(e) => setFormIndustry(e.target.value)}
                           placeholder="e.g. Manufacturing, Energy"
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                       <div className="space-y-1.5 md:col-span-3">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Address</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Address</label>
                         <input
                           type="text"
                           value={formAddress}
                           onChange={(e) => setFormAddress(e.target.value)}
                           placeholder="e.g. 100 Main St, Suite 400, New York, NY"
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                     </div>
@@ -1549,16 +1549,16 @@ export default function ManagerConsultantsPage() {
 
                   {/* Section 2: Contract Information */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-zinc-955 uppercase tracking-wider border-b border-zinc-200 pb-2">
+                    <h3 className="text-xs font-bold text-ink uppercase tracking-wider border-b border-line pb-2">
                       Contract Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Contract SLA Type</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Contract SLA Type</label>
                         <select
                           value={formContract || 'AMS'}
                           onChange={(e) => setFormContract(e.target.value)}
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150 font-sans"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150 font-sans"
                         >
                           <option value="AMS">AMS Support</option>
                           <option value="Implementation Support">Implementation</option>
@@ -1569,49 +1569,49 @@ export default function ManagerConsultantsPage() {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Total Contract Hours</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Total Contract Hours</label>
                         <input
                           type="number"
                           value={formTotalContractHours}
                           onChange={(e) => setFormTotalContractHours(e.target.value)}
                           placeholder="e.g. 1920"
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Monthly Hour Cap</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Monthly Hour Cap</label>
                         <input
                           type="number"
                           value={formHours}
                           onChange={(e) => setFormHours(e.target.value)}
                           placeholder="e.g. 160"
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Contract Start Date</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Contract Start Date</label>
                         <input
                           type="date"
                           value={formContractStartDate}
                           onChange={(e) => setFormContractStartDate(e.target.value)}
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Contract End Date</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Contract End Date</label>
                         <input
                           type="date"
                           value={formContractEndDate}
                           onChange={(e) => setFormContractEndDate(e.target.value)}
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Contract Status</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Contract Status</label>
                         <select
                           value={formContractStatus}
                           onChange={(e) => setFormContractStatus(e.target.value)}
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150 font-sans"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150 font-sans"
                         >
                           <option value="Active">Active</option>
                           <option value="Suspended">Suspended</option>
@@ -1624,40 +1624,40 @@ export default function ManagerConsultantsPage() {
 
                   {/* Section 3: Contact Information */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-zinc-950 uppercase tracking-wider border-b border-zinc-200 pb-2">
+                    <h3 className="text-xs font-bold text-ink uppercase tracking-wider border-b border-line pb-2">
                       Contact Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Main Contact Agent *</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Main Contact Agent *</label>
                         <input
                           type="text"
                           required
                           value={formContact}
                           onChange={(e) => setFormContact(e.target.value)}
                           placeholder="e.g. Sarah Jenkins"
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Email Address *</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Email Address *</label>
                         <input
                           type="email"
                           required
                           value={formEmail}
                           onChange={(e) => setFormEmail(e.target.value)}
                           placeholder="e.g. customer@sap.com"
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Phone</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Phone</label>
                         <input
                           type="text"
                           value={formPhone}
                           onChange={(e) => setFormPhone(e.target.value)}
                           placeholder="e.g. +1 555-0199"
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150"
                         />
                       </div>
                     </div>
@@ -1665,17 +1665,17 @@ export default function ManagerConsultantsPage() {
 
                   {/* Section 4 & 5: Account Information & System Access */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-zinc-955 uppercase tracking-wider border-b border-zinc-200 pb-2">
+                    <h3 className="text-xs font-bold text-ink uppercase tracking-wider border-b border-line pb-2">
                       Account Information & System Access
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wide block">Login Enabled</label>
+                        <label className="text-[11px] font-bold text-ink-secondary uppercase tracking-wide block">Login Enabled</label>
                         <select
                           value={formLoginEnabled ? 'true' : 'false'}
                           onChange={(e) => setFormLoginEnabled(e.target.value === 'true')}
-                          className="w-full bg-white border border-zinc-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 transition duration-150 font-sans"
+                          className="w-full bg-surface border border-line-strong rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand transition duration-150 font-sans"
                         >
                           <option value="true">Enabled</option>
                           <option value="false">Disabled / Locked</option>
@@ -1686,9 +1686,9 @@ export default function ManagerConsultantsPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 border-t border-zinc-200 pt-4 mt-6">
-                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[10px] font-bold uppercase h-8 px-4">Cancel</Button>
-                    <Button type="submit" className="bg-zinc-950 text-white hover:bg-zinc-800 text-[10px] font-bold uppercase h-8 px-4 cursor-pointer">
+                  <div className="flex justify-end gap-2 border-t border-line pt-4 mt-6">
+                    <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8 px-4">Cancel</Button>
+                    <Button type="submit" className="bg-ink text-white hover:bg-zinc-800 text-[11px] font-bold uppercase h-8 px-4 cursor-pointer">
                       {activeAction.type === 'add_customer' ? 'Create Record' : 'Save Changes'}
                     </Button>
                   </div>
@@ -1701,39 +1701,39 @@ export default function ManagerConsultantsPage() {
 
       {/* USER CREATED SUCCESSFULLY MODAL */}
       {creationSuccessModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono text-xs text-zinc-900 animate-fade-in">
-          <div className="bg-white border border-zinc-200 rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
-            <div className="border-b border-zinc-150 pb-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 text-xs text-ink animate-fade-in">
+          <div className="bg-surface border border-line rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
+            <div className="border-b border-line pb-2">
               <h3 className="font-bold text-xs uppercase text-emerald-800 tracking-wide flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 User Created Successfully
               </h3>
             </div>
             
-            <div className="space-y-3 font-mono">
+            <div className="space-y-3">
               <div className="space-y-1">
-                <span className="text-[9px] uppercase text-zinc-400 font-bold block">Email Address:</span>
-                <span className="font-bold text-zinc-800 select-all block text-xs bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5">{creationSuccessModal.email}</span>
+                <span className="text-[11px] uppercase text-ink-muted font-bold block">Email Address:</span>
+                <span className="font-bold text-ink select-all block text-xs bg-surface-muted border border-line rounded px-2.5 py-1.5">{creationSuccessModal.email}</span>
               </div>
               
               <div className="space-y-1">
-                <span className="text-[9px] uppercase text-zinc-400 font-bold block">Temporary Password:</span>
-                <span className="font-mono text-xs tracking-wider select-all font-extrabold text-zinc-950 bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5 block">{creationSuccessModal.tempPass}</span>
+                <span className="text-[11px] uppercase text-ink-muted font-bold block">Temporary Password:</span>
+                <span className="text-xs tracking-wider select-all font-extrabold text-ink bg-surface-muted border border-line rounded px-2.5 py-1.5 block">{creationSuccessModal.tempPass}</span>
               </div>
             </div>
             
-            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[10px] text-amber-800 leading-normal">
+            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[11px] text-amber-800 leading-normal">
               <span className="font-bold">Important Notice:</span> Provide this temporary password to the user. They will be forced to change it immediately upon their first login to access the workspace.
             </div>
             
-            <div className="flex gap-2 justify-end pt-2 border-t border-zinc-150">
+            <div className="flex gap-2 justify-end pt-2 border-t border-line">
               <button
                 type="button"
                 onClick={() => {
                   navigator.clipboard.writeText(creationSuccessModal.tempPass);
                   toast.success('Temporary password copied to clipboard!');
                 }}
-                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
               >
                 Copy Password
               </button>
@@ -1743,14 +1743,14 @@ export default function ManagerConsultantsPage() {
                   navigator.clipboard.writeText(`Email: ${creationSuccessModal.email}\nPassword: ${creationSuccessModal.tempPass}`);
                   toast.success('Credentials copied to clipboard!');
                 }}
-                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                className="px-3 py-1.5 bg-surface-subtle hover:bg-surface-subtle border border-line-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
               >
                 Copy Credentials
               </button>
               <button
                 type="button"
                 onClick={() => setCreationSuccessModal(null)}
-                className="px-3 py-1.5 bg-zinc-950 text-white rounded font-bold uppercase text-[9px] tracking-wider transition cursor-pointer"
+                className="px-3 py-1.5 bg-ink text-white rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
               >
                 Close
               </button>
