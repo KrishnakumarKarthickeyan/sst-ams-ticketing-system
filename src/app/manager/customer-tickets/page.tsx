@@ -526,7 +526,7 @@ export default function AllCustomerTicketsPage() {
   }, [filteredTickets]);
 
   return (
-    <div className="space-y-6 text-xs text-[#09090b]">
+    <div className="space-y-6 text-xs text-ink">
       
       {/* ── HEADER ROW ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-4">
@@ -976,7 +976,7 @@ export default function AllCustomerTicketsPage() {
                     {t.status === 'Closed' ? (
                       <span className="text-ink-secondary font-bold">Closed</span>
                     ) : t.status === 'Request for Closure' ? (
-                      <span className="text-[#d97706] font-bold animate-pulse">Awaiting Verification</span>
+                      <span className="text-warning font-bold animate-pulse">Awaiting Verification</span>
                     ) : (
                       <span className="text-ink-muted">Active development</span>
                     )}

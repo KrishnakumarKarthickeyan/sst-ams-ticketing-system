@@ -368,7 +368,7 @@ export default function ManagerEffortApprovalsPage() {
   };
 
   return (
-    <div className="space-y-6 text-xs text-[#09090b]">
+    <div className="space-y-6 text-xs text-ink">
       
       {/* Top Navigation Row */}
       <div className="flex items-center justify-between">

@@ -23,7 +23,7 @@ const ChartContainer = React.forwardRef<HTMLDivElement, ChartContainerProps>(
       <div
         ref={ref}
         className={cn(
-          "flex aspect-video justify-center text-xs font-mono text-zinc-950",
+          "flex aspect-video justify-center text-xs type-num text-ink",
           className
         )}
         style={
@@ -63,13 +63,13 @@ const ChartTooltipContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className="rounded-lg border border-zinc-200 bg-white p-2.5 shadow-md font-mono text-[10px] space-y-1.5 text-zinc-950 min-w-[120px]"
+      className="rounded-lg border border-line bg-surface p-2.5 shadow-md type-num text-[11px] space-y-1.5 text-ink min-w-[120px]"
     >
-      {!hideLabel && <div className="font-bold text-zinc-550 border-b border-zinc-100 pb-1">{label}</div>}
+      {!hideLabel && <div className="font-bold text-zinc-550 border-b border-line pb-1">{label}</div>}
       <div className="space-y-1">
         {payload.map((item: any, index: number) => (
           <div key={index} className="flex justify-between items-center gap-4">
-            <span className="flex items-center gap-1.5 font-semibold text-zinc-600">
+            <span className="flex items-center gap-1.5 font-semibold text-ink-secondary">
               {indicator === "dot" && (
                 <span
                   className="h-2 w-2 rounded-full shrink-0"
@@ -78,7 +78,7 @@ const ChartTooltipContent = React.forwardRef<
               )}
               {item.name}
             </span>
-            <span className="font-bold text-zinc-950">{item.value}</span>
+            <span className="font-bold text-ink">{item.value}</span>
           </div>
         ))}
       </div>

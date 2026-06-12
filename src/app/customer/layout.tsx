@@ -23,7 +23,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-surface-muted text-[#09090b]">
+      <div className="flex min-h-screen bg-surface-muted text-ink">
         {/* Skeleton Sidebar */}
         <aside className="w-64 bg-ink text-ink-muted p-6 flex flex-col justify-between hidden md:flex shrink-0">
           <div className="space-y-6">
@@ -68,7 +68,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="flex min-h-screen bg-surface-muted text-[#09090b]">
+    <div className="flex min-h-screen bg-surface-muted text-ink">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />

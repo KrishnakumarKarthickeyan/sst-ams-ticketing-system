@@ -60,7 +60,7 @@ export default function TicketDetailPage() {
 
   if (authLoading || localLoading) {
     return (
-      <div className="flex min-h-screen bg-zinc-50 text-[#09090b]">
+      <div className="flex min-h-screen bg-surface-muted text-ink">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <Header />
@@ -88,7 +88,7 @@ export default function TicketDetailPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 text-[#09090b]">
+    <div className="flex min-h-screen bg-surface-muted text-ink">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />

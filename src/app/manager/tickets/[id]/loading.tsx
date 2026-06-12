@@ -13,7 +13,7 @@ export default function ManagerTicketDetailLoading() {
       </div>
 
       {/* Header Card Skeleton */}
-      <Card className="border-zinc-200/80 bg-white overflow-hidden shadow-sm">
+      <Card className="border-line/80 bg-surface overflow-hidden shadow-card">
         <div className="h-1 bg-zinc-200"></div>
         <div className="p-6 md:p-8 space-y-6">
           <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
@@ -41,8 +41,8 @@ export default function ManagerTicketDetailLoading() {
           </div>
 
           {/* Progress Stepper */}
-          <div className="pt-4 border-t border-zinc-100 flex justify-between items-center relative">
-            <div className="absolute top-8 left-[30px] right-[30px] h-[2px] bg-zinc-100 -z-10"></div>
+          <div className="pt-4 border-t border-line flex justify-between items-center relative">
+            <div className="absolute top-8 left-[30px] right-[30px] h-[2px] bg-surface-subtle -z-10"></div>
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex flex-col items-center gap-2">
                 <Skeleton className="w-10 h-10 bg-zinc-200 rounded-full" />
@@ -57,7 +57,7 @@ export default function ManagerTicketDetailLoading() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Ticket Description */}
-          <Card className="bg-white border-zinc-200/80 shadow-sm">
+          <Card className="bg-surface border-line/80 shadow-card">
             <CardContent className="p-6 space-y-3">
               <Skeleton className="h-4 w-36 bg-zinc-250 rounded" />
               <div className="space-y-2">
@@ -72,7 +72,7 @@ export default function ManagerTicketDetailLoading() {
           <div className="space-y-4">
             <Skeleton className="h-6 w-32 bg-zinc-200 rounded" />
             {Array.from({ length: 2 }).map((_, i) => (
-              <Card key={i} className="bg-white border-zinc-200/80 shadow-sm">
+              <Card key={i} className="bg-surface border-line/80 shadow-card">
                 <CardContent className="p-6 space-y-4">
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2 items-center">
@@ -96,7 +96,7 @@ export default function ManagerTicketDetailLoading() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          <Card className="bg-white border-zinc-200/80 shadow-sm">
+          <Card className="bg-surface border-line/80 shadow-card">
             <CardContent className="p-6 space-y-4">
               <Skeleton className="h-5 w-24 bg-zinc-200 rounded" />
               <div className="space-y-3">

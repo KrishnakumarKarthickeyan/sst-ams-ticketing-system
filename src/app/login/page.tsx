@@ -122,10 +122,10 @@ export default function LoginPage() {
   ];
 
   return (
-    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-white text-[#111827]">
+    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-surface text-ink">
       
       {/* ── LEFT COLUMN: LARGE COVER AREA & MOCKUP ── */}
-      <div className="hidden lg:flex lg:col-span-6 bg-[#F8F9FB] border-r border-[#E5E7EB] p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:col-span-6 bg-surface-muted border-r border-line p-12 flex-col justify-between relative overflow-hidden">
         
         {/* Decorative Grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-35"></div>
@@ -133,28 +133,28 @@ export default function LoginPage() {
         {/* Brand Header */}
         <div className="relative z-10 flex items-center gap-3">
           <BrandedLogo width={24} height={24} />
-          <span className="font-bold text-sm tracking-wider text-[#111827] font-mono">ASSIST360</span>
+          <span className="font-bold text-sm tracking-wider text-ink">ASSIST360</span>
         </div>
 
         {/* High-Fidelity Product Mockup Center */}
         <div className="relative z-10 max-w-md mx-auto space-y-6 w-full font-sans">
           
           <div className="space-y-2">
-            <h2 className="text-xl font-bold uppercase tracking-wider text-[#111827] font-mono">Enterprise Service Management Platform</h2>
-            <p className="text-xs text-[#6B7280]">Real-time operational dashboard, SLA trends, and customer satisfaction metrics.</p>
+            <h2 className="text-xl font-bold uppercase tracking-wider text-ink">Enterprise Service Management Platform</h2>
+            <p className="text-xs text-ink-secondary">Real-time operational dashboard, SLA trends, and customer satisfaction metrics.</p>
           </div>
 
           {/* Floating Showcase Mock Cards */}
-          <div className="bg-white border border-[#E5E7EB] rounded p-5 shadow-sm space-y-4">
+          <div className="bg-surface border border-line rounded p-5 shadow-card space-y-4">
             
-            <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-2 font-mono">
-              <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider">Service Operations Cockpit</span>
-              <Badge className="bg-[#FAFAFA] text-[#10B981] border border-[#E5E7EB] text-[8px] uppercase">System Normal</Badge>
+            <div className="flex justify-between items-center border-b border-line pb-2">
+              <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider">Service Operations Cockpit</span>
+              <Badge className="bg-surface-muted text-success border border-line text-[11px] uppercase">System Normal</Badge>
             </div>
 
             {/* SLA Trend Micro Chart */}
             <div className="space-y-1">
-              <span className="text-[9px] font-mono text-[#6B7280] uppercase block">SLA Compliance Trend</span>
+              <span className="text-[11px] text-ink-secondary uppercase block">SLA Compliance Trend</span>
               <div className="h-16 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={liveHealthData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
@@ -171,14 +171,14 @@ export default function LoginPage() {
             </div>
 
             {/* Floating KPI Cards Grid inside mockup */}
-            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-              <div className="p-2.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                <span className="text-[8px] text-[#6B7280] uppercase block">Platform SLA</span>
-                <span className="text-[#2563EB] font-bold block mt-0.5">98.7% Met</span>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-2.5 bg-surface-muted border border-line rounded">
+                <span className="text-[11px] text-ink-secondary uppercase block">Platform SLA</span>
+                <span className="text-brand font-bold block mt-0.5">98.7% Met</span>
               </div>
-              <div className="p-2.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded">
-                <span className="text-[8px] text-[#6B7280] uppercase block">Response latency</span>
-                <span className="text-[#10B981] font-bold block mt-0.5">8ms latency</span>
+              <div className="p-2.5 bg-surface-muted border border-line rounded">
+                <span className="text-[11px] text-ink-secondary uppercase block">Response latency</span>
+                <span className="text-success font-bold block mt-0.5">8ms latency</span>
               </div>
             </div>
 
@@ -187,36 +187,36 @@ export default function LoginPage() {
           {/* Floating KPI Cards Overlay Stack */}
           <div className="grid grid-cols-2 gap-4">
             
-            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
-              <div className="flex justify-between items-center text-[#6B7280]">
-                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Availability</span>
-                <Activity size={12} className="text-[#10B981]" />
+            <div className="p-4 bg-surface border border-line rounded-lg shadow-card hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-ink-secondary">
+                <span className="text-[11px] uppercase font-bold tracking-wider">Availability</span>
+                <Activity size={12} className="text-success" />
               </div>
-              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">99.95%</span>
+              <span className="text-lg font-bold text-ink block mt-1">99.95%</span>
             </div>
 
-            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
-              <div className="flex justify-between items-center text-[#6B7280]">
-                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Requests</span>
-                <ClipboardList size={12} className="text-[#2563EB]" />
+            <div className="p-4 bg-surface border border-line rounded-lg shadow-card hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-ink-secondary">
+                <span className="text-[11px] uppercase font-bold tracking-wider">Requests</span>
+                <ClipboardList size={12} className="text-brand" />
               </div>
-              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">500K+</span>
+              <span className="text-lg font-bold text-ink block mt-1">500K+</span>
             </div>
 
-            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
-              <div className="flex justify-between items-center text-[#6B7280]">
-                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Compliance</span>
-                <ShieldCheck size={12} className="text-[#10B981]" />
+            <div className="p-4 bg-surface border border-line rounded-lg shadow-card hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-ink-secondary">
+                <span className="text-[11px] uppercase font-bold tracking-wider">Compliance</span>
+                <ShieldCheck size={12} className="text-success" />
               </div>
-              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">98.7%</span>
+              <span className="text-lg font-bold text-ink block mt-1">98.7%</span>
             </div>
 
-            <div className="p-4 bg-white border border-[#E5E7EB] rounded-lg shadow-sm hover:shadow-md transition duration-300">
-              <div className="flex justify-between items-center text-[#6B7280]">
-                <span className="text-[9px] font-mono uppercase font-bold tracking-wider">Satisfaction</span>
-                <Star size={12} className="text-[#F59E0B] fill-[#F59E0B] stroke-none" />
+            <div className="p-4 bg-surface border border-line rounded-lg shadow-card hover:shadow-md transition duration-300">
+              <div className="flex justify-between items-center text-ink-secondary">
+                <span className="text-[11px] uppercase font-bold tracking-wider">Satisfaction</span>
+                <Star size={12} className="text-warning fill-warning stroke-none" />
               </div>
-              <span className="text-lg font-bold font-mono text-[#111827] block mt-1">95% CSAT</span>
+              <span className="text-lg font-bold text-ink block mt-1">95% CSAT</span>
             </div>
 
           </div>
@@ -224,25 +224,25 @@ export default function LoginPage() {
         </div>
 
         {/* Footer secure info */}
-        <div className="relative z-10 flex items-center gap-1.5 text-[10px] text-[#6B7280] font-mono">
-          <ShieldCheck size={12} className="text-[#10B981]" />
+        <div className="relative z-10 flex items-center gap-1.5 text-[11px] text-ink-secondary">
+          <ShieldCheck size={12} className="text-success" />
           <span>FIPS 140-2 Encrypted Security Standard</span>
         </div>
 
       </div>
 
       {/* ── RIGHT COLUMN: AUTHENTICATION CARD ── */}
-      <div className="col-span-1 lg:col-span-6 flex flex-col justify-between p-8 md:p-12 min-h-screen bg-white">
+      <div className="col-span-1 lg:col-span-6 flex flex-col justify-between p-8 md:p-12 min-h-screen bg-surface">
         
         {/* Header Back To Home link */}
         <div className="flex justify-between items-center w-full">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#111827] font-mono transition">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-ink-secondary hover:text-ink transition">
             <ArrowLeft size={12} />
             Back to home
           </Link>
           <div className="lg:hidden flex items-center gap-2">
             <BrandedLogo width={20} height={20} />
-            <span className="font-bold text-xs tracking-wider text-[#111827] font-mono">ASSIST360</span>
+            <span className="font-bold text-xs tracking-wider text-ink">ASSIST360</span>
           </div>
         </div>
 
@@ -251,40 +251,40 @@ export default function LoginPage() {
           
           <div className="text-center lg:text-left space-y-1.5">
             <BrandedLogo width={40} height={40} className="mx-auto lg:mx-0 hidden lg:block" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-[#111827] uppercase font-mono mt-3">Sign In</h1>
-            <p className="text-xs text-[#6B7280]">Welcome back. Sign in to continue.</p>
+            <h1 className="type-title text-ink mt-3">Sign In</h1>
+            <p className="text-xs text-ink-secondary">Welcome back. Sign in to continue.</p>
           </div>
 
-          <Card className="p-6 border-[#E5E7EB] bg-white rounded shadow-sm relative min-h-[300px] flex flex-col justify-center">
+          <Card className="p-6 border-line bg-surface rounded shadow-card relative min-h-[300px] flex flex-col justify-center">
             
             {loading ? (
               <div className="flex flex-col items-center justify-center space-y-4 py-8">
                 <BrandedLogo animated={true} width={40} height={40} />
-                <span className="text-[10px] uppercase font-mono font-bold text-[#6B7280] tracking-widest text-center block">
+                <span className="text-[11px] uppercase font-bold text-ink-secondary tracking-widest text-center block">
                   Establishing secure tunnel...
                 </span>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
+              <form onSubmit={handleSubmit} className="space-y-4 text-xs">
                 
                 {error && (
-                  <div className="bg-[#FAFAFA] border border-[#EF4444] rounded p-3 text-xs text-[#EF4444] font-mono">
+                  <div className="bg-surface-muted border border-critical-border rounded p-3 text-xs text-critical">
                     <span className="font-bold">Login Error:</span> {error}
                   </div>
                 )}
 
                 {/* Email input field */}
                 <div className="space-y-1">
-                  <label className="font-bold text-[#111827] uppercase tracking-wider text-[9px]">Email Address</label>
+                  <label className="font-bold text-ink uppercase tracking-wider text-[11px]">Email Address</label>
                   <div className="relative">
-                    <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+                    <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-secondary" />
                     <input 
                       required
                       type="email"
                       placeholder="username@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded pl-9 pr-3 py-2.5 text-xs text-[#111827] placeholder:text-[#6B7280] focus:outline-none focus:border-[#111827] focus:ring-1 focus:ring-[#111827] transition"
+                      className="w-full bg-surface-muted border border-line rounded pl-9 pr-3 py-2.5 text-xs text-ink placeholder:text-ink-secondary focus:outline-none focus:border-ink focus:ring-1 focus:ring-brand/30 transition"
                       disabled={authenticating}
                     />
                   </div>
@@ -293,36 +293,36 @@ export default function LoginPage() {
                 {/* Password input field */}
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <label className="font-bold text-[#111827] uppercase tracking-wider text-[9px]">Password</label>
+                    <label className="font-bold text-ink uppercase tracking-wider text-[11px]">Password</label>
                     <button
                       type="button"
                       onClick={() => setForgotPasswordOpen(true)}
-                      className="text-[9px] text-[#6B7280] hover:text-[#111827] hover:underline bg-transparent border-none cursor-pointer p-0"
+                      className="text-[11px] text-ink-secondary hover:text-ink hover:underline bg-transparent border-none cursor-pointer p-0"
                     >
                       Forgot Password?
                     </button>
                   </div>
                   <div className="relative">
-                    <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+                    <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-secondary" />
                     <input 
                       required
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded pl-9 pr-3 py-2.5 text-xs text-[#111827] focus:outline-none focus:border-[#111827] focus:ring-1 focus:ring-[#111827] transition"
+                      className="w-full bg-surface-muted border border-line rounded pl-9 pr-3 py-2.5 text-xs text-ink focus:outline-none focus:border-ink focus:ring-1 focus:ring-brand/30 transition"
                       disabled={authenticating}
                     />
                   </div>
                 </div>
 
                 {/* Remember Me switch */}
-                <div className="flex items-center gap-2 pt-1 font-sans text-xs text-[#6B7280]">
+                <div className="flex items-center gap-2 pt-1 font-sans text-xs text-ink-secondary">
                   <input 
                     type="checkbox" 
                     id="remember"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-[#E5E7EB] text-[#111827] focus:ring-[#111827] w-3.5 h-3.5 cursor-pointer"
+                    className="rounded border-line text-ink focus:ring-brand/30 w-3.5 h-3.5 cursor-pointer"
                   />
                   <label htmlFor="remember" className="cursor-pointer select-none">Remember Me</label>
                 </div>
@@ -331,7 +331,7 @@ export default function LoginPage() {
                 <Button 
                   type="submit"
                   disabled={authenticating}
-                  className="w-full py-2.5 bg-[#2563EB] hover:bg-blue-700 text-[10px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider font-mono border-none"
+                  className="w-full py-2.5 bg-brand hover:bg-blue-700 text-[11px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider border-none"
                 >
                   {authenticating ? 'Verifying...' : 'Sign In'}
                 </Button>
@@ -344,26 +344,26 @@ export default function LoginPage() {
         </div>
 
         {/* Footer Secure Badge */}
-        <div className="text-center text-[10px] text-[#6B7280] font-mono flex items-center justify-center gap-1.5">
+        <div className="text-center text-[11px] text-ink-secondary flex items-center justify-center gap-1.5">
           <span>Copyright &copy; {new Date().getFullYear()} Assist360. All Rights Reserved.</span>
         </div>
 
       </div>
 
       <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
-        <DialogContent className="max-w-md bg-white border border-zinc-200 shadow-lg p-6 rounded-lg font-mono text-xs">
+        <DialogContent className="max-w-md bg-surface border border-line shadow-lg p-6 rounded-lg text-xs">
           <DialogHeader className="space-y-1 text-center sm:text-left">
-            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-zinc-950">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-ink">
               Password Reset Required
             </DialogTitle>
-            <DialogDescription className="text-[11px] text-zinc-550 pt-2 leading-relaxed">
+            <DialogDescription className="text-[11px] text-ink-secondary pt-2 leading-relaxed">
               Please contact your Super Admin to reset your password.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 flex justify-end">
             <Button
               onClick={() => setForgotPasswordOpen(false)}
-              className="px-4 py-2 bg-zinc-950 hover:bg-zinc-800 text-white rounded text-[10px] font-bold uppercase tracking-wider transition border-none cursor-pointer"
+              className="px-4 py-2 bg-ink hover:bg-zinc-800 text-white rounded text-[11px] font-bold uppercase tracking-wider transition border-none cursor-pointer"
             >
               Okay
             </Button>

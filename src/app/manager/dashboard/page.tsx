@@ -1991,7 +1991,7 @@ export default function ManagerDashboardPage() {
   }
 
   return (
-    <div className="space-y-6 text-xs text-[#09090b]">
+    <div className="space-y-6 text-xs text-ink">
       {/* --- COMMAND CENTER HEADER --- */}
       <PageHeader
         title="AMS Management Command Center"

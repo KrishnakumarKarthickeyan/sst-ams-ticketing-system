@@ -343,16 +343,16 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
     <div className="space-y-6">
       
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-line pb-4">
         <div>
-          <h2 className="text-lg font-bold uppercase text-zinc-950">Analytics Report Center</h2>
-          <p className="text-zinc-500 mt-1">Generate multi-dimensional metrics, filter by SLA boundaries, and download auditing compliance sheets.</p>
+          <h2 className="type-title text-ink">Analytics Report Center</h2>
+          <p className="text-ink-secondary mt-1">Generate multi-dimensional metrics, filter by SLA boundaries, and download auditing compliance sheets.</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleSavePreset}
             disabled={savingPreset}
-            className="px-3 py-1.5 border border-zinc-200 hover:border-zinc-950 text-zinc-700 rounded font-bold uppercase text-[10px] tracking-wider transition disabled:opacity-50 flex items-center gap-1"
+            className="px-3 py-1.5 border border-line hover:border-line-strong text-ink-secondary rounded font-bold uppercase text-[11px] tracking-wider transition disabled:opacity-50 flex items-center gap-1"
           >
             <Save size={11} />
             {savingPreset ? 'Saving...' : 'Save Preset'}
@@ -360,7 +360,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
           <button
             onClick={handleExportCsv}
             disabled={exportingCsv}
-            className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded font-bold uppercase text-[10px] tracking-wider transition disabled:opacity-50 flex items-center gap-1"
+            className="px-3 py-1.5 bg-ink hover:bg-zinc-800 text-white rounded font-bold uppercase text-[11px] tracking-wider transition disabled:opacity-50 flex items-center gap-1"
           >
             <Download size={11} />
             {exportingCsv ? 'Compiling CSV...' : 'Download CSV'}
@@ -368,7 +368,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
           <button
             onClick={handleExportPdf}
             disabled={exportingPdf}
-            className="px-3 py-1.5 border border-zinc-900 hover:bg-zinc-50 text-zinc-950 rounded font-bold uppercase text-[10px] tracking-wider transition disabled:opacity-50 flex items-center gap-1"
+            className="px-3 py-1.5 border border-zinc-900 hover:bg-surface-muted text-ink rounded font-bold uppercase text-[11px] tracking-wider transition disabled:opacity-50 flex items-center gap-1"
           >
             <FileText size={11} />
             {exportingPdf ? 'Printing PDF...' : 'Download PDF (MOCK)'}
@@ -377,22 +377,22 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
       </div>
 
       {notificationMsg && (
-        <div className="bg-emerald-50 border border-emerald-500 text-emerald-800 font-bold uppercase text-[9px] tracking-wider p-2.5 rounded flex items-center gap-1 animate-fade-in">
-          <Check size={12} className="text-emerald-600" />
+        <div className="bg-emerald-50 border border-emerald-500 text-emerald-800 font-bold uppercase text-[11px] tracking-wider p-2.5 rounded flex items-center gap-1 animate-fade-in">
+          <Check size={12} className="text-success" />
           {notificationMsg}
         </div>
       )}
 
       {/* Grid: Selector & Filter Panel */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-5 shadow-sm space-y-4">
+      <div className="bg-surface border border-line rounded-lg p-5 shadow-card space-y-4">
         
         {/* Row 1: Report Type Selector */}
         <div className="space-y-1">
-          <label className="font-bold text-zinc-600 uppercase text-[9px]">Select Report Focus</label>
+          <label className="font-bold text-ink-secondary uppercase text-[11px]">Select Report Focus</label>
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value as ReportType)}
-            className="w-full bg-zinc-50 border border-zinc-200 rounded p-2 text-xs font-bold text-zinc-950 focus:outline-none focus:border-zinc-950 font-mono"
+            className="w-full bg-surface-muted border border-line rounded p-2 text-xs font-bold text-ink focus:outline-none focus:border-brand"
           >
             <option value="Ticket Summary">Ticket Summary Report (Global Queue)</option>
             {!isCustomer && <option value="Customer-wise">Customer-wise Ticket Volume Report</option>}
@@ -412,7 +412,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 pt-2">
           {/* Start Date */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px] flex items-center gap-1">
+            <label className="font-bold text-ink-secondary uppercase text-[11px] flex items-center gap-1">
               <Calendar size={10} />
               Start Date
             </label>
@@ -420,13 +420,13 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none"
             />
           </div>
 
           {/* End Date */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px] flex items-center gap-1">
+            <label className="font-bold text-ink-secondary uppercase text-[11px] flex items-center gap-1">
               <Calendar size={10} />
               End Date
             </label>
@@ -434,18 +434,18 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none"
             />
           </div>
 
           {/* Org Filter (Locked if customer) */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px]">Organization</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Organization</label>
             <select
               value={isCustomer ? orgConstraint : selectedOrg}
               onChange={(e) => setSelectedOrg(e.target.value)}
               disabled={isCustomer}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none disabled:opacity-60"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none disabled:opacity-60"
             >
               {isCustomer ? (
                 <option value={orgConstraint}>{orgConstraint}</option>
@@ -462,11 +462,11 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
 
           {/* Module Filter */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px]">SAP Module</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">SAP Module</label>
             <select
               value={selectedModule}
               onChange={(e) => setSelectedModule(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none"
             >
               <option value="All">All Modules</option>
               {availableModules.map(m => (
@@ -477,12 +477,12 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
 
           {/* Consultant Filter (Locked if consultant) */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px]">Consultant</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Consultant</label>
             <select
               value={isConsultant ? consultantConstraint : selectedConsultant}
               onChange={(e) => setSelectedConsultant(e.target.value)}
               disabled={isConsultant}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none disabled:opacity-60"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none disabled:opacity-60"
             >
               {isConsultant ? (
                 <option value={consultantConstraint}>{consultantConstraint}</option>
@@ -499,14 +499,14 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
         </div>
 
         {/* Row 3: Secondary Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 pt-2 border-t border-zinc-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 pt-2 border-t border-line">
           {/* Priority */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px]">Priority</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Priority</label>
             <select
               value={selectedPriority}
               onChange={(e) => setSelectedPriority(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none"
             >
               <option value="All">All Priorities</option>
               <option value="Low">Low (P4)</option>
@@ -518,11 +518,11 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
 
           {/* Status */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px]">Status</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Status</label>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none"
             >
               <option value="All">All Statuses</option>
               <option value="New">New</option>
@@ -538,11 +538,11 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
 
           {/* SLA Status */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px]">SLA Status</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">SLA Status</label>
             <select
               value={selectedSla}
               onChange={(e) => setSelectedSla(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none"
             >
               <option value="All">All SLA States</option>
               <option value="Healthy">Healthy</option>
@@ -553,11 +553,11 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
 
           {/* Billable Split */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px]">Billing Classification</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Billing Classification</label>
             <select
               value={selectedBillable}
               onChange={(e) => setSelectedBillable(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none"
             >
               <option value="All">All Log Types</option>
               <option value="Billable">Billable Hours (AMS)</option>
@@ -567,11 +567,11 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
 
           {/* Category */}
           <div className="space-y-1">
-            <label className="font-bold text-zinc-500 uppercase text-[8px]">Incident Category</label>
+            <label className="font-bold text-ink-secondary uppercase text-[11px]">Incident Category</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full bg-white border border-zinc-200 rounded p-1.5 text-[11px] font-mono focus:outline-none"
+              className="w-full bg-surface border border-line rounded p-1.5 text-[11px] focus:outline-none"
             >
               <option value="All">All Categories</option>
               {availableCategories.map(cat => (
@@ -588,37 +588,37 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
         
         {/* KPI Cards (Displays different summaries depending on report type) */}
         <div className="space-y-4">
-          <h3 className="font-bold text-zinc-950 uppercase text-[10px] tracking-wider">Report KPI Summary</h3>
+          <h3 className="font-bold text-ink uppercase text-[11px] tracking-wider">Report KPI Summary</h3>
           
-          <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex justify-between items-center">
+          <div className="bg-surface border border-line rounded-lg p-4 shadow-card flex justify-between items-center">
             <div>
-              <div className="text-zinc-400 font-bold uppercase text-[9px]">Total Matching Tickets</div>
-              <div className="text-lg font-bold text-zinc-950 mt-1">{totalCount} Incidents</div>
+              <div className="text-ink-muted font-bold uppercase text-[11px]">Total Matching Tickets</div>
+              <div className="text-lg font-bold text-ink mt-1">{totalCount} Incidents</div>
             </div>
-            <div className="bg-zinc-50 text-zinc-600 p-2.5 rounded border border-zinc-150">
+            <div className="bg-surface-muted text-ink-secondary p-2.5 rounded border border-line">
               <FileText size={16} />
             </div>
           </div>
 
-          <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex justify-between items-center border-l-4 border-l-emerald-500">
+          <div className="bg-surface border border-line rounded-lg p-4 shadow-card flex justify-between items-center border-l-4 border-l-emerald-500">
             <div>
-              <div className="text-zinc-400 font-bold uppercase text-[9px]">Resolved / Closed count</div>
+              <div className="text-ink-muted font-bold uppercase text-[11px]">Resolved / Closed count</div>
               <div className="text-lg font-bold text-emerald-700 mt-1">{resolvedCount + closedCount} Tickets</div>
             </div>
-            <div className="bg-emerald-50 text-emerald-600 p-2.5 rounded border border-emerald-100">
-              <Check size={16} className="text-emerald-500" />
+            <div className="bg-emerald-50 text-success p-2.5 rounded border border-emerald-100">
+              <Check size={16} className="text-success" />
             </div>
           </div>
 
-          <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex justify-between items-center border-l-4 border-l-amber-500">
+          <div className="bg-surface border border-line rounded-lg p-4 shadow-card flex justify-between items-center border-l-4 border-l-amber-500">
             <div>
-              <div className="text-zinc-400 font-bold uppercase text-[9px]">Total Efforts Logged</div>
-              <div className="text-lg font-bold text-amber-600 mt-1">
+              <div className="text-ink-muted font-bold uppercase text-[11px]">Total Efforts Logged</div>
+              <div className="text-lg font-bold text-warning mt-1">
                 {totalHoursLogged.toFixed(1)} hrs
-                <span className="text-[9px] block text-zinc-400 font-normal mt-0.5">Billable: {billableHours.toFixed(1)}h | Non-Billable: {nonBillableHours.toFixed(1)}h</span>
+                <span className="text-[11px] block text-ink-muted font-normal mt-0.5">Billable: {billableHours.toFixed(1)}h | Non-Billable: {nonBillableHours.toFixed(1)}h</span>
               </div>
             </div>
-            <div className="bg-amber-50 text-amber-600 p-2.5 rounded border border-amber-100">
+            <div className="bg-amber-50 text-warning p-2.5 rounded border border-amber-100">
               <Clock size={16} />
             </div>
           </div>
@@ -627,30 +627,30 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
         </div>
 
         {/* Dynamic Chart Preview */}
-        <div className="md:col-span-2 bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-            <h3 className="font-bold text-xs uppercase text-zinc-955 flex items-center gap-2">
+        <div className="md:col-span-2 bg-surface border border-line rounded-lg p-5 space-y-4 shadow-card">
+          <div className="flex items-center justify-between border-b border-line pb-2">
+            <h3 className="font-bold text-xs uppercase text-ink flex items-center gap-2">
               <BarChart4 size={14} />
               Report Analytics visualizer: {reportType}
             </h3>
-            <span className="text-[9px] text-zinc-400">Total metrics</span>
+            <span className="text-[11px] text-ink-muted">Total metrics</span>
           </div>
 
           <div className="space-y-3.5 min-h-[200px] flex flex-col justify-center">
             {chartEntries.length === 0 ? (
-              <p className="text-zinc-400 italic text-center">No data available to plot matching current filter parameters.</p>
+              <p className="text-ink-muted italic text-center">No data available to plot matching current filter parameters.</p>
             ) : (
               chartEntries.slice(0, 5).map(([label, val]) => {
                 const pct = (val / chartMax) * 100;
                 return (
                   <div key={label} className="space-y-1">
-                    <div className="flex justify-between items-center text-[10px] text-zinc-650">
+                    <div className="flex justify-between items-center text-[11px] text-ink-secondary">
                       <span className="font-bold">{label}</span>
                       <span>{val.toFixed(reportType === 'Effort Hours' ? 1 : 0)} {reportType === 'Effort Hours' ? 'h' : 'Tickets'}</span>
                     </div>
-                    <div className="w-full h-3 bg-zinc-100 rounded overflow-hidden border border-zinc-200">
+                    <div className="w-full h-3 bg-surface-subtle rounded overflow-hidden border border-line">
                       <div
-                        className="h-full bg-zinc-950 rounded-r"
+                        className="h-full bg-ink rounded-r"
                         style={{ width: `${pct}%` }}
                       ></div>
                     </div>
@@ -664,15 +664,15 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
       </div>
 
       {/* Main Reports Data Table */}
-      <div className="bg-white border border-zinc-200 rounded-lg shadow-sm space-y-3 p-4">
-        <h3 className="font-bold text-xs uppercase text-zinc-950 border-b border-zinc-100 pb-2">Filtered Report Dataset</h3>
+      <div className="bg-surface border border-line rounded-lg shadow-card space-y-3 p-4">
+        <h3 className="font-bold text-xs uppercase text-ink border-b border-line pb-2">Filtered Report Dataset</h3>
         
         {reportType === 'Effort Hours' ? (
           /* Effort Table view */
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-600 font-bold uppercase text-[9px] tracking-wider">
+                <tr className="bg-surface-muted border-b border-line text-ink-secondary font-bold uppercase text-[11px] tracking-wider">
                   <th className="py-2.5 px-3">Ticket ID</th>
                   <th className="py-2.5 px-3">Consultant</th>
                   <th className="py-2.5 px-3">Org</th>
@@ -685,25 +685,25 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                   <th className="py-2.5 px-3 text-right">Approval</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 text-[11px]">
+              <tbody className="divide-y divide-line text-[11px]">
                 {filteredEfforts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-zinc-400 italic">No effort log lines match filters.</td>
+                    <td colSpan={10} className="py-8 text-center text-ink-muted italic">No effort log lines match filters.</td>
                   </tr>
                 ) : (
                   filteredEfforts.map(log => (
-                    <tr key={log.id} className="hover:bg-zinc-50 transition">
-                      <td className="py-2 px-3 font-bold text-zinc-900">{log.ticketId}</td>
+                    <tr key={log.id} className="hover:bg-surface-muted transition">
+                      <td className="py-2 px-3 font-bold text-ink">{log.ticketId}</td>
                       <td className="py-2 px-3">{log.consultantName}</td>
-                      <td className="py-2 px-3 text-zinc-500">{log.organization}</td>
+                      <td className="py-2 px-3 text-ink-secondary">{log.organization}</td>
                       <td className="py-2 px-3">{log.activityDate}</td>
-                      <td className="py-2 px-3 text-zinc-400">{log.startTime} - {log.endTime}</td>
-                      <td className="py-2 px-3 font-bold uppercase text-[9px] text-zinc-600">{log.activityType}</td>
+                      <td className="py-2 px-3 text-ink-muted">{log.startTime} - {log.endTime}</td>
+                      <td className="py-2 px-3 font-bold uppercase text-[11px] text-ink-secondary">{log.activityType}</td>
                       <td className="py-2 px-3 max-w-[150px] truncate" title={log.description}>{log.description}</td>
                       <td className="py-2 px-3 text-center font-bold">{log.hoursLogged.toFixed(1)}h</td>
                       <td className="py-2 px-3 text-center">{log.billable ? 'Yes' : 'No'}</td>
                       <td className={`py-2 px-3 text-right font-bold ${
-                        log.status === 'Approved' ? 'text-emerald-700' : log.status === 'Pending' ? 'text-amber-600' : 'text-red-650'
+                        log.status === 'Approved' ? 'text-emerald-700' : log.status === 'Pending' ? 'text-warning' : 'text-critical'
                       }`}>{log.status}</td>
                     </tr>
                   ))
@@ -716,7 +716,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-600 font-bold uppercase text-[9px] tracking-wider">
+                <tr className="bg-surface-muted border-b border-line text-ink-secondary font-bold uppercase text-[11px] tracking-wider">
                   <th className="py-2.5 px-3">Ticket ID</th>
                   <th className="py-2.5 px-3">Title</th>
                   <th className="py-2.5 px-3">Organization</th>
@@ -727,10 +727,10 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                   <th className="py-2.5 px-3 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 text-[11px]">
+              <tbody className="divide-y divide-line text-[11px]">
                 {filteredTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-zinc-400 italic">No tickets match active report parameters.</td>
+                    <td colSpan={8} className="py-8 text-center text-ink-muted italic">No tickets match active report parameters.</td>
                   </tr>
                 ) : (
                   filteredTickets.map(t => {
@@ -740,30 +740,30 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                     let slaBadge = <span className="text-emerald-700 font-bold">Healthy</span>;
                     if (!isClosedOrResolved) {
                       if (dueTime < now) {
-                        slaBadge = <span className="text-red-600 font-bold">Breached</span>;
+                        slaBadge = <span className="text-critical font-bold">Breached</span>;
                       } else if ((dueTime - now) < 12 * 60 * 60 * 1000) {
-                        slaBadge = <span className="text-amber-600 font-bold">Warning</span>;
+                        slaBadge = <span className="text-warning font-bold">Warning</span>;
                       }
                     }
                     return (
-                      <tr key={t.id} className="hover:bg-zinc-50 transition">
+                      <tr key={t.id} className="hover:bg-surface-muted transition">
                         <td className="py-2 px-3">
-                          <Link href={`/${role.toLowerCase()}/tickets/${t.id}`} className="font-bold text-zinc-900 hover:underline">
+                          <Link href={`/${role.toLowerCase()}/tickets/${t.id}`} className="font-bold text-ink hover:underline">
                             {t.id}
                           </Link>
                         </td>
-                        <td className="py-2 px-3 font-semibold text-zinc-850 max-w-[200px] truncate" title={t.title}>{t.title}</td>
-                        <td className="py-2 px-3 text-zinc-500">{t.organization}</td>
+                        <td className="py-2 px-3 font-semibold text-ink max-w-[200px] truncate" title={t.title}>{t.title}</td>
+                        <td className="py-2 px-3 text-ink-secondary">{t.organization}</td>
                         <td className="py-2 px-3 font-bold">{t.sapModule}</td>
-                        <td className="py-2 px-3 text-zinc-600">{t.category}</td>
+                        <td className="py-2 px-3 text-ink-secondary">{t.category}</td>
                         <td className="py-2 px-3 text-center font-bold">
-                          <span className={`px-1 rounded text-[9px] ${
-                            t.priority === 'Critical' ? 'bg-red-50 text-red-700 border border-red-200' : 'text-zinc-700'
+                          <span className={`px-1 rounded text-[11px] ${
+                            t.priority === 'Critical' ? 'bg-critical-soft text-critical-strong border border-critical-border' : 'text-ink-secondary'
                           }`}>{t.priority}</span>
                         </td>
                         <td className="py-2 px-3 text-center">{slaBadge}</td>
                         <td className="py-2 px-3 text-right">
-                          <span className="px-1.5 py-0.2 bg-zinc-150 rounded uppercase text-[9px] font-bold">
+                          <span className="px-1.5 py-0.2 bg-surface-subtle rounded uppercase text-[11px] font-bold">
                             {t.status}
                           </span>
                         </td>
