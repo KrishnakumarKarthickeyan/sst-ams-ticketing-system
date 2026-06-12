@@ -77,7 +77,7 @@ export default function CustomerContactsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center font-mono text-xs text-zinc-500">
+      <div className="flex h-[50vh] items-center justify-center text-xs text-ink-secondary">
         Loading organization contacts...
       </div>
     );
@@ -86,17 +86,17 @@ export default function CustomerContactsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between border-b border-zinc-200 pb-5">
+      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between border-b border-line pb-5">
         <div>
-          <h1 className="text-xl font-bold tracking-tight font-mono text-zinc-950 uppercase">
+          <h1 className="text-xl font-bold tracking-tight text-ink uppercase">
             Organization Contacts
           </h1>
-          <p className="text-xs text-zinc-500 font-medium">
-            Authorized support personnel and ticket requesters for <span className="font-bold text-zinc-800">{userOrg}</span>
+          <p className="text-xs text-ink-secondary font-medium">
+            Authorized support personnel and ticket requesters for <span className="font-bold text-ink">{userOrg}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 bg-zinc-100 border border-zinc-200 px-3 py-1.5 rounded-lg">
-          <Users size={14} className="text-zinc-400" />
+        <div className="flex items-center gap-2 text-xs text-ink-secondary bg-surface-subtle border border-line px-3 py-1.5 rounded-lg">
+          <Users size={14} className="text-ink-muted" />
           <span>Total Authorized: {contacts.length}</span>
         </div>
       </div>
@@ -104,10 +104,10 @@ export default function CustomerContactsPage() {
       {/* Grid Layout */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {contacts.map((contact) => (
-          <Card key={contact.id} className="border-zinc-200 hover:border-zinc-400 transition-all duration-200 relative overflow-hidden bg-white shadow-sm flex flex-col justify-between">
+          <Card key={contact.id} className="border-line hover:border-line-strong transition-all duration-200 relative overflow-hidden bg-surface shadow-card flex flex-col justify-between">
             {contact.is_primary && (
               <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden pointer-events-none">
-                <div className="bg-zinc-950 text-white font-mono text-[9px] font-bold py-1 text-center w-[150px] absolute top-4 -right-10 rotate-45 border-b border-zinc-800">
+                <div className="bg-ink text-white text-[11px] font-bold py-1 text-center w-[150px] absolute top-4 -right-10 rotate-45 border-b border-zinc-800">
                   PRIMARY
                 </div>
               </div>
@@ -116,10 +116,10 @@ export default function CustomerContactsPage() {
             <CardHeader className="space-y-1.5 pb-3">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <h3 className="font-bold text-sm tracking-tight text-zinc-955 font-mono">
+                  <h3 className="font-bold text-sm tracking-tight text-ink">
                     {contact.name}
                   </h3>
-                  <p className="text-[11px] font-semibold text-zinc-500 tracking-wide uppercase">
+                  <p className="text-[11px] font-semibold text-ink-secondary tracking-wide uppercase">
                     {contact.designation}
                   </p>
                 </div>
@@ -128,35 +128,35 @@ export default function CustomerContactsPage() {
 
             <CardContent className="space-y-4 pt-0">
               <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-zinc-650">
-                  <Mail size={13} className="text-zinc-450" />
-                  <a href={`mailto:${contact.email}`} className="hover:underline font-medium hover:text-zinc-950 truncate max-w-[200px]">
+                <div className="flex items-center gap-2 text-ink-secondary">
+                  <Mail size={13} className="text-ink-muted" />
+                  <a href={`mailto:${contact.email}`} className="hover:underline font-medium hover:text-ink truncate max-w-[200px]">
                     {contact.email}
                   </a>
                 </div>
                 {contact.phone && (
-                  <div className="flex items-center gap-2 text-zinc-650">
-                    <Phone size={13} className="text-zinc-450" />
-                    <a href={`tel:${contact.phone}`} className="hover:underline font-medium hover:text-zinc-950 font-mono">
+                  <div className="flex items-center gap-2 text-ink-secondary">
+                    <Phone size={13} className="text-ink-muted" />
+                    <a href={`tel:${contact.phone}`} className="hover:underline font-medium hover:text-ink">
                       {contact.phone}
                     </a>
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-zinc-100">
+              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-line">
                 {contact.is_primary ? (
-                  <Badge className="bg-zinc-950 text-white text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-900 border-0 h-5">
+                  <Badge className="bg-ink text-white text-[11px] tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-ink border-0 h-5">
                     <ShieldCheck size={11} />
                     <span>Primary Support</span>
                   </Badge>
                 ) : contact.is_secondary ? (
-                  <Badge className="bg-zinc-100 text-zinc-800 border-zinc-200 text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-100 h-5">
-                    <UserCheck size={11} className="text-zinc-500" />
+                  <Badge className="bg-surface-subtle text-ink border-line text-[11px] tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-surface-subtle h-5">
+                    <UserCheck size={11} className="text-ink-secondary" />
                     <span>Secondary Contact</span>
                   </Badge>
                 ) : (
-                  <Badge className="bg-zinc-50 text-zinc-500 border-zinc-200 text-[9px] font-mono tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-zinc-50 h-5">
+                  <Badge className="bg-surface-muted text-ink-secondary border-line text-[11px] tracking-wider flex items-center gap-1 rounded py-0.5 px-1.5 hover:bg-surface-muted h-5">
                     <span>Authorized Requester</span>
                   </Badge>
                 )}
@@ -166,10 +166,10 @@ export default function CustomerContactsPage() {
         ))}
 
         {contacts.length === 0 && (
-          <div className="col-span-full border border-dashed border-zinc-300 rounded-xl p-12 text-center bg-zinc-50">
-            <Users className="mx-auto h-8 w-8 text-zinc-400" />
-            <h3 className="mt-2 text-xs font-bold text-zinc-900 font-mono">No Contacts Found</h3>
-            <p className="mt-1 text-xs text-zinc-500">
+          <div className="col-span-full border border-dashed border-line-strong rounded-lg p-12 text-center bg-surface-muted">
+            <Users className="mx-auto h-8 w-8 text-ink-muted" />
+            <h3 className="mt-2 text-xs font-bold text-ink">No Contacts Found</h3>
+            <p className="mt-1 text-xs text-ink-secondary">
               There are no registered support contacts mapped to your organization.
             </p>
           </div>

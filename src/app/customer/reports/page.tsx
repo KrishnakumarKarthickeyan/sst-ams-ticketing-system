@@ -320,18 +320,18 @@ export default function CustomerReportsPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-zinc-200 pb-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-line pb-5">
         <div>
-          <h1 className="text-xl font-bold tracking-tight font-mono text-zinc-955 uppercase">
+          <h1 className="text-xl font-bold tracking-tight text-ink uppercase">
             Service Reports Desk
           </h1>
-          <p className="text-xs text-zinc-500 font-medium">
+          <p className="text-xs text-ink-secondary font-medium">
             Analyze incident performance indices, SLA metrics, timesheet allocations, and customer satisfaction logs.
           </p>
         </div>
         <Button
           onClick={handleDownloadReport}
-          className="bg-zinc-950 hover:bg-zinc-800 text-white font-mono font-bold uppercase tracking-wider text-[10px] h-9 self-start md:self-auto flex items-center gap-1.5"
+          className="bg-ink hover:bg-zinc-800 text-white font-bold uppercase tracking-wider text-[11px] h-9 self-start md:self-auto flex items-center gap-1.5"
         >
           <Download size={14} />
           <span>Download Performance Sheet</span>
@@ -339,21 +339,21 @@ export default function CustomerReportsPage() {
       </div>
 
       {/* ── CUSTOMER DYNAMIC FILTER BAR ── */}
-      <Card className="border border-zinc-200 bg-white p-4 shadow-sm mb-6 rounded-lg">
+      <Card className="border border-line bg-surface p-4 shadow-card mb-6 rounded-lg">
         <div className="flex flex-wrap items-end gap-3 md:flex-nowrap">
           {/* 1. PERIOD */}
           <div className="flex flex-col flex-1 min-w-[260px] max-w-[320px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
-            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 h-9">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Period</span>
+            <div className="flex bg-surface-subtle p-0.5 rounded-lg border border-line h-9">
               {(['This Month', 'This Quarter', 'This Year', 'Custom'] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setFilters(prev => ({ ...prev, period: p }))}
-                  className={`flex-1 h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
+                  className={`flex-1 h-full flex items-center justify-center text-[11px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
                     filters.period === p
-                      ? 'bg-white text-zinc-955 shadow-sm border border-zinc-200/50'
-                      : 'text-zinc-500 hover:text-zinc-900'
+                      ? 'bg-surface text-ink shadow-card border border-line/50'
+                      : 'text-ink-secondary hover:text-ink'
                   }`}
                 >
                   {p.replace('This ', '')}
@@ -364,12 +364,12 @@ export default function CustomerReportsPage() {
 
           {/* 2. STATUS */}
           <div className="flex flex-col flex-1 min-w-[130px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Status</span>
             <Select
               value={filters.status}
               onValueChange={(val) => setFilters(prev => ({ ...prev, status: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -387,12 +387,12 @@ export default function CustomerReportsPage() {
 
           {/* 3. PRIORITY */}
           <div className="flex flex-col flex-1 min-w-[130px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Priority</span>
             <Select
               value={filters.priority}
               onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -407,12 +407,12 @@ export default function CustomerReportsPage() {
 
           {/* 4. MODULE */}
           <div className="flex flex-col flex-1 min-w-[130px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">SAP Module</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">SAP Module</span>
             <Select
               value={filters.module}
               onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Module" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -426,12 +426,12 @@ export default function CustomerReportsPage() {
 
           {/* 5. TYPE */}
           <div className="flex flex-col flex-1 min-w-[140px]">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Request Type</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">Request Type</span>
             <Select
               value={filters.type}
               onValueChange={(val) => setFilters(prev => ({ ...prev, type: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-zinc-955 font-sans text-xs border border-zinc-200 shadow-sm focus:ring-zinc-955">
+              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -456,7 +456,7 @@ export default function CustomerReportsPage() {
               module: 'All',
               type: 'All'
             })}
-            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200 shadow-sm"
+            className="h-9 gap-1.5 ml-auto text-xs font-semibold hover:bg-surface-subtle hover:text-ink border border-line shadow-card"
           >
             <RotateCcw size={14} />
             Reset
@@ -465,23 +465,23 @@ export default function CustomerReportsPage() {
 
         {/* Row 2: Custom Date Picker Inputs */}
         {filters.period === 'Custom' && (
-          <div className="border-t border-zinc-200 mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="border-t border-line mt-3 pt-3 flex gap-3 max-w-md animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex flex-col flex-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">From</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-955 w-full cursor-pointer font-sans"
+                className="h-9 border border-line rounded-md bg-surface px-3 py-1.5 text-xs text-ink shadow-card focus:outline-none focus:ring-1 focus:ring-brand/30 w-full cursor-pointer font-sans"
               />
             </div>
             <div className="flex flex-col flex-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold font-sans">To</span>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="h-9 border border-zinc-200 rounded-md bg-white px-3 py-1.5 text-xs text-zinc-950 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-955 w-full cursor-pointer font-sans"
+                className="h-9 border border-line rounded-md bg-surface px-3 py-1.5 text-xs text-ink shadow-card focus:outline-none focus:ring-1 focus:ring-brand/30 w-full cursor-pointer font-sans"
               />
             </div>
           </div>
@@ -491,146 +491,146 @@ export default function CustomerReportsPage() {
       {/* 12 Performance Metric KPI Cards (Unified Grid Layout) */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         {/* Card 1: Total Volume */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">1. Total Volume</span>
-            <FileText size={12} className="text-zinc-950" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">1. Total Volume</span>
+            <FileText size={12} className="text-ink" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-zinc-950">{m1_totalTickets}</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Submitted cases</span>
+            <span className="text-lg font-bold text-ink">{m1_totalTickets}</span>
+            <span className="text-[11px] text-ink-muted block">Submitted cases</span>
           </div>
         </Card>
 
         {/* Card 2: Backlog */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm border-l-2 border-l-amber-500">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">2. Backlog</span>
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card border-l-2 border-l-amber-500">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">2. Backlog</span>
             <Activity size={12} className="text-amber-500" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-zinc-950">{m2_openBacklog}</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Active queue</span>
+            <span className="text-lg font-bold text-ink">{m2_openBacklog}</span>
+            <span className="text-[11px] text-ink-muted block">Active queue</span>
           </div>
         </Card>
 
         {/* Card 3: Resolved waiting */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm border-l-2 border-l-emerald-500">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">3. Validation</span>
-            <ShieldCheck size={12} className="text-emerald-500" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card border-l-2 border-l-emerald-500">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">3. Validation</span>
+            <ShieldCheck size={12} className="text-success" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-emerald-700">{m3_resolvedWaiting}</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Resolved queue</span>
+            <span className="text-lg font-bold text-emerald-700">{m3_resolvedWaiting}</span>
+            <span className="text-[11px] text-ink-muted block">Resolved queue</span>
           </div>
         </Card>
 
         {/* Card 4: Closed */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">4. Closed</span>
-            <ShieldCheck size={12} className="text-zinc-400" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">4. Closed</span>
+            <ShieldCheck size={12} className="text-ink-muted" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-zinc-900">{m4_closedTotal}</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Completed history</span>
+            <span className="text-lg font-bold text-ink">{m4_closedTotal}</span>
+            <span className="text-[11px] text-ink-muted block">Completed history</span>
           </div>
         </Card>
 
         {/* Card 5: SLA Compliant */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm border-l-2 border-l-emerald-500">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">5. SLA On-Time</span>
-            <ShieldCheck size={12} className="text-emerald-500" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card border-l-2 border-l-emerald-500">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">5. SLA On-Time</span>
+            <ShieldCheck size={12} className="text-success" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-emerald-700">{m5_slaCompliant}</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Incidents met</span>
+            <span className="text-lg font-bold text-emerald-700">{m5_slaCompliant}</span>
+            <span className="text-[11px] text-ink-muted block">Incidents met</span>
           </div>
         </Card>
 
         {/* Card 6: SLA Breached */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm border-l-2 border-l-red-500">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">6. SLA Overdue</span>
-            <AlertTriangle size={12} className="text-red-500 animate-pulse" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card border-l-2 border-l-red-500">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">6. SLA Overdue</span>
+            <AlertTriangle size={12} className="text-critical animate-pulse" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-red-650">{m6_slaBreached}</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Missed deadlines</span>
+            <span className="text-lg font-bold text-critical">{m6_slaBreached}</span>
+            <span className="text-[11px] text-ink-muted block">Missed deadlines</span>
           </div>
         </Card>
 
         {/* Card 7: SLA % */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">7. SLA Rate</span>
-            <TrendingUp size={12} className="text-zinc-950" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">7. SLA Rate</span>
+            <TrendingUp size={12} className="text-ink" />
           </div>
           <div className="mt-2.5">
-            <span className={`text-lg font-bold font-mono ${Number(m7_slaPercentage) >= 90 ? 'text-emerald-755' : 'text-amber-700'}`}>{m7_slaPercentage}%</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Compliance target</span>
+            <span className={`text-lg font-bold ${Number(m7_slaPercentage) >= 90 ? 'text-emerald-755' : 'text-amber-700'}`}>{m7_slaPercentage}%</span>
+            <span className="text-[11px] text-ink-muted block">Compliance target</span>
           </div>
         </Card>
 
         {/* Card 8: Critical priority */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm border-l-2 border-l-red-500">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">8. Critical P1</span>
-            <AlertTriangle size={12} className="text-red-500" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card border-l-2 border-l-red-500">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">8. Critical P1</span>
+            <AlertTriangle size={12} className="text-critical" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-red-650">{m8_criticalPriority}</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Major disruptions</span>
+            <span className="text-lg font-bold text-critical">{m8_criticalPriority}</span>
+            <span className="text-[11px] text-ink-muted block">Major disruptions</span>
           </div>
         </Card>
 
         {/* Card 9: Escalation Rate */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">9. Escalation %</span>
-            <TrendingUp size={12} className="text-zinc-650" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">9. Escalation %</span>
+            <TrendingUp size={12} className="text-ink-secondary" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-zinc-950">{m9_escalationRate}%</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Service alerts rate</span>
+            <span className="text-lg font-bold text-ink">{m9_escalationRate}%</span>
+            <span className="text-[11px] text-ink-muted block">Service alerts rate</span>
           </div>
         </Card>
 
         {/* Card 10: Avg Resolution time */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">10. MTTR Avg</span>
-            <Clock size={12} className="text-zinc-550" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">10. MTTR Avg</span>
+            <Clock size={12} className="text-ink-secondary" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-zinc-950">{m10_avgResolutionTime}</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Mean resolution</span>
+            <span className="text-lg font-bold text-ink">{m10_avgResolutionTime}</span>
+            <span className="text-[11px] text-ink-muted block">Mean resolution</span>
           </div>
         </Card>
 
         {/* Card 11: Logged hours */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">11. Effort hours</span>
-            <FileSpreadsheet size={12} className="text-zinc-950" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">11. Effort hours</span>
+            <FileSpreadsheet size={12} className="text-ink" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-zinc-950">{m11_approvedHours.toFixed(1)}h</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Approved efforts</span>
+            <span className="text-lg font-bold text-ink">{m11_approvedHours.toFixed(1)}h</span>
+            <span className="text-[11px] text-ink-muted block">Approved efforts</span>
           </div>
         </Card>
 
         {/* Card 12: Remaining budget */}
-        <Card className="border-zinc-200 bg-white p-3.5 flex flex-col justify-between shadow-sm border-l-2 border-l-emerald-500">
-          <div className="text-zinc-400 flex items-center justify-between">
-            <span className="uppercase text-[8px] font-bold tracking-wider font-mono">12. Remaining Pool</span>
-            <FolderLock size={12} className="text-emerald-500" />
+        <Card className="border-line bg-surface p-3.5 flex flex-col justify-between shadow-card border-l-2 border-l-emerald-500">
+          <div className="text-ink-muted flex items-center justify-between">
+            <span className="uppercase text-[11px] font-bold tracking-wider">12. Remaining Pool</span>
+            <FolderLock size={12} className="text-success" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold font-mono text-emerald-700">{m12_remainingBudget}h</span>
-            <span className="text-[8px] text-zinc-400 block font-mono">Contracts balance</span>
+            <span className="text-lg font-bold text-emerald-700">{m12_remainingBudget}h</span>
+            <span className="text-[11px] text-ink-muted block">Contracts balance</span>
           </div>
         </Card>
 
@@ -639,23 +639,23 @@ export default function CustomerReportsPage() {
       {/* Visual Analytics Tabular Diagrams */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Chart A: Status distribution */}
-        <Card className="border-zinc-200 bg-white shadow-sm">
-          <CardHeader className="pb-2 border-b border-zinc-50 bg-zinc-50/50">
-            <CardTitle className="text-[10px] uppercase font-mono text-zinc-650 tracking-wider">Chart 1: Ticket status distribution</CardTitle>
+        <Card className="border-line bg-surface shadow-card">
+          <CardHeader className="pb-2 border-b border-zinc-50 bg-surface-muted/60">
+            <CardTitle className="text-[11px] uppercase text-ink-secondary tracking-wider">Chart 1: Ticket status distribution</CardTitle>
           </CardHeader>
           <CardContent className="h-60 pt-4 flex items-center justify-center">
             {statusChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={statusChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                  <XAxis dataKey="name" stroke="#71717a" fontSize={9} className="font-mono" />
-                  <YAxis stroke="#71717a" fontSize={9} className="font-mono" />
+                  <XAxis dataKey="name" stroke="#71717a" fontSize={9} className="" />
+                  <YAxis stroke="#71717a" fontSize={9} className="" />
                   <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
                   <Bar dataKey="value" fill="#18181b" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-zinc-400 italic text-[10px] flex flex-col items-center justify-center space-y-2 py-8">
+              <div className="text-ink-muted italic text-[11px] flex flex-col items-center justify-center space-y-2 py-8">
                 <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-40" />
                 <span>No records found.</span>
               </div>
@@ -664,9 +664,9 @@ export default function CustomerReportsPage() {
         </Card>
 
         {/* Chart B: SLA compliance */}
-        <Card className="border-zinc-200 bg-white shadow-sm">
-          <CardHeader className="pb-2 border-b border-zinc-50 bg-zinc-50/50">
-            <CardTitle className="text-[10px] uppercase font-mono text-zinc-650 tracking-wider">Chart 2: SLA compliance ratios</CardTitle>
+        <Card className="border-line bg-surface shadow-card">
+          <CardHeader className="pb-2 border-b border-zinc-50 bg-surface-muted/60">
+            <CardTitle className="text-[11px] uppercase text-ink-secondary tracking-wider">Chart 2: SLA compliance ratios</CardTitle>
           </CardHeader>
           <CardContent className="h-60 pt-4 flex items-center justify-center">
             {slaPieData.length > 0 ? (
@@ -690,7 +690,7 @@ export default function CustomerReportsPage() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-zinc-400 italic text-[10px] flex flex-col items-center justify-center space-y-2 py-8">
+              <div className="text-ink-muted italic text-[11px] flex flex-col items-center justify-center space-y-2 py-8">
                 <BrandedLogo width={20} height={20} iconOnly={true} className="opacity-40" />
                 <span>No Incidents recorded in time frame.</span>
               </div>
@@ -699,38 +699,38 @@ export default function CustomerReportsPage() {
         </Card>      </div>
 
       {/* CSV Spreadsheet Preview (Details table grid) */}
-      <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
-        <CardHeader className="pb-3 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+      <Card className="border-line shadow-card bg-surface overflow-hidden">
+        <CardHeader className="pb-3 border-b border-line bg-surface-muted/60 flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-950 flex items-center gap-1.5">
+            <CardTitle className="text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
               <FileSpreadsheet size={14} />
               Spreadsheet Registry Preview (Top 5 Records)
             </CardTitle>
-            <CardDescription className="text-[11px] font-mono">
+            <CardDescription className="text-[11px]">
               Displaying live preview of the reports table before downloading the full performance CSV sheet.
             </CardDescription>
           </div>
-          <Badge className="bg-zinc-100 text-zinc-800 border-zinc-200 text-[9px] font-mono tracking-wider">
+          <Badge className="bg-surface-subtle text-ink border-line text-[11px] tracking-wider">
             Total records matches: {m1_totalTickets}
           </Badge>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto w-full">
             <Table>
-              <TableHeader className="bg-zinc-50 border-b border-zinc-200 font-mono text-[9px]">
+              <TableHeader className="bg-surface-muted border-b border-line text-[11px]">
                 <TableRow>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">ID</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Summary Title</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Created By</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Age (Days)</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Modules</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-center">Module Count</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Type</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Priority</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Status</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono">Soft Delete</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-right">Efforts (Approved/Quoted)</TableHead>
-                  <TableHead className="font-bold text-zinc-500 uppercase tracking-wider py-2.5 px-4 font-mono text-center">Attachments</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">ID</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">Summary Title</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">Created By</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">Age (Days)</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">Modules</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4 text-center">Module Count</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">Type</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">Priority</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">Status</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4">Soft Delete</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4 text-right">Efforts (Approved/Quoted)</TableHead>
+                  <TableHead className="font-bold text-ink-secondary uppercase tracking-wider py-2.5 px-4 text-center">Attachments</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="text-[11px]">
@@ -756,40 +756,40 @@ export default function CustomerReportsPage() {
                   const attachmentCount = t.attachments ? t.attachments.length : 0;
 
                   return (
-                    <TableRow key={t.id} className="hover:bg-zinc-50/50 border-b border-zinc-100 transition-colors">
-                      <TableCell className="py-2.5 px-4 font-bold text-zinc-955">{t.ticketNumber || t.id}</TableCell>
-                      <TableCell className="py-2.5 px-4 font-semibold text-zinc-850 max-w-[180px] truncate">{t.title}</TableCell>
-                      <TableCell className="py-2.5 px-4 text-zinc-650">{createdBy}</TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-650">{ageInDays}d</TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-650 max-w-[120px] truncate">{modulesText}</TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-600 text-center">{moduleCount}</TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-600">{t.ticketType || 'Incident'}</TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-600">{t.priority}</TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-700 font-semibold">{t.status}</TableCell>
+                    <TableRow key={t.id} className="hover:bg-surface-muted/60 border-b border-line transition-colors">
+                      <TableCell className="py-2.5 px-4 font-bold text-ink">{t.ticketNumber || t.id}</TableCell>
+                      <TableCell className="py-2.5 px-4 font-semibold text-ink max-w-[180px] truncate">{t.title}</TableCell>
+                      <TableCell className="py-2.5 px-4 text-ink-secondary">{createdBy}</TableCell>
+                      <TableCell className="py-2.5 px-4 text-ink-secondary">{ageInDays}d</TableCell>
+                      <TableCell className="py-2.5 px-4 text-ink-secondary max-w-[120px] truncate">{modulesText}</TableCell>
+                      <TableCell className="py-2.5 px-4 text-ink-secondary text-center">{moduleCount}</TableCell>
+                      <TableCell className="py-2.5 px-4 text-ink-secondary">{t.ticketType || 'Incident'}</TableCell>
+                      <TableCell className="py-2.5 px-4 text-ink-secondary">{t.priority}</TableCell>
+                      <TableCell className="py-2.5 px-4 text-ink-secondary font-semibold">{t.status}</TableCell>
                       <TableCell className="py-2.5 px-4">
                         <Badge 
                           variant="outline" 
-                          className={`font-mono text-[9px] uppercase px-1.5 py-0 ${
+                          className={`text-[11px] uppercase px-1.5 py-0 ${
                             softDeleteStatus === 'Active' 
                               ? 'border-emerald-250 text-emerald-700 bg-emerald-50' 
                               : softDeleteStatus === 'Pending Delete' 
                                 ? 'border-amber-250 text-amber-700 bg-amber-50 animate-pulse' 
-                                : 'border-zinc-250 text-zinc-700 bg-zinc-50'
+                                : 'border-line text-ink-secondary bg-surface-muted'
                           }`}
                         >
                           {softDeleteStatus}
                         </Badge>
                       </TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-950 text-right">
+                      <TableCell className="py-2.5 px-4 text-ink text-right">
                         {approvedHours.toFixed(1)}h / {(t.quotedHours || 0).toFixed(1)}h
                       </TableCell>
-                      <TableCell className="py-2.5 px-4 font-mono text-zinc-600 text-center">{attachmentCount}</TableCell>
+                      <TableCell className="py-2.5 px-4 text-ink-secondary text-center">{attachmentCount}</TableCell>
                     </TableRow>
                   );
                 })}
                 {spreadsheetPreview.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={12} className="py-12 text-center text-zinc-400 font-mono italic">
+                    <TableCell colSpan={12} className="py-12 text-center text-ink-muted italic">
                       <div className="flex flex-col items-center justify-center space-y-2 py-4">
                         <BrandedLogo width={24} height={24} iconOnly={true} className="opacity-40" />
                         <span>No records matched. Check filter ranges.</span>

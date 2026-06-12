@@ -201,10 +201,10 @@ export default function CustomerTicketDetailPage() {
       <div className="flex h-[60vh] items-center justify-center">
         <div className="text-center space-y-4">
           <div className="relative w-10 h-10 mx-auto">
-            <span className="absolute inset-0 rounded-full border-[3px] border-zinc-100"></span>
+            <span className="absolute inset-0 rounded-full border-[3px] border-line"></span>
             <span className="absolute inset-0 rounded-full border-[3px] border-t-zinc-950 animate-spin"></span>
           </div>
-          <p className="text-sm text-zinc-400 font-mono">Loading ticket details...</p>
+          <p className="text-sm text-ink-muted">Loading ticket details...</p>
         </div>
       </div>
     );
@@ -212,12 +212,12 @@ export default function CustomerTicketDetailPage() {
 
   if (!ticket) {
     return (
-      <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-white border border-zinc-200 shadow-sm space-y-4">
+      <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-surface border border-line shadow-card space-y-4">
         <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto">
-          <AlertCircle size={24} className="text-red-500" />
+          <AlertCircle size={24} className="text-critical" />
         </div>
-        <h2 className="text-lg font-semibold text-zinc-900">Ticket Not Found</h2>
-        <p className="text-sm text-zinc-500">
+        <h2 className="text-lg font-semibold text-ink">Ticket Not Found</h2>
+        <p className="text-sm text-ink-secondary">
           The ticket with ID &quot;{ticketId}&quot; could not be found in your records.
         </p>
         <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
@@ -231,15 +231,15 @@ export default function CustomerTicketDetailPage() {
   const customerCompany = user?.company || 'Apex Global Industries';
   if (ticket.organization !== customerCompany) {
     return (
-      <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-white border border-red-200 shadow-sm space-y-4">
+      <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-surface border border-red-200 shadow-card space-y-4">
         <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto">
-          <ShieldCheck size={24} className="text-red-500" />
+          <ShieldCheck size={24} className="text-critical" />
         </div>
         <h2 className="text-lg font-semibold text-red-700">Access Denied</h2>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-ink-secondary">
           You don&apos;t have permission to view this ticket. It belongs to a different organization.
         </p>
-        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition">
+        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-secondary hover:text-ink transition">
           <ArrowLeft size={14} /> Return to my tickets
         </Link>
       </div>
@@ -289,17 +289,17 @@ export default function CustomerTicketDetailPage() {
   const isSlaApplicable = isIncident && ticket.slaDueAt !== 'SLA Not Applicable';
 
   const getSlaStatus = () => {
-    if (!isSlaApplicable) return { label: 'Not Applicable', color: 'bg-zinc-100 text-zinc-500 border-zinc-200', dot: 'bg-zinc-400' };
+    if (!isSlaApplicable) return { label: 'Not Applicable', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' };
     const nowTime = Date.now();
     const due = new Date(ticket.slaDueAt).getTime();
     const resolved = ticket.resolvedAt ? new Date(ticket.resolvedAt).getTime() : null;
     if (resolved) {
-      if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-red-600 border-red-200', dot: 'bg-red-500' };
-      return { label: 'Met', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+      if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' };
+      return { label: 'Met', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
     }
-    if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-red-600 border-red-200', dot: 'bg-red-500 animate-pulse' };
-    if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-amber-600 border-amber-200', dot: 'bg-amber-500' };
-    return { label: 'On Track', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-500' };
+    if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500 animate-pulse' };
+    if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-warning border-amber-200', dot: 'bg-amber-500' };
+    return { label: 'On Track', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
   };
   const slaStatus = getSlaStatus();
 
@@ -318,10 +318,10 @@ export default function CustomerTicketDetailPage() {
 
   const getFileIcon = (fileType: string) => {
     const type = fileType.toLowerCase();
-    if (type.startsWith('image/')) return <FileImage size={16} className="text-zinc-600" />;
-    if (type.includes('pdf')) return <FileText size={16} className="text-red-500" />;
-    if (type.includes('sheet') || type.includes('excel')) return <FileText size={16} className="text-emerald-500" />;
-    return <File size={16} className="text-zinc-400" />;
+    if (type.startsWith('image/')) return <FileImage size={16} className="text-ink-secondary" />;
+    if (type.includes('pdf')) return <FileText size={16} className="text-critical" />;
+    if (type.includes('sheet') || type.includes('excel')) return <FileText size={16} className="text-success" />;
+    return <File size={16} className="text-ink-muted" />;
   };
 
   // File handling
@@ -573,12 +573,12 @@ export default function CustomerTicketDetailPage() {
     return lines.map((line, idx) => {
       if (line.trim().startsWith('>')) {
         return (
-          <blockquote key={idx} className="border-l-[3px] border-indigo-300 pl-3 italic text-zinc-500 bg-indigo-50/50 py-1.5 px-3 rounded-r-lg my-2 text-[13px]">
+          <blockquote key={idx} className="border-l-[3px] border-indigo-300 pl-3 italic text-ink-secondary bg-indigo-50/50 py-1.5 px-3 rounded-r-lg my-2 text-[13px]">
             {line.trim().substring(1).trim()}
           </blockquote>
         );
       }
-      return <p key={idx} className="leading-relaxed text-zinc-700">{line}</p>;
+      return <p key={idx} className="leading-relaxed text-ink-secondary">{line}</p>;
     });
   };
 
@@ -595,14 +595,14 @@ export default function CustomerTicketDetailPage() {
     if (status === 'New') return 'bg-blue-50 text-blue-700 border-blue-200';
     if (status === 'In Progress' || status.includes('Progress')) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
     if (status === 'Reopened' || status === 'Reopen Requested') return 'bg-orange-50 text-orange-700 border-orange-200';
-    return 'bg-zinc-100 text-zinc-600 border-zinc-200';
+    return 'bg-surface-subtle text-ink-secondary border-line';
   };
 
   const getPriorityStyle = (priority: string) => {
     if (priority === 'Critical') return 'bg-red-50 text-red-700 border-red-200';
     if (priority === 'High') return 'bg-orange-50 text-orange-700 border-orange-200';
     if (priority === 'Medium') return 'bg-amber-50 text-amber-700 border-amber-200';
-    return 'bg-zinc-100 text-zinc-600 border-zinc-200';
+    return 'bg-surface-subtle text-ink-secondary border-line';
   };
 
   const steps = [
@@ -618,28 +618,28 @@ export default function CustomerTicketDetailPage() {
 
       {/* ── Success Banner ── */}
       {successBanner && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 shadow-sm animate-in slide-in-from-top-2 duration-300">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3 shadow-card animate-in slide-in-from-top-2 duration-300">
           <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={16} className="text-emerald-600" />
+            <CheckCircle2 size={16} className="text-success" />
           </div>
           <p className="flex-1 text-sm text-emerald-800 font-medium">{successBanner}</p>
-          <button onClick={() => setSuccessBanner(null)} className="text-emerald-400 hover:text-emerald-600 p-1 rounded-lg hover:bg-emerald-100 transition">
+          <button onClick={() => setSuccessBanner(null)} className="text-emerald-400 hover:text-success p-1 rounded-lg hover:bg-emerald-100 transition">
             <X size={16} />
           </button>
         </div>
       )}
 
       {/* ── Back & Breadcrumb ── */}
-      <div className="flex items-center gap-2 text-sm text-zinc-500">
-        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-zinc-500 hover:text-zinc-900 font-medium transition group">
+      <div className="flex items-center gap-2 text-sm text-ink-secondary">
+        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-ink-secondary hover:text-ink font-medium transition group">
           <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> My Tickets
         </Link>
-        <ChevronRight size={14} className="text-zinc-300" />
-        <span className="text-zinc-900 font-semibold">{ticket.ticketNumber}</span>
+        <ChevronRight size={14} className="text-ink-muted" />
+        <span className="text-ink font-semibold">{ticket.ticketNumber}</span>
       </div>
 
       {/* ── Hero Header Card ── */}
-      <div className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-line/80 bg-surface shadow-card">
         
         <div className="p-6 md:p-8">
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
@@ -675,34 +675,34 @@ export default function CustomerTicketDetailPage() {
                 })()}
 
                  {ticket.softDeleteStatus === 'Pending Delete' && (
-                  <Badge className="bg-amber-50 text-amber-600 border border-amber-200 text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse hover:bg-transparent">
+                  <Badge className="bg-amber-50 text-warning border border-amber-200 text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse hover:bg-transparent">
                     Pending Deletion
                   </Badge>
                 )}
 
                 {ticket.escalationFlag && ticket.escalationAcknowledgedAt && (
-                  <Badge variant="secondary" className="bg-zinc-100 text-zinc-800 border-zinc-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <Info size={12} className="text-zinc-500 shrink-0" />
+                  <Badge variant="secondary" className="bg-surface-subtle text-ink border-line text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <Info size={12} className="text-ink-secondary shrink-0" />
                     Critical Priority — Being handled
                   </Badge>
                 )}
               </div>
 
-              <h1 className="text-xl md:text-2xl font-bold text-zinc-900 leading-tight tracking-tight">
+              <h1 className="text-xl md:text-2xl font-bold text-ink leading-tight tracking-tight">
                 {ticket.title}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-zinc-500">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-ink-secondary">
                 <span className="flex items-center gap-1.5">
-                  <Building2 size={14} className="text-zinc-400" />
+                  <Building2 size={14} className="text-ink-muted" />
                   {ticket.organization}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Layers size={14} className="text-zinc-400" />
+                  <Layers size={14} className="text-ink-muted" />
                   {ticket.sapModule}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Calendar size={14} className="text-zinc-400" />
+                  <Calendar size={14} className="text-ink-muted" />
                   Created {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
                 {isSlaApplicable && (
@@ -720,7 +720,7 @@ export default function CustomerTicketDetailPage() {
                 <Button
                   onClick={() => setShowEditDialog(true)}
                   variant="outline"
-                  className="h-9 text-[13px] font-medium border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-lg gap-1.5"
+                  className="h-9 text-[13px] font-medium border-line text-ink-secondary hover:text-ink hover:bg-surface-muted rounded-lg gap-1.5"
                 >
                   <Edit size={14} /> Edit
                 </Button>
@@ -730,31 +730,31 @@ export default function CustomerTicketDetailPage() {
                 <>
                   <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
                     <DialogTrigger asChild>
-                      <Button className="h-9 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1.5 shadow-sm">
+                      <Button className="h-9 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1.5 shadow-card">
                         <CheckCircle2 size={14} /> Accept & Close
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+                    <DialogContent className="bg-surface border border-line rounded-2xl p-0 max-w-md overflow-hidden">
                       <div className="p-6 space-y-5">
                         <DialogHeader>
-                          <DialogTitle className="text-lg font-bold text-zinc-900">Close Ticket</DialogTitle>
-                          <DialogDescription className="text-sm text-zinc-500">
+                          <DialogTitle className="text-lg font-bold text-ink">Close Ticket</DialogTitle>
+                          <DialogDescription className="text-sm text-ink-secondary">
                             Provide any final remarks or feedback before closing ticket {ticket.ticketNumber}.
                           </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleRatingSubmit} className="space-y-5">
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Closure Comments (Optional)</label>
+                            <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Closure Comments (Optional)</label>
                             <textarea
                               rows={3}
                               placeholder="Provide any closure comments or feedback..."
                               value={ratingFeedback}
                               onChange={(e) => setRatingFeedback(e.target.value)}
-                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-zinc-400 resize-none"
+                              className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-ink-muted resize-none"
                             />
                           </div>
                           <DialogFooter>
-                            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl shadow-sm">
+                            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg shadow-card">
                               Confirm & Close
                             </Button>
                           </DialogFooter>
@@ -765,32 +765,32 @@ export default function CustomerTicketDetailPage() {
 
                   <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" className="h-9 text-[13px] font-medium border-red-200 text-red-600 hover:bg-red-50 rounded-lg gap-1.5">
+                      <Button variant="outline" className="h-9 text-[13px] font-medium border-red-200 text-critical hover:bg-red-50 rounded-lg gap-1.5">
                         Reject & Reopen
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+                    <DialogContent className="bg-surface border border-line rounded-2xl p-0 max-w-md overflow-hidden">
                       <div className="p-6 space-y-5">
                         <DialogHeader>
-                          <DialogTitle className="text-lg font-bold text-zinc-900">Reject Resolution</DialogTitle>
-                          <DialogDescription className="text-sm text-zinc-500">
+                          <DialogTitle className="text-lg font-bold text-ink">Reject Resolution</DialogTitle>
+                          <DialogDescription className="text-sm text-ink-secondary">
                             Explain why the fix doesn&apos;t resolve your issue.
                           </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleReopenSubmit} className="space-y-5">
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Reason</label>
+                            <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Reason</label>
                             <textarea
                               required
                               rows={4}
                               placeholder="Describe what's still not working..."
                               value={reopenReason}
                               onChange={(e) => setReopenReason(e.target.value)}
-                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition placeholder:text-zinc-400 resize-none"
+                              className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition placeholder:text-ink-muted resize-none"
                             />
                           </div>
                           <DialogFooter>
-                            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl">
+                            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg">
                               Reopen Ticket
                             </Button>
                           </DialogFooter>
@@ -807,33 +807,33 @@ export default function CustomerTicketDetailPage() {
                     <Button 
                       variant="outline" 
                       disabled={!!pendingReopenRequest}
-                      className="h-9 text-[13px] font-medium border-zinc-200 text-zinc-650 hover:text-zinc-900 hover:bg-zinc-50 rounded-lg gap-1.5"
+                      className="h-9 text-[13px] font-medium border-line text-ink-secondary hover:text-ink hover:bg-surface-muted rounded-lg gap-1.5"
                     >
                       {pendingReopenRequest ? 'Reopen Pending Approval' : 'Request Reopen'}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+                  <DialogContent className="bg-surface border border-line rounded-2xl p-0 max-w-md overflow-hidden">
                     <div className="p-6 space-y-5">
                       <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-zinc-900">Reopen Ticket</DialogTitle>
-                        <DialogDescription className="text-sm text-zinc-500">
+                        <DialogTitle className="text-lg font-bold text-ink">Reopen Ticket</DialogTitle>
+                        <DialogDescription className="text-sm text-ink-secondary">
                           Explain why this closed ticket needs to be reopened.
                         </DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleReopenSubmit} className="space-y-5">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Reason</label>
+                          <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Reason</label>
                           <textarea
                             required
                             rows={4}
                             placeholder="Describe the recurring or new issue..."
                             value={reopenReason}
                             onChange={(e) => setReopenReason(e.target.value)}
-                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-zinc-400 resize-none"
+                            className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-ink-muted resize-none"
                           />
                         </div>
                         <DialogFooter>
-                          <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl">
+                          <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg">
                             Submit Reopen Request
                           </Button>
                         </DialogFooter>
@@ -854,28 +854,28 @@ export default function CustomerTicketDetailPage() {
                     if (!open) setEscalationReasonInput('');
                   }}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" className="h-9 text-[13px] font-medium border-orange-200 text-orange-600 hover:bg-orange-50 rounded-lg gap-1.5">
+                      <Button variant="outline" className="h-9 text-[13px] font-medium border-orange-200 text-warning hover:bg-orange-50 rounded-lg gap-1.5">
                         <Zap size={14} /> Escalate
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-6 max-w-md overflow-hidden font-sans text-sm">
+                    <DialogContent className="bg-surface border border-line rounded-2xl p-6 max-w-md overflow-hidden font-sans text-sm">
                       <DialogHeader className="space-y-2">
-                        <DialogTitle className="text-lg font-bold text-zinc-900 normal-case tracking-normal">Escalate Ticket</DialogTitle>
-                        <DialogDescription className="text-sm text-zinc-500">
+                        <DialogTitle className="text-lg font-bold text-ink normal-case tracking-normal">Escalate Ticket</DialogTitle>
+                        <DialogDescription className="text-sm text-ink-secondary">
                           Escalating will notify your support manager immediately and flag this ticket for priority handling.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-2 mt-4">
-                        <label className="text-xs font-semibold text-zinc-650 uppercase tracking-wider block">Reason for escalation</label>
+                        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider block">Reason for escalation</label>
                         <textarea
                           rows={4}
                           placeholder="Please describe the business impact or reason for escalating this ticket (minimum 10 characters)..."
                           value={escalationReasonInput}
                           onChange={(e) => setEscalationReasonInput(e.target.value)}
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition placeholder:text-zinc-400 resize-none"
+                          className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition placeholder:text-ink-muted resize-none"
                         />
                         {escalationReasonInput.trim().length > 0 && escalationReasonInput.trim().length < 10 && (
-                          <p className="text-xs text-red-500 font-semibold">Reason must be at least 10 characters (currently {escalationReasonInput.trim().length}).</p>
+                          <p className="text-xs text-critical font-semibold">Reason must be at least 10 characters (currently {escalationReasonInput.trim().length}).</p>
                         )}
                       </div>
                       <DialogFooter className="mt-6 flex gap-2">
@@ -902,7 +902,7 @@ export default function CustomerTicketDetailPage() {
                 <Button
                   onClick={() => setShowDeleteDialog(true)}
                   variant="outline"
-                  className="h-9 text-[13px] font-medium border-zinc-200 text-zinc-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-lg gap-1.5 transition"
+                  className="h-9 text-[13px] font-medium border-line text-ink-secondary hover:text-critical hover:border-red-200 hover:bg-red-50 rounded-lg gap-1.5 transition"
                 >
                   <Trash2 size={14} /> Delete
                 </Button>
@@ -934,7 +934,7 @@ export default function CustomerTicketDetailPage() {
                       ? 'bg-primary text-primary-foreground'
                       : isCompleted
                         ? 'bg-muted text-muted-foreground'
-                        : 'bg-white border-2 border-muted text-muted-foreground/60'
+                        : 'bg-surface border-2 border-muted text-muted-foreground/60'
                   }`}>
                     {isCompleted ? <CheckCircle2 size={18} /> : <Icon size={16} />}
                   </div>
@@ -963,7 +963,7 @@ export default function CustomerTicketDetailPage() {
 
       {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
         <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
-          <ShieldCheck className="size-4 text-emerald-600" />
+          <ShieldCheck className="size-4 text-success" />
           <AlertTitle>Escalation Acknowledged — Priority Handling Active</AlertTitle>
           <AlertDescription>
             Your support team has acknowledged this escalation and is actively working
@@ -974,13 +974,13 @@ export default function CustomerTicketDetailPage() {
 
       {/* SLA Breach Warning */}
       {ticket.status !== 'Resolved' && ticket.status !== 'Closed' && isSlaApplicable && new Date(ticket.slaDueAt).getTime() < Date.now() && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 shadow-card">
           <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
-            <AlertTriangle size={16} className="text-red-600" />
+            <AlertTriangle size={16} className="text-critical" />
           </div>
           <div>
             <p className="font-semibold text-red-700 text-sm">SLA Target Exceeded</p>
-            <p className="text-[13px] text-red-600/80 mt-0.5 leading-relaxed">This ticket has exceeded its resolution target. The support team has been notified for immediate action.</p>
+            <p className="text-[13px] text-critical/80 mt-0.5 leading-relaxed">This ticket has exceeded its resolution target. The support team has been notified for immediate action.</p>
           </div>
         </div>
       )}
@@ -991,14 +991,14 @@ export default function CustomerTicketDetailPage() {
         {/* Left Column (2/3) */}
         <div className="lg:col-span-2 space-y-6">
           <Tabs defaultValue="details" className="space-y-5">
-            <TabsList className="bg-zinc-100/80 border border-zinc-200/60 p-1 rounded-xl flex gap-0.5 w-full max-w-lg h-auto">
-              <TabsTrigger value="details" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm flex-1 transition text-zinc-500">
+            <TabsList className="bg-surface-subtle/80 border border-line/60 p-1 rounded-lg flex gap-0.5 w-full max-w-lg h-auto">
+              <TabsTrigger value="details" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card flex-1 transition text-ink-secondary">
                 Details
               </TabsTrigger>
-              <TabsTrigger value="conversation" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm flex-1 transition text-zinc-500">
+              <TabsTrigger value="conversation" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card flex-1 transition text-ink-secondary">
                 Conversation ({timelineEvents.length})
               </TabsTrigger>
-              <TabsTrigger value="sla" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm flex-1 transition text-zinc-500">
+              <TabsTrigger value="sla" className="rounded-lg px-4 py-2 text-[13px] font-semibold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card flex-1 transition text-ink-secondary">
                 SLA & Efforts
               </TabsTrigger>
             </TabsList>
@@ -1006,26 +1006,26 @@ export default function CustomerTicketDetailPage() {
             {/* TAB 1: Details */}
             <TabsContent value="details" className="space-y-5 animate-in fade-in duration-200">
               {/* Description Card */}
-              <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+              <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+                <div className="px-6 py-4 border-b border-line flex items-center gap-2">
                   <FileText size={16} className="text-indigo-500" />
-                  <h3 className="text-sm font-semibold text-zinc-900">Description</h3>
+                  <h3 className="text-sm font-semibold text-ink">Description</h3>
                 </div>
                 <div className="p-6 space-y-5">
-                  <p className="text-[14px] text-zinc-700 leading-relaxed whitespace-pre-wrap">{ticket.description}</p>
+                  <p className="text-[14px] text-ink-secondary leading-relaxed whitespace-pre-wrap">{ticket.description}</p>
 
                   {ticket.businessImpact && (
-                    <div className="pt-4 border-t border-zinc-100 space-y-2">
-                      <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Business Impact</h4>
-                      <p className="text-[13px] text-zinc-600 leading-relaxed">{ticket.businessImpact}</p>
+                    <div className="pt-4 border-t border-line space-y-2">
+                      <h4 className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Business Impact</h4>
+                      <p className="text-[13px] text-ink-secondary leading-relaxed">{ticket.businessImpact}</p>
                     </div>
                   )}
 
                   {/* Category & Source metadata row */}
-                  <div className="pt-4 border-t border-zinc-100 flex flex-wrap gap-4 text-[13px] text-zinc-500">
-                    <span className="flex items-center gap-1.5"><Tag size={13} className="text-zinc-400" /> {ticket.category}</span>
-                    <span className="flex items-center gap-1.5"><CircleDot size={13} className="text-zinc-400" /> {ticket.source}</span>
-                    <span className="flex items-center gap-1.5"><Layers size={13} className="text-zinc-400" /> {ticket.functionalOrTechnical || 'Functional'}</span>
+                  <div className="pt-4 border-t border-line flex flex-wrap gap-4 text-[13px] text-ink-secondary">
+                    <span className="flex items-center gap-1.5"><Tag size={13} className="text-ink-muted" /> {ticket.category}</span>
+                    <span className="flex items-center gap-1.5"><CircleDot size={13} className="text-ink-muted" /> {ticket.source}</span>
+                    <span className="flex items-center gap-1.5"><Layers size={13} className="text-ink-muted" /> {ticket.functionalOrTechnical || 'Functional'}</span>
                   </div>
                 </div>
               </div>
@@ -1035,28 +1035,28 @@ export default function CustomerTicketDetailPage() {
 
               {/* Resolution Summary */}
               {(ticket.status === 'Resolved' || ticket.status === 'Closed') && (
-                <div className="bg-emerald-50/50 rounded-2xl border border-emerald-200/60 shadow-sm overflow-hidden">
+                <div className="bg-emerald-50/50 rounded-2xl border border-emerald-200/60 shadow-card overflow-hidden">
                   <div className="px-6 py-4 border-b border-emerald-100 flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-emerald-600" />
+                    <ShieldCheck size={16} className="text-success" />
                     <h3 className="text-sm font-semibold text-emerald-800">Resolution Summary</h3>
                   </div>
                   <div className="p-6 space-y-4">
                     {ticket.rootCause && (
                       <div className="space-y-1.5">
                         <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Root Cause</h4>
-                        <p className="text-[13px] text-zinc-700 leading-relaxed">{ticket.rootCause}</p>
+                        <p className="text-[13px] text-ink-secondary leading-relaxed">{ticket.rootCause}</p>
                       </div>
                     )}
                     {ticket.resolutionSummary && (
                       <div className="space-y-1.5">
                         <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Fix Applied</h4>
-                        <p className="text-[13px] text-zinc-700 leading-relaxed">{ticket.resolutionSummary}</p>
+                        <p className="text-[13px] text-ink-secondary leading-relaxed">{ticket.resolutionSummary}</p>
                       </div>
                     )}
                     {ticket.transportRequest && (
                       <div className="space-y-1.5">
                         <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">SAP Transport</h4>
-                        <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-mono rounded-lg px-2.5 py-0.5 hover:bg-transparent">
+                        <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs rounded-lg px-2.5 py-0.5 hover:bg-transparent">
                           {ticket.transportRequest}
                         </Badge>
                       </div>
@@ -1068,18 +1068,18 @@ export default function CustomerTicketDetailPage() {
 
             {/* TAB 2: Conversation */}
             <TabsContent value="conversation" className="space-y-5 animate-in fade-in duration-200">
-              <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+              <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+                <div className="px-6 py-4 border-b border-line flex items-center gap-2">
                   <MessageSquare size={16} className="text-indigo-500" />
-                  <h3 className="text-sm font-semibold text-zinc-900">Activity Timeline</h3>
+                  <h3 className="text-sm font-semibold text-ink">Activity Timeline</h3>
                 </div>
                 <div className="p-6">
                   {timelineEvents.length === 0 ? (
                     <div className="text-center py-12 space-y-3">
-                      <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mx-auto">
-                        <MessageSquare size={20} className="text-zinc-400" />
+                      <div className="w-12 h-12 rounded-full bg-surface-subtle flex items-center justify-center mx-auto">
+                        <MessageSquare size={20} className="text-ink-muted" />
                       </div>
-                      <p className="text-sm text-zinc-400">No activity yet</p>
+                      <p className="text-sm text-ink-muted">No activity yet</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1089,14 +1089,14 @@ export default function CustomerTicketDetailPage() {
                         const isCustomer = evt.role === 'Customer';
 
                         return (
-                          <div key={evt.id} className={`rounded-xl border p-4 transition-all hover:shadow-sm group ${
+                          <div key={evt.id} className={`rounded-lg border p-4 transition-all hover:shadow-card group ${
                             isEsc
                               ? 'bg-orange-50/50 border-orange-200/60'
                               : isAudit
-                                ? 'bg-zinc-50/50 border-zinc-200/60'
+                                ? 'bg-surface-muted/60 border-line/60'
                                 : isCustomer
                                   ? 'bg-indigo-50/30 border-indigo-200/50'
-                                  : 'bg-white border-zinc-200/60'
+                                  : 'bg-surface border-line/60'
                           }`}>
                             <div className="flex items-start justify-between gap-3 mb-2">
                               <div className="flex items-center gap-2.5">
@@ -1106,20 +1106,20 @@ export default function CustomerTicketDetailPage() {
                                   {isEsc ? <Zap size={13} /> : isAudit ? <History size={13} /> : <User size={13} />}
                                 </div>
                                 <div>
-                                  <span className="text-sm font-semibold text-zinc-900">{evt.author}</span>
-                                  <span className="text-[11px] text-zinc-400 ml-1.5">
+                                  <span className="text-sm font-semibold text-ink">{evt.author}</span>
+                                  <span className="text-[11px] text-ink-muted ml-1.5">
                                     {evt.role !== 'System' && `· ${evt.role}`}
                                   </span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-[11px] text-zinc-400">
+                                <span className="text-[11px] text-ink-muted">
                                   {new Date(evt.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(evt.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                                 {evt.type === 'comment' && (
                                   <button
                                     onClick={() => handleQuoteComment(evt.author, evt.content)}
-                                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition"
+                                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-subtle text-ink-muted hover:text-ink-secondary transition"
                                     title="Quote"
                                   >
                                     <Quote size={12} />
@@ -1128,7 +1128,7 @@ export default function CustomerTicketDetailPage() {
                               </div>
                             </div>
 
-                            <div className={`ml-[38px] text-[13px] leading-relaxed ${isAudit ? 'text-zinc-500 italic' : 'text-zinc-700'}`}>
+                            <div className={`ml-[38px] text-[13px] leading-relaxed ${isAudit ? 'text-ink-secondary italic' : 'text-ink-secondary'}`}>
                               {isAudit ? evt.content : renderCommentContent(evt.content)}
                             </div>
 
@@ -1139,7 +1139,7 @@ export default function CustomerTicketDetailPage() {
                                     key={att.id}
                                     href="#"
                                     onClick={(e) => { e.preventDefault(); handleDownloadFile(att.fileName, att.fileUrl || att.filePath); }}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-[12px] text-zinc-600 hover:border-indigo-300 hover:text-indigo-600 transition font-medium"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-line rounded-lg text-[12px] text-ink-secondary hover:border-indigo-300 hover:text-indigo-600 transition font-medium"
                                   >
                                     <FileCode size={12} className="text-indigo-400" />
                                     {att.fileName}
@@ -1157,10 +1157,10 @@ export default function CustomerTicketDetailPage() {
 
               {/* Composer */}
               {ticket.status !== 'Closed' && (
-                <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+                <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+                  <div className="px-6 py-4 border-b border-line flex items-center gap-2">
                     <Send size={16} className="text-indigo-500" />
-                    <h3 className="text-sm font-semibold text-zinc-900">Reply</h3>
+                    <h3 className="text-sm font-semibold text-ink">Reply</h3>
                   </div>
                   <div className="p-6">
                     <form onSubmit={handleCommentSubmit} className="space-y-4">
@@ -1170,12 +1170,12 @@ export default function CustomerTicketDetailPage() {
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         placeholder="Write your message here..."
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-zinc-400 resize-none"
+                        className="w-full bg-surface-muted border border-line rounded-lg p-4 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-ink-muted resize-none"
                       />
 
                       {/* Attachments */}
                       <div className="space-y-3">
-                        <div className="relative border-2 border-dashed border-zinc-200 rounded-xl p-5 bg-zinc-50/50 hover:bg-indigo-50/30 hover:border-indigo-300 transition flex flex-col items-center justify-center gap-2 cursor-pointer group">
+                        <div className="relative border-2 border-dashed border-line rounded-lg p-5 bg-surface-muted/60 hover:bg-indigo-50/30 hover:border-indigo-300 transition flex flex-col items-center justify-center gap-2 cursor-pointer group">
                           <input
                             type="file"
                             multiple
@@ -1183,27 +1183,27 @@ export default function CustomerTicketDetailPage() {
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed"
                           />
-                          <div className="w-10 h-10 rounded-full bg-white border border-zinc-200 flex items-center justify-center group-hover:border-indigo-300 group-hover:bg-indigo-50 transition">
-                            <Upload size={18} className="text-zinc-400 group-hover:text-indigo-500 transition" />
+                          <div className="w-10 h-10 rounded-full bg-surface border border-line flex items-center justify-center group-hover:border-indigo-300 group-hover:bg-indigo-50 transition">
+                            <Upload size={18} className="text-ink-muted group-hover:text-indigo-500 transition" />
                           </div>
-                          <span className="text-sm text-zinc-600 font-medium">Drop files here or click to browse</span>
-                          <span className="text-[11px] text-zinc-400">Max 10MB per file</span>
+                          <span className="text-sm text-ink-secondary font-medium">Drop files here or click to browse</span>
+                          <span className="text-[11px] text-ink-muted">Max 10MB per file</span>
                         </div>
 
                         {commentFiles.length > 0 && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {commentFiles.map((pf) => (
-                              <div key={pf.id} className="relative flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl">
+                              <div key={pf.id} className="relative flex items-center gap-3 p-3 bg-surface-muted border border-line rounded-lg">
                                 {pf.previewUrl ? (
-                                  <img src={pf.previewUrl} alt="Preview" className="w-11 h-11 object-cover rounded-lg border border-zinc-200" />
+                                  <img src={pf.previewUrl} alt="Preview" className="w-11 h-11 object-cover rounded-lg border border-line" />
                                 ) : (
-                                  <div className="w-11 h-11 rounded-lg border border-zinc-200 bg-white flex items-center justify-center">
+                                  <div className="w-11 h-11 rounded-lg border border-line bg-surface flex items-center justify-center">
                                     {getFileIcon(pf.file.type)}
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-zinc-900 truncate pr-6">{pf.file.name}</p>
-                                  <p className="text-[11px] text-zinc-400">{(pf.file.size / 1024).toFixed(0)} KB</p>
+                                  <p className="text-sm font-medium text-ink truncate pr-6">{pf.file.name}</p>
+                                  <p className="text-[11px] text-ink-muted">{(pf.file.size / 1024).toFixed(0)} KB</p>
                                   <div className="w-full bg-zinc-200 rounded-full h-1 mt-1.5 overflow-hidden">
                                     <div className="bg-indigo-500 h-full transition-all duration-300 rounded-full" style={{ width: `${pf.progress}%` }}></div>
                                   </div>
@@ -1211,7 +1211,7 @@ export default function CustomerTicketDetailPage() {
                                 <button
                                   type="button"
                                   onClick={() => removePendingFile(pf.id)}
-                                  className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition"
+                                  className="absolute top-2 right-2 text-ink-muted hover:text-critical p-1 rounded-full hover:bg-red-50 transition"
                                 >
                                   <X size={14} />
                                 </button>
@@ -1222,7 +1222,7 @@ export default function CustomerTicketDetailPage() {
                       </div>
 
                       <div className="flex justify-end pt-2">
-                        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm h-10 px-6 rounded-xl shadow-sm transition gap-1.5">
+                        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm h-10 px-6 rounded-lg shadow-card transition gap-1.5">
                           <Send size={14} /> Send Reply
                         </Button>
                       </div>
@@ -1235,40 +1235,40 @@ export default function CustomerTicketDetailPage() {
             {/* TAB 3: SLA & Efforts */}
             <TabsContent value="sla" className="space-y-5 animate-in fade-in duration-200">
               {/* SLA Card */}
-              <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+              <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+                <div className="px-6 py-4 border-b border-line flex items-center gap-2">
                   <Timer size={16} className="text-indigo-500" />
-                  <h3 className="text-sm font-semibold text-zinc-900">SLA Details</h3>
+                  <h3 className="text-sm font-semibold text-ink">SLA Details</h3>
                 </div>
                 <div className="p-6 space-y-4 text-sm">
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-zinc-500">Coverage</span>
-                    <span className="font-medium text-zinc-900">{isIncident ? 'Active Incident SLA' : 'Exempt (Non-Incident)'}</span>
+                    <span className="text-ink-secondary">Coverage</span>
+                    <span className="font-medium text-ink">{isIncident ? 'Active Incident SLA' : 'Exempt (Non-Incident)'}</span>
                   </div>
                   {isSlaApplicable ? (
                     <>
-                      <div className="flex justify-between items-center py-2 border-t border-zinc-100">
-                        <span className="text-zinc-500">Resolution Due</span>
-                        <span className="font-medium text-zinc-900">{new Date(ticket.slaDueAt).toLocaleString()}</span>
+                      <div className="flex justify-between items-center py-2 border-t border-line">
+                        <span className="text-ink-secondary">Resolution Due</span>
+                        <span className="font-medium text-ink">{new Date(ticket.slaDueAt).toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between items-center py-2 border-t border-zinc-100">
-                        <span className="text-zinc-500">Status</span>
+                      <div className="flex justify-between items-center py-2 border-t border-line">
+                        <span className="text-ink-secondary">Status</span>
                         <Badge className={`${slaStatus.color} border text-[11px] font-semibold px-2.5 py-0.5 rounded-full hover:bg-transparent`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${slaStatus.dot} mr-1.5 inline-block`}></span>
                           {slaStatus.label}
                         </Badge>
                       </div>
                       {ticket.resolvedAt && (
-                        <div className="flex justify-between items-center py-2 border-t border-zinc-100">
-                          <span className="text-zinc-500">Resolved At</span>
-                          <span className="font-medium text-zinc-900">{new Date(ticket.resolvedAt).toLocaleString()}</span>
+                        <div className="flex justify-between items-center py-2 border-t border-line">
+                          <span className="text-ink-secondary">Resolved At</span>
+                          <span className="font-medium text-ink">{new Date(ticket.resolvedAt).toLocaleString()}</span>
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 flex items-start gap-3 mt-2">
+                    <div className="bg-surface-muted border border-line rounded-lg p-4 flex items-start gap-3 mt-2">
                       <Info size={16} className="text-indigo-500 shrink-0 mt-0.5" />
-                      <p className="text-[13px] text-zinc-600 leading-relaxed">
+                      <p className="text-[13px] text-ink-secondary leading-relaxed">
                         SLA tracking is applicable to Incident-type tickets only. Enhancement and change requests follow milestone-based delivery timelines.
                       </p>
                     </div>
@@ -1277,36 +1277,36 @@ export default function CustomerTicketDetailPage() {
               </div>
 
               {/* Effort Hours Card */}
-              <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
+              <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+                <div className="px-6 py-4 border-b border-line flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Activity size={16} className="text-indigo-500" />
-                    <h3 className="text-sm font-semibold text-zinc-900">Effort Hours</h3>
+                    <h3 className="text-sm font-semibold text-ink">Effort Hours</h3>
                   </div>
-                  <Badge className="bg-zinc-100 text-zinc-500 border border-zinc-200 text-[10px] font-medium px-2 py-0 rounded-full hover:bg-transparent">
+                  <Badge className="bg-surface-subtle text-ink-secondary border border-line text-[11px] font-medium px-2 py-0 rounded-full hover:bg-transparent">
                     {isClosed ? 'Released' : 'Locked'}
                   </Badge>
                 </div>
                 <div className="p-6">
                   {isClosed ? (
                     <div className="space-y-5">
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
-                        <Unlock size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+                        <Unlock size={16} className="text-success shrink-0 mt-0.5" />
                         <div>
                           <p className="font-semibold text-emerald-800 text-sm">Hours Released</p>
-                          <p className="text-[12px] text-emerald-600 mt-0.5">Actual effort hours are now visible after ticket closure.</p>
+                          <p className="text-[12px] text-success mt-0.5">Actual effort hours are now visible after ticket closure.</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-3">
-                        <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl text-center">
-                          <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">Functional</p>
-                          <p className="text-2xl font-bold text-zinc-900 mt-1">{actualFuncHours.toFixed(1)}<span className="text-sm font-normal text-zinc-400">h</span></p>
+                        <div className="p-4 bg-surface-muted border border-line rounded-lg text-center">
+                          <p className="text-[11px] text-ink-secondary font-medium uppercase tracking-wider">Functional</p>
+                          <p className="text-2xl font-bold text-ink mt-1">{actualFuncHours.toFixed(1)}<span className="text-sm font-normal text-ink-muted">h</span></p>
                         </div>
-                        <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl text-center">
-                          <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">Technical</p>
-                          <p className="text-2xl font-bold text-zinc-900 mt-1">{actualTechHours.toFixed(1)}<span className="text-sm font-normal text-zinc-400">h</span></p>
+                        <div className="p-4 bg-surface-muted border border-line rounded-lg text-center">
+                          <p className="text-[11px] text-ink-secondary font-medium uppercase tracking-wider">Technical</p>
+                          <p className="text-2xl font-bold text-ink mt-1">{actualTechHours.toFixed(1)}<span className="text-sm font-normal text-ink-muted">h</span></p>
                         </div>
-                        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl text-center">
+                        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
                           <p className="text-[11px] text-indigo-600 font-semibold uppercase tracking-wider">Total</p>
                           <p className="text-2xl font-bold text-indigo-600 mt-1">{totalActualHours.toFixed(1)}<span className="text-sm font-normal text-indigo-400">h</span></p>
                         </div>
@@ -1314,12 +1314,12 @@ export default function CustomerTicketDetailPage() {
                     </div>
                   ) : (
                     <div className="text-center py-8 space-y-3">
-                      <div className="w-14 h-14 rounded-full bg-zinc-100 flex items-center justify-center mx-auto">
-                        <Lock size={22} className="text-zinc-400" />
+                      <div className="w-14 h-14 rounded-full bg-surface-subtle flex items-center justify-center mx-auto">
+                        <Lock size={22} className="text-ink-muted" />
                       </div>
                       <div>
-                        <p className="font-semibold text-zinc-700 text-sm">Effort Hours Locked</p>
-                        <p className="text-[13px] text-zinc-400 max-w-xs mx-auto leading-relaxed mt-1">
+                        <p className="font-semibold text-ink-secondary text-sm">Effort Hours Locked</p>
+                        <p className="text-[13px] text-ink-muted max-w-xs mx-auto leading-relaxed mt-1">
                           Hours are verified by team managers and will become visible once this ticket is closed.
                         </p>
                       </div>
@@ -1336,31 +1336,31 @@ export default function CustomerTicketDetailPage() {
 
           {/* Pending Delete Alert */}
           {ticket.softDeleteStatus === 'Pending Delete' && ticket.deleteRequests && ticket.deleteRequests.length > 0 && (
-            <div className="bg-amber-50 rounded-2xl border border-amber-200/60 shadow-sm overflow-hidden">
+            <div className="bg-amber-50 rounded-2xl border border-amber-200/60 shadow-card overflow-hidden">
               <div className="px-5 py-3.5 border-b border-amber-100 flex items-center gap-2">
-                <Trash2 size={14} className="text-amber-600" />
+                <Trash2 size={14} className="text-warning" />
                 <h3 className="text-sm font-semibold text-amber-800">Deletion Pending</h3>
               </div>
               <div className="p-5 space-y-3 text-sm">
                 {(ticket.deleteRequests || []).map((req, idx) => (
                   <div key={req.id || idx} className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Requested by</span>
-                      <span className="font-medium text-zinc-900">{req.requestedBy}</span>
+                      <span className="text-ink-secondary">Requested by</span>
+                      <span className="font-medium text-ink">{req.requestedBy}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Date</span>
-                      <span className="font-medium text-zinc-900">{new Date(req.requestedAt).toLocaleDateString()}</span>
+                      <span className="text-ink-secondary">Date</span>
+                      <span className="font-medium text-ink">{new Date(req.requestedAt).toLocaleDateString()}</span>
                     </div>
-                    <p className="text-[13px] text-zinc-600 italic bg-white/60 rounded-lg p-3 border border-amber-100">&quot;{req.reason}&quot;</p>
+                    <p className="text-[13px] text-ink-secondary italic bg-surface/60 rounded-lg p-3 border border-amber-100">&quot;{req.reason}&quot;</p>
                     <div className="grid grid-cols-2 gap-2 text-center">
-                      <div className="p-2.5 bg-white rounded-lg border border-amber-100">
-                        <p className="text-[10px] text-zinc-400 font-medium uppercase">Manager</p>
-                        <Badge className="mt-1 bg-amber-100 text-amber-700 border border-amber-200 text-[10px] rounded-full hover:bg-transparent">{req.managerApproval}</Badge>
+                      <div className="p-2.5 bg-surface rounded-lg border border-amber-100">
+                        <p className="text-[11px] text-ink-muted font-medium uppercase">Manager</p>
+                        <Badge className="mt-1 bg-amber-100 text-amber-700 border border-amber-200 text-[11px] rounded-full hover:bg-transparent">{req.managerApproval}</Badge>
                       </div>
-                      <div className="p-2.5 bg-white rounded-lg border border-amber-100">
-                        <p className="text-[10px] text-zinc-400 font-medium uppercase">Director</p>
-                        <Badge className="mt-1 bg-amber-100 text-amber-700 border border-amber-200 text-[10px] rounded-full hover:bg-transparent">{req.adminApproval}</Badge>
+                      <div className="p-2.5 bg-surface rounded-lg border border-amber-100">
+                        <p className="text-[11px] text-ink-muted font-medium uppercase">Director</p>
+                        <Badge className="mt-1 bg-amber-100 text-amber-700 border border-amber-200 text-[11px] rounded-full hover:bg-transparent">{req.adminApproval}</Badge>
                       </div>
                     </div>
                   </div>
@@ -1370,27 +1370,27 @@ export default function CustomerTicketDetailPage() {
           )}
 
           {/* Assigned Team */}
-          <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
+          <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-line flex items-center gap-2">
               <Users size={14} className="text-indigo-500" />
-              <h3 className="text-sm font-semibold text-zinc-900">Assigned Team</h3>
+              <h3 className="text-sm font-semibold text-ink">Assigned Team</h3>
             </div>
             <div className="p-5">
               {(!ticket.assignments || ticket.assignments.filter(a => a.active).length === 0) ? (
                 <div className="text-center py-6 space-y-2">
-                  <div className="w-11 h-11 rounded-full bg-zinc-100 flex items-center justify-center mx-auto">
-                    <Users size={18} className="text-zinc-400" />
+                  <div className="w-11 h-11 rounded-full bg-surface-subtle flex items-center justify-center mx-auto">
+                    <Users size={18} className="text-ink-muted" />
                   </div>
-                  <p className="text-sm text-zinc-500 font-medium">Not yet assigned</p>
-                  <p className="text-[12px] text-zinc-400 max-w-[200px] mx-auto leading-relaxed">A consultant will be assigned based on the SAP module.</p>
+                  <p className="text-sm text-ink-secondary font-medium">Not yet assigned</p>
+                  <p className="text-[12px] text-ink-muted max-w-[200px] mx-auto leading-relaxed">A consultant will be assigned based on the SAP module.</p>
                 </div>
               ) : (
                 <div className="space-y-2.5">
                   {(ticket.assignments || []).filter(a => a.active).map((assignment) => (
                     <div
                       key={assignment.consultantId}
-                      className={`p-3.5 rounded-xl border flex items-center justify-between transition hover:shadow-sm ${
-                        assignment.isPrimary ? 'bg-indigo-50/50 border-indigo-200/60' : 'bg-zinc-50/50 border-zinc-200'
+                      className={`p-3.5 rounded-lg border flex items-center justify-between transition hover:shadow-card ${
+                        assignment.isPrimary ? 'bg-indigo-50/50 border-indigo-200/60' : 'bg-surface-muted/60 border-line'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -1400,12 +1400,12 @@ export default function CustomerTicketDetailPage() {
                           {assignment.consultantName?.charAt(0) || 'C'}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-zinc-900">{assignment.consultantName}</p>
-                          <p className="text-[11px] text-zinc-400">{assignment.consultantType} Consultant</p>
+                          <p className="text-sm font-semibold text-ink">{assignment.consultantName}</p>
+                          <p className="text-[11px] text-ink-muted">{assignment.consultantType} Consultant</p>
                         </div>
                       </div>
                       {assignment.isPrimary && (
-                        <Badge className="bg-amber-100 text-amber-700 border border-amber-200 text-[10px] font-semibold rounded-full px-2 py-0 hover:bg-transparent">
+                        <Badge className="bg-amber-100 text-amber-700 border border-amber-200 text-[11px] font-semibold rounded-full px-2 py-0 hover:bg-transparent">
                           <Star size={9} className="fill-amber-500 text-amber-500 mr-0.5" /> Lead
                         </Badge>
                       )}
@@ -1417,50 +1417,50 @@ export default function CustomerTicketDetailPage() {
           </div>
 
           {/* Ticket Properties */}
-          <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
+          <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-line flex items-center gap-2">
               <Layers size={14} className="text-indigo-500" />
-              <h3 className="text-sm font-semibold text-zinc-900">Properties</h3>
+              <h3 className="text-sm font-semibold text-ink">Properties</h3>
             </div>
             <div className="p-5 space-y-3 text-sm">
               <div className="flex justify-between items-center">
-                <span className="text-zinc-500">SAP Module</span>
+                <span className="text-ink-secondary">SAP Module</span>
                 <div className="flex flex-wrap gap-1 justify-end">
                   {(ticket.sapModules || [ticket.sapModule || 'FICO']).map(m => (
-                    <Badge key={m} className="bg-zinc-100 text-zinc-700 border border-zinc-200 text-[11px] font-medium rounded-md px-2 py-0 hover:bg-transparent">{m}</Badge>
+                    <Badge key={m} className="bg-surface-subtle text-ink-secondary border border-line text-[11px] font-medium rounded-md px-2 py-0 hover:bg-transparent">{m}</Badge>
                   ))}
                 </div>
               </div>
-              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
-                <span className="text-zinc-500">Status</span>
+              <div className="flex justify-between items-center border-t border-line pt-3">
+                <span className="text-ink-secondary">Status</span>
                 <Badge className={`${getStatusStyle(ticket.status)} border text-[11px] font-semibold px-2.5 py-0.5 rounded-full hover:bg-transparent`}>{ticket.status}</Badge>
               </div>
-              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
-                <span className="text-zinc-500">Priority</span>
+              <div className="flex justify-between items-center border-t border-line pt-3">
+                <span className="text-ink-secondary">Priority</span>
                 <Badge className={`${getPriorityStyle(ticket.priority)} border text-[11px] font-semibold px-2.5 py-0.5 rounded-full hover:bg-transparent`}>{ticket.priority}</Badge>
               </div>
-              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
-                <span className="text-zinc-500">Type</span>
-                <span className="font-medium text-zinc-900">{ticket.functionalOrTechnical || 'Functional'}</span>
+              <div className="flex justify-between items-center border-t border-line pt-3">
+                <span className="text-ink-secondary">Type</span>
+                <span className="font-medium text-ink">{ticket.functionalOrTechnical || 'Functional'}</span>
               </div>
-              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
-                <span className="text-zinc-500">Lead</span>
-                <span className="font-medium text-zinc-900">{ticket.assignedConsultant || 'Pending'}</span>
+              <div className="flex justify-between items-center border-t border-line pt-3">
+                <span className="text-ink-secondary">Lead</span>
+                <span className="font-medium text-ink">{ticket.assignedConsultant || 'Pending'}</span>
               </div>
-              <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
-                <span className="text-zinc-500">Action Owner</span>
-                <span className="font-medium text-zinc-900">{ticket.nextActionOwner || ticket.assignedConsultant || 'Support Desk'}</span>
+              <div className="flex justify-between items-center border-t border-line pt-3">
+                <span className="text-ink-secondary">Action Owner</span>
+                <span className="font-medium text-ink">{ticket.nextActionOwner || ticket.assignedConsultant || 'Support Desk'}</span>
               </div>
               {ticket.expectedResolutionDate && (
-                <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
-                  <span className="text-zinc-500">Target Date</span>
-                  <span className="font-medium text-zinc-900">{new Date(ticket.expectedResolutionDate).toLocaleDateString()}</span>
+                <div className="flex justify-between items-center border-t border-line pt-3">
+                  <span className="text-ink-secondary">Target Date</span>
+                  <span className="font-medium text-ink">{new Date(ticket.expectedResolutionDate).toLocaleDateString()}</span>
                 </div>
               )}
               {ticket.reopenedCount ? (
-                <div className="flex justify-between items-center border-t border-zinc-100 pt-3">
-                  <span className="text-zinc-500">Reopens</span>
-                  <Badge className="bg-orange-50 text-orange-600 border border-orange-200 text-[11px] font-medium rounded-full px-2 py-0 hover:bg-transparent">{ticket.reopenedCount}×</Badge>
+                <div className="flex justify-between items-center border-t border-line pt-3">
+                  <span className="text-ink-secondary">Reopens</span>
+                  <Badge className="bg-orange-50 text-warning border border-orange-200 text-[11px] font-medium rounded-full px-2 py-0 hover:bg-transparent">{ticket.reopenedCount}×</Badge>
                 </div>
               ) : null}
             </div>
@@ -1468,9 +1468,9 @@ export default function CustomerTicketDetailPage() {
 
           {/* Active Escalation */}
           {ticket.escalationFlag && (
-            <div className="bg-orange-50/50 rounded-2xl border border-orange-200/60 shadow-sm overflow-hidden">
+            <div className="bg-orange-50/50 rounded-2xl border border-orange-200/60 shadow-card overflow-hidden">
               <div className="px-5 py-3.5 border-b border-orange-100 flex items-center gap-2">
-                <Zap size={14} className="text-orange-600" />
+                <Zap size={14} className="text-warning" />
                 <h3 className="text-sm font-semibold text-orange-800">Active Escalation</h3>
               </div>
               <div className="p-5 text-sm space-y-3">
@@ -1480,22 +1480,22 @@ export default function CustomerTicketDetailPage() {
                     return (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-zinc-500">Severity</span>
+                          <span className="text-ink-secondary">Severity</span>
                           <Badge className="bg-orange-100 text-orange-700 border border-orange-200 text-[11px] font-semibold rounded-full px-2.5 py-0 hover:bg-transparent">{latestEsc.severity}</Badge>
                         </div>
                         <div className="flex justify-between border-t border-orange-100 pt-3">
-                          <span className="text-zinc-500">Status</span>
+                          <span className="text-ink-secondary">Status</span>
                           <Badge className="bg-orange-100 text-orange-700 border border-orange-200 text-[11px] font-semibold rounded-full px-2.5 py-0 hover:bg-transparent">{latestEsc.status}</Badge>
                         </div>
                         <div className="border-t border-orange-100 pt-3">
-                          <p className="text-xs text-zinc-500 font-medium mb-1.5">Reason</p>
-                          <p className="text-[13px] text-zinc-700 italic leading-relaxed bg-white/60 rounded-lg p-3 border border-orange-100">&quot;{latestEsc.reason}&quot;</p>
+                          <p className="text-xs text-ink-secondary font-medium mb-1.5">Reason</p>
+                          <p className="text-[13px] text-ink-secondary italic leading-relaxed bg-surface/60 rounded-lg p-3 border border-orange-100">&quot;{latestEsc.reason}&quot;</p>
                         </div>
                       </>
                     );
                   })()
                 ) : (
-                  <p className="text-[13px] text-zinc-500">Escalation active. A service manager has been notified.</p>
+                  <p className="text-[13px] text-ink-secondary">Escalation active. A service manager has been notified.</p>
                 )}
               </div>
             </div>
@@ -1503,19 +1503,19 @@ export default function CustomerTicketDetailPage() {
 
           {/* SLA Clock */}
           {isSlaApplicable && (
-            <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
+            <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-line flex items-center gap-2">
                 <Clock size={14} className="text-indigo-500" />
-                <h3 className="text-sm font-semibold text-zinc-900">SLA Clock</h3>
+                <h3 className="text-sm font-semibold text-ink">SLA Clock</h3>
               </div>
               <div className="p-5 text-center space-y-3">
-                <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
-                  <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">Resolution Due</p>
-                  <p className="text-sm font-bold text-zinc-900 mt-1">{new Date(ticket.slaDueAt).toLocaleString()}</p>
+                <div className="p-4 bg-surface-muted border border-line rounded-lg">
+                  <p className="text-[11px] text-ink-secondary font-medium uppercase tracking-wider">Resolution Due</p>
+                  <p className="text-sm font-bold text-ink mt-1">{new Date(ticket.slaDueAt).toLocaleString()}</p>
                 </div>
-                <div className={`p-2.5 rounded-xl border text-[11px] font-semibold ${
+                <div className={`p-2.5 rounded-lg border text-[11px] font-semibold ${
                   ticket.status === 'Resolved' || ticket.status === 'Closed'
-                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                    ? 'bg-emerald-50 text-success border-emerald-200'
                     : 'bg-indigo-50 text-indigo-600 border-indigo-200'
                 }`}>
                   {ticket.status === 'Resolved' || ticket.status === 'Closed' ? '✓ Resolution Complete' : '◉ Clock Active'}
@@ -1530,40 +1530,40 @@ export default function CustomerTicketDetailPage() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+        <DialogContent className="bg-surface border border-line rounded-2xl p-0 max-w-md overflow-hidden">
           <div className="p-6 space-y-5">
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-zinc-900">Edit Ticket Details</DialogTitle>
-              <DialogDescription className="text-sm text-zinc-500">
+              <DialogTitle className="text-lg font-bold text-ink">Edit Ticket Details</DialogTitle>
+              <DialogDescription className="text-sm text-ink-secondary">
                 Update the title and description before a consultant is assigned.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Title</label>
+                <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Title</label>
                 <input
                   type="text"
                   required
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition"
+                  className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Description</label>
+                <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Description</label>
                 <textarea
                   rows={5}
                   required
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition resize-none"
+                  className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition resize-none"
                 />
               </div>
               <DialogFooter className="gap-2">
-                <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)} className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50">
+                <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)} className="rounded-lg border-line text-ink-secondary hover:bg-surface-muted">
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold">
+                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold">
                   Save Changes
                 </Button>
               </DialogFooter>
@@ -1574,31 +1574,31 @@ export default function CustomerTicketDetailPage() {
 
       {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-white border border-zinc-200 rounded-2xl p-0 max-w-md overflow-hidden">
+        <DialogContent className="bg-surface border border-line rounded-2xl p-0 max-w-md overflow-hidden">
           <div className="p-6 space-y-5">
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-zinc-900">Request Deletion</DialogTitle>
-              <DialogDescription className="text-sm text-zinc-500">
+              <DialogTitle className="text-lg font-bold text-ink">Request Deletion</DialogTitle>
+              <DialogDescription className="text-sm text-ink-secondary">
                 This requires approval from your account manager.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleDeleteSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Reason</label>
+                <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Reason</label>
                 <textarea
                   rows={3}
                   required
                   placeholder="Why should this ticket be deleted?"
                   value={deleteReason}
                   onChange={(e) => setDeleteReason(e.target.value)}
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition placeholder:text-zinc-400 resize-none"
+                  className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition placeholder:text-ink-muted resize-none"
                 />
               </div>
               <DialogFooter className="gap-2">
-                <Button type="button" variant="outline" onClick={() => setShowDeleteDialog(false)} className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50">
+                <Button type="button" variant="outline" onClick={() => setShowDeleteDialog(false)} className="rounded-lg border-line text-ink-secondary hover:bg-surface-muted">
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold">
+                <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold">
                   Submit Request
                 </Button>
               </DialogFooter>
