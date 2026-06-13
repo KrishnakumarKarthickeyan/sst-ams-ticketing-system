@@ -398,8 +398,8 @@ export default function AdminConsultantsPage() {
         setPwdGeneratedTemp(tempPass);
         toast.success('Temporary credentials generated successfully. Copy before closing.', { id: toastId });
       } else {
-        if (!pwdManualValue.trim() || pwdManualValue.length < 8) {
-          throw new Error('Password must be at least 8 characters.');
+        if (!pwdManualValue.trim() || pwdManualValue.length < 12) {
+          throw new Error('Password must be at least 12 characters.');
         }
         const res = await adminUpdatePasswordDirect(pwdUserSelected.id, pwdManualValue, 'SuperAdmin');
         if (!res.success) throw new Error(res.error);
