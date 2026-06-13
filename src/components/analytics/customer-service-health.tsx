@@ -8,7 +8,7 @@ import {
 import { Activity, Layers, AlertTriangle, Gauge, FileText, ListChecks } from 'lucide-react';
 import { ChartFrame } from './chart-frame';
 import {
-  CHART, PRIORITY_FILL, LIFECYCLE_FILL, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE,
+  CHART, PRIORITY_FILL, LIFECYCLE_FILL, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE, timeBuckets,
 } from '../../lib/analytics/chart-kit';
 import type { Ticket } from '../../types/ticket';
 
@@ -20,8 +20,6 @@ interface Props {
 }
 
 const isOpen = (t: Ticket) => t.status !== 'Closed' && t.status !== 'Resolved';
-const dayKey = (iso: string) => new Date(iso).toISOString().slice(0, 10);
-const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 // Map the full status taxonomy onto the four lifecycle stages the customer cares about.
 function lifecycleOf(status: string): 'Open' | 'In Progress' | 'Resolved' | 'Closed' {
@@ -48,24 +46,18 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
     if (companyTickets.length === 0) return [];
     const start = Math.min(...companyTickets.map(t => new Date(t.createdAt).getTime()));
     const latest = Math.max(now, ...companyTickets.map(t => new Date(t.resolvedAt || t.closedAt || t.createdAt).getTime()));
-    const days: { key: string; label: string; created: number; resolved: number }[] = [];
-    const cursor = new Date(start); cursor.setHours(0, 0, 0, 0);
-    const end = new Date(latest);
-    while (cursor <= end && days.length < 92) {
-      days.push({ key: cursor.toISOString().slice(0, 10), label: dayLabel(cursor.toISOString()), created: 0, resolved: 0 });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    const idx = Object.fromEntries(days.map((d, i) => [d.key, i]));
+    const { buckets, index } = timeBuckets(start, latest);
+    const rows = buckets.map(b => ({ label: b.label, created: 0, resolved: 0 }));
     companyTickets.forEach(t => {
-      const ci = idx[dayKey(t.createdAt)];
-      if (ci !== undefined) days[ci].created++;
+      const ci = index(new Date(t.createdAt).getTime());
+      if (ci >= 0) rows[ci].created++;
       const r = t.resolvedAt || t.closedAt;
       if (r && (t.status === 'Resolved' || t.status === 'Closed')) {
-        const ri = idx[dayKey(r)];
-        if (ri !== undefined) days[ri].resolved++;
+        const ri = index(new Date(r).getTime());
+        if (ri >= 0) rows[ri].resolved++;
       }
     });
-    return days;
+    return rows;
   }, [companyTickets, now]);
   const flowReady = flow.length >= 2 && (hasTrendSignal(flow.map(d => ({ value: d.created })), 2) || hasTrendSignal(flow.map(d => ({ value: d.resolved })), 2));
 

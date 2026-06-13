@@ -8,7 +8,7 @@ import {
 import { Activity, Timer, Layers, Gauge, AlertTriangle, Clock } from 'lucide-react';
 import { ChartFrame } from './chart-frame';
 import {
-  CHART, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE,
+  CHART, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE, timeBuckets,
 } from '../../lib/analytics/chart-kit';
 import { StatusPill, priorityTone } from '../ui/status-pill';
 import type { Ticket } from '../../types/ticket';
@@ -20,8 +20,6 @@ interface Props {
 }
 
 const isOpen = (t: Ticket) => t.status !== 'Closed' && t.status !== 'Resolved';
-const dayKey = (iso: string) => new Date(iso).toISOString().slice(0, 10);
-const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 function slaCountdown(dueStr: string, now: number) {
   const diff = new Date(dueStr).getTime() - now;
@@ -39,24 +37,18 @@ export function ConsultantWorkAnalytics({ myTickets, loading, now }: Props) {
     if (myTickets.length === 0) return [];
     const start = Math.min(...myTickets.map(t => new Date(t.createdAt).getTime()));
     const latest = Math.max(now, ...myTickets.map(t => new Date(t.resolvedAt || t.closedAt || t.createdAt).getTime()));
-    const days: { key: string; label: string; created: number; closed: number }[] = [];
-    const cursor = new Date(start); cursor.setHours(0, 0, 0, 0);
-    const end = new Date(latest);
-    while (cursor <= end && days.length < 92) {
-      days.push({ key: cursor.toISOString().slice(0, 10), label: dayLabel(cursor.toISOString()), created: 0, closed: 0 });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    const idx = Object.fromEntries(days.map((d, i) => [d.key, i]));
+    const { buckets, index } = timeBuckets(start, latest);
+    const rows = buckets.map(b => ({ label: b.label, created: 0, closed: 0 }));
     myTickets.forEach(t => {
-      const ci = idx[dayKey(t.createdAt)];
-      if (ci !== undefined) days[ci].created++;
+      const ci = index(new Date(t.createdAt).getTime());
+      if (ci >= 0) rows[ci].created++;
       const r = t.resolvedAt || t.closedAt;
       if (r && (t.status === 'Resolved' || t.status === 'Closed')) {
-        const ri = idx[dayKey(r)];
-        if (ri !== undefined) days[ri].closed++;
+        const ri = index(new Date(r).getTime());
+        if (ri >= 0) rows[ri].closed++;
       }
     });
-    return days;
+    return rows;
   }, [myTickets, now]);
   const flowReady = flow.length >= 2 && (hasTrendSignal(flow.map(d => ({ value: d.created })), 2) || hasTrendSignal(flow.map(d => ({ value: d.closed })), 2));
 
