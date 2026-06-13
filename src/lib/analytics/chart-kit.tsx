@@ -99,3 +99,61 @@ export function hasTrendSignal(points: { value?: number }[] | number, min = 2): 
 
 /** Line/area interpolation that never lies: 'linear' for sparse, never 'monotone'. */
 export const HONEST_LINE = 'linear' as const;
+
+/**
+ * Adaptive time bucketing — the spine of every trend chart so they stay honest
+ * AND legible at any data volume:
+ *   ≤ ~6 weeks  → daily      (current low-data reality)
+ *   ≤ ~6 months → weekly     (a busy quarter)
+ *   beyond      → monthly     (a year+ of history)
+ * No fixed window, no 92-point cap, no clipped axis at scale. Returns the
+ * bucket list plus an O(buckets) index() to assign a timestamp to a bucket.
+ */
+export interface TimeBucketing {
+  buckets: { key: string; label: string }[];
+  index: (ms: number) => number;
+  granularity: 'day' | 'week' | 'month';
+}
+
+export function timeBuckets(startMs: number, endMs: number): TimeBucketing {
+  const start = new Date(startMs); start.setHours(0, 0, 0, 0);
+  const end = new Date(endMs); end.setHours(23, 59, 59, 999);
+  const spanDays = (end.getTime() - start.getTime()) / 86400e3;
+  const raw: { key: string; label: string; from: number; to: number }[] = [];
+  let granularity: 'day' | 'week' | 'month';
+
+  if (spanDays <= 45) {
+    granularity = 'day';
+    const c = new Date(start);
+    while (c <= end) {
+      const from = new Date(c); from.setHours(0, 0, 0, 0);
+      const to = new Date(c); to.setHours(23, 59, 59, 999);
+      raw.push({ key: from.toISOString().slice(0, 10), label: from.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), from: from.getTime(), to: to.getTime() });
+      c.setDate(c.getDate() + 1);
+    }
+  } else if (spanDays <= 187) {
+    granularity = 'week';
+    const c = new Date(start);
+    while (c <= end) {
+      const from = new Date(c); from.setHours(0, 0, 0, 0);
+      const to = new Date(c); to.setDate(to.getDate() + 6); to.setHours(23, 59, 59, 999);
+      raw.push({ key: from.toISOString().slice(0, 10), label: from.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), from: from.getTime(), to: to.getTime() });
+      c.setDate(c.getDate() + 7);
+    }
+  } else {
+    granularity = 'month';
+    const c = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (c <= end) {
+      const from = new Date(c.getFullYear(), c.getMonth(), 1, 0, 0, 0, 0);
+      const to = new Date(c.getFullYear(), c.getMonth() + 1, 0, 23, 59, 59, 999);
+      raw.push({ key: `${from.getFullYear()}-${from.getMonth()}`, label: from.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), from: from.getTime(), to: to.getTime() });
+      c.setMonth(c.getMonth() + 1);
+    }
+  }
+
+  const index = (ms: number) => {
+    for (let i = 0; i < raw.length; i++) if (ms >= raw[i].from && ms <= raw[i].to) return i;
+    return -1;
+  };
+  return { buckets: raw.map(b => ({ key: b.key, label: b.label })), index, granularity };
+}

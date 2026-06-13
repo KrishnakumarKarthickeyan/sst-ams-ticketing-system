@@ -9,7 +9,7 @@ import { Gauge, Activity, Layers, Users, AlertTriangle, ArrowRight, ShieldCheck 
 import Link from 'next/link';
 import { ChartFrame } from './chart-frame';
 import {
-  CHART, PRIORITY_FILL, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE,
+  CHART, PRIORITY_FILL, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE, timeBuckets,
 } from '../../lib/analytics/chart-kit';
 import type { Ticket } from '../../types/ticket';
 import { StatusPill, slaTone } from '../ui/status-pill';
@@ -23,8 +23,9 @@ interface Props {
 }
 
 const isOpen = (t: Ticket) => t.status !== 'Closed' && t.status !== 'Resolved';
-const dayKey = (iso: string) => new Date(iso).toISOString().slice(0, 10);
-const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+// How many consultant bars to show before collapsing the tail into "+N more".
+const WORKLOAD_TOP_N = 10;
 
 export function AdminOperationsIntelligence({ tickets, consultantProfiles, escalations, loading, now }: Props) {
   // ── SLA compliance (incidents only) — a stat with context, not a fake trend ──
@@ -41,34 +42,25 @@ export function AdminOperationsIntelligence({ tickets, consultantProfiles, escal
     return { total: incidents.length, breached: breached.length, met: incidents.length - breached.length, pct };
   }, [tickets, now]);
 
-  // ── Ticket flow over the ACTUAL data range (daily, straight segments) ──
+  // ── Ticket flow over the ACTUAL data range, adaptively bucketed ──
   const flow = useMemo(() => {
     if (tickets.length === 0) return [];
     const start = Math.min(...tickets.map(t => new Date(t.createdAt).getTime()));
     // End at the latest real activity OR now — never cut the range short if the
     // page's clock is frozen behind the data.
-    const latest = Math.max(now, ...tickets.map(t =>
-      new Date(t.resolvedAt || t.closedAt || t.createdAt).getTime()));
-    const days: { key: string; label: string; created: number; resolved: number }[] = [];
-    const cursor = new Date(start);
-    cursor.setHours(0, 0, 0, 0);
-    const end = new Date(latest);
-    while (cursor <= end && days.length < 92) {
-      const k = cursor.toISOString().slice(0, 10);
-      days.push({ key: k, label: dayLabel(cursor.toISOString()), created: 0, resolved: 0 });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    const idx = Object.fromEntries(days.map((d, i) => [d.key, i]));
+    const latest = Math.max(now, ...tickets.map(t => new Date(t.resolvedAt || t.closedAt || t.createdAt).getTime()));
+    const { buckets, index } = timeBuckets(start, latest);
+    const rows = buckets.map(b => ({ label: b.label, created: 0, resolved: 0 }));
     tickets.forEach(t => {
-      const ci = idx[dayKey(t.createdAt)];
-      if (ci !== undefined) days[ci].created++;
+      const ci = index(new Date(t.createdAt).getTime());
+      if (ci >= 0) rows[ci].created++;
       const r = t.resolvedAt || t.closedAt;
       if (r && (t.status === 'Resolved' || t.status === 'Closed')) {
-        const ri = idx[dayKey(r)];
-        if (ri !== undefined) days[ri].resolved++;
+        const ri = index(new Date(r).getTime());
+        if (ri >= 0) rows[ri].resolved++;
       }
     });
-    return days;
+    return rows;
   }, [tickets, now]);
   const flowReady = flow.length >= 2 && (hasTrendSignal(flow.map(d => ({ value: d.created })), 2) || hasTrendSignal(flow.map(d => ({ value: d.resolved })), 2));
 
@@ -89,14 +81,16 @@ export function AdminOperationsIntelligence({ tickets, consultantProfiles, escal
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [tickets]);
 
-  // ── Workload by consultant — DEGRADES to a stat/table below 2 entities ──
+  // ── Workload by consultant — degrades to a list below 2 entities, and
+  //    caps to the top N (with a "+N more" note) so 40+ consultants stay legible.
   const workload = useMemo(() => {
     const open = tickets.filter(isOpen);
     const byName: Record<string, number> = {};
     open.forEach(t => { const n = t.assignedConsultant || 'Unassigned'; byName[n] = (byName[n] || 0) + 1; });
     const rows = Object.entries(byName).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
     const realConsultants = rows.filter(r => r.name !== 'Unassigned');
-    return { rows, realConsultants };
+    const visible = rows.slice(0, WORKLOAD_TOP_N);
+    return { rows, realConsultants, visible, hidden: rows.length - visible.length };
   }, [tickets]);
 
   return (
@@ -206,10 +200,10 @@ export function AdminOperationsIntelligence({ tickets, consultantProfiles, escal
           </ResponsiveContainer>
         </ChartFrame>
 
-        {/* Workload — degrades to a stat/table when there's a single carrier */}
+        {/* Workload — list below 2 carriers, else top-N bars with a "+N more" note */}
         <ChartFrame
           title="Consultant Workload"
-          context="Open tickets per consultant"
+          context={workload.hidden > 0 ? `Top ${WORKLOAD_TOP_N} by open load` : 'Open tickets per consultant'}
           icon={Users}
           loading={loading}
           ready={workload.rows.length > 0}
@@ -217,17 +211,22 @@ export function AdminOperationsIntelligence({ tickets, consultantProfiles, escal
           height={220}
         >
           {workload.realConsultants.length >= 2 ? (
-            <ResponsiveContainer width="100%" height={220} initialDimension={{ width: 320, height: 220 }}>
-              <BarChart data={workload.rows} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
-                <XAxis type="number" hide allowDecimals={false} />
-                <YAxis type="category" dataKey="name" {...axisProps} width={88} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
-                  {workload.rows.map(r => <Cell key={r.name} fill={r.name === 'Unassigned' ? CHART.axis : CHART.info} />)}
-                  <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="flex h-full flex-col">
+              <ResponsiveContainer width="100%" height={Math.max(180, workload.visible.length * 22)} initialDimension={{ width: 320, height: 220 }}>
+                <BarChart data={workload.visible} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
+                  <XAxis type="number" hide allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" {...axisProps} width={88} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
+                    {workload.visible.map(r => <Cell key={r.name} fill={r.name === 'Unassigned' ? CHART.axis : CHART.info} />)}
+                    <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              {workload.hidden > 0 && (
+                <p className="type-status mt-2 text-ink-muted">+{workload.hidden} more consultant{workload.hidden === 1 ? '' : 's'} with open load.</p>
+              )}
+            </div>
           ) : (
             <div className="flex h-full flex-col justify-center gap-2">
               {workload.rows.map(r => (

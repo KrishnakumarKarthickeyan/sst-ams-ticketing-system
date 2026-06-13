@@ -8,7 +8,7 @@ import {
 import { Activity, Layers, Users, CheckSquare, Hourglass } from 'lucide-react';
 import { ChartFrame } from './chart-frame';
 import {
-  CHART, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE,
+  CHART, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE, timeBuckets,
 } from '../../lib/analytics/chart-kit';
 import type { Ticket } from '../../types/ticket';
 
@@ -19,9 +19,9 @@ interface Props {
 }
 
 const isOpen = (t: Ticket) => t.status !== 'Closed' && t.status !== 'Resolved';
-const dayKey = (iso: string) => new Date(iso).toISOString().slice(0, 10);
-const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 const ageDays = (iso: string, now: number) => (now - new Date(iso).getTime()) / 86400e3;
+
+const CAPACITY_TOP_N = 10;
 
 export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
   // ── Backlog aging buckets ──
@@ -44,29 +44,23 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
   }, [tickets, now]);
   const agingReady = aging.some(b => b.value > 0);
 
-  // ── Throughput: opened vs resolved over the actual range ──
+  // ── Throughput: opened vs resolved over the actual range, adaptively bucketed ──
   const flow = useMemo(() => {
     if (tickets.length === 0) return [];
     const start = Math.min(...tickets.map(t => new Date(t.createdAt).getTime()));
     const latest = Math.max(now, ...tickets.map(t => new Date(t.resolvedAt || t.closedAt || t.createdAt).getTime()));
-    const days: { key: string; label: string; opened: number; resolved: number }[] = [];
-    const cursor = new Date(start); cursor.setHours(0, 0, 0, 0);
-    const end = new Date(latest);
-    while (cursor <= end && days.length < 92) {
-      days.push({ key: cursor.toISOString().slice(0, 10), label: dayLabel(cursor.toISOString()), opened: 0, resolved: 0 });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    const idx = Object.fromEntries(days.map((d, i) => [d.key, i]));
+    const { buckets, index } = timeBuckets(start, latest);
+    const rows = buckets.map(b => ({ label: b.label, opened: 0, resolved: 0 }));
     tickets.forEach(t => {
-      const ci = idx[dayKey(t.createdAt)];
-      if (ci !== undefined) days[ci].opened++;
+      const ci = index(new Date(t.createdAt).getTime());
+      if (ci >= 0) rows[ci].opened++;
       const r = t.resolvedAt || t.closedAt;
       if (r && (t.status === 'Resolved' || t.status === 'Closed')) {
-        const ri = idx[dayKey(r)];
-        if (ri !== undefined) days[ri].resolved++;
+        const ri = index(new Date(r).getTime());
+        if (ri >= 0) rows[ri].resolved++;
       }
     });
-    return days;
+    return rows;
   }, [tickets, now]);
   const flowReady = flow.length >= 2 && (hasTrendSignal(flow.map(d => ({ value: d.opened })), 2) || hasTrendSignal(flow.map(d => ({ value: d.resolved })), 2));
 
@@ -76,7 +70,8 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
     const byName: Record<string, number> = {};
     open.forEach(t => { const n = t.assignedConsultant || 'Unassigned'; byName[n] = (byName[n] || 0) + 1; });
     const rows = Object.entries(byName).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-    return { rows, realConsultants: rows.filter(r => r.name !== 'Unassigned') };
+    const visible = rows.slice(0, CAPACITY_TOP_N);
+    return { rows, realConsultants: rows.filter(r => r.name !== 'Unassigned'), visible, hidden: rows.length - visible.length };
   }, [tickets]);
 
   // ── Approval bottlenecks by type ──
@@ -151,19 +146,24 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           </ResponsiveContainer>
         </ChartFrame>
 
-        <ChartFrame title="Capacity Balance" context="Open load per consultant" icon={Users} loading={loading} ready={capacity.rows.length > 0} emptyHint="No assigned open tickets yet." height={200}>
+        <ChartFrame title="Capacity Balance" context={capacity.hidden > 0 ? `Top ${CAPACITY_TOP_N} by open load` : 'Open load per consultant'} icon={Users} loading={loading} ready={capacity.rows.length > 0} emptyHint="No assigned open tickets yet." height={200}>
           {capacity.realConsultants.length >= 2 ? (
-            <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
-              <BarChart data={capacity.rows} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
-                <XAxis type="number" hide allowDecimals={false} />
-                <YAxis type="category" dataKey="name" {...axisProps} width={88} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
-                  {capacity.rows.map(r => <Cell key={r.name} fill={r.name === 'Unassigned' ? CHART.axis : CHART.info} />)}
-                  <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="flex h-full flex-col">
+              <ResponsiveContainer width="100%" height={Math.max(160, capacity.visible.length * 22)} initialDimension={{ width: 320, height: 200 }}>
+                <BarChart data={capacity.visible} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
+                  <XAxis type="number" hide allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" {...axisProps} width={88} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
+                    {capacity.visible.map(r => <Cell key={r.name} fill={r.name === 'Unassigned' ? CHART.axis : CHART.info} />)}
+                    <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              {capacity.hidden > 0 && (
+                <p className="type-status mt-2 text-ink-muted">+{capacity.hidden} more consultant{capacity.hidden === 1 ? '' : 's'} with open load.</p>
+              )}
+            </div>
           ) : (
             <div className="flex h-full flex-col justify-center gap-2">
               {capacity.rows.map(r => (
@@ -190,10 +190,10 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           </ResponsiveContainer>
         </ChartFrame>
 
-        <ChartFrame title="Consultant Performance" context="Open · closed · SLA met" icon={Layers} loading={loading} ready={performance.length > 0} emptyHint="No consultant activity yet." height={200} bodyClassName="!min-h-0">
-          <div className="overflow-hidden rounded-md border border-line">
+        <ChartFrame title="Consultant Performance" context={`${performance.length} consultant${performance.length === 1 ? '' : 's'} · open · closed · SLA`} icon={Layers} loading={loading} ready={performance.length > 0} emptyHint="No consultant activity yet." height={200} bodyClassName="!min-h-0">
+          <div className="max-h-[240px] overflow-y-auto rounded-md border border-line">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b border-line bg-surface-muted">
                   <th className="type-status px-3 py-2 text-left font-semibold tracking-wider text-ink-muted uppercase">Consultant</th>
                   <th className="type-status px-2 py-2 text-right font-semibold tracking-wider text-ink-muted uppercase">Open</th>
