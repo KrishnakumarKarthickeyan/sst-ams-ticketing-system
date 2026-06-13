@@ -120,7 +120,7 @@ export default function AdminUsersPage() {
         toast.error(`Reset failed: ${err.message}`, { id: toastId });
       }
     } else {
-      const tempPass = manualPassword !== '' ? manualPassword : ('Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!');
+      const tempPass = manualPassword !== '' ? manualPassword : ('Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!');
       setResetGeneratedPassword(tempPass);
       setResetDone(true);
       toast.success(`Local password reset to: ${tempPass}`);
@@ -372,7 +372,7 @@ export default function AdminUsersPage() {
         console.error(err);
       }
     } else {
-      const tempPass = Math.random().toString(36).substring(2, 10) + 'A1!';
+      const tempPass = (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!';
       const newUser: UserProfile = {
         id: `usr-${Date.now()}`,
         name: newName,
@@ -492,7 +492,7 @@ export default function AdminUsersPage() {
         toast.error(`Reset failed: ${err.message}`, { id: toastId });
       }
     } else {
-      const tempPass = 'Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!';
+      const tempPass = 'Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!';
       setGeneratedPassResult(tempPass);
       toast.success(`Local password updated to: ${tempPass}`);
     }
