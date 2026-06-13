@@ -20,6 +20,7 @@ Platform governance invariants:
 - **UI library**: shadcn/ui only — validate alignment, spacing, typography, responsiveness, accessibility, and empty/loading/error/success states on every touched screen.
 - **RLS & Security**: check RLS policies in `supabase/migrations/` (latest tickets/profiles policies: `20260611000002_security_hardening_rls.sql`) to ensure multi-consultant support via `ticket_consultant_efforts` is maintained for all new/modified ticket query and effort logging features.
 - After modifying code run `codegraph sync`.
+- **Tests**: pure logic (SLA math, analytics bucketing, tone mappers, effort aggregation) is unit-tested with Vitest — run `npm test` (TZ-pinned) after touching it, and add a `*.test.ts` beside any new pure function. CI (`.github/workflows/ci.yml`) gates on typecheck + tests + build; lint is currently informational while the pre-existing `any`/hooks debt is ratcheted down.
 
 # Graphify Mode (OPTIONAL — explicit request only)
 
