@@ -5,11 +5,14 @@ import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Cell, LabelList,
 } from 'recharts';
-import { Activity, Layers, AlertTriangle, Gauge, FileText, ListChecks } from 'lucide-react';
+import { Activity, Layers, AlertTriangle, Gauge, FileText, ListChecks, Tags, FolderTree, Flame } from 'lucide-react';
 import { ChartFrame } from './chart-frame';
 import {
   CHART, PRIORITY_FILL, LIFECYCLE_FILL, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE, timeBuckets,
 } from '../../lib/analytics/chart-kit';
+import {
+  typeMix, categoryBreakdown, businessImpactDist, slaByPriority, qualityStats,
+} from '../../lib/analytics/breakdowns';
 import type { Ticket } from '../../types/ticket';
 
 interface Props {
@@ -88,6 +91,13 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
   const usagePct = contractUsage && contractUsage.total > 0
     ? Math.min(100, Math.round((contractUsage.used / contractUsage.total) * 100))
     : null;
+
+  // ── Service-quality dimensions (all from mapped ticket fields) ──
+  const tmix = useMemo(() => typeMix(companyTickets), [companyTickets]);
+  const cats = useMemo(() => categoryBreakdown(companyTickets), [companyTickets]);
+  const impact = useMemo(() => businessImpactDist(companyTickets), [companyTickets]);
+  const slaTier = useMemo(() => slaByPriority(companyTickets, now), [companyTickets, now]);
+  const quality = useMemo(() => qualityStats(companyTickets), [companyTickets]);
 
   return (
     <div className="space-y-4">
@@ -181,6 +191,96 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartFrame>
+      </div>
+
+      {/* ── SERVICE QUALITY — richer analytical layer, all live-data ── */}
+      <div className="pt-2">
+        <h2 className="type-section text-ink">Service Quality &amp; Demand</h2>
+        <p className="type-meta text-ink-muted">The SLA you receive, what you raise, and how reliably it is resolved.</p>
+      </div>
+
+      {/* Quality stat strip */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-lg border border-line bg-surface p-4 shadow-card">
+          <span className="type-status text-ink-muted uppercase tracking-wider">SLA Received</span>
+          <div className="type-num mt-1 text-2xl font-semibold text-ink">
+            {slaTier.length ? `${Math.round(slaTier.reduce((s, d) => s + d.met, 0) / Math.max(1, slaTier.reduce((s, d) => s + d.met + d.breached, 0)) * 100)}%` : '—'}
+          </div>
+          <span className="type-status text-ink-muted">incidents met on time</span>
+        </div>
+        <div className="rounded-lg border border-line bg-surface p-4 shadow-card">
+          <span className="type-status text-ink-muted uppercase tracking-wider">Avg Resolution</span>
+          <div className="type-num mt-1 text-2xl font-semibold text-ink">{quality.avgResolution === null ? '—' : `${quality.avgResolution}h`}</div>
+          <span className="type-status text-ink-muted">across {quality.resolved} resolved</span>
+        </div>
+        <div className="rounded-lg border border-line bg-surface p-4 shadow-card">
+          <span className="type-status text-ink-muted uppercase tracking-wider">Reopen Rate</span>
+          <div className="type-num mt-1 text-2xl font-semibold text-ink">{quality.reopenRate === null ? '—' : `${quality.reopenRate}%`}</div>
+          <span className="type-status text-ink-muted">{quality.reopened} reopened</span>
+        </div>
+        <div className="rounded-lg border border-line bg-surface p-4 shadow-card">
+          <span className="type-status text-ink-muted uppercase tracking-wider">Request Types</span>
+          <div className="type-num mt-1 text-2xl font-semibold text-ink">{tmix.length}</div>
+          <span className="type-status text-ink-muted">{tmix[0] ? `${tmix[0].name} leads` : 'no data yet'}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <ChartFrame title="SLA by Priority" context="Compliance per tier" icon={Gauge} loading={loading} ready={slaTier.length > 0} emptyHint="No incidents with a target yet." height={200}>
+          <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
+            <BarChart data={slaTier} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="name" {...axisProps} interval={0} />
+              <YAxis {...axisProps} domain={[0, 100]} width={32} unit="%" />
+              <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: CHART.grid }} />
+              <Bar dataKey="pct" radius={[4, 4, 0, 0]} barSize={32}>
+                {slaTier.map(d => <Cell key={d.name} fill={d.pct >= 95 ? CHART.success : d.pct >= 80 ? CHART.warning : CHART.critical} />)}
+                <LabelList dataKey="pct" position="top" className="type-num" fill={CHART.ink} fontSize={11} formatter={(v) => `${v}%`} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartFrame>
+
+        <ChartFrame title="Request Type Mix" context="Incidents vs requests vs changes" icon={Tags} loading={loading} ready={tmix.length > 0} emptyHint="No typed tickets yet." height={200} className="lg:col-span-2">
+          <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 480, height: 200 }}>
+            <BarChart data={tmix} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
+              <XAxis type="number" hide allowDecimals={false} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={110} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
+              <Bar dataKey="value" fill={CHART.info} radius={[0, 4, 4, 0]} barSize={18}>
+                <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartFrame>
+
+        <ChartFrame title="Issue Categories" context="What you're raising" icon={FolderTree} loading={loading} ready={cats.length > 0} emptyHint="No categorized tickets yet." height={200} className="lg:col-span-2">
+          <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 480, height: 200 }}>
+            <BarChart data={cats} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
+              <XAxis type="number" hide allowDecimals={false} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={130} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
+              <Bar dataKey="value" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={16}>
+                <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartFrame>
+
+        <ChartFrame title="Business Impact" context="Severity of what you raise" icon={Flame} loading={loading} ready={impact.length > 0} emptyHint="No impact data yet." height={200}>
+          <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
+            <BarChart data={impact} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="name" {...axisProps} interval={0} />
+              <YAxis {...axisProps} allowDecimals={false} width={28} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={32}>
+                {impact.map((d, i) => <Cell key={d.name} fill={[CHART.critical, CHART.warning, CHART.brand, CHART.axis][i] ?? CHART.brand} />)}
+                <LabelList dataKey="value" position="top" className="type-num" fill={CHART.ink} fontSize={11} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
