@@ -1056,8 +1056,9 @@ export default function ConsultantMyTicketsPage() {
         </div>
       )}
 
-      {/* Modal */}
-      <ModalContent />
+      {/* Modal — called as a function (not mounted as a component) so it never
+          remounts/loses state on parent re-render. */}
+      {ModalContent()}
 
       {/* Page Header */}
       <div className="border-b border-line pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1174,9 +1175,9 @@ export default function ConsultantMyTicketsPage() {
               <p className="text-xs text-ink-secondary max-w-sm mx-auto text-center">There are no tickets assigned to you yet.</p>
             </div>
           ) : viewMode === 'card' ? (
-            <CardView />
+            CardView()
           ) : (
-            <CompactListView />
+            CompactListView()
           )}
         </TabsContent>
       </Tabs>
