@@ -293,11 +293,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear middleware cookie
       document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       
-      localStorage.removeItem('sap_user_session');
+      // Purge ALL app-owned client cache on logout. Previously only a few
+      // prefixes were cleared, leaving sst_tickets / sst_contracts /
+      // sst_notifications behind — a data leak on shared machines.
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('sst_profile_') || key.startsWith('sap_') || key.startsWith('sst_role_') || key.startsWith('sst_user_'))) {
+        if (key && (key.startsWith('sst_') || key.startsWith('sap_'))) {
           keysToRemove.push(key);
         }
       }
