@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { TicketProvider } from "../context/TicketContext";
 import { AuthProvider } from "../context/AuthContext";
+import { QueryProvider } from "../lib/queries/query-provider";
 import { Toaster } from "sonner";
 
 import { BRAND_CONFIG } from "../config/branding";
@@ -33,12 +34,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-white text-ink">
-        <AuthProvider>
-          <TicketProvider>
-            {children}
-            <Toaster position="top-right" richColors />
-          </TicketProvider>
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <TicketProvider>
+              {children}
+              <Toaster position="top-right" richColors />
+            </TicketProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
