@@ -218,7 +218,7 @@ export default function UserManagementPage() {
   const isEmailValid = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   
   const isPasswordValid = (p: string) => {
-    return p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(p);
+    return p.length >= 12 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(p);
   };
 
   const checkEmailUniqueness = async (email: string) => {
@@ -1515,7 +1515,7 @@ export default function UserManagementPage() {
 
                   {/* Password rules indicator */}
                   <div className="text-[11px] space-y-1 pt-1 text-ink-secondary">
-                    <p className={consPassword.length >= 8 ? 'text-emerald-700 font-semibold' : ''}>✔ At least 8 characters</p>
+                    <p className={consPassword.length >= 12 ? 'text-emerald-700 font-semibold' : ''}>✔ At least 12 characters</p>
                     <p className={(/[A-Z]/.test(consPassword) && /[a-z]/.test(consPassword)) ? 'text-emerald-700 font-semibold' : ''}>✔ Upper & Lowercase letters</p>
                     <p className={/[0-9]/.test(consPassword) ? 'text-emerald-700 font-semibold' : ''}>✔ At least one number</p>
                     <p className={/[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(consPassword) ? 'text-emerald-700 font-semibold' : ''}>✔ At least one special character (!@#$%)</p>

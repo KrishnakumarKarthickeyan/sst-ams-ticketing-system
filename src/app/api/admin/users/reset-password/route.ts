@@ -31,7 +31,7 @@ function generateTemporaryPassword(): string {
   ];
   
   const allChars = uppers + lowers + numbers + specials;
-  for (let i = 4; i < 10; i++) {
+  for (let i = 4; i < 12; i++) {
     chars.push(getRand(allChars));
   }
   

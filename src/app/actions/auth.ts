@@ -16,14 +16,14 @@ const getAdminClient = () => {
 
 // Password Policy Checker helper
 export async function verifyPasswordPolicy(password: string): Promise<{ isValid: boolean; error?: string }> {
-  const hasMinLength = password.length >= 8;
+  const hasMinLength = password.length >= 12;
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(password);
 
   if (!hasMinLength) {
-    return { isValid: false, error: 'Password must be at least 8 characters long.' };
+    return { isValid: false, error: 'Password must be at least 12 characters long.' };
   }
   if (!hasUppercase || !hasLowercase) {
     return { isValid: false, error: 'Password must contain both uppercase and lowercase letters.' };

@@ -20,7 +20,7 @@ export default function FirstLoginResetPage() {
   const [error, setError] = useState('');
 
   // Password policy checks
-  const hasMinLength = password.length >= 8;
+  const hasMinLength = password.length >= 12;
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);

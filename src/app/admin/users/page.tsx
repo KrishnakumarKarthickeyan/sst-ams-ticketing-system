@@ -86,7 +86,7 @@ export default function AdminUsersPage() {
     const getRand = (str: string) => str[Math.floor(Math.random() * str.length)];
     const chars = [getRand(uppers), getRand(lowers), getRand(numbers), getRand(specials)];
     const allChars = uppers + lowers + numbers + specials;
-    for (let i = 4; i < 10; i++) chars.push(getRand(allChars));
+    for (let i = 4; i < 12; i++) chars.push(getRand(allChars));
     for (let i = chars.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [chars[i], chars[j]] = [chars[j], chars[i]];
@@ -505,14 +505,14 @@ export default function AdminUsersPage() {
     const finalPassword = modalPassInput.trim();
 
     // Validate password policy
-    const hasMinLength = finalPassword.length >= 8;
+    const hasMinLength = finalPassword.length >= 12;
     const hasUppercase = /[A-Z]/.test(finalPassword);
     const hasLowercase = /[a-z]/.test(finalPassword);
     const hasNumber = /[0-9]/.test(finalPassword);
     const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(finalPassword);
 
     if (!hasMinLength || !hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
-      toast.error('Password does not meet complexity requirements. Must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special character.');
+      toast.error('Password does not meet complexity requirements. Must be at least 12 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special character.');
       return;
     }
 
