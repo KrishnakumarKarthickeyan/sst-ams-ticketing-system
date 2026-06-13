@@ -89,7 +89,7 @@ function getWorkingDaysInRange(start: Date, end: Date) {
   return count;
 }
 
-const SYSTEM_NOW = new Date('2026-06-07T08:00:00Z').getTime();
+const SYSTEM_NOW = Date.now(); // real current time (was a frozen demo clock)
 // Verified cockpit metrics against DB ground truth (June 2026 dataset). All counts match exactly.
 
 function formatRelativeTime(dateStr: string | null | undefined): string {

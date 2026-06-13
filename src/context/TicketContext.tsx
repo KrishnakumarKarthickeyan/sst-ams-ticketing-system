@@ -1150,8 +1150,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // Keep the realtime handler pointed at the latest fetchTicketById closure
-  fetchTicketByIdRef.current = fetchTicketById;
+  // Keep the realtime handler pointed at the latest fetchTicketById closure.
+  // Assign in an effect (after render), not during render — concurrent-safe.
+  useEffect(() => {
+    fetchTicketByIdRef.current = fetchTicketById;
+  });
 
   const resetMockData = () => {
     console.log('resetMockData is a no-op when Supabase is configured.');

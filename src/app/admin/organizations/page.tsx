@@ -939,7 +939,7 @@ export default function AdminOrganizationsPage() {
                             <div className="space-y-2.5">
                               <div className="flex justify-between text-xs font-semibold">
                                 <span>Monthly Hours Burn Progress</span>
-                                <span className="">{org360.contract.monthlyUsedHours?.toFixed(1) || '0.0'}h / {org360.contract.monthlyBudgetHours}h ({org360.monthlyUtilization.toFixed(1)}%)</span>
+                                <span className="">{org360.contract.monthlyUsedHours?.toFixed(1) || '0.0'}h / {org360.contract.monthlyBudgetHours}h ({(org360.monthlyUtilization ?? 0).toFixed(1)}%)</span>
                               </div>
                               <Progress value={Math.min(100, org360.monthlyUtilization)} className="h-1.5 bg-zinc-200" />
                             </div>

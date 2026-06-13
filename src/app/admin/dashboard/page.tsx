@@ -54,7 +54,7 @@ import {
   verifyPasswordPolicy
 } from '../../actions/auth';
 
-const SYSTEM_NOW = new Date('2026-06-07T08:00:00Z').getTime();
+const SYSTEM_NOW = Date.now(); // real current time (was a frozen demo clock)
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
