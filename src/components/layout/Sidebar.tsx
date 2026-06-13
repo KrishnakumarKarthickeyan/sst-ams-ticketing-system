@@ -27,7 +27,8 @@ import {
   CheckSquare,
   ChevronLeft,
   ChevronRight,
-  User
+  User,
+  Inbox
 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../ui/tooltip';
 
@@ -73,6 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
     { title: 'Customers 360', href: '/admin/organizations', icon: <Building2 size={16} /> },
     { title: 'Global Reports', href: '/admin/reports', icon: <FileSpreadsheet size={16} /> },
     { title: 'Audit Logs', href: '/admin/audit-logs', icon: <History size={16} /> },
+    { title: 'Inbound Leads', href: '/admin/leads', icon: <Inbox size={16} /> },
     { title: 'Settings', href: '/admin/settings', icon: <Settings size={16} /> },
     { title: 'Contacts Directory', href: '/admin/contacts', icon: <Users size={16} /> },
     { title: 'Profile Settings', href: '/admin/profile', icon: <User size={16} /> }
