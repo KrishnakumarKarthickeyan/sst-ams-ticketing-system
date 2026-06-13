@@ -46,18 +46,9 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import { useAuth } from './AuthContext';
 import { getOrganizationMap, getOrganizationShortCodeMap } from '../app/actions/auth';
 
-export const addSlaHours = (startDate: Date | string, hours: number): string => {
-  const date = new Date(startDate);
-  let remainingHours = hours;
-  while (remainingHours > 0) {
-    date.setTime(date.getTime() + 60 * 60 * 1000);
-    const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
-    if (day !== 5 && day !== 6) {
-      remainingHours--;
-    }
-  }
-  return date.toISOString();
-};
+// SLA deadline math lives in a pure, unit-tested module.
+export { addSlaHours } from '../lib/sla';
+import { addSlaHours } from '../lib/sla';
 
 // Query retry and timeout helpers
 const fetchWithRetryAndTimeout = async <T,>(

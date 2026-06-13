@@ -7,7 +7,9 @@
     "build": "NODE_OPTIONS='--max-old-space-size=8192' next build",
     "start": "NODE_OPTIONS='--max-old-space-size=8192' next start",
     "lint": "eslint",
-    "graphify": "graphify update ."
+    "graphify": "graphify update .",
+    "test": "TZ=UTC vitest run",
+    "test:watch": "TZ=UTC vitest"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.16",
@@ -48,6 +50,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.6"
   }
 }

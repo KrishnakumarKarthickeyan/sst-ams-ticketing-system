@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Placeholder Supabase env so `next build` can evaluate client init at
+      # build time. No secrets — these are non-functional public-shaped values.
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Lint is informational for now: src carries ~500 pre-existing `any`/
+      # react-hooks findings (catalogued in the architecture audit). The hard
+      # gates below (typecheck, tests, build) block; lint is tracked to be
+      # ratcheted to zero, then this becomes blocking.
+      - name: Lint (source, non-blocking)
+        run: npx eslint src
+        continue-on-error: true
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
