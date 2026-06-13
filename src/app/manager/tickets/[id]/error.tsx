@@ -1,10 +1,11 @@
 'use client';
 
-import React, { startTransition } from 'react';
+import React, { startTransition, useEffect } from 'react';
 import { AlertCircle, RotateCcw, Home, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import Link from 'next/link';
+import { logError } from '@/lib/observability/log-error';
 
 interface ErrorBoundaryProps {
   error: Error & { digest?: string };
@@ -12,6 +13,10 @@ interface ErrorBoundaryProps {
 }
 
 export default function ManagerTicketDetailErrorBoundary({ error, reset }: ErrorBoundaryProps) {
+  useEffect(() => {
+    logError(error, { source: 'route-error', digest: error.digest });
+  }, [error]);
+
   return (
     <div className="flex min-h-[50vh] items-center justify-center p-4">
       <Card className="w-full max-w-md border-red-100 bg-surface shadow-xl shadow-red-50/50 rounded-2xl overflow-hidden relative">
