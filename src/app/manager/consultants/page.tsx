@@ -236,7 +236,7 @@ export default function ManagerConsultantsPage() {
 
         if (authRes.error === 'NO_SERVICE_KEY') {
           // Generate client-side password fallback
-          const tempPass = formPwdOption === 'manual' ? formPassword : (Math.random().toString(36).substring(2, 10) + 'A1!');
+          const tempPass = formPwdOption === 'manual' ? formPassword : ((Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!');
           
           // 2. Fallback to client-side non-persisted sign up and client inserts
           const authClient = getClientSideAuthClient();
@@ -296,7 +296,7 @@ export default function ManagerConsultantsPage() {
         console.error(err);
       }
     } else {
-      const tempPass = formPwdOption === 'manual' ? formPassword : (Math.random().toString(36).substring(2, 10) + 'A1!');
+      const tempPass = formPwdOption === 'manual' ? formPassword : ((Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!');
       const newConsultant: ConsultantProfile = {
         id: `usr-consult-${Date.now()}`,
         name: formName,
@@ -466,7 +466,7 @@ export default function ManagerConsultantsPage() {
 
         if (authRes.error === 'NO_SERVICE_KEY') {
           // Generate client-side password fallback
-          const tempPass = formPwdOption === 'manual' ? formPassword : (Math.random().toString(36).substring(2, 10) + 'A1!');
+          const tempPass = formPwdOption === 'manual' ? formPassword : ((Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!');
 
           // 2. Fallback to client-side signup
           const authClient = getClientSideAuthClient();
@@ -568,7 +568,7 @@ export default function ManagerConsultantsPage() {
         console.error(err);
       }
     } else {
-      const tempPass = formPwdOption === 'manual' ? formPassword : (Math.random().toString(36).substring(2, 10) + 'A1!');
+      const tempPass = formPwdOption === 'manual' ? formPassword : ((Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!');
       const newCustomer: CustomerProfile = {
         id: `cust-${Date.now()}`,
         company: formCompany,
@@ -774,7 +774,7 @@ export default function ManagerConsultantsPage() {
         toast.error(`Authorization failed: ${err.message}`, { id: toastId });
       }
     } else {
-      const tempPass = isManual ? manualPwd : ('Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!');
+      const tempPass = isManual ? manualPwd : ('Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!');
       setGeneratedPassResult(tempPass);
       toast.success(`Local password updated to: ${tempPass}`);
     }

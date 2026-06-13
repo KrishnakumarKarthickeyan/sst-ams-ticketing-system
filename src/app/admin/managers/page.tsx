@@ -258,7 +258,7 @@ export default function AdminManagersPage() {
       }
     } else {
       // Local fallback
-      const actualPass = 'Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!';
+      const actualPass = 'Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!';
       const newMgr: ManagerProfile = {
         id: `mgr-${Date.now()}`,
         name,
@@ -330,7 +330,7 @@ export default function AdminManagersPage() {
         toast.error(`Reset failed: ${err.message}`, { id: loadId });
       }
     } else {
-      const finalPass = 'Temp@' + Math.random().toString(36).substring(2, 10) + 'A1!';
+      const finalPass = 'Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!';
       alert(`Local fallback reset complete. Password set to: ${finalPass}`);
       toast.dismiss(loadId);
     }
