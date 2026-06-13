@@ -1160,19 +1160,16 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const syncTickets = (updated: Ticket[]) => {
     const sorted = [...updated].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setTickets(sorted);
-    localStorage.setItem('sst_tickets', JSON.stringify(sorted));
     debouncedRefetch();
   };
 
   const syncNotifications = (updated: Notification[]) => {
     setNotifications(updated);
-    localStorage.setItem('sst_notifications', JSON.stringify(updated));
     debouncedRefetch();
   };
 
   const syncKbArticles = (updated: KnowledgebaseArticle[]) => {
     setKbArticles(updated);
-    localStorage.setItem('sst_articles', JSON.stringify(updated));
   };
 
   const uploadAttachmentToSupabase = async (
@@ -2462,7 +2459,6 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return c;
           });
           setContracts(updatedContracts);
-          localStorage.setItem('sst_contracts', JSON.stringify(updatedContracts));
         }
 
         return {
@@ -5376,7 +5372,6 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           return c;
         });
         setContracts(updatedContracts);
-        localStorage.setItem('sst_contracts', JSON.stringify(updatedContracts));
 
         return {
           ...t,
