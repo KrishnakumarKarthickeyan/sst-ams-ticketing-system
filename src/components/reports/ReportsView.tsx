@@ -74,6 +74,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
     const fromEfforts = (ticket.efforts || []).map(effort => ({
       id: effort.id,
       ticketId: effort.ticketId,
+      ticketNumber: ticket.ticketNumber || effort.ticketId,
       consultantId: effort.consultantId,
       consultantName: effort.consultantName || 'Consultant',
       hoursLogged: effort.hoursLogged || effort.hoursWorked || 0,
@@ -97,6 +98,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
       return {
         id: ah.id,
         ticketId: ah.ticketId,
+        ticketNumber: ticket.ticketNumber || ah.ticketId,
         consultantId: ah.consultantId,
         consultantName: consultantName,
         hoursLogged: ah.actualHours || 0,
@@ -303,12 +305,12 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
       // Construct CSV content
       let csvContent = "data:text/csv;charset=utf-8,";
       if (reportType === 'Effort Hours') {
-        const headers = ['Log ID', 'Ticket ID', 'Consultant', 'Date', 'Start Time', 'End Time', 'Activity', 'Hours', 'Billable', 'Status', 'Description'];
-        const rows = filteredEfforts.map(e => [e.id, e.ticketId, e.consultantName, e.activityDate, e.startTime, e.endTime, e.activityType, e.hoursLogged, e.billable, e.status, e.description]);
+        const headers = ['Log ID', 'Ticket #', 'Consultant', 'Date', 'Start Time', 'End Time', 'Activity', 'Hours', 'Billable', 'Status', 'Description'];
+        const rows = filteredEfforts.map(e => [e.id, e.ticketNumber || e.ticketId, e.consultantName, e.activityDate, e.startTime, e.endTime, e.activityType, e.hoursLogged, e.billable, e.status, e.description]);
         csvContent += [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
       } else {
-        const headers = ['Ticket ID', 'Title', 'Customer', 'Module', 'Category', 'Priority', 'Status', 'SLA Due', 'Created At'];
-        const rows = filteredTickets.map(t => [t.id, t.title, t.organization, t.sapModule, t.category, t.priority, t.status, t.slaDueAt, t.createdAt]);
+        const headers = ['Ticket #', 'Title', 'Customer', 'Module', 'Category', 'Priority', 'Status', 'SLA Due', 'Created At'];
+        const rows = filteredTickets.map(t => [t.ticketNumber || t.id, t.title, t.organization, t.sapModule, t.category, t.priority, t.status, t.slaDueAt, t.createdAt]);
         csvContent += [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
       }
       
@@ -673,7 +675,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-surface-muted border-b border-line text-ink-secondary font-bold uppercase text-[11px] tracking-wider">
-                  <th className="py-2.5 px-3">Ticket ID</th>
+                  <th className="py-2.5 px-3">Ticket #</th>
                   <th className="py-2.5 px-3">Consultant</th>
                   <th className="py-2.5 px-3">Org</th>
                   <th className="py-2.5 px-3">Date</th>
@@ -693,7 +695,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                 ) : (
                   filteredEfforts.map(log => (
                     <tr key={log.id} className="hover:bg-surface-muted transition">
-                      <td className="py-2 px-3 font-bold text-ink">{log.ticketId}</td>
+                      <td className="py-2 px-3 font-bold text-ink">{log.ticketNumber || log.ticketId}</td>
                       <td className="py-2 px-3">{log.consultantName}</td>
                       <td className="py-2 px-3 text-ink-secondary">{log.organization}</td>
                       <td className="py-2 px-3">{log.activityDate}</td>
@@ -717,7 +719,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-surface-muted border-b border-line text-ink-secondary font-bold uppercase text-[11px] tracking-wider">
-                  <th className="py-2.5 px-3">Ticket ID</th>
+                  <th className="py-2.5 px-3">Ticket #</th>
                   <th className="py-2.5 px-3">Title</th>
                   <th className="py-2.5 px-3">Organization</th>
                   <th className="py-2.5 px-3">Module</th>
@@ -749,7 +751,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                       <tr key={t.id} className="hover:bg-surface-muted transition">
                         <td className="py-2 px-3">
                           <Link href={`/${role.toLowerCase()}/tickets/${t.id}`} className="font-bold text-ink hover:underline">
-                            {t.id}
+                            {t.ticketNumber || t.id}
                           </Link>
                         </td>
                         <td className="py-2 px-3 font-semibold text-ink max-w-[200px] truncate" title={t.title}>{t.title}</td>
