@@ -416,8 +416,52 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
     return groups;
   }, [filteredItems]);
 
+  // Canonical lifecycle stages — ALL render (reached = done, latest = current,
+  // not-yet-reached = muted/pending), derived from the ticket's real signals.
+  const lifecycle = useMemo(() => {
+    const histHas = (kw: string) => (ticket.history || []).some(h => `${h.fieldChanged} ${h.newValue || ''}`.toLowerCase().includes(kw));
+    const progressStatuses = ['In Progress', 'In Progress - Functional', 'In Progress - Technical', 'Awaiting Functional Submission', 'Awaiting Technical Submission', 'On Hold', 'Customer Action', 'Raised to SAP', 'Requirement Gathering', 'Request for Closure', 'Resolved', 'Closed'];
+    const approved = (ticket.closureRequests || []).some(c => c.managerApprovalStatus === 'Approved' || c.status === 'Approved') || ticket.closureStatus === 'Approved' || ticket.status === 'Resolved' || ticket.status === 'Closed';
+    const stages: { key: string; label: string; done: boolean; tone?: 'escalated' }[] = [
+      { key: 'Created', label: 'Created', done: true },
+      { key: 'Assigned', label: 'Assigned', done: !!ticket.assignedConsultant || (ticket.assignments?.length || 0) > 0 || histHas('assign') },
+      { key: 'In Progress', label: 'In Progress', done: progressStatuses.includes(ticket.status) || histHas('progress') },
+      { key: 'Estimate', label: 'Estimate', done: (ticket.hourEstimates?.length || 0) > 0 || (ticket.estimates?.length || 0) > 0 },
+      { key: 'Closure Requested', label: 'Closure Req.', done: (ticket.closureRequests?.length || 0) > 0 },
+      { key: 'Approved', label: 'Approved', done: approved },
+      { key: 'Closed', label: 'Closed', done: ticket.status === 'Closed' },
+    ];
+    if (ticket.isEscalated || ticket.escalationFlag || (ticket.escalations?.length || 0) > 0) {
+      stages.splice(3, 0, { key: 'Escalated', label: 'Escalated', done: true, tone: 'escalated' });
+    }
+    if ((ticket.reopenedCount || 0) > 0 || ticket.status === 'Reopened' || ticket.status === 'Reopen Requested') {
+      stages.push({ key: 'Reopened', label: 'Reopened', done: true, tone: 'escalated' });
+    }
+    let lastDone = -1;
+    stages.forEach((s, i) => { if (s.done) lastDone = i; });
+    return stages.map((s, i) => ({ ...s, current: i === lastDone }));
+  }, [ticket]);
+
   return (
     <div className="space-y-4">
+      {/* Lifecycle stage tracker — every stage shown; pending stages muted */}
+      <div className="rounded-lg border border-line bg-surface p-3">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-ink-secondary">Lifecycle</p>
+        <div className="flex flex-wrap items-center gap-y-2">
+          {lifecycle.map((s, i) => (
+            <React.Fragment key={s.key}>
+              <div className="flex items-center gap-1.5">
+                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${s.done ? (s.tone === 'escalated' ? 'bg-warning text-white' : 'bg-success text-white') : 'border border-line bg-surface-muted text-ink-muted'} ${s.current ? 'ring-2 ring-ink/30 ring-offset-1' : ''}`}>
+                  {s.done ? <Check size={11} /> : i + 1}
+                </span>
+                <span className={`whitespace-nowrap text-[11px] ${s.done ? 'font-semibold text-ink' : 'text-ink-muted'}`}>{s.label}</span>
+              </div>
+              {i < lifecycle.length - 1 && <span className={`mx-2 h-px w-4 ${lifecycle[i + 1].done ? 'bg-success' : 'bg-line'}`} />}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-0.5">

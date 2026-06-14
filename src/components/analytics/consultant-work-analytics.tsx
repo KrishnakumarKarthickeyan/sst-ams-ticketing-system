@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { truncateTick } from '../../lib/analytics/chart-kit';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, LabelList,
@@ -143,7 +144,7 @@ export function ConsultantWorkAnalytics({ myTickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
             <BarChart data={modules} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" {...axisProps} width={64} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={64} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
