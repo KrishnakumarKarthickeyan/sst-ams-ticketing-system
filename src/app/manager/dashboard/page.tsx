@@ -2486,7 +2486,6 @@ export default function ManagerDashboardPage() {
                     {filteredDashboardTickets
                       .filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved')
                       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                      .slice(0, 5)
                       .map(t => {
                         const slaInfo = getSlaBreachInfo(t);
                         return (
@@ -2524,7 +2523,7 @@ export default function ManagerDashboardPage() {
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                     {/* Closure Requests */}
-                    {pendingClosureRequests.slice(0, 3).map(r => (
+                    {pendingClosureRequests.map(r => (
                       <div key={r.requestId} className="p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1">
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-ink">Closure: {r.ticketNumber}</span>
@@ -2537,7 +2536,7 @@ export default function ManagerDashboardPage() {
                       </div>
                     ))}
                     {/* Effort Logs */}
-                    {pendingEffortLogs.slice(0, 3).map(log => (
+                    {pendingEffortLogs.map(log => (
                       <div key={log.logId} className="p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1">
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-ink">Effort: {log.hours}h by {log.consultantName}</span>
@@ -2577,7 +2576,7 @@ export default function ManagerDashboardPage() {
                   <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                     {/* Active Escalations List */}
                     <div className="space-y-2">
-                      {filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).slice(0, 5).map(t => {
+                      {filteredDashboardTickets.filter(t => t.isEscalated && !t.escalationAcknowledgedAt).map(t => {
                         const slaInfo = getSlaBreachInfo(t);
                         return (
                           <EscalationTicketRow
@@ -2653,7 +2652,7 @@ export default function ManagerDashboardPage() {
                     <Badge className="bg-red-100 text-red-800 text-[11px] font-bold">WARNING</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').slice(0, 5).map(t => {
+                    {filteredDashboardTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaDueAt !== 'SLA Not Applicable' && getSlaStatus(t, SYSTEM_NOW) !== 'Healthy').map(t => {
                       const slaInfo = getSlaBreachInfo(t);
                       const isEscalated = t.escalationFlag;
                       const borderClass = isEscalated || (slaInfo?.status === 'breached') 
@@ -2704,19 +2703,28 @@ export default function ManagerDashboardPage() {
                     </span>
                     <Badge className="bg-surface-subtle text-ink text-[11px] font-bold">CAPACITY</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[11px]">
-                    <div className="flex justify-between border-b border-line pb-1.5 text-ink-secondary font-bold uppercase text-[11px]">
+                  <div className="flex-1 overflow-y-auto pr-1 text-[11px]">
+                    {/* Shared grid template on header + every row guarantees the columns
+                        line up at any name length or data volume (low or high). */}
+                    <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem] gap-2 border-b border-line pb-1.5 mb-1 text-ink-secondary font-bold uppercase text-[11px] sticky top-0 bg-surface z-10">
                       <span>Consultant</span>
-                      <span>Active Tickets</span>
-                      <span>Utilization %</span>
+                      <span className="text-right">Active</span>
+                      <span className="text-right">Util %</span>
                     </div>
-                    {consultantsLoad.slice(0, 5).map(c => (
-                      <div key={c.name} className="flex justify-between items-center py-1 hover:bg-surface-muted px-1 rounded">
-                        <span className="font-bold text-ink">{c.name}</span>
-                        <span className="text-ink-secondary">{c.activeCount} open</span>
-                        <span className={`font-bold ${c.loadStatus === 'Overloaded' ? 'text-critical' : c.loadStatus === 'Underutilized' ? 'text-warning' : 'text-green-700'}`}>{c.loadPercentage}%</span>
-                      </div>
-                    ))}
+                    <div className="space-y-1">
+                      {consultantsLoad.map(c => (
+                        <div key={c.name} className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem] gap-2 items-center py-1 hover:bg-surface-muted px-1 rounded">
+                          <span className="font-bold text-ink truncate" title={c.name}>{c.name}</span>
+                          <span className="text-ink-secondary text-right tabular-nums">{c.activeCount} open</span>
+                          <span className={`text-right tabular-nums font-bold ${c.loadStatus === 'Overloaded' ? 'text-critical' : c.loadStatus === 'Underutilized' ? 'text-warning' : 'text-green-700'}`}>{c.loadPercentage}%</span>
+                        </div>
+                      ))}
+                      {consultantsLoad.length === 0 && (
+                        <div className="flex flex-col items-center justify-center text-ink-muted italic text-center py-10 font-sans">
+                          No consultant load data.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <Button onClick={() => setSelectedTab('resources')} variant="outline" className="mt-3 w-full text-[11px] uppercase font-bold py-1.5 border-line-strong hover:bg-ink hover:text-white transition">
