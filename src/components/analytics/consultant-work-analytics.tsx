@@ -88,10 +88,10 @@ export function ConsultantWorkAnalytics({ myTickets, loading, now }: Props) {
         {/* My ticket trend */}
         <ChartFrame title="My Ticket Trend" context="Created vs closed, by day" icon={Activity} loading={loading} ready={flowReady} emptyHint="Trends appear once you have activity across at least two days." height={220} className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={220} initialDimension={{ width: 480, height: 220 }}>
-            <LineChart data={flow} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+            <LineChart data={flow} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-              <YAxis {...axisProps} allowDecimals={false} width={28} />
+              <YAxis {...axisProps} allowDecimals={false} width={34} />
               <Tooltip content={<ChartTooltip />} />
               <Line type={HONEST_LINE} dataKey="created" name="Created" stroke={CHART.brand} strokeWidth={2} dot={{ r: 3, fill: CHART.brand }} />
               <Line type={HONEST_LINE} dataKey="closed" name="Closed" stroke={CHART.success} strokeWidth={2} dot={{ r: 3, fill: CHART.success }} />
