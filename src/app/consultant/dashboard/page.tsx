@@ -1606,7 +1606,7 @@ export default function ConsultantDashboardPage() {
       })()}
 
       {/* Curated my-work analytics (replaces the chart hub) */}
-      <ConsultantWorkAnalytics myTickets={myTickets} loading={loading} now={Date.now()} />
+      <ConsultantWorkAnalytics myTickets={filteredTickets} loading={loading} now={Date.now()} />
       {/* --- SECTION 9: PROFILE & EMPLOYEE SUMMARY --- */}
       <Card className="bg-surface border border-line rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] p-6 space-y-6">
         <div className="border-b border-line pb-3 flex justify-between items-center flex-wrap gap-3">

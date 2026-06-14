@@ -470,7 +470,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           getOrganizationMap(),
           getOrganizationShortCodeMap(),
           wrapQuery(() => supabase.from('profiles').select('*')),
-          wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, ticket_id, created_at, author_id, content, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, ticket_id, file_name, file_url, file_type, file_size, uploaded_by, created_at), ticket_attachments(id, ticket_id, file_name, file_path, mime_type, file_size, uploaded_by, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)').order('created_at', { ascending: false })),
+          wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, ticket_id, created_at, author_id, content, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_escalations(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, ticket_id, file_name, file_url, file_type, file_size, uploaded_by, created_at), ticket_attachments(id, ticket_id, file_name, file_path, mime_type, file_size, uploaded_by, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)').order('created_at', { ascending: false })),
           wrapQuery(() => supabase.from('customer_contracts').select('*')),
           wrapQuery(() => supabase.from('customer_contacts').select('*')),
           Promise.resolve(null), // knowledgebase removed from UI — do not query
@@ -1117,7 +1117,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const ticketRow = await wrapQuery(() =>
           supabase
             .from('tickets')
-            .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
+            .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_escalations(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
             .eq('id', ticketId)
             .maybeSingle()
         );
@@ -1587,7 +1587,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const { data: dbContacts } = await supabase.from('customer_contacts').select('*');
         const { data: dbTicket, error: selectErr } = await supabase
           .from('tickets')
-          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
+          .select('*, organizations(name), ticket_comments(*), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_escalations(*), ticket_unlock_requests(*), ticket_comment_attachments(*), ticket_attachments(*), ticket_history(*), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
           .eq('id', ticketId)
           .single();
 

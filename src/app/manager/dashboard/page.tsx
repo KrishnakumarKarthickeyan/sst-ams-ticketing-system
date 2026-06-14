@@ -2764,7 +2764,7 @@ export default function ManagerDashboardPage() {
           </div>
 
           {/* Curated team performance (replaces the 10-chart showcase) */}
-          <ManagerTeamCockpit tickets={tickets} loading={loading} now={Date.now()} />
+          <ManagerTeamCockpit tickets={filteredTickets} loading={loading} now={Date.now()} />
 
           {/* Team Performance leaderboard + Demand & Quality analytics */}
           <ManagerTeamPerformance tickets={filteredTickets} loading={loading} now={Date.now()} />

@@ -13,7 +13,7 @@ import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { CHART_COLORS, SEMANTIC } from '../../lib/chart-theme';
 import {
-  buildBuckets, bucketIndex, autoGranularity,
+  buildBuckets, bucketIndex, autoGranularity, approvedHours, completionDate,
   aggregateConsultants, aggregateCustomers, utilizationBand, type Bucket,
 } from '../../lib/analytics/derive';
 
@@ -32,16 +32,14 @@ function businessDays(startMs: number, endMs: number): number {
   return n;
 }
 const UTIL_INDICATOR: Record<'ok' | 'warning' | 'over', string> = { ok: 'bg-blue-600', warning: 'bg-amber-500', over: 'bg-red-600' };
-const effortDate = (e: { workDate?: string; activityDate?: string; createdAt?: string }) => e.workDate || e.activityDate || e.createdAt || '';
-const approved = (e: { status?: string }) => e.status === 'Approved';
 
 export function ManagerWorkloadAnalytics({ section, tickets, profiles, contracts, now }: Props) {
   const { periodStart, periodEnd } = useMemo(() => {
     const created = tickets.map(t => new Date(t.createdAt).getTime()).filter(Number.isFinite);
-    const activity = tickets.flatMap(t => (t.efforts || []).map(e => new Date(effortDate(e)).getTime())).filter(Number.isFinite);
+    const done = tickets.map(t => completionDate(t)).filter(Number.isFinite);
     return {
       periodStart: created.length ? Math.min(...created) : now,
-      periodEnd: Math.max(now, ...(activity.length ? activity : [now]), ...(created.length ? created : [now])),
+      periodEnd: Math.max(now, ...(done.length ? done : [now]), ...(created.length ? created : [now])),
     };
   }, [tickets, now]);
   const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
@@ -101,11 +99,9 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
     const rows = buckets.map(b => ({ label: b.label, value: 0 }));
     tickets.forEach(t => {
       if (t.assignedConsultant !== sel) return;
-      (t.efforts || []).forEach(e => {
-        if (!approved(e)) return;
-        const i = bucketIndex(buckets, new Date(effortDate(e)).getTime());
-        if (i >= 0) rows[i].value += Number(e.hoursWorked || e.hoursLogged || 0);
-      });
+      const h = approvedHours(t); if (h <= 0) return;
+      const i = bucketIndex(buckets, completionDate(t));
+      if (i >= 0) rows[i].value += h;
     });
     return rows.map(r => ({ ...r, value: Math.round(r.value * 10) / 10 }));
   }, [buckets, tickets, sel]);
@@ -261,11 +257,9 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
     const rows = buckets.map(b => ({ label: b.label, value: 0 }));
     tickets.forEach(t => {
       if (t.organization !== sel) return;
-      (t.efforts || []).forEach(e => {
-        if (!approved(e)) return;
-        const i = bucketIndex(buckets, new Date(effortDate(e)).getTime());
-        if (i >= 0) rows[i].value += Number(e.hoursWorked || e.hoursLogged || 0);
-      });
+      const h = approvedHours(t); if (h <= 0) return;
+      const i = bucketIndex(buckets, completionDate(t));
+      if (i >= 0) rows[i].value += h;
     });
     return rows.map(r => ({ ...r, value: Math.round(r.value * 10) / 10 }));
   }, [buckets, tickets, sel]);
