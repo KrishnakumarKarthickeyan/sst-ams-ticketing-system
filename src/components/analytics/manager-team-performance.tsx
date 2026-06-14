@@ -97,9 +97,11 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
   const ftSplit = useMemo(() => agg.map(a => ({ name: a.name, Functional: Math.round(a.functional * 10) / 10, Technical: Math.round(a.technical * 10) / 10 }))
     .filter(d => d.Functional + d.Technical > 0).slice(0, 12), [agg]);
 
+  // Sort ASC (worst adherence first) so SLA breaches surface instead of hiding
+  // behind the top performers.
   const slaByConsultant = useMemo(() => agg.filter(a => a.slaAdherence !== null)
     .map(a => ({ name: a.name, value: a.slaAdherence as number }))
-    .sort((a, b) => b.value - a.value).slice(0, 12), [agg]);
+    .sort((a, b) => a.value - b.value).slice(0, 12), [agg]);
 
   const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
 
@@ -228,7 +230,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={closedPer} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="Closed" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" fontSize={11} />
@@ -242,7 +244,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={ftSplit} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 12 }} unit="h" />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="Functional" stackId="ft" fill={CHART_COLORS[0]} barSize={16} />
@@ -254,10 +256,10 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
         {/* SLA Adherence by Consultant */}
         <ChartCard title="SLA Adherence by Consultant" isEmpty={slaByConsultant.length === 0} className="lg:col-span-2">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={slaByConsultant} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+            <BarChart data={slaByConsultant} margin={{ top: 16, right: 16, left: 8, bottom: 24 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} width={36} unit="%" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-35} textAnchor="end" height={72} tickFormatter={truncateTick} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} width={48} unit="%" />
               <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="SLA Adherence" radius={[4, 4, 0, 0]} barSize={28}>
                 {slaByConsultant.map(d => <Cell key={d.name} fill={slaColor(d.value)} />)}
@@ -291,7 +293,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
         {/* Demand vs Closed */}
         <ChartCard title="Demand vs Closed" isEmpty={demandEmpty} className="lg:col-span-2">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={demandVsClosed} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+            <LineChart data={demandVsClosed} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={20} />
               <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={34} />
@@ -311,7 +313,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           action={<span className="text-xs text-muted-foreground">Reopen rate {reopenRate}%</span>}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={reopenTrend} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+            <LineChart data={reopenTrend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={20} />
               <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={34} />

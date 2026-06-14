@@ -133,7 +133,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={util.slice(0, 12)} layout="vertical" margin={{ top: 4, right: 36, left: 8, bottom: 0 }}>
               <XAxis type="number" domain={[0, 'dataMax']} tick={{ fontSize: 12 }} unit="%" />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={100} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={100} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <ReferenceLine x={100} stroke={SEMANTIC.danger} strokeDasharray="4 4" label={{ value: '100%', fontSize: 10, fill: SEMANTIC.danger, position: 'top' }} />
               <Bar dataKey="value" name="Utilization" radius={[0, 4, 4, 0]} barSize={14}>
@@ -146,7 +146,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
         {/* Active vs Resolved (grouped) */}
         <ChartCard title="Active vs Resolved per Consultant" isEmpty={activeResolved.length === 0}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={activeResolved} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+            <BarChart data={activeResolved} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
               <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={32} />
@@ -186,7 +186,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
           ) : undefined}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={hoursTrend} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+            <LineChart data={hoursTrend} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={20} />
               <YAxis tick={{ fontSize: 12 }} width={34} unit="h" />
@@ -201,7 +201,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={moduleData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               {moduleKeys.map((k, i) => (
                 <Bar key={k} dataKey={k} stackId="mod" fill={CHART_COLORS[i % CHART_COLORS.length]} barSize={14}
@@ -214,7 +214,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
         {/* Avg Handling Time */}
         <ChartCard title="Avg Handling Time (h)" isEmpty={aht.length === 0} className="lg:col-span-2">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={aht} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+            <BarChart data={aht} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
               <YAxis tick={{ fontSize: 12 }} width={36} unit="h" />
@@ -294,7 +294,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={consumedVsAlloc.slice(0, 10)} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 12 }} unit="h" />
-              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="allocation" name="Contract" fill={CHART_COLORS[4]} barSize={10} radius={[0, 3, 3, 0]} />
@@ -308,7 +308,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={volume} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="Tickets" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" fontSize={11} />
@@ -322,7 +322,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={breaches} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="Breaches" fill={SEMANTIC.danger} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" fontSize={11} />
@@ -344,7 +344,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           ) : undefined}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={burn} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+            <LineChart data={burn} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={20} />
               <YAxis tick={{ fontSize: 12 }} width={34} unit="h" />
@@ -359,7 +359,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={contractUtil} layout="vertical" margin={{ top: 4, right: 36, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 12 }} unit="%" />
-              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <ReferenceLine x={100} stroke={SEMANTIC.danger} strokeDasharray="4 4" label={{ value: '100%', fontSize: 10, fill: SEMANTIC.danger, position: 'top' }} />
               <Bar dataKey="value" name="Utilization" radius={[0, 4, 4, 0]} barSize={14}>
