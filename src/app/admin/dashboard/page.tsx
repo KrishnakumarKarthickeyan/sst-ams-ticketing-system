@@ -26,7 +26,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { PageHeader } from '../../../components/ui/page-header';
 import { StatCard } from '../../../components/ui/stat-card';
 import type { PillTone } from '../../../components/ui/status-pill';
-import { AdminOperationsIntelligence } from '../../../components/analytics/admin-operations-intelligence';
+import { AdminOperationIntelligence } from '../../../components/analytics/admin-operation-intelligence';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
@@ -297,6 +297,49 @@ export default function AdminDashboardPage() {
   // Base tickets selection filter
   const activeTickets = useMemo(() => {
     return applyFilters(tickets, filters);
+  }, [tickets, filters]);
+
+  // Current period bounds + the equivalent PREVIOUS period (for KPI deltas).
+  // Previous period reuses every non-period filter, only the date window shifts.
+  const periodWindow = useMemo(() => {
+    const now = new Date(SYSTEM_NOW);
+    let start: Date, end: Date, prevStart: Date, prevEnd: Date;
+    if (filters.period === 'This Month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = now;
+      prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Quarter') {
+      const q = Math.floor(now.getMonth() / 3);
+      start = new Date(now.getFullYear(), q * 3, 1);
+      end = now;
+      prevStart = new Date(now.getFullYear(), q * 3 - 3, 1);
+      prevEnd = new Date(now.getFullYear(), q * 3, 0, 23, 59, 59, 999);
+    } else if (filters.period === 'This Year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = now;
+      prevStart = new Date(now.getFullYear() - 1, 0, 1);
+      prevEnd = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+    } else {
+      const createdTimes = tickets.map(t => new Date(t.createdAt).getTime()).filter(Number.isFinite);
+      start = filters.dateFrom ? new Date(filters.dateFrom) : new Date(createdTimes.length ? Math.min(...createdTimes) : SYSTEM_NOW);
+      start.setHours(0, 0, 0, 0);
+      end = filters.dateTo ? new Date(filters.dateTo) : now;
+      end.setHours(23, 59, 59, 999);
+      const len = end.getTime() - start.getTime();
+      prevEnd = new Date(start.getTime() - 1);
+      prevStart = new Date(start.getTime() - 1 - len);
+    }
+    const prevFilters = {
+      ...filters, period: 'Custom' as const,
+      dateFrom: prevStart.toISOString().slice(0, 10),
+      dateTo: prevEnd.toISOString().slice(0, 10),
+    };
+    return {
+      periodStart: start.getTime(),
+      periodEnd: end.getTime(),
+      previousTickets: applyFilters(tickets, prevFilters),
+    };
   }, [tickets, filters]);
 
   // color configs
@@ -1728,14 +1771,15 @@ export default function AdminDashboardPage() {
             </Card>
           </div>
 
-          {/* ── OPERATIONS INTELLIGENCE (curated, replaces the 20-chart wall) ── */}
+          {/* ── OPERATION INTELLIGENCE ── */}
           <div className="border-t border-line pt-6 mt-6">
-            <AdminOperationsIntelligence
+            <AdminOperationIntelligence
               tickets={activeTickets}
-              consultantProfiles={profiles.filter(p => p.role === 'Consultant')}
-              escalations={escalationsQueue}
+              previousTickets={periodWindow.previousTickets}
               loading={loading}
               now={Date.now()}
+              periodStart={periodWindow.periodStart}
+              periodEnd={periodWindow.periodEnd}
             />
           </div>
         </TabsContent>
