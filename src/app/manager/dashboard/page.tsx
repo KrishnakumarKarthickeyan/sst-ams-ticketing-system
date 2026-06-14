@@ -57,6 +57,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui
 import { PageHeader } from '../../../components/ui/page-header';
 import { AICard, AIInsightRow } from '../../../components/ui/ai-card';
 import { ManagerTeamCockpit } from '../../../components/analytics/manager-team-cockpit';
+import { ManagerTeamPerformance } from '../../../components/analytics/manager-team-performance';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { Textarea } from '../../../components/ui/textarea';
@@ -2764,6 +2765,9 @@ export default function ManagerDashboardPage() {
 
           {/* Curated team performance (replaces the 10-chart showcase) */}
           <ManagerTeamCockpit tickets={tickets} loading={loading} now={Date.now()} />
+
+          {/* Team Performance leaderboard + Demand & Quality analytics */}
+          <ManagerTeamPerformance tickets={filteredTickets} loading={loading} now={Date.now()} />
         </TabsContent>
 
         {/* ── TAB CONTENT: EXECUTIVE HEALTH ── */}
