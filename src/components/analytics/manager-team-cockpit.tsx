@@ -164,7 +164,7 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
               <ResponsiveContainer width="100%" height={Math.max(160, capacity.visible.length * 22)} initialDimension={{ width: 320, height: 200 }}>
                 <BarChart data={capacity.visible} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
                   <XAxis type="number" hide allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" {...axisProps} width={88} tickFormatter={truncateTick} />
+                  <YAxis type="category" dataKey="name" {...axisProps} width={96} tickFormatter={truncateTick} />
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                     {capacity.visible.map(r => <Cell key={r.name} fill={r.name === 'Unassigned' ? CHART.axis : CHART.info} />)}
