@@ -34,3 +34,31 @@ export const priorityColors = {
   Medium: chartColors.semantic.warning,
   Low: chartColors.semantic.neutral,
 };
+
+/**
+ * THE single categorical palette every Recharts series imports. Do NOT hardcode
+ * hex anywhere in chart components — pull a color by index from CHART_COLORS, or
+ * a state color from SEMANTIC / PRIORITY_COLOR / STATUS_COLOR below.
+ */
+export const CHART_COLORS = chartColors.categorical;
+
+export const SEMANTIC = chartColors.semantic;
+
+// Priority → fixed severity color, so a "priority" series reads identically everywhere.
+export const PRIORITY_COLOR: Record<string, string> = {
+  Critical: chartColors.semantic.danger,
+  High: '#f97316',
+  Medium: chartColors.semantic.warning,
+  Low: chartColors.semantic.neutral,
+};
+
+// Coarse lifecycle bucket → color for status donuts / stacked flows.
+export const STATUS_COLOR: Record<string, string> = {
+  New: chartColors.categorical[0],
+  Assigned: chartColors.categorical[4],
+  'In Progress': chartColors.semantic.info,
+  'Pending Closure': chartColors.semantic.warning,
+  Closed: chartColors.semantic.success,
+  Escalated: chartColors.semantic.danger,
+  Reopened: '#f97316',
+};
