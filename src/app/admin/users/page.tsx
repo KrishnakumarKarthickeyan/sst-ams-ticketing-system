@@ -27,6 +27,8 @@ import {
   DialogFooter
 } from '../../../components/ui/dialog';
 import { PageHeader } from '../../../components/ui/page-header';
+import { CreateConsultantDialog } from '../../../components/users/CreateConsultantDialog';
+import { CreateClientDialog } from '../../../components/users/CreateClientDialog';
 import { Button } from '../../../components/ui/button';
 
 interface UserProfile {
@@ -42,6 +44,8 @@ export default function AdminUsersPage() {
   const { user } = useAuth();
   const { profiles, refetchData } = useTickets();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [createConsultantOpen, setCreateConsultantOpen] = useState(false);
+  const [createClientOpen, setCreateClientOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -649,12 +653,25 @@ export default function AdminUsersPage() {
         title="User Management"
         description="Manage platform authorization, issue roles, and assign organizational scopes."
         actions={
-          <Button onClick={() => setShowAddForm(!showAddForm)} className="gap-1.5 rounded-md">
-            <Plus size={13} />
-            Provision User
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setCreateConsultantOpen(true)} className="gap-1.5 rounded-md">
+              <Plus size={13} />
+              Create Consultant
+            </Button>
+            <Button variant="outline" onClick={() => setCreateClientOpen(true)} className="gap-1.5 rounded-md">
+              <Plus size={13} />
+              Create Client
+            </Button>
+            <Button onClick={() => setShowAddForm(!showAddForm)} className="gap-1.5 rounded-md">
+              <Plus size={13} />
+              Provision User
+            </Button>
+          </div>
         }
       />
+
+      <CreateConsultantDialog open={createConsultantOpen} onOpenChange={setCreateConsultantOpen} performedBy={user?.email} onCreated={fetchUsers} />
+      <CreateClientDialog open={createClientOpen} onOpenChange={setCreateClientOpen} performedBy={user?.email} onCreated={fetchUsers} />
 
       {/* Invite User Form */}
       {showAddForm && (
