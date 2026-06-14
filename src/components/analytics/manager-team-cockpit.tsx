@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { truncateTick } from '../../lib/analytics/chart-kit';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Cell, LabelList,
+  CartesianGrid, Tooltip, Cell, LabelList, Brush,
 } from 'recharts';
 import { Activity, Layers, Users, CheckSquare, Hourglass, Tags, FolderTree, Flame, Gauge, Timer } from 'lucide-react';
 import { ChartFrame } from './chart-frame';
@@ -130,8 +130,8 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ChartFrame title="Backlog Aging" context="Open tickets by age" icon={Hourglass} loading={loading} ready={agingReady} emptyHint="No open backlog right now." height={220}>
-          <ResponsiveContainer width="100%" height={220} initialDimension={{ width: 320, height: 220 }}>
+        <ChartFrame title="Backlog Aging" context="Open tickets by age" icon={Hourglass} loading={loading} ready={agingReady} emptyHint="No open backlog right now." height={280}>
+          <ResponsiveContainer width="100%" height={280} initialDimension={{ width: 320, height: 280 }}>
             <BarChart data={aging} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="name" {...axisProps} />
@@ -145,8 +145,8 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           </ResponsiveContainer>
         </ChartFrame>
 
-        <ChartFrame title="Throughput" context="Opened vs resolved, by day" icon={Activity} loading={loading} ready={flowReady} emptyHint="Trends appear once there are at least two active days." height={220} className="lg:col-span-2">
-          <ResponsiveContainer width="100%" height={220} initialDimension={{ width: 480, height: 220 }}>
+        <ChartFrame title="Throughput" context="Opened vs resolved · drag the slider to zoom the range" icon={Activity} loading={loading} ready={flowReady} emptyHint="Trends appear once there are at least two active days." height={280} className="lg:col-span-2">
+          <ResponsiveContainer width="100%" height={280} initialDimension={{ width: 480, height: 280 }}>
             <LineChart data={flow} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
@@ -154,27 +154,37 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
               <Tooltip content={<ChartTooltip />} />
               <Line type={HONEST_LINE} dataKey="opened" name="Opened" stroke={CHART.brand} strokeWidth={2} dot={{ r: 3, fill: CHART.brand }} />
               <Line type={HONEST_LINE} dataKey="resolved" name="Resolved" stroke={CHART.success} strokeWidth={2} dot={{ r: 3, fill: CHART.success }} />
+              {/* Range slider — scrubs/zooms the timeline; defaults to the most recent window when there are many points */}
+              <Brush
+                dataKey="label"
+                height={24}
+                travellerWidth={8}
+                stroke={CHART.brand}
+                fill="hsl(var(--muted))"
+                tickFormatter={() => ''}
+                startIndex={Math.max(0, flow.length - 16)}
+              />
             </LineChart>
           </ResponsiveContainer>
         </ChartFrame>
 
-        <ChartFrame title="Capacity Balance" context={capacity.hidden > 0 ? `Top ${CAPACITY_TOP_N} by open load` : 'Open load per consultant'} icon={Users} loading={loading} ready={capacity.rows.length > 0} emptyHint="No assigned open tickets yet." height={200}>
+        <ChartFrame title="Capacity Balance" context={`${capacity.realConsultants.length} with open load · scroll for all`} icon={Users} loading={loading} ready={capacity.rows.length > 0} emptyHint="No assigned open tickets yet." height={280}>
           {capacity.realConsultants.length >= 2 ? (
-            <div className="flex h-full flex-col">
-              <ResponsiveContainer width="100%" height={Math.max(160, capacity.visible.length * 22)} initialDimension={{ width: 320, height: 200 }}>
-                <BarChart data={capacity.visible} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
+            // Scroll container fills the fixed card body; the chart is sized to ALL
+            // rows (26px each), so every consultant shows and the list scrolls —
+            // no Top-N cap, no overflow, at any team size.
+            <div className="h-full overflow-y-auto pr-1">
+              <ResponsiveContainer width="100%" height={Math.max(160, capacity.rows.length * 26)} initialDimension={{ width: 320, height: 240 }}>
+                <BarChart data={capacity.rows} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
                   <XAxis type="number" hide allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" {...axisProps} width={96} tickFormatter={truncateTick} />
+                  <YAxis type="category" dataKey="name" {...axisProps} width={96} interval={0} tickFormatter={truncateTick} />
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
-                    {capacity.visible.map(r => <Cell key={r.name} fill={r.name === 'Unassigned' ? CHART.axis : CHART.info} />)}
+                    {capacity.rows.map(r => <Cell key={r.name} fill={r.name === 'Unassigned' ? CHART.axis : CHART.info} />)}
                     <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              {capacity.hidden > 0 && (
-                <p className="type-status mt-2 text-ink-muted">+{capacity.hidden} more consultant{capacity.hidden === 1 ? '' : 's'} with open load.</p>
-              )}
             </div>
           ) : (
             <div className="flex h-full flex-col justify-center gap-2">
@@ -189,8 +199,8 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           )}
         </ChartFrame>
 
-        <ChartFrame title="Approval Bottlenecks" context={`${approvals.total} awaiting you`} icon={CheckSquare} loading={loading} ready={approvals.rows.length > 0} emptyTitle="Queue is clear" emptyHint="No approvals are waiting on you." emptyIcon={CheckSquare} height={200}>
-          <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
+        <ChartFrame title="Approval Bottlenecks" context={`${approvals.total} awaiting you`} icon={CheckSquare} loading={loading} ready={approvals.rows.length > 0} emptyTitle="Queue is clear" emptyHint="No approvals are waiting on you." emptyIcon={CheckSquare} height={280}>
+          <ResponsiveContainer width="100%" height={280} initialDimension={{ width: 320, height: 280 }}>
             <BarChart data={approvals.rows} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
               <YAxis type="category" dataKey="name" {...axisProps} width={78} tickFormatter={truncateTick} />
@@ -202,8 +212,9 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           </ResponsiveContainer>
         </ChartFrame>
 
-        <ChartFrame title="Consultant Performance" context={`${performance.length} consultant${performance.length === 1 ? '' : 's'} · open · closed · SLA`} icon={Layers} loading={loading} ready={performance.length > 0} emptyHint="No consultant activity yet." height={200} bodyClassName="!min-h-0">
-          <div className="max-h-[240px] overflow-y-auto rounded-md border border-line">
+        <ChartFrame title="Consultant Performance" context={`${performance.length} consultant${performance.length === 1 ? '' : 's'} · open · closed · SLA`} icon={Layers} loading={loading} ready={performance.length > 0} emptyHint="No consultant activity yet." height={280} bodyClassName="!min-h-0">
+          {/* h-full so the table scrolls INSIDE the fixed card body (all rows, no spill) */}
+          <div className="h-full overflow-y-auto rounded-md border border-line">
             <table className="w-full">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-line bg-surface-muted">
