@@ -152,3 +152,5 @@ export function KpiCard({
     </Card>
   );
 }
+
+export { truncateTick } from '../../lib/analytics/chart-kit';

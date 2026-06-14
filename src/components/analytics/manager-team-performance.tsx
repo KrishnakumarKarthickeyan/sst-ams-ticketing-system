@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { truncateTick } from './chart-primitives';
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, Cell, LabelList,
@@ -227,7 +228,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={closedPer} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="Closed" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" fontSize={11} />
@@ -241,7 +242,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={ftSplit} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 12 }} unit="h" />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="Functional" stackId="ft" fill={CHART_COLORS[0]} barSize={16} />
@@ -334,7 +335,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={demandHeat} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="module" tick={{ fontSize: 12 }} width={70} />
+              <YAxis type="category" dataKey="module" tick={{ fontSize: 12 }} width={70} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
               {PRIORITIES.map((p, i) => (

@@ -118,9 +118,26 @@ export function resolutionHours(t: Pick<Ticket, 'status' | 'createdAt' | 'resolv
   return (end - start) / 36e5;
 }
 
-/** Sum of APPROVED logged hours on a ticket. */
-export function approvedHours(t: Pick<Ticket, 'efforts'>): number {
+/**
+ * Sum of APPROVED logged hours on a ticket. Real data lives in the closure flow
+ * (ticket_actual_hours → actualHoursLogs), so read that first; fall back to the
+ * synthesized consultantEfforts, then the legacy timesheet efforts array. This
+ * is why hours/utilization widgets were empty — they only read `efforts`, which
+ * the closure-based flow never populates.
+ */
+export function approvedHours(t: Pick<Ticket, 'efforts' | 'actualHoursLogs' | 'consultantEfforts'>): number {
+  const fromActual = (t.actualHoursLogs || []).reduce(
+    (s, a) => s + ((a.approvalStatus || '').toLowerCase() === 'approved' ? Number(a.actualHours || 0) : 0), 0);
+  if (fromActual > 0) return fromActual;
+  const fromCE = (t.consultantEfforts || []).reduce(
+    (s, e) => s + (e.closureStatus === 'Approved' ? Number(e.actualHours || 0) : 0), 0);
+  if (fromCE > 0) return fromCE;
   return (t.efforts || []).reduce((sum, e) => sum + (e.status === 'Approved' ? (e.hoursWorked || 0) : 0), 0);
+}
+
+/** Timestamp (ms) used to anchor logged hours in time: resolved → closed → created. */
+export function completionDate(t: Pick<Ticket, 'resolvedAt' | 'closedAt' | 'createdAt'>): number {
+  return new Date(t.resolvedAt || t.closedAt || t.createdAt).getTime();
 }
 
 /** Functional vs technical approved-hours split for a ticket, via consultantEfforts. */

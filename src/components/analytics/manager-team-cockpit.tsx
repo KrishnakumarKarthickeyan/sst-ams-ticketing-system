@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { truncateTick } from '../../lib/analytics/chart-kit';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Cell, LabelList,
@@ -163,7 +164,7 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
               <ResponsiveContainer width="100%" height={Math.max(160, capacity.visible.length * 22)} initialDimension={{ width: 320, height: 200 }}>
                 <BarChart data={capacity.visible} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
                   <XAxis type="number" hide allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" {...axisProps} width={88} />
+                  <YAxis type="category" dataKey="name" {...axisProps} width={88} tickFormatter={truncateTick} />
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                     {capacity.visible.map(r => <Cell key={r.name} fill={r.name === 'Unassigned' ? CHART.axis : CHART.info} />)}
@@ -192,7 +193,7 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
             <BarChart data={approvals.rows} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" {...axisProps} width={78} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={78} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.warning} radius={[0, 4, 4, 0]} barSize={20}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
@@ -264,7 +265,7 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
             <BarChart data={tmix} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" {...axisProps} width={96} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={96} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.info} radius={[0, 4, 4, 0]} barSize={18}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
@@ -277,7 +278,7 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 480, height: 200 }}>
             <BarChart data={cats} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" {...axisProps} width={130} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={130} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />

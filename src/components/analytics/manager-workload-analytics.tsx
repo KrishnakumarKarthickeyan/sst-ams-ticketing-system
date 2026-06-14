@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { truncateTick } from './chart-primitives';
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, Cell, LabelList, ReferenceLine,
@@ -13,7 +14,7 @@ import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { CHART_COLORS, SEMANTIC } from '../../lib/chart-theme';
 import {
-  buildBuckets, bucketIndex, autoGranularity,
+  buildBuckets, bucketIndex, autoGranularity, approvedHours, completionDate,
   aggregateConsultants, aggregateCustomers, utilizationBand, type Bucket,
 } from '../../lib/analytics/derive';
 
@@ -32,16 +33,14 @@ function businessDays(startMs: number, endMs: number): number {
   return n;
 }
 const UTIL_INDICATOR: Record<'ok' | 'warning' | 'over', string> = { ok: 'bg-blue-600', warning: 'bg-amber-500', over: 'bg-red-600' };
-const effortDate = (e: { workDate?: string; activityDate?: string; createdAt?: string }) => e.workDate || e.activityDate || e.createdAt || '';
-const approved = (e: { status?: string }) => e.status === 'Approved';
 
 export function ManagerWorkloadAnalytics({ section, tickets, profiles, contracts, now }: Props) {
   const { periodStart, periodEnd } = useMemo(() => {
     const created = tickets.map(t => new Date(t.createdAt).getTime()).filter(Number.isFinite);
-    const activity = tickets.flatMap(t => (t.efforts || []).map(e => new Date(effortDate(e)).getTime())).filter(Number.isFinite);
+    const done = tickets.map(t => completionDate(t)).filter(Number.isFinite);
     return {
       periodStart: created.length ? Math.min(...created) : now,
-      periodEnd: Math.max(now, ...(activity.length ? activity : [now]), ...(created.length ? created : [now])),
+      periodEnd: Math.max(now, ...(done.length ? done : [now]), ...(created.length ? created : [now])),
     };
   }, [tickets, now]);
   const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
@@ -101,11 +100,9 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
     const rows = buckets.map(b => ({ label: b.label, value: 0 }));
     tickets.forEach(t => {
       if (t.assignedConsultant !== sel) return;
-      (t.efforts || []).forEach(e => {
-        if (!approved(e)) return;
-        const i = bucketIndex(buckets, new Date(effortDate(e)).getTime());
-        if (i >= 0) rows[i].value += Number(e.hoursWorked || e.hoursLogged || 0);
-      });
+      const h = approvedHours(t); if (h <= 0) return;
+      const i = bucketIndex(buckets, completionDate(t));
+      if (i >= 0) rows[i].value += h;
     });
     return rows.map(r => ({ ...r, value: Math.round(r.value * 10) / 10 }));
   }, [buckets, tickets, sel]);
@@ -136,7 +133,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={util.slice(0, 12)} layout="vertical" margin={{ top: 4, right: 36, left: 8, bottom: 0 }}>
               <XAxis type="number" domain={[0, 'dataMax']} tick={{ fontSize: 12 }} unit="%" />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={100} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={100} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <ReferenceLine x={100} stroke={SEMANTIC.danger} strokeDasharray="4 4" label={{ value: '100%', fontSize: 10, fill: SEMANTIC.danger, position: 'top' }} />
               <Bar dataKey="value" name="Utilization" radius={[0, 4, 4, 0]} barSize={14}>
@@ -204,7 +201,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={moduleData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               {moduleKeys.map((k, i) => (
                 <Bar key={k} dataKey={k} stackId="mod" fill={CHART_COLORS[i % CHART_COLORS.length]} barSize={14}
@@ -261,11 +258,9 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
     const rows = buckets.map(b => ({ label: b.label, value: 0 }));
     tickets.forEach(t => {
       if (t.organization !== sel) return;
-      (t.efforts || []).forEach(e => {
-        if (!approved(e)) return;
-        const i = bucketIndex(buckets, new Date(effortDate(e)).getTime());
-        if (i >= 0) rows[i].value += Number(e.hoursWorked || e.hoursLogged || 0);
-      });
+      const h = approvedHours(t); if (h <= 0) return;
+      const i = bucketIndex(buckets, completionDate(t));
+      if (i >= 0) rows[i].value += h;
     });
     return rows.map(r => ({ ...r, value: Math.round(r.value * 10) / 10 }));
   }, [buckets, tickets, sel]);
@@ -299,7 +294,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={consumedVsAlloc.slice(0, 10)} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 12 }} unit="h" />
-              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} />
+              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="allocation" name="Contract" fill={CHART_COLORS[4]} barSize={10} radius={[0, 3, 3, 0]} />
@@ -313,7 +308,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={volume} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} />
+              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="Tickets" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" fontSize={11} />
@@ -327,7 +322,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={breaches} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} />
+              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="Breaches" fill={SEMANTIC.danger} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" fontSize={11} />
@@ -364,7 +359,7 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={contractUtil} layout="vertical" margin={{ top: 4, right: 36, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 12 }} unit="%" />
-              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} />
+              <YAxis type="category" dataKey="org" tick={{ fontSize: 11 }} width={100} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <ReferenceLine x={100} stroke={SEMANTIC.danger} strokeDasharray="4 4" label={{ value: '100%', fontSize: 10, fill: SEMANTIC.danger, position: 'top' }} />
               <Bar dataKey="value" name="Utilization" radius={[0, 4, 4, 0]} barSize={14}>

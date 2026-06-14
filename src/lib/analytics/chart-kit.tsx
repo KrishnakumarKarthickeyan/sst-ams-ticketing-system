@@ -157,3 +157,6 @@ export function timeBuckets(startMs: number, endMs: number): TimeBucketing {
   };
   return { buckets: raw.map(b => ({ key: b.key, label: b.label })), index, granularity };
 }
+
+/** Truncate a long axis category label (~14 chars) — full value still shows in the tooltip. */
+export const truncateTick = (v: unknown): string => { const t = String(v ?? ''); return t.length > 14 ? t.slice(0, 13) + '…' : t; };
