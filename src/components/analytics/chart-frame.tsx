@@ -58,7 +58,7 @@ export function ChartFrame({
         {action && <div className="shrink-0">{action}</div>}
       </div>
 
-      <div className={cn('min-h-0 flex-1', bodyClassName)} style={{ minHeight: height }}>
+      <div className={cn('min-h-0', bodyClassName)} style={{ height }}>
         {loading ? (
           <div className="flex h-full flex-col justify-end gap-2 pb-2" style={{ height }}>
             <div className="flex flex-1 items-end gap-2">

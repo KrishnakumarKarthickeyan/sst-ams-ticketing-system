@@ -110,10 +110,10 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
         {/* Lifecycle — the real stages, not a single-slice donut */}
         <ChartFrame title="Tickets by Stage" context="Current lifecycle status" icon={ListChecks} loading={loading} ready={companyTickets.length > 0} emptyHint="Your tickets will appear here once raised." height={220}>
           <ResponsiveContainer width="100%" height={220} initialDimension={{ width: 320, height: 220 }}>
-            <BarChart data={lifecycle} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+            <BarChart data={lifecycle} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="name" {...axisProps} interval={0} />
-              <YAxis {...axisProps} allowDecimals={false} width={28} />
+              <YAxis {...axisProps} allowDecimals={false} width={34} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={34}>
                 {lifecycle.map(b => <Cell key={b.name} fill={LIFECYCLE_FILL[b.name] ?? CHART.brand} />)}
@@ -126,10 +126,10 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
         {/* My ticket trend */}
         <ChartFrame title="Activity Trend" context="Created vs resolved, by day" icon={Activity} loading={loading} ready={flowReady} emptyHint="Trends appear once there's activity across at least two days." height={220} className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={220} initialDimension={{ width: 480, height: 220 }}>
-            <LineChart data={flow} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+            <LineChart data={flow} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-              <YAxis {...axisProps} allowDecimals={false} width={28} />
+              <YAxis {...axisProps} allowDecimals={false} width={34} />
               <Tooltip content={<ChartTooltip />} />
               <Line type={HONEST_LINE} dataKey="created" name="Created" stroke={CHART.brand} strokeWidth={2} dot={{ r: 3, fill: CHART.brand }} />
               <Line type={HONEST_LINE} dataKey="resolved" name="Resolved" stroke={CHART.success} strokeWidth={2} dot={{ r: 3, fill: CHART.success }} />
@@ -232,10 +232,10 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <ChartFrame title="SLA by Priority" context="Compliance per tier" icon={Gauge} loading={loading} ready={slaTier.length > 0} emptyHint="No incidents with a target yet." height={200}>
           <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
-            <BarChart data={slaTier} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+            <BarChart data={slaTier} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="name" {...axisProps} interval={0} />
-              <YAxis {...axisProps} domain={[0, 100]} width={32} unit="%" />
+              <YAxis {...axisProps} domain={[0, 100]} width={40} unit="%" />
               <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="pct" radius={[4, 4, 0, 0]} barSize={32}>
                 {slaTier.map(d => <Cell key={d.name} fill={d.pct >= 95 ? CHART.success : d.pct >= 80 ? CHART.warning : CHART.critical} />)}
@@ -273,10 +273,10 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
 
         <ChartFrame title="Business Impact" context="Severity of what you raise" icon={Flame} loading={loading} ready={impact.length > 0} emptyHint="No impact data yet." height={200}>
           <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
-            <BarChart data={impact} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+            <BarChart data={impact} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="name" {...axisProps} interval={0} />
-              <YAxis {...axisProps} allowDecimals={false} width={28} />
+              <YAxis {...axisProps} allowDecimals={false} width={34} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={32}>
                 {impact.map((d, i) => <Cell key={d.name} fill={[CHART.critical, CHART.warning, CHART.brand, CHART.axis][i] ?? CHART.brand} />)}
