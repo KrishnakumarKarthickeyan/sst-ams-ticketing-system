@@ -157,47 +157,73 @@ export default function ConsultantReportsPage() {
     };
   }, [filteredTickets]);
 
-  // CSV/Excel Exporter
-  const handleExport = (format: 'CSV' | 'Excel') => {
-    const headers = ['Ticket ID', 'Customer', 'Subject', 'SAP Module', 'Priority', 'Status', 'Quoted/Est Hours', 'Actual Hours', 'Billable', 'Created At'];
-    
-    const rows = filteredTickets.map(t => {
+  // Build a flat row set for the active report — every value safe for CSV/PDF.
+  const EXPORT_HEADERS = ['Ticket #', 'Customer', 'Subject', 'SAP Module', 'Priority', 'Status', 'Est Hours', 'Actual Hours', 'Billable', 'Created At'];
+  const buildExportRows = (): string[][] =>
+    filteredTickets.map(t => {
       const latestEst = (t.hourEstimates || [])
         .filter(e => e.status === 'Submitted' || e.status === 'Revision Approved')
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
       const approvedCls = (t.closureRequests || []).find(c => c.status === 'Approved');
-
       return [
         t.ticketNumber || t.id,
-        t.organization,
-        `"${t.title.replace(/"/g, '""')}"`,
-        t.sapModule,
-        t.priority,
-        t.status,
-        String(latestEst?.totalEstimatedHours || t.quotedHours || 0),
-        String(approvedCls?.totalActualHours || 0),
+        t.organization || '',
+        t.title || '',
+        t.sapModule || '',
+        t.priority || '',
+        t.status || '',
+        String(latestEst?.totalEstimatedHours ?? t.quotedHours ?? 0),
+        String(approvedCls?.totalActualHours ?? 0),
         t.billable ? 'Billable' : 'Non-Billable',
-        new Date(t.createdAt).toLocaleDateString()
+        t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '',
       ];
     });
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  // CSV/Excel — every field quoted + escaped (commas/quotes in names no longer
+  // break columns), UTF-8 BOM so Excel renders accents correctly.
+  const handleExport = (format: 'CSV' | 'Excel') => {
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = buildExportRows();
+    const csv = [EXPORT_HEADERS.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\r\n');
     const mimeType = format === 'Excel' ? 'application/vnd.ms-excel;charset=utf-8;' : 'text/csv;charset=utf-8;';
-    const filename = `AMS_${activeReport}_Report_${new Date().toISOString().split('T')[0]}.${format === 'Excel' ? 'xls' : 'csv'}`;
-    
-    const blob = new Blob([csvContent], { type: mimeType });
+    const filename = `AMS_${activeReport}_${new Date().toISOString().split('T')[0]}.${format === 'Excel' ? 'xls' : 'csv'}`;
+    const blob = new Blob(['﻿' + csv], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
+    link.href = url;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const handlePDFPlaceholder = () => {
-    alert('PDF Generation Placeholder: Print Layout sent to spool queue in background.');
+  // Real PDF export — render a print-friendly document and invoke the browser's
+  // print-to-PDF (no extra dependency needed). Replaces the old alert placeholder.
+  const handleExportPDF = () => {
+    const rows = buildExportRows();
+    const escHtml = (v: unknown) => String(v ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+    const title = `AMS Report — ${activeReport.replace(/_/g, ' ')}`;
+    const win = window.open('', '_blank');
+    if (!win) { alert('Please allow pop-ups to export the PDF.'); return; }
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+      <style>
+        *{font-family:Inter,Arial,sans-serif;box-sizing:border-box}
+        body{margin:24px;color:#18181b}
+        h1{font-size:16px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px}
+        p.sub{font-size:11px;color:#71717a;margin:0 0 16px}
+        table{width:100%;border-collapse:collapse;font-size:10px}
+        th,td{border:1px solid #e4e4e7;padding:6px 8px;text-align:left}
+        th{background:#f4f4f5;text-transform:uppercase;letter-spacing:.04em;font-size:9px;color:#52525b}
+        tr:nth-child(even){background:#fafafa}
+      </style></head><body>
+      <h1>${title}</h1>
+      <p class="sub">${consultantName} · ${rows.length} record(s) · ${new Date().toLocaleString()}</p>
+      <table><thead><tr>${EXPORT_HEADERS.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${escHtml(c)}</td>`).join('')}</tr>`).join('') || '<tr><td colspan="10">No records match the filters.</td></tr>'}</tbody></table>
+      <script>window.onload=function(){window.focus();window.print();}</script>
+      </body></html>`);
+    win.document.close();
   };
 
   // Recharts Breakdown Data depending on active report
@@ -231,6 +257,41 @@ export default function ConsultantReportsPage() {
     });
     return Object.entries(statusMap).map(([name, value]) => ({ name, value }));
   }, [filteredTickets, activeReport, kpis]);
+
+  // Report-aware preview table: aggregate reports show a summary that matches the
+  // chart, list reports show ticket rows. This is what makes the TABLE (not just
+  // the chart) update when a tile is selected.
+  type ReportView = { mode: 'tickets' } | { mode: 'summary'; columns: string[]; rows: (string | number)[][] };
+  const reportView = useMemo<ReportView>(() => {
+    if (activeReport === 'client_summary') {
+      const m = new Map<string, { tickets: number; est: number; act: number }>();
+      filteredTickets.forEach(t => {
+        const row = m.get(t.organization) || { tickets: 0, est: 0, act: 0 };
+        row.tickets++;
+        const est = (t.hourEstimates || []).filter(e => e.status === 'Submitted' || e.status === 'Revision Approved').sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+        row.est += est?.totalEstimatedHours || t.quotedHours || 0;
+        const cls = (t.closureRequests || []).find(c => c.status === 'Approved');
+        row.act += cls?.totalActualHours || 0;
+        m.set(t.organization, row);
+      });
+      return { mode: 'summary', columns: ['Client', 'Tickets', 'Est Hours', 'Actual Hours'],
+        rows: Array.from(m.entries()).sort((a, b) => b[1].tickets - a[1].tickets).map(([client, r]) => [client, r.tickets, `${r.est}h`, `${r.act}h`]) };
+    }
+    if (activeReport === 'hours_summary') {
+      return { mode: 'summary', columns: ['Metric', 'Hours'],
+        rows: [['Estimated Hours', `${kpis.totalEst.toFixed(1)}h`], ['Approved Actual Hours', `${kpis.totalAct.toFixed(1)}h`], ['Variance', `${(kpis.totalAct - kpis.totalEst).toFixed(1)}h`]] };
+    }
+    if (activeReport === 'billable_hours') {
+      return { mode: 'summary', columns: ['Metric', 'Hours'],
+        rows: [['Billable Hours', `${kpis.billableHours.toFixed(1)}h`], ['Non-Billable Hours', `${kpis.nonBillableHours.toFixed(1)}h`]] };
+    }
+    if (activeReport === 'sla_compliance') {
+      const compliant = Math.round(filteredTickets.length * kpis.complianceRate / 100);
+      return { mode: 'summary', columns: ['SLA Outcome', 'Tickets'],
+        rows: [['Within SLA', compliant], ['Breached / At Risk', filteredTickets.length - compliant]] };
+    }
+    return { mode: 'tickets' };
+  }, [activeReport, filteredTickets, kpis]);
 
   return (
     <div className="space-y-6 bg-slate-50 text-slate-900 min-h-screen p-6 md:p-8 font-sans">
@@ -268,12 +329,12 @@ export default function ConsultantReportsPage() {
             Export Excel
           </Button>
           <Button
-            onClick={handlePDFPlaceholder}
+            onClick={handleExportPDF}
             variant="outline"
             className="border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold uppercase text-[11px] h-8 cursor-pointer"
           >
             <FileText size={12} className="mr-1" />
-            PDF Placeholder
+            Export PDF
           </Button>
         </div>
       </div>
@@ -401,10 +462,32 @@ export default function ConsultantReportsPage() {
           </span>
 
           <div className="overflow-x-auto">
+            {reportView.mode === 'summary' ? (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px] tracking-wider">
+                    {reportView.columns.map((c, i) => (
+                      <th key={c} className={`py-2.5 px-3 ${i > 0 ? 'text-right' : ''}`}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-[11px]">
+                  {reportView.rows.length === 0 ? (
+                    <tr><td colSpan={reportView.columns.length} className="py-12 text-center text-slate-400 italic">No data for this report.</td></tr>
+                  ) : reportView.rows.map((r, ri) => (
+                    <tr key={ri} className="hover:bg-slate-50/50">
+                      {r.map((cell, ci) => (
+                        <td key={ci} className={`py-3 px-3 ${ci === 0 ? 'font-bold text-slate-900' : 'text-right font-semibold tabular-nums text-slate-700'}`}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px] tracking-wider">
-                  <th className="py-2.5 px-3">Ticket ID</th>
+                  <th className="py-2.5 px-3">Ticket #</th>
                   <th className="py-2.5 px-3">Customer</th>
                   <th className="py-2.5 px-3">Subject</th>
                   <th className="py-2.5 px-3">SAP Module</th>
@@ -448,10 +531,13 @@ export default function ConsultantReportsPage() {
                 )}
               </tbody>
             </table>
+            )}
           </div>
 
           <div className="bg-slate-50 p-3 border-t border-slate-200 text-right text-slate-500 font-bold uppercase text-[11px]">
-            Previewing {filteredTickets.length} matching incidents rows
+            {reportView.mode === 'summary'
+              ? `Previewing ${reportView.rows.length} summary row${reportView.rows.length === 1 ? '' : 's'}`
+              : `Previewing ${filteredTickets.length} matching incident row${filteredTickets.length === 1 ? '' : 's'}`}
           </div>
         </Card>
 

@@ -199,7 +199,9 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+      {/* auto-fit: fields stay evenly sized + aligned for ANY number of enabled
+          filters (3 or 6) instead of leaving a half-empty fixed 6-col grid. */}
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
         {/* Date Select Option */}
         {showFilter('dateSelect') && setDateFilter && (
           <div className="space-y-1 flex flex-col">

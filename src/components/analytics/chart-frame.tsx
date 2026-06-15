@@ -58,7 +58,9 @@ export function ChartFrame({
         {action && <div className="shrink-0">{action}</div>}
       </div>
 
-      <div className={cn('min-h-0', bodyClassName)} style={{ height }}>
+      {/* height>0 → fixed (charts stay aligned); height===0 → auto-size to content
+          (list widgets like SLA timers grow to fit instead of overflowing). */}
+      <div className={cn('min-h-0', bodyClassName)} style={height ? { height } : undefined}>
         {loading ? (
           <div className="flex h-full flex-col justify-end gap-2 pb-2" style={{ height }}>
             <div className="flex flex-1 items-end gap-2">
