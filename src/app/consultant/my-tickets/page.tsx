@@ -89,6 +89,53 @@ function SLAIndicator({ slaDueAt }: { slaDueAt: string }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
+// Maps EVERY ticket to exactly one overview category, so the per-category
+// counts always reconcile to the total (was leaving New / In Progress /
+// Resolved / Escalated uncounted, so the split didn't add up to All).
+const CATEGORY_OF = (t: { status: string; escalationFlag?: boolean }): string => {
+  if (t.escalationFlag || t.status === 'Escalated') return 'escalated';
+  switch (t.status) {
+    case 'New':
+    case 'Assigned': return 'new';
+    case 'Requirement Gathering': return 'requirement_gathering';
+    case 'In Progress - Functional':
+    case 'Awaiting Functional Submission': return 'in_progress_functional';
+    case 'In Progress - Technical':
+    case 'Awaiting Technical Submission': return 'in_progress_technical';
+    case 'Customer Action':
+    case 'Waiting for Customer': return 'customer_action';
+    case 'On Hold': return 'on_hold';
+    case 'Raised to SAP': return 'raised_sap';
+    case 'Request for Closure':
+    case 'Awaiting Manager Approval':
+    case 'Awaiting Closure':
+    case 'Waiting for Hours Approval': return 'request_closure';
+    case 'Resolved': return 'resolved';
+    case 'Closed': return 'closed';
+    case 'Reopened':
+    case 'Reopen Requested': return 'reopened';
+    case 'In Progress':
+    default: return 'in_progress';
+  }
+};
+
+const OVERVIEW_TABS: { key: string; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'new', label: 'New' },
+  { key: 'in_progress', label: 'In Progress' },
+  { key: 'in_progress_functional', label: 'IP Functional' },
+  { key: 'in_progress_technical', label: 'IP Technical' },
+  { key: 'requirement_gathering', label: 'Req. Gathering' },
+  { key: 'customer_action', label: 'Cust. Action' },
+  { key: 'on_hold', label: 'On Hold' },
+  { key: 'raised_sap', label: 'Raised To SAP' },
+  { key: 'request_closure', label: 'Req. Closure' },
+  { key: 'escalated', label: 'Escalated' },
+  { key: 'resolved', label: 'Resolved' },
+  { key: 'closed', label: 'Closed' },
+  { key: 'reopened', label: 'Reopened' },
+];
+
 export default function ConsultantMyTicketsPage() {
   const {
     tickets,
@@ -155,30 +202,8 @@ export default function ConsultantMyTicketsPage() {
   );
 
   const tabFilteredTickets = useMemo(() => {
-    switch (activeTab) {
-      case 'requirement_gathering':
-        return myAssignedTickets.filter(t => t.status === 'Requirement Gathering');
-      case 'waiting_hours':
-        return myAssignedTickets.filter(t => t.status === 'Waiting for Hours Approval');
-      case 'in_progress_functional':
-        return myAssignedTickets.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission');
-      case 'in_progress_technical':
-        return myAssignedTickets.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission');
-      case 'customer_action':
-        return myAssignedTickets.filter(t => t.status === 'Customer Action');
-      case 'on_hold':
-        return myAssignedTickets.filter(t => t.status === 'On Hold');
-      case 'raised_sap':
-        return myAssignedTickets.filter(t => t.status === 'Raised to SAP');
-      case 'request_closure':
-        return myAssignedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval');
-      case 'closed':
-        return myAssignedTickets.filter(t => t.status === 'Closed');
-      case 'reopened':
-        return myAssignedTickets.filter(t => t.status === 'Reopened');
-      default:
-        return myAssignedTickets;
-    }
+    if (activeTab === 'all') return myAssignedTickets;
+    return myAssignedTickets.filter(t => CATEGORY_OF(t) === activeTab);
   }, [myAssignedTickets, activeTab]);
 
   const filteredTickets = useMemo(() => {
@@ -461,19 +486,14 @@ export default function ConsultantMyTicketsPage() {
   };
 
   // ── Summary tabs counts ──
-  const counts = useMemo(() => ({
-    all: myAssignedTickets.length,
-    requirementGathering: myAssignedTickets.filter(t => t.status === 'Requirement Gathering').length,
-    waitingHoursApproval: myAssignedTickets.filter(t => t.status === 'Waiting for Hours Approval').length,
-    inProgressFunctional: myAssignedTickets.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length,
-    inProgressTechnical: myAssignedTickets.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length,
-    customerAction: myAssignedTickets.filter(t => t.status === 'Customer Action').length,
-    onHold: myAssignedTickets.filter(t => t.status === 'On Hold').length,
-    raisedToSap: myAssignedTickets.filter(t => t.status === 'Raised to SAP').length,
-    requestForClosure: myAssignedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
-    closed: myAssignedTickets.filter(t => t.status === 'Closed').length,
-    reopened: myAssignedTickets.filter(t => t.status === 'Reopened').length,
-  }), [myAssignedTickets]);
+  // Tally via CATEGORY_OF so every ticket lands in exactly one bucket and the
+  // counts reconcile to All.
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: myAssignedTickets.length };
+    OVERVIEW_TABS.forEach(tab => { if (tab.key !== 'all') c[tab.key] = 0; });
+    myAssignedTickets.forEach(t => { const k = CATEGORY_OF(t); c[k] = (c[k] || 0) + 1; });
+    return c;
+  }, [myAssignedTickets]);
 
   // ── Ticket Action Dropdown ──
   const TicketActionMenu = ({ t }: { t: typeof myAssignedTickets[0] }) => {
@@ -1088,37 +1108,11 @@ export default function ConsultantMyTicketsPage() {
       <Tabs defaultValue="all" value={activeTab} onValueChange={val => { setActiveTab(val); setCurrentPage(1); }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <TabsList className="bg-surface-subtle border border-line h-auto p-0.5 rounded-lg flex flex-wrap gap-1">
-            <TabsTrigger value="all" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              All <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.all}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="requirement_gathering" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              Req. Gathering <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.requirementGathering}</Badge>
-            </TabsTrigger>
-            {/* Hrs Approval tab hidden because estimates do not require approval */}
-            <TabsTrigger value="in_progress_functional" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              IP Functional <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.inProgressFunctional}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="in_progress_technical" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              IP Technical <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.inProgressTechnical}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="customer_action" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              Cust. Action <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.customerAction}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="on_hold" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              On Hold <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.onHold}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="raised_sap" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              Raised To SAP <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.raisedToSap}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="request_closure" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              Req. Closure <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.requestForClosure}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="closed" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              Closed <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.closed}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="reopened" className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
-              Reopened <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts.reopened}</Badge>
-            </TabsTrigger>
+            {OVERVIEW_TABS.map(tab => (
+              <TabsTrigger key={tab.key} value={tab.key} className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
+                {tab.label} <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts[tab.key] ?? 0}</Badge>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {/* Search + Filters */}

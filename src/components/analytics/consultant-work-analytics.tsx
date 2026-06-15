@@ -119,9 +119,10 @@ export function ConsultantWorkAnalytics({ myTickets, loading, now }: Props) {
         </ChartFrame>
 
         {/* My SLA timers */}
-        <ChartFrame title="My SLA Timers" context={`${timers.length} open with a target`} icon={Timer} loading={loading} ready={timers.length > 0} emptyTitle="No active SLA timers" emptyHint="Open tickets with an SLA target will count down here." emptyIcon={Timer} height={timers.length > 0 ? 0 : 200} bodyClassName="!min-h-0" className="lg:col-span-2">
-          <ul className="divide-y divide-line">
-            {timers.slice(0, 6).map(({ t, c }) => (
+        <ChartFrame title="My SLA Timers" context={`${timers.length} open with a target`} icon={Timer} loading={loading} ready={timers.length > 0} emptyTitle="No active SLA timers" emptyHint="Open tickets with an SLA target will count down here." emptyIcon={Timer} height={260} bodyClassName="!min-h-0" className="lg:col-span-2">
+          <div className="h-full overflow-y-auto pr-1">
+            <ul className="divide-y divide-line">
+              {timers.map(({ t, c }) => (
               <li key={t.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <StatusPill tone={priorityTone(t.priority)} dot pulse={t.priority === 'Critical'}>{t.priority}</StatusPill>
@@ -135,8 +136,9 @@ export function ConsultantWorkAnalytics({ myTickets, loading, now }: Props) {
                   {c.breached ? `Breached ${c.label}` : `Due ${c.label}`}
                 </span>
               </li>
-            ))}
-          </ul>
+              ))}
+            </ul>
+          </div>
         </ChartFrame>
 
         {/* My module mix */}

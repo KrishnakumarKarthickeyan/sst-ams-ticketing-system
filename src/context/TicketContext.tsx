@@ -265,6 +265,7 @@ interface TicketContextType {
 
   // Notifications
   markNotificationRead: (notificationId: string) => void;
+  markAllNotificationsRead: (ids: string[]) => void;
   createSystemNotification: (userId: string, title: string, message: string, ticketId?: string) => void;
   createDBNotification: (data: {
     userId: string;
@@ -2978,6 +2979,27 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       } catch (err) {
         console.error('Error marking notification read in DB:', err);
+      }
+    }
+  };
+
+  // Batch: mark MANY notifications read in a single state update + a single DB
+  // query (was looping one-by-one, which marked them visibly one at a time).
+  const markAllNotificationsRead = async (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    const nowStr = new Date().toISOString();
+    const idSet = new Set(ids);
+    const updated = notifications.map(n => idSet.has(n.id) ? { ...n, isRead: true, readAt: nowStr } : n);
+    syncNotifications(updated);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('notifications').update({ read_at: nowStr }).in('id', ids);
+        if (error) {
+          await supabase.from('notifications').update({ is_read: true }).in('id', ids);
+        }
+      } catch (err) {
+        console.error('Error marking all notifications read in DB:', err);
       }
     }
   };
@@ -6323,6 +6345,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         createKbArticle,
         rateKbArticle,
         markNotificationRead,
+        markAllNotificationsRead,
         createSystemNotification,
         createDBNotification,
         acknowledgeEscalation,

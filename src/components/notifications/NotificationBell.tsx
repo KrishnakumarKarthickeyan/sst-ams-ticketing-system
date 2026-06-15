@@ -32,7 +32,7 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
 
 export const NotificationBell: React.FC = () => {
   const { user } = useAuth();
-  const { notifications, markNotificationRead, refetchData } = useTickets();
+  const { notifications, markNotificationRead, markAllNotificationsRead, refetchData } = useTickets();
   const [localNotifications, setLocalNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,9 +94,8 @@ export const NotificationBell: React.FC = () => {
   const displayNotifications = localNotifications.slice(0, 10);
 
   const handleMarkAllRead = async () => {
-    for (const n of unreadNotifications) {
-      await markNotificationRead(n.id);
-    }
+    // One batched update — not a one-by-one loop.
+    await markAllNotificationsRead(unreadNotifications.map(n => n.id));
   };
 
   return (
