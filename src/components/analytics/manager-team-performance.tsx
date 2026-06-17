@@ -156,6 +156,23 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
       (b.Critical + b.High + b.Medium + b.Low) - (a.Critical + a.High + a.Medium + a.Low)).slice(0, 10);
   }, [tickets]);
 
+  // SLA Breach by Priority — first-response SLA is not in the schema, so we report
+  // the resolution SLA we DO track: hasSlaTarget (ticketType + slaDueAt) decides
+  // eligibility, slaBreached (slaDueAt vs resolved/closed-or-now) decides outcome.
+  const slaByPriority = useMemo(() => {
+    const idx: Record<string, number> = Object.fromEntries(PRIORITIES.map((p, i) => [p, i]));
+    const rows = PRIORITIES.map(p => ({ priority: p, 'Within SLA': 0, Breached: 0 }));
+    tickets.forEach(t => {
+      if (!hasSlaTarget(t)) return;
+      const i = idx[t.priority as string];
+      if (i === undefined) return;
+      if (slaBreached(t, now)) rows[i].Breached++;
+      else rows[i]['Within SLA']++;
+    });
+    return rows;
+  }, [tickets, now]);
+  const slaByPriorityEmpty = slaByPriority.every(r => r['Within SLA'] === 0 && r.Breached === 0);
+
   // Quality KPIs
   const quality = useMemo(() => {
     const total = tickets.length || 1;
@@ -303,26 +320,30 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
         </Card>
       </div>
 
+      {/* Balanced 2×2 grid — every cell filled, no lone chart beside dead space.
+          All cards default h-[300px] so row siblings match height. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Demand vs Closed */}
-        <ChartCard title="Demand vs Closed" isEmpty={demandEmpty} className="lg:col-span-2">
+        <ChartCard title="Demand vs Closed" isEmpty={demandEmpty}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={demandVsClosed} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={20} />
               <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={34} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
+              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} itemSorter={null} />
               <Line type="linear" dataKey="Created" stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ r: 2 }} />
               <Line type="linear" dataKey="Closed" stroke={SEMANTIC.success} strokeWidth={2} dot={{ r: 2 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Reopen Rate */}
+        {/* Reopen Requests Trend — genuinely 0 reopen requests in the data, so the
+            (vertically-centered) empty state is the honest, correct rendering. */}
         <ChartCard
           title="Reopen Requests Trend"
           isEmpty={reopenTrendEmpty}
+          emptyIcon={RotateCcw}
           emptyHint="No reopen requests in this period"
           action={<span className="text-xs text-muted-foreground">Reopen rate {reopenRate}%</span>}
         >
@@ -337,23 +358,31 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* SLA Breach: First-Response vs Resolution — first-response SLA is not tracked in the schema */}
-        <ChartCard
-          title="SLA Breach: First-Response vs Resolution"
-          isEmpty
-          emptyHint="First-response SLA isn't tracked in the schema — only resolution SLA is recorded."
-        >
-          <div />
+        {/* SLA Breach by Priority — resolution SLA we DO track (within vs breached). */}
+        <ChartCard title="SLA Breach by Priority" isEmpty={slaByPriorityEmpty} emptyHint="No SLA-tracked tickets in this period">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={slaByPriority} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="priority" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={34} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
+              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} itemSorter={null} />
+              <Bar dataKey="Within SLA" fill={SEMANTIC.success} radius={[4, 4, 0, 0]} maxBarSize={36} />
+              <Bar dataKey="Breached" fill={SEMANTIC.danger} radius={[4, 4, 0, 0]} maxBarSize={36} />
+            </BarChart>
+          </ResponsiveContainer>
         </ChartCard>
 
-        {/* Demand Heat: Module × Priority */}
+        {/* Demand Heat: Module × Priority — legend/stack locked to severity order
+            (Critical→High→Medium→Low) via itemSorter={null}; Recharts defaults to
+            alphabetical, which wrongly put Low before Medium. */}
         <ChartCard title="Demand Heat — Module × Priority" isEmpty={demandHeat.length === 0}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={demandHeat} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="module" tick={{ fontSize: 12 }} width={70} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="module" tick={{ fontSize: 12 }} width={90} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
-              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
+              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} itemSorter={null} />
               {PRIORITIES.map((p, i) => (
                 <Bar key={p} dataKey={p} stackId="prio" fill={PRIORITY_COLOR[p]} barSize={16} radius={i === PRIORITIES.length - 1 ? [0, 4, 4, 0] : undefined} />
               ))}
