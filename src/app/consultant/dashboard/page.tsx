@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
-import { getConsultantDashboardData, filterTicketsByScope } from '../../../utils/dashboardService';
+import { getConsultantDashboardData } from '../../../utils/dashboardService';
+import { categoryCounts, TICKET_CATEGORIES } from '../../../lib/ticket-categories';
 import Link from 'next/link';
 import {
   Clock,
@@ -86,9 +88,28 @@ function getWorkingDaysInRange(start: Date, end: Date) {
   return count;
 }
 
+// Per-phase tile styling for the status summary (keys match TICKET_CATEGORIES).
+const STATUS_TILE_STYLE: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; color: string; textColor: string }> = {
+  all: { icon: Layers, color: 'bg-zinc-800', textColor: 'text-ink' },
+  new: { icon: FileText, color: 'bg-sky-500', textColor: 'text-sky-600' },
+  in_progress: { icon: Activity, color: 'bg-blue-500', textColor: 'text-blue-600' },
+  in_progress_functional: { icon: Zap, color: 'bg-indigo-500', textColor: 'text-indigo-600' },
+  in_progress_technical: { icon: Cpu, color: 'bg-cyan-600', textColor: 'text-cyan-700' },
+  requirement_gathering: { icon: FileText, color: 'bg-blue-400', textColor: 'text-blue-600' },
+  customer_action: { icon: UserCheck, color: 'bg-orange-500', textColor: 'text-warning' },
+  on_hold: { icon: Hourglass, color: 'bg-slate-500', textColor: 'text-slate-600' },
+  raised_sap: { icon: ArrowUpRight, color: 'bg-red-500', textColor: 'text-critical' },
+  request_closure: { icon: AlertCircle, color: 'bg-teal-500', textColor: 'text-teal-600' },
+  escalated: { icon: AlertTriangle, color: 'bg-rose-600', textColor: 'text-rose-600' },
+  resolved: { icon: CheckCircle, color: 'bg-emerald-500', textColor: 'text-success' },
+  closed: { icon: CheckCircle, color: 'bg-emerald-600', textColor: 'text-success' },
+  reopened: { icon: RotateCcw, color: 'bg-amber-500', textColor: 'text-amber-600' },
+};
+
 export default function ConsultantDashboardPage() {
   const { tickets, loading } = useTickets();
   const { user } = useAuth();
+  const router = useRouter();
 
   const consultantName = user?.name || 'Consultant';
   const consultantEmail = user?.email || '';
@@ -124,9 +145,19 @@ export default function ConsultantDashboardPage() {
   const [activeChartTab, setActiveChartTab] = useState<'volume' | 'effort' | 'portfolio'>('volume');
 
   // Base tickets assigned to this consultant or where allocated
+  // Consultant's full workload — assigned by id OR name, OR where they logged
+  // effort. Mirrors the My Tickets scope so the dashboard and My Tickets show
+  // the same set (the old id-only scope under-counted, which also starved the
+  // SLA Timers of open tickets).
   const myTickets = useMemo(() => {
-    return filterTicketsByScope(tickets, { type: 'consultant', value: user?.id || '' });
-  }, [tickets, user?.id]);
+    const id = user?.id;
+    const name = user?.name;
+    return (tickets || []).filter(t =>
+      (!!id && t.assignedConsultantId === id) ||
+      (!!name && t.assignedConsultant === name) ||
+      (t.consultantEfforts?.some(e => e.consultantName === name && !e.isDeleted) ?? false)
+    );
+  }, [tickets, user?.id, user?.name]);
 
   // Role-specific ticket filter: only show functionally/technically relevant tickets
   const roleTickets = useMemo(() => {
@@ -233,22 +264,10 @@ export default function ConsultantDashboardPage() {
     return applyFilters(roleTickets, filters);
   }, [roleTickets, filters]);
 
-  // Status counts for the status summary widget
-  const ticketStatusCounts = useMemo(() => {
-    return {
-      all: filteredTickets.length,
-      requirementGathering: filteredTickets.filter(t => t.status === 'Requirement Gathering').length,
-      waitingHours: filteredTickets.filter(t => t.status === 'Waiting for Hours Approval').length,
-      inProgressFunctional: filteredTickets.filter(t => t.status === 'In Progress - Functional' || t.status === 'Awaiting Functional Submission').length,
-      inProgressTechnical: filteredTickets.filter(t => t.status === 'In Progress - Technical' || t.status === 'Awaiting Technical Submission').length,
-      customerAction: filteredTickets.filter(t => t.status === 'Customer Action').length,
-      onHold: filteredTickets.filter(t => t.status === 'On Hold').length,
-      raisedSap: filteredTickets.filter(t => t.status === 'Raised to SAP').length,
-      requestClosure: filteredTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
-      closed: filteredTickets.filter(t => t.status === 'Closed').length,
-      reopened: filteredTickets.filter(t => t.status === 'Reopened').length,
-    };
-  }, [filteredTickets]);
+  // Status counts via the shared reconciling partition (every ticket lands in
+  // exactly one phase, so the tiles sum to All — New/In Progress/Resolved/
+  // Escalated are no longer dropped).
+  const ticketStatusCounts = useMemo(() => categoryCounts(filteredTickets), [filteredTickets]);
 
   // --- Dynamic Operations Calculator ---
   const monthlyStats = useMemo(() => {
@@ -994,41 +1013,33 @@ export default function ConsultantDashboardPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-bold text-ink-muted uppercase tracking-widest">My Ticket Status Summary</h2>
-          <span className="text-[11px] text-ink-secondary">Real-time Ticket counts across 11 phases</span>
+          <span className="text-[11px] text-ink-secondary">Real-time ticket counts across all phases</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-          {[
-            { label: 'All Tickets', count: ticketStatusCounts.all, value: 'all', icon: Layers, color: 'bg-zinc-800', textColor: 'text-ink' },
-            { label: 'Requirement Gathering', count: ticketStatusCounts.requirementGathering, value: 'requirementGathering', icon: FileText, color: 'bg-blue-500', textColor: 'text-blue-600' },
-            { label: 'Waiting for Hours Approval', count: ticketStatusCounts.waitingHours, value: 'waitingHours', icon: Clock, color: 'bg-amber-500', textColor: 'text-warning' },
-            { label: 'In Progress Functional', count: ticketStatusCounts.inProgressFunctional, value: 'inProgressFunctional', icon: Zap, color: 'bg-indigo-500', textColor: 'text-indigo-600' },
-            { label: 'In Progress Technical', count: ticketStatusCounts.inProgressTechnical, value: 'inProgressTechnical', icon: Cpu, color: 'bg-purple-500', textColor: 'text-purple-600' },
-            { label: 'Customer Action', count: ticketStatusCounts.customerAction, value: 'customerAction', icon: UserCheck, color: 'bg-orange-500', textColor: 'text-warning' },
-            { label: 'On Hold', count: ticketStatusCounts.onHold, value: 'onHold', icon: Hourglass, color: 'bg-slate-500', textColor: 'text-slate-600' },
-            { label: 'Raised to SAP', count: ticketStatusCounts.raisedSap, value: 'raisedSap', icon: ArrowUpRight, color: 'bg-red-500', textColor: 'text-critical' },
-            { label: 'Request for Closure', count: ticketStatusCounts.requestClosure, value: 'requestClosure', icon: AlertCircle, color: 'bg-teal-500', textColor: 'text-teal-600' },
-            { label: 'Closed', count: ticketStatusCounts.closed, value: 'closed', icon: CheckCircle, color: 'bg-emerald-500', textColor: 'text-success' },
-            { label: 'Reopened', count: ticketStatusCounts.reopened, value: 'reopened', icon: RotateCcw, color: 'bg-rose-500', textColor: 'text-rose-600' },
-          ].map((item, idx) => {
-            const IconComponent = item.icon;
-            const pct = ticketStatusCounts.all > 0 ? (item.count / ticketStatusCounts.all) * 100 : 0;
+          {TICKET_CATEGORIES.map((cat) => {
+            const style = STATUS_TILE_STYLE[cat.key] || STATUS_TILE_STYLE.all;
+            const count = ticketStatusCounts[cat.key] ?? 0;
+            const label = cat.key === 'all' ? 'All Tickets' : cat.label;
+            const IconComponent = style.icon;
+            const pct = ticketStatusCounts.all > 0 ? (count / ticketStatusCounts.all) * 100 : 0;
             return (
-              <Card 
-                key={idx} 
+              <Card
+                key={cat.key}
+                onClick={() => router.push(`/consultant/my-tickets?tab=${cat.key}`)}
                 className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-28 hover:shadow-md hover:border-line-strong transition duration-200 cursor-pointer"
               >
                 <div className="flex justify-between items-start text-ink-muted">
-                  <span className="text-[11px] font-bold uppercase tracking-wider line-clamp-1">{item.label}</span>
-                  <IconComponent size={14} className={item.textColor} />
+                  <span className="text-[11px] font-bold uppercase tracking-wider line-clamp-1">{label}</span>
+                  <IconComponent size={14} className={style.textColor} />
                 </div>
                 <div className="mt-2 space-y-1.5">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-xl font-bold text-ink">{item.count}</span>
+                    <span className="text-xl font-bold text-ink">{count}</span>
                     <span className="text-[11px] text-ink-muted">{pct.toFixed(0)}%</span>
                   </div>
                   <div className="w-full bg-surface-subtle h-1 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full ${item.color} transition-all duration-500`} 
+                    <div
+                      className={`h-full rounded-full ${style.color} transition-all duration-500`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>

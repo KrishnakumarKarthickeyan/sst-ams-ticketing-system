@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import {
@@ -53,6 +54,7 @@ import {
   TableCell
 } from '../../../components/ui/table';
 import { statusConfig, priorityConfig } from '../../../lib/status-theme';
+import { categoryOf, TICKET_CATEGORIES, categoryCounts } from '../../../lib/ticket-categories';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -89,53 +91,6 @@ function SLAIndicator({ slaDueAt }: { slaDueAt: string }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-// Maps EVERY ticket to exactly one overview category, so the per-category
-// counts always reconcile to the total (was leaving New / In Progress /
-// Resolved / Escalated uncounted, so the split didn't add up to All).
-const CATEGORY_OF = (t: { status: string; escalationFlag?: boolean }): string => {
-  if (t.escalationFlag || t.status === 'Escalated') return 'escalated';
-  switch (t.status) {
-    case 'New':
-    case 'Assigned': return 'new';
-    case 'Requirement Gathering': return 'requirement_gathering';
-    case 'In Progress - Functional':
-    case 'Awaiting Functional Submission': return 'in_progress_functional';
-    case 'In Progress - Technical':
-    case 'Awaiting Technical Submission': return 'in_progress_technical';
-    case 'Customer Action':
-    case 'Waiting for Customer': return 'customer_action';
-    case 'On Hold': return 'on_hold';
-    case 'Raised to SAP': return 'raised_sap';
-    case 'Request for Closure':
-    case 'Awaiting Manager Approval':
-    case 'Awaiting Closure':
-    case 'Waiting for Hours Approval': return 'request_closure';
-    case 'Resolved': return 'resolved';
-    case 'Closed': return 'closed';
-    case 'Reopened':
-    case 'Reopen Requested': return 'reopened';
-    case 'In Progress':
-    default: return 'in_progress';
-  }
-};
-
-const OVERVIEW_TABS: { key: string; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'new', label: 'New' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'in_progress_functional', label: 'IP Functional' },
-  { key: 'in_progress_technical', label: 'IP Technical' },
-  { key: 'requirement_gathering', label: 'Req. Gathering' },
-  { key: 'customer_action', label: 'Cust. Action' },
-  { key: 'on_hold', label: 'On Hold' },
-  { key: 'raised_sap', label: 'Raised To SAP' },
-  { key: 'request_closure', label: 'Req. Closure' },
-  { key: 'escalated', label: 'Escalated' },
-  { key: 'resolved', label: 'Resolved' },
-  { key: 'closed', label: 'Closed' },
-  { key: 'reopened', label: 'Reopened' },
-];
-
 export default function ConsultantMyTicketsPage() {
   const {
     tickets,
@@ -153,7 +108,18 @@ export default function ConsultantMyTicketsPage() {
   const consultantType = user?.consultantType || 'Functional';
 
   // ── View mode ──
+  const router = useRouter();
+  const openTicket = (id: string) => router.push(`/consultant/tickets/${id}`);
   const [viewMode, setViewMode] = useState<'card' | 'compact'>('card');
+  // Persist the card/list choice so returning from a ticket keeps the view (CP5).
+  useEffect(() => {
+    const v = localStorage.getItem('consultant_tickets_view');
+    if (v === 'card' || v === 'compact') setViewMode(v);
+  }, []);
+  const changeView = (v: 'card' | 'compact') => {
+    setViewMode(v);
+    try { localStorage.setItem('consultant_tickets_view', v); } catch { /* ignore */ }
+  };
 
   // ── Filters ──
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,6 +129,12 @@ export default function ConsultantMyTicketsPage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+
+  // Deep-link support: a ?tab= (e.g. from a dashboard status tile) preselects it.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab) setActiveTab(tab);
+  }, []);
 
   // ── Pagination ──
   const [currentPage, setCurrentPage] = useState(1);
@@ -203,7 +175,7 @@ export default function ConsultantMyTicketsPage() {
 
   const tabFilteredTickets = useMemo(() => {
     if (activeTab === 'all') return myAssignedTickets;
-    return myAssignedTickets.filter(t => CATEGORY_OF(t) === activeTab);
+    return myAssignedTickets.filter(t => categoryOf(t) === activeTab);
   }, [myAssignedTickets, activeTab]);
 
   const filteredTickets = useMemo(() => {
@@ -486,14 +458,8 @@ export default function ConsultantMyTicketsPage() {
   };
 
   // ── Summary tabs counts ──
-  // Tally via CATEGORY_OF so every ticket lands in exactly one bucket and the
-  // counts reconcile to All.
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: myAssignedTickets.length };
-    OVERVIEW_TABS.forEach(tab => { if (tab.key !== 'all') c[tab.key] = 0; });
-    myAssignedTickets.forEach(t => { const k = CATEGORY_OF(t); c[k] = (c[k] || 0) + 1; });
-    return c;
-  }, [myAssignedTickets]);
+  // Shared reconciling tally — every ticket lands in exactly one bucket.
+  const counts = useMemo(() => categoryCounts(myAssignedTickets), [myAssignedTickets]);
 
   // ── Ticket Action Dropdown ──
   const TicketActionMenu = ({ t }: { t: typeof myAssignedTickets[0] }) => {
@@ -592,7 +558,7 @@ export default function ConsultantMyTicketsPage() {
         
         const isEscAck = t.isEscalated && t.escalationAcknowledgedAt;
         return (
-          <Card key={t.id} className={`bg-surface border border-line/80 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden ${isLocked ? 'border-line-strong bg-surface-muted/60 shadow-none' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
+          <Card key={t.id} onClick={() => openTicket(t.id)} role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') openTicket(t.id); }} className={`bg-surface border border-line/80 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden cursor-pointer ${isLocked ? 'border-line-strong bg-surface-muted/60 shadow-none' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
             <div className="p-5 flex flex-col gap-4 flex-1">
               {/* Header row: ID, Priority, Status, Age */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2.5">
@@ -679,7 +645,7 @@ export default function ConsultantMyTicketsPage() {
                     <Paperclip size={11} className="text-ink-muted" />
                     <span>{t.attachments?.length || 0}</span>
                   </div>
-                  <div className="flex items-center gap-1 border-l border-line pl-3">
+                  <div className="flex items-center gap-1 border-l border-line pl-3" onClick={(e) => e.stopPropagation()}>
                     <Link href={`/consultant/tickets/${t.id}`}>
                       <Button size="icon" variant="outline" className="h-7 w-7 text-ink-secondary cursor-pointer" title="View details">
                         <Eye size={12} />
@@ -729,7 +695,7 @@ export default function ConsultantMyTicketsPage() {
               const { estHours, actHours, isLocked, age } = getTicketMeta(t);
               const isEscAck = t.isEscalated && t.escalationAcknowledgedAt;
               return (
-                <TableRow key={t.id} className={`hover:bg-surface-muted/40 transition-colors ${isLocked ? 'bg-surface-muted/25' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
+                <TableRow key={t.id} onClick={() => openTicket(t.id)} className={`cursor-pointer hover:bg-surface-muted/40 transition-colors ${isLocked ? 'bg-surface-muted/25' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
                   <TableCell className="font-bold text-ink-secondary whitespace-nowrap">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span>{t.ticketNumber || t.id}</span>
@@ -775,7 +741,7 @@ export default function ConsultantMyTicketsPage() {
                     {new Date(t.updatedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <Link href={`/consultant/tickets/${t.id}`}>
                         <Button size="icon" variant="outline" className="h-7 w-7 text-ink-secondary cursor-pointer">
                           <Eye size={12} />
@@ -1092,12 +1058,12 @@ export default function ConsultantMyTicketsPage() {
         {/* View Toggle */}
         <div className="flex items-center gap-1 border border-line bg-surface rounded-lg p-1 shadow-card">
           <button
-            onClick={() => setViewMode('card')}
+            onClick={() => changeView('card')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold uppercase transition cursor-pointer ${viewMode === 'card' ? 'bg-ink text-white shadow' : 'text-ink-secondary hover:bg-surface-muted'}`}>
             <LayoutGrid size={12} /> Card
           </button>
           <button
-            onClick={() => setViewMode('compact')}
+            onClick={() => changeView('compact')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold uppercase transition cursor-pointer ${viewMode === 'compact' ? 'bg-ink text-white shadow' : 'text-ink-secondary hover:bg-surface-muted'}`}>
             <List size={12} /> List
           </button>
@@ -1108,7 +1074,7 @@ export default function ConsultantMyTicketsPage() {
       <Tabs defaultValue="all" value={activeTab} onValueChange={val => { setActiveTab(val); setCurrentPage(1); }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <TabsList className="bg-surface-subtle border border-line h-auto p-0.5 rounded-lg flex flex-wrap gap-1">
-            {OVERVIEW_TABS.map(tab => (
+            {TICKET_CATEGORIES.map(tab => (
               <TabsTrigger key={tab.key} value={tab.key} className="text-[11px] uppercase font-bold data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card px-2.5 py-1.5 cursor-pointer">
                 {tab.label} <Badge variant="outline" className="ml-1.5 text-[11px] px-1 bg-surface-muted">{counts[tab.key] ?? 0}</Badge>
               </TabsTrigger>
