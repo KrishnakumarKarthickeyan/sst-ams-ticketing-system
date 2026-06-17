@@ -28,6 +28,13 @@ interface Props {
 
 const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
 
+// Per-bar row height for the consultant charts (so all consultants fit + scroll).
+const ROW_PX = 32;
+const chartHeight = (count: number) => Math.max(320, count * ROW_PX);
+// Truncate to ~16 chars so a name always fits the 140px axis on ONE line (no
+// two-line wrapping); the full name still shows in the bar tooltip.
+const truncName = (v: unknown): string => { const s = String(v ?? ''); return s.length > 16 ? s.slice(0, 15) + '…' : s; };
+
 function businessDays(startMs: number, endMs: number): number {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return 0;
   let n = 0; const c = new Date(startMs); c.setHours(0, 0, 0, 0); const end = new Date(endMs);
@@ -90,18 +97,17 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
     else { setSortKey(k); setSortDir(k === 'name' ? 'asc' : 'desc'); }
   };
 
-  // ── Charts ──
+  // ── Charts ── (no slice caps — every consultant renders; the cards scale +
+  // scroll instead of clipping; all sorted desc by value)
   const closedPer = useMemo(() => agg.map(a => ({ name: a.name, value: a.closed }))
-    .filter(d => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 12), [agg]);
+    .filter(d => d.value > 0).sort((a, b) => b.value - a.value), [agg]);
 
   const ftSplit = useMemo(() => agg.map(a => ({ name: a.name, Functional: Math.round(a.functional * 10) / 10, Technical: Math.round(a.technical * 10) / 10 }))
-    .filter(d => d.Functional + d.Technical > 0).slice(0, 12), [agg]);
+    .filter(d => d.Functional + d.Technical > 0).sort((a, b) => (b.Functional + b.Technical) - (a.Functional + a.Technical)), [agg]);
 
-  // Sort ASC (worst adherence first) so SLA breaches surface instead of hiding
-  // behind the top performers.
   const slaByConsultant = useMemo(() => agg.filter(a => a.slaAdherence !== null)
     .map(a => ({ name: a.name, value: a.slaAdherence as number }))
-    .sort((a, b) => a.value - b.value).slice(0, 12), [agg]);
+    .sort((a, b) => b.value - a.value), [agg]);
 
   const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
 
@@ -224,49 +230,57 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Tickets Closed per Consultant */}
-        <ChartCard title="Tickets Closed per Consultant" isEmpty={closedPer.length === 0}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={closedPer} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
-              <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} interval={0} tickFormatter={truncateTick} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
-              <Bar dataKey="value" name="Closed" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={16}>
-                <LabelList dataKey="value" position="right" fontSize={11} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* items-start so each card takes its natural height (no forced equal rows) */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        {/* Tickets Closed per Consultant — every consultant, dynamic height + scroll */}
+        <ChartCard title="Tickets Closed per Consultant" isEmpty={closedPer.length === 0} height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
+          <div style={{ height: chartHeight(closedPer.length) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={closedPer} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
+                <XAxis type="number" hide allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} interval={0} tickFormatter={truncName} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
+                <Bar dataKey="value" name="Closed" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={16}>
+                  <LabelList dataKey="value" position="right" fontSize={11} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
 
-        {/* Functional vs Technical Effort Split */}
-        <ChartCard title="Functional vs Technical Effort Split" isEmpty={ftSplit.length === 0} emptyHint="No approved closure effort logged yet">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={ftSplit} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
-              <XAxis type="number" tick={{ fontSize: 12 }} unit="h" />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} interval={0} tickFormatter={truncateTick} />
-              <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: 'hsl(var(--muted))' }} />
-              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Functional" stackId="ft" fill={CHART_COLORS[0]} barSize={16} />
-              <Bar dataKey="Technical" stackId="ft" fill={CHART_COLORS[1]} radius={[0, 4, 4, 0]} barSize={16} />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Functional vs Technical Effort Split — every consultant, dynamic height + scroll */}
+        <ChartCard title="Functional vs Technical Effort Split" isEmpty={ftSplit.length === 0} emptyHint="No approved closure effort logged yet" height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
+          <div style={{ height: chartHeight(ftSplit.length) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={ftSplit} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
+                <XAxis type="number" tick={{ fontSize: 12 }} unit="h" />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} interval={0} tickFormatter={truncName} />
+                <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: 'hsl(var(--muted))' }} />
+                <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="Functional" stackId="ft" fill={CHART_COLORS[0]} barSize={16} />
+                <Bar dataKey="Technical" stackId="ft" fill={CHART_COLORS[1]} radius={[0, 4, 4, 0]} barSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
 
-        {/* SLA Adherence by Consultant */}
-        <ChartCard title="SLA Adherence by Consultant" isEmpty={slaByConsultant.length === 0} className="lg:col-span-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={slaByConsultant} margin={{ top: 16, right: 16, left: 8, bottom: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-35} textAnchor="end" height={72} tickFormatter={truncateTick} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} width={48} unit="%" />
-              <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'hsl(var(--muted))' }} />
-              <Bar dataKey="value" name="SLA Adherence" radius={[4, 4, 0, 0]} barSize={28}>
-                {slaByConsultant.map(d => <Cell key={d.name} fill={slaColor(d.value)} />)}
-                <LabelList dataKey="value" position="top" fontSize={11} formatter={(v) => `${v}%`} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        {/* SLA Adherence by Consultant — horizontal so all consultants list + scroll;
+            0% consultants still render a labeled tick (zero-width bar + label) */}
+        <ChartCard title="SLA Adherence by Consultant" isEmpty={slaByConsultant.length === 0} className="lg:col-span-2" height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
+          <div style={{ height: chartHeight(slaByConsultant.length) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={slaByConsultant} layout="vertical" margin={{ top: 4, right: 44, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} interval={0} tickFormatter={truncName} />
+                <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'hsl(var(--muted))' }} />
+                <Bar dataKey="value" name="SLA Adherence" radius={[0, 4, 4, 0]} barSize={16} minPointSize={2}>
+                  {slaByConsultant.map(d => <Cell key={d.name} fill={slaColor(d.value)} />)}
+                  <LabelList dataKey="value" position="right" fontSize={11} formatter={(v) => `${v}%`} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
       </div>
 
