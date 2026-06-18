@@ -45,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import { statusConfig, priorityConfig } from '../../../lib/status-theme';
+import { matchesTab, isSlaBreached, isUnassigned, type ManagerDeskTab } from '../../../lib/manager-desk-predicates';
 
 
 
@@ -57,7 +58,7 @@ export default function ManagerTicketsPage() {
 
   const [viewMode, setViewMode] = useState<'card' | 'compact'>('card');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'unassigned' | 'critical' | 'slaBreached' | 'raisedToSap' | 'customerAction' | 'reqClosure' | 'reopened' | 'closed' | 'pendingApprovals'>('all');
+  const [activeTab, setActiveTab] = useState<ManagerDeskTab>('all');
 
   const searchParams = useSearchParams();
   const tabParam = searchParams ? searchParams.get('tab') : null;
@@ -156,43 +157,15 @@ export default function ManagerTicketsPage() {
     return Array.from(list).filter(Boolean).sort();
   }, [profiles, scopedTickets]);
 
-  // Tab Filtering logic (10 tabs)
-  const tabFilteredTickets = useMemo(() => {
+  // ── SINGLE FILTERED SOURCE OF TRUTH ──
+  // applyFilters: every FILTERS DESK dropdown + search + date range, applied to the
+  // manager-scoped tickets. The active TAB is NOT applied here — it is layered on
+  // top afterwards. Tab badges, the card list, and any count all derive from this
+  // one array, so they cannot diverge. (Set intersection is commutative, so the
+  // final card set is identical to the old tab-then-filter order.)
+  const deskFilteredTickets = useMemo(() => {
     const nowTime = Date.now();
-    switch (activeTab) {
-      case 'unassigned':
-        return scopedTickets.filter(t => !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0));
-      case 'critical':
-        return scopedTickets.filter(t => t.priority === 'Critical');
-      case 'slaBreached':
-        return scopedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && new Date(t.slaDueAt).getTime() < nowTime);
-      case 'raisedToSap':
-        return scopedTickets.filter(t => t.status === 'Raised to SAP' || t.raisedToSap);
-      case 'customerAction':
-        return scopedTickets.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer');
-      case 'reqClosure':
-        return scopedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval');
-      case 'reopened':
-        return scopedTickets.filter(t => t.status === 'Reopened');
-      case 'closed':
-        return scopedTickets.filter(t => t.status === 'Closed');
-      case 'pendingApprovals':
-        return scopedTickets.filter(t => 
-          (t.hourEstimates?.some(e => e.status === 'Submitted') || false) ||
-          (t.efforts?.some(e => e.status === 'Pending' || e.status === 'Pending Approval') || false) ||
-          (t.closureRequests?.some(c => c.status === 'Pending Manager Approval') || false) ||
-          (t.unlockRequests?.some(u => u.status === 'Pending') || false)
-        );
-      case 'all':
-      default:
-        return scopedTickets;
-    }
-  }, [scopedTickets, activeTab]);
-
-  // Dropdown Multi-filters implementation
-  const filteredTickets = useMemo(() => {
-    const nowTime = Date.now();
-    return tabFilteredTickets.filter(t => {
+    return scopedTickets.filter(t => {
       // Customer
       if (custFilter !== 'All' && t.organization !== custFilter) return false;
 
@@ -226,14 +199,12 @@ export default function ManagerTicketsPage() {
       // Ticket Type
       if (typeFilter !== 'All' && t.ticketType !== typeFilter) return false;
 
-      // SLA Status
+      // SLA Status — reads the SAME breach predicate as the tab badge and card pill.
+      // Dropdown offers Breached / Active (on track = not breached).
       if (slaFilter !== 'All') {
-        const due = new Date(t.slaDueAt).getTime();
-        const breached = due < nowTime && t.status !== 'Closed' && t.status !== 'Resolved';
-        const warning = !breached && (due - nowTime) > 0 && (due - nowTime) < 24 * 60 * 60 * 1000 && t.status !== 'Closed' && t.status !== 'Resolved';
+        const breached = isSlaBreached(t, nowTime);
         if (slaFilter === 'Breached' && !breached) return false;
-        if (slaFilter === 'Warning' && !warning) return false;
-        if (slaFilter === 'Met' && (breached || warning)) return false;
+        if (slaFilter === 'Active' && breached) return false;
       }
 
       // Date Range
@@ -274,10 +245,10 @@ export default function ManagerTicketsPage() {
         }
       }
 
-      // Assigned / Unassigned
-      const isUnassigned = !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0);
-      if (assignStateFilter === 'Assigned' && isUnassigned) return false;
-      if (assignStateFilter === 'Unassigned' && !isUnassigned) return false;
+      // Assigned / Unassigned (shared predicate with the Unassigned tab)
+      const unassigned = isUnassigned(t);
+      if (assignStateFilter === 'Assigned' && unassigned) return false;
+      if (assignStateFilter === 'Unassigned' && !unassigned) return false;
 
       // Closure Status
       if (closureStateFilter !== 'All') {
@@ -312,29 +283,34 @@ export default function ManagerTicketsPage() {
 
       return true;
     });
-  }, [tabFilteredTickets, custFilter, consFilter, funcConsFilter, techConsFilter, moduleFilter, priorityFilter, statusFilter, typeFilter, slaFilter, dateFilter, customStartDate, customEndDate, assignStateFilter, closureStateFilter, approvalStateFilter, searchQuery]);
+  }, [scopedTickets, custFilter, consFilter, funcConsFilter, techConsFilter, moduleFilter, priorityFilter, statusFilter, typeFilter, slaFilter, dateFilter, customStartDate, customEndDate, assignStateFilter, closureStateFilter, approvalStateFilter, searchQuery]);
 
-  // Tab counters
+  // Card list = the single filtered source with the active TAB predicate layered on.
+  // Its length therefore always equals tabCounts[activeTab] (same source, same predicate).
+  const filteredTickets = useMemo(() => {
+    const nowTime = Date.now();
+    return deskFilteredTickets.filter(t => matchesTab(activeTab, t, nowTime));
+  }, [deskFilteredTickets, activeTab]);
+
+  // Tab badges — every badge counts the SAME filtered source through the SAME tab
+  // predicate, so changing any FILTERS DESK dropdown updates every badge live and
+  // they always reconcile with the card list.
   const tabCounts = useMemo(() => {
     const nowTime = Date.now();
+    const countTab = (tab: ManagerDeskTab) => deskFilteredTickets.filter(t => matchesTab(tab, t, nowTime)).length;
     return {
-      all: scopedTickets.length,
-      unassigned: scopedTickets.filter(t => !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0)).length,
-      critical: scopedTickets.filter(t => t.priority === 'Critical').length,
-      slaBreached: scopedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && new Date(t.slaDueAt).getTime() < nowTime).length,
-      raisedToSap: scopedTickets.filter(t => t.status === 'Raised to SAP' || t.raisedToSap).length,
-      customerAction: scopedTickets.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer').length,
-      reqClosure: scopedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
-      reopened: scopedTickets.filter(t => t.status === 'Reopened').length,
-      closed: scopedTickets.filter(t => t.status === 'Closed').length,
-      pendingApprovals: scopedTickets.filter(t => 
-        (t.hourEstimates?.some(e => e.status === 'Submitted') || false) ||
-        (t.efforts?.some(e => e.status === 'Pending' || e.status === 'Pending Approval') || false) ||
-        (t.closureRequests?.some(c => c.status === 'Pending Manager Approval') || false) ||
-        (t.unlockRequests?.some(u => u.status === 'Pending') || false)
-      ).length
+      all: countTab('all'),
+      unassigned: countTab('unassigned'),
+      critical: countTab('critical'),
+      slaBreached: countTab('slaBreached'),
+      raisedToSap: countTab('raisedToSap'),
+      customerAction: countTab('customerAction'),
+      reqClosure: countTab('reqClosure'),
+      reopened: countTab('reopened'),
+      closed: countTab('closed'),
+      pendingApprovals: countTab('pendingApprovals'),
     };
-  }, [scopedTickets]);
+  }, [deskFilteredTickets]);
 
   const resetAllFilters = () => {
     setCustFilter('All');
@@ -347,6 +323,8 @@ export default function ManagerTicketsPage() {
     setTypeFilter('All');
     setSlaFilter('All');
     setDateFilter('All');
+    setCustomStartDate('');
+    setCustomEndDate('');
     setAssignStateFilter('All');
     setClosureStateFilter('All');
     setApprovalStateFilter('All');
@@ -419,7 +397,9 @@ export default function ManagerTicketsPage() {
     const due = new Date(slaDueAt).getTime();
     const hoursLeft = (due - now) / (1000 * 60 * 60);
 
-    if (hoursLeft < 0) {
+    // Breach reads the single shared predicate — identical to the SLA Breached tab
+    // badge and the SLA Status filter, so the pill can never disagree with them.
+    if (isSlaBreached({ status: status as TicketStatus, slaDueAt }, now)) {
       return { label: 'SLA BREACHED', color: 'text-red-700 bg-red-50 border-red-200' };
     }
     if (hoursLeft < 24) {
