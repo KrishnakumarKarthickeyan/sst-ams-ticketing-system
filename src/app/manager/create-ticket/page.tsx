@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
+import { validateTicketCreate } from '../../../lib/schemas/ticket';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
@@ -357,15 +358,10 @@ export default function ManagerCreateTicketPage() {
     e.preventDefault();
     setValidationErrors([]);
 
-    const errors: string[] = [];
-    if (!title.trim()) errors.push('Subject / Title is required');
-    if (!description.trim()) errors.push('Description is required');
-    if (!requestType) errors.push('Request Type is required');
-    if (!classification) errors.push('Classification is required');
-    if (!category) errors.push('Category is required');
-    if (!priority) errors.push('Priority is required');
-    if (sapModules.length === 0) errors.push('At least one SAP Module must be selected');
-    if (!selectedCustomer) errors.push('Customer Account is required');
+    const errors = validateTicketCreate({
+      title, description, requestType, classification, category, priority,
+      sapModules, hasCustomer: !!selectedCustomer,
+    });
 
     if (errors.length > 0) {
       setValidationErrors(errors);
