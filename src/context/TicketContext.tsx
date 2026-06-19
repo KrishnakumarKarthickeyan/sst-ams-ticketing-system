@@ -49,6 +49,7 @@ import { getOrganizationMap, getOrganizationShortCodeMap } from '../app/actions/
 // SLA deadline math lives in a pure, unit-tested module.
 export { addSlaHours } from '../lib/sla';
 import { addSlaHours } from '../lib/sla';
+import { computeSla, getTargetHours, DEFAULT_SLA_TARGETS, type ClientSlaTargets } from '../lib/sla/slaEngine';
 
 // Query retry and timeout helpers
 const fetchWithRetryAndTimeout = async <T,>(
@@ -98,6 +99,8 @@ interface TicketContextType {
   profiles: any[];
   orgMap: Record<string, string>;
   orgShortCodeMap: Record<string, string>;
+  slaTargetsByOrg: Record<string, ClientSlaTargets>;
+  getClientTargets: (organizationId?: string | null) => ClientSlaTargets;
   loading: boolean;
   slaConfigurations: any[];
   
@@ -325,6 +328,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
+  // Per-client SLA targets keyed by organization_id (defaults until the migration
+  // is applied / a target row exists). Tolerant of the table being absent.
+  const [slaTargetsByOrg, setSlaTargetsByOrg] = useState<Record<string, ClientSlaTargets>>({});
   const [orgShortCodeMap, setOrgShortCodeMap] = useState<Record<string, string>>({});
   const [slaConfigurations, setSlaConfigurations] = useState<any[]>([]);
 
@@ -466,7 +472,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           dbArticles,
           dbCategories,
           dbNotifications,
-          dbSlaConfigurations
+          dbSlaConfigurations,
+          dbSlaTargets
         ] = await Promise.all([
           getOrganizationMap(),
           getOrganizationShortCodeMap(),
@@ -477,8 +484,22 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           Promise.resolve(null), // knowledgebase removed from UI — do not query
           Promise.resolve(null), // knowledgebase removed from UI — do not query
           wrapQuery(() => supabase.from('notifications').select('*').order('created_at', { ascending: false })),
-          wrapQuery(() => supabase.from('sla_configuration').select('*'))
+          wrapQuery(() => supabase.from('sla_configuration').select('*')),
+          // Tolerant: client_sla_targets may not exist until the migration is run.
+          // Resolve to null on any error instead of rejecting the whole load.
+          supabase.from('client_sla_targets').select('*').then(r => (r.error ? null : r.data), () => null)
         ]);
+
+        const slaTargetMap: Record<string, ClientSlaTargets> = {};
+        (dbSlaTargets || []).forEach((row: any) => {
+          slaTargetMap[row.organization_id] = {
+            critical: Number(row.critical_hours ?? DEFAULT_SLA_TARGETS.critical),
+            high: Number(row.high_hours ?? DEFAULT_SLA_TARGETS.high),
+            medium: Number(row.medium_hours ?? DEFAULT_SLA_TARGETS.medium),
+            low: Number(row.low_hours ?? DEFAULT_SLA_TARGETS.low),
+          };
+        });
+        setSlaTargetsByOrg(slaTargetMap);
 
         setOrgMap(organizationMap);
         setOrgShortCodeMap(organizationShortCodeMap);
@@ -737,6 +758,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       assignedConsultantId: t.assigned_consultant_id || undefined,
       assignedManagerId: t.assigned_manager_id || undefined,
       slaDueAt: (t.sla_due_at === '9999-12-31T23:59:59.999Z' || t.sla_due_at?.startsWith('9999-12-31')) ? 'SLA Not Applicable' : (t.sla_due_at || 'SLA Not Applicable'),
+      leadAssignedAt: t.lead_assigned_at ?? null, // SLA clock start (null until migration applied / lead assigned)
+      slaStatus: t.sla_status ?? null,
       resolvedAt: t.resolved_at,
       closedAt: t.closed_at,
       createdAt: t.created_at,
@@ -1904,6 +1927,30 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               ticketId: ticketId,
               linkPath: `/consultant/tickets/${ticketId}`
             });
+
+            // ── SLA clock: starts on the FIRST lead assignment. Reassignment does
+            // NOT reset it (timer keeps running from the first lead). Persist
+            // lead_assigned_at + the engine-computed sla_due_at/sla_status. Wrapped
+            // separately so a pre-migration schema (missing columns) can never break
+            // the assignment itself.
+            try {
+              const targets = slaTargetsByOrg[ticketObj?.organizationId || ''] || DEFAULT_SLA_TARGETS;
+              const targetHours = getTargetHours(ticketObj?.priority, targets);
+              const alreadyStarted = !!ticketObj?.leadAssignedAt;
+              const leadAssignedAtIso = alreadyStarted ? ticketObj!.leadAssignedAt! : new Date().toISOString();
+              const sla = computeSla(
+                { leadAssignedAt: leadAssignedAtIso, status: ticketObj?.status, resolvedAt: ticketObj?.resolvedAt, closedAt: ticketObj?.closedAt },
+                targetHours,
+              );
+              const slaUpdate: Record<string, any> = {
+                sla_due_at: sla.dueAt ? sla.dueAt.toISOString() : null,
+                sla_status: sla.status,
+              };
+              if (!alreadyStarted) slaUpdate.lead_assigned_at = leadAssignedAtIso;
+              await supabase.from('tickets').update(slaUpdate).eq('id', ticketId);
+            } catch (slaErr) {
+              console.warn('SLA persistence skipped (apply client_sla_targets migration to enable):', slaErr);
+            }
           }
 
           // Send notification to the old primary consultant (if any)
@@ -6301,6 +6348,10 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
     }
   };
 
+  // Resolve a client's per-priority SLA targets (falls back to platform defaults).
+  const getClientTargets = (organizationId?: string | null): ClientSlaTargets =>
+    (organizationId && slaTargetsByOrg[organizationId]) || DEFAULT_SLA_TARGETS;
+
   return (
     <TicketContext.Provider
       value={{
@@ -6312,6 +6363,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         notifications,
         profiles,
         orgMap,
+        slaTargetsByOrg,
+        getClientTargets,
         orgShortCodeMap,
         loading,
         createTicket,

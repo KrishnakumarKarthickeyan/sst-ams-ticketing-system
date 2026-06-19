@@ -218,6 +218,8 @@ export interface Ticket {
   assignedManager?: string; // Manager Name
   assignedConsultant?: string; // Consultant Name
   slaDueAt: string; // ISO String
+  leadAssignedAt?: string | null; // ISO — when the lead consultant was first assigned (SLA clock start)
+  slaStatus?: string | null; // engine-computed: Not Started | On Track | At Risk | Breached | Met
   resolvedAt?: string; // ISO String
   closedAt?: string; // ISO String
   createdAt: string;
