@@ -463,6 +463,18 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     if (isSupabaseConfigured && supabase) {
       try {
+        // ── Bounded working set ──
+        // The eager full-relation load is ~9KB/ticket; loading ALL tickets forever
+        // would grow to tens of MB on every page (measured: 2.78MB at 309 tickets →
+        // ~45MB at 5,000). A ≤100-user ops desk works the LIVE backlog, so we load
+        // open/active tickets + anything touched in the last year. Older closed
+        // tickets remain reachable via search, the report center, and the SQL KPI
+        // RPC (all of which query on demand). A 1-year horizon includes the entire
+        // current dataset (no visible change today) while bounding future growth;
+        // the hard cap bounds pathological cases too.
+        const WORKING_SET_DAYS = 365;
+        const workingSetCutoff = new Date(Date.now() - WORKING_SET_DAYS * 86400_000).toISOString();
+        const TICKET_HARD_CAP = 3000;
         const [
           organizationMap,
           organizationShortCodeMap,
@@ -479,7 +491,10 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           getOrganizationMap(),
           getOrganizationShortCodeMap(),
           wrapQuery(() => supabase.from('profiles').select('*')),
-          wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, ticket_id, created_at, author_id, content, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_escalations(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, ticket_id, file_name, file_url, file_type, file_size, uploaded_by, created_at), ticket_attachments(id, ticket_id, file_name, file_path, mime_type, file_size, uploaded_by, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)').order('created_at', { ascending: false })),
+          wrapQuery(() => supabase.from('tickets').select('*, organizations(name), ticket_comments(id, ticket_id, created_at, author_id, content, is_internal), ticket_efforts(*), satisfaction_ratings(*), ticket_modules(*), ticket_delete_requests(*), ticket_hour_estimates(*), ticket_closure_requests(*), ticket_assignments(*), ticket_estimates(*), ticket_actual_hours(*), ticket_escalations(*), ticket_unlock_requests(*), ticket_comment_attachments(id, comment_id, ticket_id, file_name, file_url, file_type, file_size, uploaded_by, created_at), ticket_attachments(id, ticket_id, file_name, file_path, mime_type, file_size, uploaded_by, created_at), ticket_history(id, ticket_id, changed_by, field_changed, old_value, new_value, created_at), requested_by_profile:requested_by(id, full_name, email, phone_number), created_by_profile:created_by_user(id, full_name, email, phone_number)')
+            .or(`and(status.neq.Closed,status.neq.Resolved),updated_at.gte.${workingSetCutoff}`)
+            .order('created_at', { ascending: false })
+            .limit(TICKET_HARD_CAP)),
           wrapQuery(() => supabase.from('customer_contracts').select('*')),
           wrapQuery(() => supabase.from('customer_contacts').select('*')),
           Promise.resolve(null), // knowledgebase removed from UI — do not query
