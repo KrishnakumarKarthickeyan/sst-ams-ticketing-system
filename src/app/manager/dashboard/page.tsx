@@ -2200,7 +2200,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Customers</span>
-                {checklistData.customers.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.customers.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.customers.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.customers.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -2216,7 +2216,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Consultants</span>
-                {checklistData.consultants.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.consultants.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.consultants.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.consultants.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -2232,7 +2232,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Tickets</span>
-                {checklistData.tickets.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.tickets.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.tickets.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.tickets.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -2248,7 +2248,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Approvals</span>
-                {checklistData.approvals.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.approvals.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.approvals.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.approvals.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -2264,7 +2264,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Reports</span>
-                {checklistData.reports.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-600 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.reports.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.reports.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.reports.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>

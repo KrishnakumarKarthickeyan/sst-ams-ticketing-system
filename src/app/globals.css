@@ -133,7 +133,10 @@
 
   --color-ink: #09090b;
   --color-ink-secondary: #52525b;
-  --color-ink-muted: #a1a1aa;
+  /* a11y: was #a1a1aa (zinc-400) — only 2.45:1 on light bg. #5f6772 clears WCAG
+     AA 4.5:1 for muted labels/table headers even on the #fafafa surfaces, while
+     staying visibly "muted" vs ink-secondary (#52525b). */
+  --color-ink-muted: #5f6772;
 
   --color-line: #e4e4e7;
   --color-line-strong: #d4d4d8;
