@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { logUserAuditAction, verifyPasswordPolicy } from '@/app/actions/auth';
 import { checkRateLimit } from '@/lib/security/rate-limit';
+import { logError } from '@/lib/observability/log-error';
 
 const getAdminClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error('API set-new-password exception:', err);
+    logError(err, { source: 'api:set-new-password' });
     return NextResponse.json({ success: false, error: err.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
