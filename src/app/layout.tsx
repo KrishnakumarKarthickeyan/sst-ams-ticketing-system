@@ -3,6 +3,7 @@ import "./globals.css";
 import { TicketProvider } from "../context/TicketContext";
 import { AuthProvider } from "../context/AuthContext";
 import { QueryProvider } from "../lib/queries/query-provider";
+import { ErrorListener } from "../components/observability/ErrorListener";
 import { Toaster } from "sonner";
 
 import { BRAND_CONFIG } from "../config/branding";
@@ -37,6 +38,7 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <TicketProvider>
+              <ErrorListener />
               {children}
               <Toaster position="top-right" richColors />
             </TicketProvider>

@@ -456,6 +456,8 @@ export default function ManagerTicketsPage() {
             onClick={() => setViewMode('card')}
             className={`p-1.5 rounded transition ${viewMode === 'card' ? 'bg-surface shadow-card text-ink font-bold' : 'text-ink-secondary hover:text-ink'}`}
             title="Card Workspace"
+            aria-label="Card view"
+            aria-pressed={viewMode === 'card'}
           >
             <LayoutGrid size={13} />
           </button>
@@ -463,6 +465,8 @@ export default function ManagerTicketsPage() {
             onClick={() => setViewMode('compact')}
             className={`p-1.5 rounded transition ${viewMode === 'compact' ? 'bg-surface shadow-card text-ink font-bold' : 'text-ink-secondary hover:text-ink'}`}
             title="Compact Service Desk"
+            aria-label="Compact list view"
+            aria-pressed={viewMode === 'compact'}
           >
             <List size={13} />
           </button>
@@ -721,7 +725,7 @@ export default function ManagerTicketsPage() {
                     
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost" className="h-6 w-6 text-ink-secondary cursor-pointer">
+                        <Button size="icon" variant="ghost" className="h-6 w-6 text-ink-secondary cursor-pointer" aria-label={`Actions for ${t.ticketNumber || t.id}`}>
                           <MoreHorizontal size={13} />
                         </Button>
                       </DropdownMenuTrigger>
