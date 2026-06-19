@@ -173,14 +173,12 @@ export default function ConsultantMyTicketsPage() {
     [tickets, consultantName]
   );
 
-  const tabFilteredTickets = useMemo(() => {
-    if (activeTab === 'all') return myAssignedTickets;
-    return myAssignedTickets.filter(t => categoryOf(t) === activeTab);
-  }, [myAssignedTickets, activeTab]);
-
-  const filteredTickets = useMemo(() => {
+  // ── Single filtered source ── dropdowns + date + search (NO category tab). The
+  // category tab badges AND the card list both derive from this, so the counts
+  // reflect the active dropdown filters (they can't diverge from the cards).
+  const dropdownFilteredTickets = useMemo(() => {
     const nowTime = Date.now();
-    const result = tabFilteredTickets.filter(t => {
+    return myAssignedTickets.filter(t => {
       if (statusFilter !== 'All' && t.status !== statusFilter) return false;
       if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
 
@@ -234,18 +232,21 @@ export default function ConsultantMyTicketsPage() {
       }
       return true;
     });
+  }, [myAssignedTickets, statusFilter, priorityFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
 
-    // Sort: Escalated + Acknowledged tickets to the top
+  // Card list = the single filtered source + the active category tab, then sorted
+  // (escalated+acknowledged first). Its category counts equal the tab badges.
+  const filteredTickets = useMemo(() => {
+    const result = activeTab === 'all'
+      ? dropdownFilteredTickets
+      : dropdownFilteredTickets.filter(t => categoryOf(t) === activeTab);
     return [...result].sort((a, b) => {
       const aEscAck = (a.isEscalated && a.escalationAcknowledgedAt) ? 1 : 0;
       const bEscAck = (b.isEscalated && b.escalationAcknowledgedAt) ? 1 : 0;
-      if (aEscAck !== bEscAck) {
-        return bEscAck - aEscAck; // 1 (acknowledged) comes before 0
-      }
-      // If same, keep default order (e.g. by createdAt desc)
+      if (aEscAck !== bEscAck) return bEscAck - aEscAck;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [tabFilteredTickets, statusFilter, priorityFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
+  }, [dropdownFilteredTickets, activeTab]);
 
   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
   const paginatedTickets = useMemo(() =>
@@ -459,7 +460,7 @@ export default function ConsultantMyTicketsPage() {
 
   // ── Summary tabs counts ──
   // Shared reconciling tally — every ticket lands in exactly one bucket.
-  const counts = useMemo(() => categoryCounts(myAssignedTickets), [myAssignedTickets]);
+  const counts = useMemo(() => categoryCounts(dropdownFilteredTickets), [dropdownFilteredTickets]);
 
   // ── Ticket Action Dropdown ──
   const TicketActionMenu = ({ t }: { t: typeof myAssignedTickets[0] }) => {

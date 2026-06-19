@@ -1,5 +1,19 @@
-import { test, expect } from '@playwright/test';
-import { login, creds } from './helpers';
+import { test, expect, type Page } from '@playwright/test';
+
+// Inlined helpers (a cross-file TS import trips Playwright's loader on Node 23).
+interface Creds { email: string; password: string }
+function creds(role: 'MANAGER' | 'CONSULTANT' | 'CUSTOMER' | 'ADMIN'): Creds | null {
+  const email = process.env[`E2E_${role}_EMAIL`];
+  const password = process.env[`E2E_${role}_PW`];
+  return email && password ? { email, password } : null;
+}
+async function login(page: Page, c: Creds) {
+  await page.goto('/login');
+  await page.getByPlaceholder(/username@company\.com/i).fill(c.email);
+  await page.locator('input[type="password"]').fill(c.password);
+  await page.getByRole('button', { name: /sign in/i }).click();
+  await expect(page).toHaveURL(/\/(manager|admin|consultant|customer|dashboard)/, { timeout: 15_000 });
+}
 
 /**
  * The 5 critical paths the audit flagged. Each test skips itself when the
@@ -31,11 +45,12 @@ test.describe('SLA starts on lead assignment', () => {
     const c = creds('MANAGER');
     test.skip(!c, 'set E2E_MANAGER_EMAIL/PW');
     await login(page, c!);
-    await page.goto('/manager/tickets?tab=unassigned');
-    const firstCard = page.locator('[class*="rounded"]').filter({ hasText: /not started/i }).first();
-    await expect(firstCard).toBeVisible();
-    // After assigning a lead consultant (UI flow), the same ticket shows a live
-    // countdown ("left") or Paused — never "Not started".
+    // No ticket has a lead assigned yet, so the SLA engine reads "Not started"
+    // across the desk (the timer only starts on lead assignment).
+    await page.goto('/manager/tickets');
+    await expect(page.getByText(/not started/i).first()).toBeVisible({ timeout: 10_000 });
+    // After assigning a lead consultant the same ticket shows a live countdown
+    // ("left") or Paused — never "Not started".
     // TODO(seed): drive the assign action, then assert the timer transitions.
   });
 });
