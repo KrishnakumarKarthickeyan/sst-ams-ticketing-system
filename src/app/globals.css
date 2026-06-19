@@ -332,3 +332,19 @@ input, button, select, textarea, table, dialog, td, th {
 .transition-smooth {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* ── Accessibility: visible keyboard-focus baseline ──
+   Many native buttons/links/inputs lacked any focus indicator. This shows a
+   clear ring for KEYBOARD users only (:focus-visible), never on mouse click, so
+   it adds no visual noise for pointer users while making the app keyboard-navigable. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
