@@ -5,7 +5,7 @@ import { Ticket, TicketStatus, SAPModule, Comment, Attachment, TicketHourEstimat
 import { useTickets } from '../../context/TicketContext';
 import { useAuth } from '../../context/AuthContext';
 import AttachmentPanel from './AttachmentPanel';
-import { SlaBadge } from './SlaBadge';
+import { SlaTimer } from '../sla/SlaTimer';
 import { TicketTimeline } from './TicketTimeline';
 import { ChatThread } from './ChatThread';
 import { SlaTelemetryPanel } from './SlaTelemetryPanel';
@@ -67,7 +67,8 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
     raiseClosureRequest,
     resubmitClosureRequest,
     requestUnlock,
-    fetchTicketById
+    fetchTicketById,
+    getClientTargets
   } = useTickets();
 
   const [ticket, setTicket] = useState<any | null>(null);
@@ -871,7 +872,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base font-bold text-slate-955 bg-surface px-2 py-0.5 border border-slate-200 rounded">{ticket.ticketNumber}</span>
               <Badge variant="secondary" className="text-[11px] font-bold uppercase">{ticket.ticketType || 'Incident'}</Badge>
-              <SlaBadge ticket={ticket} />
+              <SlaTimer ticket={ticket} clientTargets={getClientTargets(ticket.organizationId)} size="full" />
               <Badge variant="outline" className="text-[11px] bg-surface border border-slate-200 text-slate-600 py-0.5">Age: {ageDays} days</Badge>
             </div>
             <h1 className="text-xl font-bold text-slate-900 mt-1.5">{ticket.title}</h1>
@@ -1039,7 +1040,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 </div>
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-slate-400 text-[11px] uppercase font-bold">SLA Target Due</span>
-                  <SlaBadge ticket={ticket} />
+                  <SlaTimer ticket={ticket} clientTargets={getClientTargets(ticket.organizationId)} size="compact" />
                 </div>
               </div>
             </div>

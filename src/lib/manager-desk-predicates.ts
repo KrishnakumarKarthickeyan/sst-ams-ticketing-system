@@ -29,7 +29,13 @@ export function isUnassigned(t: Ticket): boolean {
  * Resolved tickets met their SLA; 'SLA Not Applicable' parses to NaN and is
  * excluded. `slaDueAt` is the server-computed deadline (business-hours aware).
  */
-export function isSlaBreached(t: Pick<Ticket, 'status' | 'slaDueAt'>, nowMs: number): boolean {
+export function isSlaBreached(t: Pick<Ticket, 'status' | 'slaDueAt' | 'slaStatus'>, nowMs: number): boolean {
+  // Single source of truth: the IST business-hours engine writes slaStatus onto
+  // every mapped ticket. Prefer it so the SLA Breached tab/KPI, the SLA Status
+  // filter, and the card SlaTimer all agree. (An unassigned ticket is
+  // 'Not Started' -> never breached.) Fall back to the legacy slaDueAt recompute
+  // only when slaStatus is absent (e.g. local/offline ticket objects).
+  if (t.slaStatus != null) return t.slaStatus === 'Breached';
   if (t.status === 'Closed' || t.status === 'Resolved') return false;
   const due = new Date(t.slaDueAt).getTime();
   return Number.isFinite(due) && due < nowMs;

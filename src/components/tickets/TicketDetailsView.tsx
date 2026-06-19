@@ -9,6 +9,8 @@ import { SlaBadge } from './SlaBadge';
 import { TicketTimeline } from './TicketTimeline';
 import { ChatThread } from './ChatThread';
 import { SlaTelemetryPanel } from './SlaTelemetryPanel';
+import { SlaTimer } from '../sla/SlaTimer';
+import { ClientSlaTargetsCard } from '../sla/ClientSlaTargetsCard';
 import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
 import {
   ArrowLeft,
@@ -85,7 +87,8 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     updateTicket,
     updateTicketStatus,
     updateConsultantEfforts,
-    fetchTicketById
+    fetchTicketById,
+    getClientTargets
   } = useTickets();
 
   const [localTicket, setLocalTicket] = useState<Ticket | null>(null);
@@ -850,7 +853,10 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               <span className="bg-surface-subtle text-ink-secondary px-1.5 py-0.2 rounded">Source: {ticket.source}</span>
             </div>
             
-            <h2 className="font-bold text-sm text-ink leading-snug">{ticket.title}</h2>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="font-bold text-sm text-ink leading-snug">{ticket.title}</h2>
+              <SlaTimer ticket={ticket} clientTargets={getClientTargets(ticket.organizationId)} size="full" className="shrink-0" />
+            </div>
             <p className="text-ink-secondary leading-relaxed text-[11px] whitespace-pre-wrap">{ticket.description}</p>
             {ticket.businessImpact && (
               <div className="bg-surface-muted border border-line rounded p-3 text-[11px] text-ink-secondary leading-relaxed">
@@ -1634,6 +1640,8 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {activeHubTab === 'customer' && (() => {
                 const orgContract = contracts?.find(c => c.organizationName === ticket.organization || c.id === ticket.organization);
                 return (
+                  <div className="space-y-4">
+                  <ClientSlaTargetsCard organizationId={ticket.organizationId} canEdit={role === 'Manager' || role === 'SuperAdmin'} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-3">
                       <div>
@@ -1681,6 +1689,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                         )}
                       </div>
                     </div>
+                  </div>
                   </div>
                 );
               })()}
