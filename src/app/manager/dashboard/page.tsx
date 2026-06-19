@@ -2087,7 +2087,7 @@ export default function ManagerDashboardPage() {
               value={filters.priority}
               onValueChange={(val) => setFilters(prev => ({ ...prev, priority: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
+              <SelectTrigger aria-label="Filter by priority" className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -2107,7 +2107,7 @@ export default function ManagerDashboardPage() {
               value={filters.module}
               onValueChange={(val) => setFilters(prev => ({ ...prev, module: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
+              <SelectTrigger aria-label="Filter by module" className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Module" />
               </SelectTrigger>
               <SelectContent className="font-sans">
@@ -2126,7 +2126,7 @@ export default function ManagerDashboardPage() {
               value={filters.customer}
               onValueChange={(val) => setFilters(prev => ({ ...prev, customer: val }))}
             >
-              <SelectTrigger className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
+              <SelectTrigger aria-label="Filter by customer" className="h-9 w-full bg-surface text-ink font-sans text-xs border border-line shadow-card focus:ring-brand/30">
                 <SelectValue placeholder="Customer" />
               </SelectTrigger>
               <SelectContent className="font-sans">

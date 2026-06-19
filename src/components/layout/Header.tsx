@@ -76,7 +76,7 @@ export const Header: React.FC = () => {
       <div className="md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <button className="p-2 rounded-lg border border-line hover:bg-surface-muted text-ink-secondary transition">
+            <button aria-label="Open navigation menu" className="p-2 rounded-lg border border-line hover:bg-surface-muted text-ink-secondary transition">
               <Menu size={16} />
             </button>
           </SheetTrigger>
