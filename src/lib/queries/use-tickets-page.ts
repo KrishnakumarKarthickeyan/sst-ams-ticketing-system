@@ -36,6 +36,8 @@ export interface TicketsPageParams {
   priority?: string;
   organizationId?: string;
   search?: string;
+  sortColumn?: TicketSortColumn;
+  sortDir?: 'asc' | 'desc';
   enabled?: boolean;
 }
 
@@ -47,24 +49,53 @@ export interface TicketsPageResult {
   pageCount: number;
 }
 
+/** Columns the list may be sorted by server-side (whitelist — never trust raw input). */
+export const TICKET_SORT_COLUMNS = [
+  'created_at', 'sla_due_at', 'priority', 'status', 'ticket_number',
+] as const;
+export type TicketSortColumn = (typeof TICKET_SORT_COLUMNS)[number];
+
+/** Resolve a requested sort column to a safe whitelisted one (default created_at). */
+export function safeSortColumn(col?: string): TicketSortColumn {
+  return (TICKET_SORT_COLUMNS as readonly string[]).includes(col ?? '')
+    ? (col as TicketSortColumn)
+    : 'created_at';
+}
+
+/** Inclusive [from,to] row bounds for a zero-based page. Pure + tested. */
+export function pageBounds(page: number, pageSize: number): { from: number; to: number } {
+  const safePage = Math.max(0, Math.floor(page));
+  const safeSize = Math.max(1, Math.floor(pageSize));
+  const from = safePage * safeSize;
+  return { from, to: from + safeSize - 1 };
+}
+
+/** Total page count for a row total (always ≥ 1). Pure + tested. */
+export function pageCountFor(total: number, pageSize: number): number {
+  return Math.max(1, Math.ceil(Math.max(0, total) / Math.max(1, pageSize)));
+}
+
 const LIST_COLUMNS =
   'id, ticket_number, title, status, priority, sap_module, organization_id, assigned_consultant_id, assigned_manager_id, sla_due_at, escalation_flag, created_at';
 
 export function useTicketsPage(params: TicketsPageParams = {}) {
-  const { page = 0, pageSize = 25, status, priority, organizationId, search, enabled = true } = params;
+  const {
+    page = 0, pageSize = 25, status, priority, organizationId, search,
+    sortColumn, sortDir = 'desc', enabled = true,
+  } = params;
+  const col = safeSortColumn(sortColumn);
 
   return useQuery<TicketsPageResult>({
-    queryKey: qk.tickets.page({ page, pageSize, status, priority, organizationId, search }),
+    queryKey: qk.tickets.page({ page, pageSize, status, priority, organizationId, search, col, sortDir }),
     enabled: enabled && isSupabaseConfigured && !!supabase,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const from = page * pageSize;
-      const to = from + pageSize - 1;
+      const { from, to } = pageBounds(page, pageSize);
 
       let q = supabase
         .from('tickets')
         .select(LIST_COLUMNS, { count: 'exact' })
-        .order('created_at', { ascending: false })
+        .order(col, { ascending: sortDir === 'asc' })
         .range(from, to);
 
       if (status && status !== 'All') q = q.eq('status', status);
@@ -84,7 +115,7 @@ export function useTicketsPage(params: TicketsPageParams = {}) {
         total,
         page,
         pageSize,
-        pageCount: Math.max(1, Math.ceil(total / pageSize)),
+        pageCount: pageCountFor(total, pageSize),
       };
     },
   });

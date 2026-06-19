@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { logUserAuditAction, verifyPasswordPolicy } from '@/app/actions/auth';
+import { checkRateLimit } from '@/lib/security/rate-limit';
+import { logError } from '@/lib/observability/log-error';
 
 const getAdminClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -44,6 +46,15 @@ function generateTemporaryPassword(): string {
 
 export async function POST(request: Request) {
   try {
+    // 0. Rate limit (abuse / brute-force guard) — per IP, single-instance window.
+    const rl = checkRateLimit(request, 'reset-password', 10, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please wait a moment and try again.' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+      );
+    }
+
     // 1. Authenticate the requester via cookie session
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -158,7 +169,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, tempPassword });
   } catch (err: any) {
-    console.error('API reset-password exception:', err);
+    logError(err, { source: 'api:reset-password' });
     return NextResponse.json({ success: false, error: err.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
