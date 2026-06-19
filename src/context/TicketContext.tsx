@@ -101,6 +101,7 @@ interface TicketContextType {
   orgShortCodeMap: Record<string, string>;
   slaTargetsByOrg: Record<string, ClientSlaTargets>;
   getClientTargets: (organizationId?: string | null) => ClientSlaTargets;
+  upsertClientSlaTargets: (organizationId: string, targets: ClientSlaTargets) => Promise<{ success: boolean; error?: string }>;
   loading: boolean;
   slaConfigurations: any[];
   
@@ -6359,6 +6360,30 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
   const getClientTargets = (organizationId?: string | null): ClientSlaTargets =>
     (organizationId && slaTargetsByOrg[organizationId]) || DEFAULT_SLA_TARGETS;
 
+  // Upsert a client's SLA targets (manager/admin). Tolerant of the table being
+  // absent pre-migration; updates local state on success so timers re-resolve.
+  const upsertClientSlaTargets = async (
+    organizationId: string,
+    targets: ClientSlaTargets,
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!isSupabaseConfigured || !supabase || !organizationId) return { success: false, error: 'Unavailable' };
+    try {
+      const { error } = await supabase.from('client_sla_targets').upsert({
+        organization_id: organizationId,
+        critical_hours: targets.critical,
+        high_hours: targets.high,
+        medium_hours: targets.medium,
+        low_hours: targets.low,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'organization_id' });
+      if (error) return { success: false, error: error.message };
+      setSlaTargetsByOrg(prev => ({ ...prev, [organizationId]: targets }));
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to save SLA targets' };
+    }
+  };
+
   return (
     <TicketContext.Provider
       value={{
@@ -6372,6 +6397,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         orgMap,
         slaTargetsByOrg,
         getClientTargets,
+        upsertClientSlaTargets,
         orgShortCodeMap,
         loading,
         createTicket,

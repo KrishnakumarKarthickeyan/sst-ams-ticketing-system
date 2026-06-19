@@ -58,6 +58,11 @@ export function CreateClientDialog({ open, onOpenChange, performedBy, onCreated 
   const [endDate, setEndDate] = useState('');
   const [monthlyHours, setMonthlyHours] = useState('');
   const [annualHours, setAnnualHours] = useState('');
+  // Per-client SLA targets (business hours per priority) — defaults 8/16/32/64.
+  const [slaCritical, setSlaCritical] = useState('8');
+  const [slaHigh, setSlaHigh] = useState('16');
+  const [slaMedium, setSlaMedium] = useState('32');
+  const [slaLow, setSlaLow] = useState('64');
   // Auth
   const [isActive, setIsActive] = useState(true);
   const [pwdMode, setPwdMode] = useState<'auto' | 'manual'>('auto');
@@ -82,7 +87,9 @@ export function CreateClientDialog({ open, onOpenChange, performedBy, onCreated 
     setName(''); setEmail(''); setPhone(''); setDesignation('');
     setOrgMode('new'); setOrgId(''); setNewOrgName(''); setNewOrgCode(''); setNewOrgDomain('');
     setContractType('AMS'); setContractStatus('Active'); setStartDate(''); setEndDate('');
-    setMonthlyHours(''); setAnnualHours(''); setIsActive(true); setPwdMode('auto');
+    setMonthlyHours(''); setAnnualHours('');
+    setSlaCritical('8'); setSlaHigh('16'); setSlaMedium('32'); setSlaLow('64');
+    setIsActive(true); setPwdMode('auto');
     setPassword(''); setConfirm(''); setEmailError(''); setPwdError(''); setResult(null);
   };
 
@@ -126,6 +133,10 @@ export function CreateClientDialog({ open, onOpenChange, performedBy, onCreated 
         contractEndDate: endDate,
         monthlyAllocatedHours: monthlyHours ? Number(monthlyHours) : undefined,
         contractHours: annualHours ? Number(annualHours) : undefined,
+        slaCriticalHours: slaCritical ? Number(slaCritical) : 8,
+        slaHighHours: slaHigh ? Number(slaHigh) : 16,
+        slaMediumHours: slaMedium ? Number(slaMedium) : 32,
+        slaLowHours: slaLow ? Number(slaLow) : 64,
         contractStatus,
         designation: designation.trim() || undefined,
         phoneNumber: phone.trim() || undefined,
@@ -232,6 +243,20 @@ export function CreateClientDialog({ open, onOpenChange, performedBy, onCreated 
                 <div className="space-y-1"><Label className="text-xs">End Date *</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
                 <div className="space-y-1"><Label className="text-xs">Monthly Allocated Hours</Label><Input type="number" min="0" value={monthlyHours} onChange={(e) => setMonthlyHours(e.target.value)} placeholder="e.g. 100" /></div>
                 <div className="space-y-1"><Label className="text-xs">Annual Contract Hours</Label><Input type="number" min="0" value={annualHours} onChange={(e) => setAnnualHours(e.target.value)} placeholder="e.g. 1200" /></div>
+              </div>
+            </div>
+
+            {/* SLA Targets (business hours per priority, IST 10:30–19:30 Sun–Thu) */}
+            <div className="space-y-3 rounded-md border p-3">
+              <div>
+                <Label className="text-sm font-semibold">SLA Targets</Label>
+                <p className="text-xs text-muted-foreground">Resolution budget in business hours per priority. The SLA clock runs 10:30–19:30 IST, Sun–Thu.</p>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Critical (h)</Label><Input type="number" min="0" step="0.5" value={slaCritical} onChange={(e) => setSlaCritical(e.target.value)} /></div>
+                <div className="space-y-1"><Label className="text-xs">High (h)</Label><Input type="number" min="0" step="0.5" value={slaHigh} onChange={(e) => setSlaHigh(e.target.value)} /></div>
+                <div className="space-y-1"><Label className="text-xs">Medium (h)</Label><Input type="number" min="0" step="0.5" value={slaMedium} onChange={(e) => setSlaMedium(e.target.value)} /></div>
+                <div className="space-y-1"><Label className="text-xs">Low (h)</Label><Input type="number" min="0" step="0.5" value={slaLow} onChange={(e) => setSlaLow(e.target.value)} /></div>
               </div>
             </div>
 

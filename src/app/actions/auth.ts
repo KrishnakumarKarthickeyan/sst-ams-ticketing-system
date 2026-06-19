@@ -346,6 +346,23 @@ export async function provisionUser(params: {
         }
       }
 
+      // Auto-create the per-client SLA targets row (engine source of truth).
+      // Tolerant: the table may not exist until the client_sla_targets migration
+      // is applied — a failure here must never block client provisioning.
+      try {
+        const { error: slaErr } = await client.from('client_sla_targets').upsert({
+          organization_id: orgId,
+          critical_hours: params.slaCriticalHours != null ? params.slaCriticalHours : 8,
+          high_hours: params.slaHighHours != null ? params.slaHighHours : 16,
+          medium_hours: params.slaMediumHours != null ? params.slaMediumHours : 32,
+          low_hours: params.slaLowHours != null ? params.slaLowHours : 64,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'organization_id' });
+        if (slaErr) console.warn('Non-blocking client_sla_targets seed skipped (apply migration):', slaErr.message);
+      } catch (slaSeedErr) {
+        console.warn('Non-blocking client_sla_targets seed exception:', slaSeedErr);
+      }
+
       // Insert primary contact into organization_contacts
       try {
         const { data: contactData, error: contactErr } = await client

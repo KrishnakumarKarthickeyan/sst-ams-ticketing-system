@@ -10,6 +10,7 @@ import { TicketTimeline } from './TicketTimeline';
 import { ChatThread } from './ChatThread';
 import { SlaTelemetryPanel } from './SlaTelemetryPanel';
 import { SlaTimer } from '../sla/SlaTimer';
+import { ClientSlaTargetsCard } from '../sla/ClientSlaTargetsCard';
 import { computeTeamEstimate, computeTeamActual } from '../../lib/aggregations/effort';
 import {
   ArrowLeft,
@@ -1639,6 +1640,8 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {activeHubTab === 'customer' && (() => {
                 const orgContract = contracts?.find(c => c.organizationName === ticket.organization || c.id === ticket.organization);
                 return (
+                  <div className="space-y-4">
+                  <ClientSlaTargetsCard organizationId={ticket.organizationId} canEdit={role === 'Manager' || role === 'SuperAdmin'} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-3">
                       <div>
@@ -1686,6 +1689,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                         )}
                       </div>
                     </div>
+                  </div>
                   </div>
                 );
               })()}
