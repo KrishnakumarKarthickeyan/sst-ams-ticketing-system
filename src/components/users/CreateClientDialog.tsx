@@ -13,6 +13,7 @@ import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { provisionUser } from '../../app/actions/auth';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase/client';
+import { clientCreateSchema } from '../../lib/schemas/client';
 
 /**
  * Shared Create Client dialog used by BOTH the SuperAdmin and Manager Users
@@ -26,8 +27,6 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase/client';
 const CONTRACT_TYPES = ['AMS', 'Implementation Support', 'Rollout Support', 'Migration Support', 'Upgrade Support', 'Hypercare Support'];
 
 const isEmailValid = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-const isPasswordValid = (p: string) =>
-  p.length >= 12 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(p);
 
 interface OrgRow { id: string; name: string; customer_short_code?: string | null }
 
@@ -97,22 +96,26 @@ export function CreateClientDialog({ open, onOpenChange, performedBy, onCreated 
     e.preventDefault();
     setEmailError(''); setPwdError('');
     const trimmedEmail = email.trim().toLowerCase();
-    if (name.trim().length < 2) { toast.error('Full Name must be at least 2 characters.'); return; }
-    if (!isEmailValid(trimmedEmail)) { setEmailError('Please enter a valid email address.'); return; }
-    if (pwdMode === 'manual') {
-      if (!isPasswordValid(password)) { setPwdError('Password must be 12+ chars with upper, lower, number, and symbol.'); return; }
-      if (password !== confirm) { setPwdError('Passwords do not match.'); return; }
+
+    // Single-source schema validation (replaces the scattered regex/length checks).
+    const parsed = clientCreateSchema.safeParse({
+      name, email, phone, designation,
+      orgMode, orgId, newOrgName, newOrgCode, newOrgDomain,
+      contractType, contractStatus, startDate, endDate, monthlyHours, annualHours,
+      sla: { critical: Number(slaCritical) || 0, high: Number(slaHigh) || 0, medium: Number(slaMedium) || 0, low: Number(slaLow) || 0 },
+      isActive, pwdMode, password, confirm,
+    });
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const path = first.path[0];
+      if (path === 'email') setEmailError(first.message);
+      else if (path === 'password' || path === 'confirm') setPwdError(first.message);
+      else toast.error(first.message);
+      return;
     }
-    if (!startDate || !endDate) { toast.error('Contract start and end dates are required.'); return; }
-    if (new Date(endDate) <= new Date(startDate)) { toast.error('Contract End Date must be strictly after Start Date.'); return; }
-    if (orgMode === 'new') {
-      if (!newOrgName.trim()) { toast.error('Organization name is required.'); return; }
-      if (!newOrgCode.trim()) { toast.error('Organization short code is required.'); return; }
-      if (orgs.some((o) => (o.customer_short_code || '').toUpperCase() === newOrgCode.trim().toUpperCase())) {
-        toast.error('An organization with this short code already exists.'); return;
-      }
-    } else if (!orgId) {
-      toast.error('Please select an organization.'); return;
+    // Runtime-only rule (needs the live org list): unique short code.
+    if (orgMode === 'new' && orgs.some((o) => (o.customer_short_code || '').toUpperCase() === newOrgCode.trim().toUpperCase())) {
+      toast.error('An organization with this short code already exists.'); return;
     }
 
     setLoading(true);

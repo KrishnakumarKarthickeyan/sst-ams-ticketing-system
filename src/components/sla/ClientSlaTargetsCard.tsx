@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2, Save, ShieldCheck } from 'lucide-react';
 import { useTickets } from '../../context/TicketContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import type { ClientSlaTargets } from '../../lib/sla/slaEngine';
+import { slaTargetsSchema, type SlaTargetsForm } from '../../lib/schemas/client';
 
 interface Props {
   organizationId?: string | null;
@@ -15,7 +17,7 @@ interface Props {
   canEdit?: boolean;
 }
 
-const PRIORITIES: { key: keyof ClientSlaTargets; label: string }[] = [
+const PRIORITIES: { key: keyof SlaTargetsForm; label: string }[] = [
   { key: 'critical', label: 'Critical' },
   { key: 'high', label: 'High' },
   { key: 'medium', label: 'Medium' },
@@ -24,37 +26,36 @@ const PRIORITIES: { key: keyof ClientSlaTargets; label: string }[] = [
 
 /**
  * Per-client SLA targets (business hours per priority). Editable by manager/admin,
- * read-only for everyone else. Prefilled from client_sla_targets (defaults
- * 8/16/32/64). Save upserts via the shared context mutation.
+ * read-only for everyone else. Validated by `slaTargetsSchema` via react-hook-form
+ * (zodResolver). Save upserts through the shared context mutation.
  */
 export function ClientSlaTargetsCard({ organizationId, canEdit = false }: Props) {
   const { getClientTargets, upsertClientSlaTargets } = useTickets();
   const current = getClientTargets(organizationId);
-  const [draft, setDraft] = useState<ClientSlaTargets>(current);
-  const [saving, setSaving] = useState(false);
 
-  // Re-sync when the resolved targets change (e.g. after a load).
+  const {
+    register, handleSubmit, reset,
+    formState: { errors, isSubmitting, isDirty },
+  } = useForm<SlaTargetsForm>({
+    resolver: zodResolver(slaTargetsSchema),
+    defaultValues: current,
+  });
+
+  // Re-sync the form when the resolved targets change (e.g. after a load).
   useEffect(() => {
-    setDraft(getClientTargets(organizationId));
+    reset(getClientTargets(organizationId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, current.critical, current.high, current.medium, current.low]);
 
-  const setField = (k: keyof ClientSlaTargets, v: string) =>
-    setDraft(d => ({ ...d, [k]: v === '' ? 0 : Number(v) }));
-
-  const dirty = PRIORITIES.some(p => draft[p.key] !== current[p.key]);
-
-  const save = async () => {
+  const onSubmit = async (values: SlaTargetsForm) => {
     if (!organizationId) { toast.error('No organization for this client.'); return; }
-    setSaving(true);
-    const res = await upsertClientSlaTargets(organizationId, draft);
-    setSaving(false);
-    if (res.success) toast.success('SLA targets updated.');
+    const res = await upsertClientSlaTargets(organizationId, values);
+    if (res.success) { toast.success('SLA targets updated.'); reset(values); }
     else toast.error(res.error || 'Failed to save SLA targets.');
   };
 
   return (
-    <div className="space-y-3 rounded-md border border-line p-4 bg-surface">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 rounded-md border border-line p-4 bg-surface">
       <div className="flex items-center gap-2">
         <ShieldCheck size={14} className="text-emerald-600" />
         <h4 className="text-sm font-semibold text-ink">SLA Targets</h4>
@@ -66,13 +67,10 @@ export function ClientSlaTargetsCard({ organizationId, canEdit = false }: Props)
           <div key={p.key} className="space-y-1">
             <Label className="text-xs">{p.label} (h)</Label>
             {canEdit ? (
-              <Input
-                type="number"
-                min="0"
-                step="0.5"
-                value={String(draft[p.key])}
-                onChange={e => setField(p.key, e.target.value)}
-              />
+              <>
+                <Input type="number" min="0" step="0.5" {...register(p.key, { valueAsNumber: true })} />
+                {errors[p.key] && <p className="text-[11px] text-red-600">{errors[p.key]?.message as string}</p>}
+              </>
             ) : (
               <div className="rounded border border-line bg-surface-muted px-2 py-1.5 text-sm font-bold tabular-nums text-ink">
                 {current[p.key]}h
@@ -84,12 +82,12 @@ export function ClientSlaTargetsCard({ organizationId, canEdit = false }: Props)
 
       {canEdit && (
         <div className="flex justify-end">
-          <Button size="sm" onClick={save} disabled={saving || !dirty}>
-            {saving ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…</> : <><Save className="mr-2 h-3.5 w-3.5" /> Save SLA Targets</>}
+          <Button type="submit" size="sm" disabled={isSubmitting || !isDirty}>
+            {isSubmitting ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…</> : <><Save className="mr-2 h-3.5 w-3.5" /> Save SLA Targets</>}
           </Button>
         </div>
       )}
-    </div>
+    </form>
   );
 }
 
