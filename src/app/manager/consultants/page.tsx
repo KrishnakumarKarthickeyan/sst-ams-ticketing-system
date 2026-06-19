@@ -157,13 +157,11 @@ export default function ManagerConsultantsPage() {
     });
   };
 
-  const saveConsultants = (list: ConsultantProfile[]) => {
-    localStorage.setItem('sst_stakeholder_consultants', JSON.stringify(list));
-  };
-
-  const saveCustomers = (list: CustomerProfile[]) => {
-    localStorage.setItem('sst_stakeholder_customers', JSON.stringify(list));
-  };
+  // Stakeholder data is sourced from Supabase (the single source of truth); these
+  // were write-only localStorage persists that nothing read back. Kept as no-ops
+  // so the existing call sites stay valid without holding domain data in the browser.
+  const saveConsultants = (_list: ConsultantProfile[]) => { /* no-op: Supabase is source of truth */ };
+  const saveCustomers = (_list: CustomerProfile[]) => { /* no-op: Supabase is source of truth */ };
 
   const fetchStakeholders = async () => {
     await refetchData();
