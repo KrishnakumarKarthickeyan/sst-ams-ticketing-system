@@ -46,11 +46,12 @@ import {
 } from '../../../components/ui/dropdown-menu';
 import { statusConfig, priorityConfig } from '../../../lib/status-theme';
 import { matchesTab, isSlaBreached, isUnassigned, type ManagerDeskTab } from '../../../lib/manager-desk-predicates';
+import { SlaTimer } from '../../../components/sla/SlaTimer';
 
 
 
 export default function ManagerTicketsPage() {
-  const { tickets, loading, updateTicketStatus, assignTicket, updateTicket, profiles, contracts, orgMap } = useTickets();
+  const { tickets, loading, updateTicketStatus, assignTicket, updateTicket, profiles, contracts, orgMap, getClientTargets } = useTickets();
   const { user } = useAuth();
   const managerName = user?.name || 'Marcus Vance';
 
@@ -389,25 +390,6 @@ export default function ManagerTicketsPage() {
     return `${days}d ago`;
   };
 
-  const getSLAStatus = (slaDueAt: string, status: string) => {
-    if (status === 'Closed' || status === 'Resolved') {
-      return { label: 'SLA MET', color: 'text-green-700 bg-green-50 border-green-200' };
-    }
-    const now = Date.now();
-    const due = new Date(slaDueAt).getTime();
-    const hoursLeft = (due - now) / (1000 * 60 * 60);
-
-    // Breach reads the single shared predicate — identical to the SLA Breached tab
-    // badge and the SLA Status filter, so the pill can never disagree with them.
-    if (isSlaBreached({ status: status as TicketStatus, slaDueAt }, now)) {
-      return { label: 'SLA BREACHED', color: 'text-red-700 bg-red-50 border-red-200' };
-    }
-    if (hoursLeft < 24) {
-      return { label: `SLA WARNING (${Math.round(hoursLeft)}h left)`, color: 'text-amber-700 bg-amber-50 border-amber-200' };
-    }
-    return { label: `SLA MET (${new Date(slaDueAt).toLocaleDateString()})`, color: 'text-ink-secondary bg-surface-muted border-line' };
-  };
-
   return (
     <div className="space-y-6 text-xs text-ink">
       
@@ -617,7 +599,6 @@ export default function ManagerTicketsPage() {
           {filteredTickets.map((t) => {
             const priorityCfg = priorityConfig[t.priority] || priorityConfig['Low'];
             const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-ink-secondary bg-surface-muted border-line' };
-            const slaCfg = getSLAStatus(t.slaDueAt, t.status);
 
             // Fetch allocations split
             const funcEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
@@ -730,9 +711,7 @@ export default function ManagerTicketsPage() {
                     <Badge className="bg-ink text-white hover:bg-ink text-[11px] py-0 px-1 border-none font-bold uppercase">
                       {t.sapModule}
                     </Badge>
-                    <span className={`px-1.5 py-0.2 rounded font-bold border text-[11px] uppercase ${slaCfg.color}`}>
-                      {slaCfg.label}
-                    </span>
+                    <SlaTimer ticket={t} clientTargets={getClientTargets(t.organizationId)} size="compact" />
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -826,7 +805,6 @@ export default function ManagerTicketsPage() {
                 {filteredTickets.map((t) => {
                   const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-ink-secondary bg-surface-muted border-line' };
                   const priorityCfg = priorityConfig[t.priority] || priorityConfig['Low'];
-                  const slaCfg = getSLAStatus(t.slaDueAt, t.status);
 
                   const funcEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
                   const techEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
@@ -891,9 +869,7 @@ export default function ManagerTicketsPage() {
                         {totalAct}h (F:{funcAct}/T:{techAct})
                       </td>
                       <td className="py-2.5 px-4 text-center">
-                        <span className={`px-1.5 py-0.2 rounded font-bold border text-[11px] uppercase ${slaCfg.color}`}>
-                          {slaCfg.label}
-                        </span>
+                        <SlaTimer ticket={t} clientTargets={getClientTargets(t.organizationId)} size="compact" />
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex justify-end gap-1.5">

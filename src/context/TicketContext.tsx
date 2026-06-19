@@ -507,7 +507,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const profilesList = dbProfiles || [];
         setProfiles(profilesList);
 
-        const mappedTickets = dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList, dbContacts || [], organizationMap)) : [];
+        const mappedTickets = dbTickets ? dbTickets.map(t => mapDbTicket(t, profilesList, dbContacts || [], organizationMap, slaTargetMap)) : [];
         mappedTickets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setTickets(mappedTickets);
 
@@ -719,8 +719,15 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [user?.id]);
 
   // Helper mapper for Supabase format
-  const mapDbTicket = (t: any, dbProfiles: any[], dbContacts: any[] = [], currentOrgMap?: Record<string, string>): Ticket => {
+  const mapDbTicket = (t: any, dbProfiles: any[], dbContacts: any[] = [], currentOrgMap?: Record<string, string>, slaTargets: Record<string, ClientSlaTargets> = {}): Ticket => {
     const activeOrgMap = currentOrgMap || orgMap;
+    // Live engine SLA status (single source for the SLA Breached tab/KPI/pill).
+    // Recomputed on every load against the client's per-priority targets; an
+    // unassigned ticket (no lead_assigned_at) is always 'Not Started'.
+    const _liveSla = computeSla(
+      { leadAssignedAt: t.lead_assigned_at ?? null, status: t.status, resolvedAt: t.resolved_at, closedAt: t.closed_at },
+      getTargetHours(t.priority, slaTargets[t.organization_id] || DEFAULT_SLA_TARGETS),
+    );
     const getProfile = (id: string) => dbProfiles.find(p => p.id === id || p.full_name === id || p.email === id);
     const reqProfile = t.requested_by_profile || getProfile(t.requested_by);
     const createdProfile = t.created_by_profile || getProfile(t.created_by_user);
@@ -759,7 +766,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       assignedManagerId: t.assigned_manager_id || undefined,
       slaDueAt: (t.sla_due_at === '9999-12-31T23:59:59.999Z' || t.sla_due_at?.startsWith('9999-12-31')) ? 'SLA Not Applicable' : (t.sla_due_at || 'SLA Not Applicable'),
       leadAssignedAt: t.lead_assigned_at ?? null, // SLA clock start (null until migration applied / lead assigned)
-      slaStatus: t.sla_status ?? null,
+      slaStatus: _liveSla.status, // live engine status (single source for tab/KPI/pill)
       resolvedAt: t.resolved_at,
       closedAt: t.closed_at,
       createdAt: t.created_at,
@@ -1148,7 +1155,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         if (!ticketRow) return null;
 
-        const mapped = mapDbTicket(ticketRow, profilesList, dbContacts || [], organizationMap);
+        const mapped = mapDbTicket(ticketRow, profilesList, dbContacts || [], organizationMap, slaTargetsByOrg);
         
         // Cache/update it in local state
         setTickets(prev => {
@@ -1625,7 +1632,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         if (dbTicket) {
-          const mappedTicket = mapDbTicket(dbTicket, dbProfiles || [], dbContacts || [], orgMap);
+          const mappedTicket = mapDbTicket(dbTicket, dbProfiles || [], dbContacts || [], orgMap, slaTargetsByOrg);
           setTickets(prev => [mappedTicket, ...prev]);
 
           // Send asynchronous background notifications
