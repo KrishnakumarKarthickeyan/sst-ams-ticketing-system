@@ -6,6 +6,7 @@ import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
+import { SavedViewsBar } from '../../../components/tickets/SavedViewsBar';
 import { toast } from 'sonner';
 import { BrandedLogo } from '../../../components/ui/BrandedLogo';
 import {
@@ -332,6 +333,33 @@ export default function ManagerTicketsPage() {
     setSearchQuery('');
   };
 
+  // Saved Views: snapshot the full filter+tab+search state, and restore it.
+  const currentFilters = {
+    tab: activeTab, search: searchQuery,
+    cust: custFilter, cons: consFilter, funcCons: funcConsFilter, techCons: techConsFilter,
+    module: moduleFilter, priority: priorityFilter, status: statusFilter, type: typeFilter,
+    sla: slaFilter, date: dateFilter, customStart: customStartDate, customEnd: customEndDate,
+    assignState: assignStateFilter, closureState: closureStateFilter,
+  };
+  const applyView = (f: Record<string, unknown>) => {
+    setActiveTab((f.tab as ManagerDeskTab) ?? 'all');
+    setSearchQuery((f.search as string) ?? '');
+    setCustFilter((f.cust as string) ?? 'All');
+    setConsFilter((f.cons as string) ?? 'All');
+    setFuncConsFilter((f.funcCons as string) ?? 'All');
+    setTechConsFilter((f.techCons as string) ?? 'All');
+    setModuleFilter((f.module as string) ?? 'All');
+    setPriorityFilter((f.priority as string) ?? 'All');
+    setStatusFilter((f.status as string) ?? 'All');
+    setTypeFilter((f.type as string) ?? 'All');
+    setSlaFilter((f.sla as string) ?? 'All');
+    setDateFilter((f.date as string) ?? 'All');
+    setCustomStartDate((f.customStart as string) ?? '');
+    setCustomEndDate((f.customEnd as string) ?? '');
+    setAssignStateFilter((f.assignState as string) ?? 'All');
+    setClosureStateFilter((f.closureState as string) ?? 'All');
+  };
+
   const toggleSelectTicket = (id: string) => {
     setSelectedTicketIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
@@ -471,6 +499,11 @@ export default function ManagerTicketsPage() {
             <List size={13} />
           </button>
         </div>
+      </div>
+
+      {/* ── SAVED VIEWS ── */}
+      <div className="bg-surface border border-line rounded-lg px-3 py-2 shadow-card">
+        <SavedViewsBar scope="manager-desk" currentFilters={currentFilters} onApply={applyView} />
       </div>
 
       {/* ── 12 FILTERS PANEL ── */}
