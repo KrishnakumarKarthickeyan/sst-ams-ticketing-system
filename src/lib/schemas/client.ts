@@ -24,7 +24,9 @@ export const slaTargetsSchema = z.object({
 });
 export type SlaTargetsForm = z.infer<typeof slaTargetsSchema>;
 
-const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]).{12,}$/;
+/** Shared strong-password rule: 12+ chars with upper, lower, number, symbol. */
+export const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]).{12,}$/;
+export const PASSWORD_MESSAGE = 'Password must be 12+ chars with upper, lower, number, and symbol.';
 
 /**
  * Client provisioning form. Cross-field rules (end after start, manual-password

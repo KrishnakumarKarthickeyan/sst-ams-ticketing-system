@@ -12,6 +12,7 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { provisionUser } from '../../app/actions/auth';
+import { consultantCreateSchema } from '../../lib/schemas/consultant';
 
 /**
  * Shared Create Consultant dialog used by BOTH the SuperAdmin and Manager
@@ -23,8 +24,6 @@ import { provisionUser } from '../../app/actions/auth';
 const SAP_MODULES = ['FICO', 'MM', 'SD', 'PP', 'PM', 'QM', 'HCM', 'BASIS', 'ABAP', 'SF EC', 'SF ECP', 'SF PMGM', 'SF RCM', 'SAC', 'CPI'];
 
 const isEmailValid = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-const isPasswordValid = (p: string) =>
-  p.length >= 12 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?]/.test(p);
 
 interface Props {
   open: boolean;
@@ -63,12 +62,17 @@ export function CreateConsultantDialog({ open, onOpenChange, performedBy, onCrea
     e.preventDefault();
     setEmailError(''); setPwdError('');
     const trimmedEmail = email.trim().toLowerCase();
-    if (fullName.trim().length < 2) { toast.error('Full Name must be at least 2 characters.'); return; }
-    if (!isEmailValid(trimmedEmail)) { setEmailError('Please enter a valid email address.'); return; }
-    if (pwdMode === 'manual') {
-      if (!isPasswordValid(password)) { setPwdError('Password must be 12+ chars with upper, lower, number, and symbol.'); return; }
-      if (password !== confirm) { setPwdError('Passwords do not match.'); return; }
+
+    const parsed = consultantCreateSchema.safeParse({ fullName, email, type, pwdMode, password, confirm });
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const path = first.path[0];
+      if (path === 'email') setEmailError(first.message);
+      else if (path === 'password' || path === 'confirm') setPwdError(first.message);
+      else toast.error(first.message);
+      return;
     }
+
     setLoading(true);
     try {
       const res = await provisionUser({
