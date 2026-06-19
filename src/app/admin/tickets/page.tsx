@@ -35,6 +35,27 @@ const TABS: { id: TabType; label: string }[] = [
 
 const PRIORITY_ORDER: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 
+/** Canonical status-tab predicate, reused by the tab badge AND the card filter so
+ *  they reconcile from one source (mirrors the manager desk fix). */
+function matchesAdminTab(tab: TabType, t: Ticket): boolean {
+  switch (tab) {
+    case 'New': return t.status === 'New';
+    case 'Assigned': return t.status === 'Assigned';
+    case 'InProgress': return t.status === 'In Progress' || t.status === 'In Progress - Technical' || t.status === 'In Progress - Functional';
+    case 'WaitingCust': return t.status === 'Waiting for Customer' || t.status === 'Customer Action';
+    case 'WaitingTeam': return t.status === 'Waiting for Internal Team' || t.status === 'On Hold';
+    case 'ReqGathering': return t.status === 'Requirement Gathering';
+    case 'WaitingQuote': return t.status === 'Waiting for Hours Approval';
+    case 'ClosureReq': return t.status === 'Request for Closure';
+    case 'AwaitingMgr': return t.status === 'Awaiting Manager Approval' || t.status === 'Awaiting Closure';
+    case 'Resolved': return t.status === 'Resolved';
+    case 'Closed': return t.status === 'Closed';
+    case 'Escalated': return !!t.escalationFlag;
+    case 'All':
+    default: return true;
+  }
+}
+
 export default function AdminTicketsPage() {
   const { tickets, loading } = useTickets();
   const router = useRouter();
@@ -47,42 +68,10 @@ export default function AdminTicketsPage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
-  // Tab counts
-  const tabCounts = useMemo(() => {
-    const counts: Record<TabType, number> = {
-      All: tickets.length,
-      New: tickets.filter(t => t.status === 'New').length,
-      Assigned: tickets.filter(t => t.status === 'Assigned').length,
-      InProgress: tickets.filter(t => t.status === 'In Progress' || t.status === 'In Progress - Technical' || t.status === 'In Progress - Functional').length,
-      WaitingCust: tickets.filter(t => t.status === 'Waiting for Customer' || t.status === 'Customer Action').length,
-      WaitingTeam: tickets.filter(t => t.status === 'Waiting for Internal Team' || t.status === 'On Hold').length,
-      ReqGathering: tickets.filter(t => t.status === 'Requirement Gathering').length,
-      WaitingQuote: tickets.filter(t => t.status === 'Waiting for Hours Approval').length,
-      ClosureReq: tickets.filter(t => t.status === 'Request for Closure').length,
-      AwaitingMgr: tickets.filter(t => t.status === 'Awaiting Manager Approval' || t.status === 'Awaiting Closure').length,
-      Resolved: tickets.filter(t => t.status === 'Resolved').length,
-      Closed: tickets.filter(t => t.status === 'Closed').length,
-      Escalated: tickets.filter(t => t.escalationFlag).length,
-    };
-    return counts;
-  }, [tickets]);
-
-  // Filtering logic (unchanged from previous implementation)
-  const filteredTickets = useMemo(() => {
+  // ── Single filtered source ── dropdowns + date + search (NO tab). Tab badges
+  // and the card list both derive from this, so they reconcile under any filter.
+  const dropdownFiltered = useMemo(() => {
     return tickets.filter(t => {
-      if (activeTab === 'New' && t.status !== 'New') return false;
-      if (activeTab === 'Assigned' && t.status !== 'Assigned') return false;
-      if (activeTab === 'InProgress' && t.status !== 'In Progress' && t.status !== 'In Progress - Technical' && t.status !== 'In Progress - Functional') return false;
-      if (activeTab === 'WaitingCust' && t.status !== 'Waiting for Customer' && t.status !== 'Customer Action') return false;
-      if (activeTab === 'WaitingTeam' && t.status !== 'Waiting for Internal Team' && t.status !== 'On Hold') return false;
-      if (activeTab === 'ReqGathering' && t.status !== 'Requirement Gathering') return false;
-      if (activeTab === 'WaitingQuote' && t.status !== 'Waiting for Hours Approval') return false;
-      if (activeTab === 'ClosureReq' && t.status !== 'Request for Closure') return false;
-      if (activeTab === 'AwaitingMgr' && t.status !== 'Awaiting Manager Approval' && t.status !== 'Awaiting Closure') return false;
-      if (activeTab === 'Resolved' && t.status !== 'Resolved') return false;
-      if (activeTab === 'Closed' && t.status !== 'Closed') return false;
-      if (activeTab === 'Escalated' && !t.escalationFlag) return false;
-
       if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
       if (moduleFilter !== 'All' && t.sapModule !== moduleFilter) return false;
       if (customerFilter !== 'All' && t.organization !== customerFilter) return false;
@@ -133,7 +122,22 @@ export default function AdminTicketsPage() {
 
       return true;
     });
-  }, [tickets, activeTab, priorityFilter, moduleFilter, customerFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
+  }, [tickets, priorityFilter, moduleFilter, customerFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
+
+  // Tab badges — every badge counts the SAME filtered source through the SAME
+  // predicate, so applying any dropdown updates the badges and the cards together.
+  const tabCounts = useMemo(() => {
+    const counts = {} as Record<TabType, number>;
+    TABS.forEach(({ id }) => { counts[id] = dropdownFiltered.filter(t => matchesAdminTab(id, t)).length; });
+    return counts;
+  }, [dropdownFiltered]);
+
+  // Card list = the single filtered source + the active tab predicate (so its
+  // length always equals tabCounts[activeTab]).
+  const filteredTickets = useMemo(
+    () => dropdownFiltered.filter(t => matchesAdminTab(activeTab, t)),
+    [dropdownFiltered, activeTab],
+  );
 
   // SLA countdown rendering
   const formatSlaCountdown = (dueDateStr: string, status: string) => {
