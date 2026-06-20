@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation';
 import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { SavedViewsBar } from '../../../components/tickets/SavedViewsBar';
 import { toast } from 'sonner';
-import { BrandedLogo } from '../../../components/ui/BrandedLogo';
+import { EmptyState } from '../../../components/ui/empty-state';
 import {
   Search,
   LayoutGrid,
@@ -32,7 +32,8 @@ import {
   CheckCircle2,
   CheckSquare,
   Filter,
-  X
+  X,
+  Inbox
 } from 'lucide-react';
 import { TicketStatus, TicketPriority, SAPModule, TicketType } from '../../../types/ticket';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -614,20 +615,20 @@ export default function ManagerTicketsPage() {
       {loading ? (
         <div className="py-20 text-center text-ink-secondary font-bold">Querying tickets registry...</div>
       ) : tickets.length === 0 ? (
-        <Card className="border border-line rounded-lg p-20 text-center text-ink-muted italic space-y-4 bg-surface flex flex-col items-center justify-center">
-          <BrandedLogo width={28} height={28} iconOnly={true} className="opacity-45" />
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-ink uppercase tracking-wider">No tickets created yet.</h3>
-            <p className="text-xs text-ink-secondary max-w-sm mx-auto">Create an SAP incident to start tracking support and resolutions.</p>
-          </div>
+        <Card className="border border-line rounded-lg bg-surface">
+          <EmptyState
+            icon={Inbox}
+            title="No tickets created yet"
+            description="Create an SAP incident to start tracking support and resolutions."
+          />
         </Card>
       ) : filteredTickets.length === 0 ? (
-        <Card className="border border-line rounded-lg p-20 text-center text-ink-muted italic space-y-4 bg-surface flex flex-col items-center justify-center">
-          <BrandedLogo width={28} height={28} iconOnly={true} className="opacity-45" />
-          <div className="space-y-1">
-            <p className="font-bold uppercase text-[11px] text-ink tracking-wider">No Incidents Found</p>
-            <p className="text-[11px] text-ink-muted">No tickets match the selected filters or active workspace tab.</p>
-          </div>
+        <Card className="border border-line rounded-lg bg-surface">
+          <EmptyState
+            icon={Filter}
+            title="No incidents found"
+            description="No tickets match the selected filters or active workspace tab."
+          />
         </Card>
       ) : viewMode === 'card' ? (
         
