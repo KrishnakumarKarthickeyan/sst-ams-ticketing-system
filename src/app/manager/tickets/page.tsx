@@ -658,6 +658,7 @@ export default function ManagerTicketsPage() {
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
+                        aria-label={`Select ticket ${t.ticketNumber || t.id}`}
                         checked={selectedTicketIds.includes(t.id)}
                         onChange={() => toggleSelectTicket(t.id)}
                         className="cursor-pointer rounded border-line-strong text-ink focus:ring-brand/30"
@@ -676,9 +677,9 @@ export default function ManagerTicketsPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <h3 className="font-bold text-xs text-ink leading-snug line-clamp-2 hover:underline">
+                    <h2 className="font-bold text-xs text-ink leading-snug line-clamp-2 hover:underline">
                       <Link href={`/manager/tickets/${t.id}`}>{t.title}</Link>
-                    </h3>
+                    </h2>
                     <p className="text-[11px] text-ink-secondary line-clamp-2 leading-relaxed" title={t.description}>
                       {t.description}
                     </p>
@@ -819,6 +820,7 @@ export default function ManagerTicketsPage() {
                   <th className="py-2.5 px-4 font-bold text-center w-8">
                     <input
                       type="checkbox"
+                      aria-label="Select all tickets"
                       checked={selectedTicketIds.length === filteredTickets.length && filteredTickets.length > 0}
                       onChange={toggleSelectAll}
                       className="cursor-pointer rounded border-line-strong text-ink focus:ring-brand/30"
@@ -859,6 +861,7 @@ export default function ManagerTicketsPage() {
                       <td className="py-2.5 px-4 text-center w-8">
                         <input
                           type="checkbox"
+                          aria-label={`Select ticket ${t.ticketNumber || t.id}`}
                           checked={selectedTicketIds.includes(t.id)}
                           onChange={() => toggleSelectTicket(t.id)}
                           className="cursor-pointer rounded border-line-strong text-ink focus:ring-brand/30"
