@@ -58,6 +58,7 @@ import {
 import { ChartContainer, ChartTooltipContent } from '../../../components/ui/chart';
 import { chartColors, priorityColors } from '../../../lib/chart-theme';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { StatCard } from '../../../components/ui/stat-card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { RotateCcw } from 'lucide-react';
@@ -800,207 +801,52 @@ export default function CustomerDashboardPage() {
         </Card>
       ) : (
         <>
-          {/* B. KPI Summary Cards */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-              Executive Dashboard KPI Console
-            </h2>
-            {/* Group 1: Volume & Status */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card relative group h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">1. Total Tickets</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-ink">{totalTickets}</span>
-                  <FileText size={14} className="text-ink-muted" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Total scope size</span>
-              </Card>
+          {/* B. KPI Summary Cards — shared StatCard, tone-coded, grouped */}
+          <div className="space-y-5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">Executive Dashboard KPI Console</h2>
 
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-zinc-950 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">2. Open Tickets</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-ink">{openTickets}</span>
-                  <Timer size={14} className="text-ink-secondary" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Unresolved backlog</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-amber-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">3. Unassigned</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-amber-700">{unassignedTickets}</span>
-                  <Hourglass size={14} className="text-amber-500" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Awaiting resource</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-zinc-400 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">4. In Progress</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-ink">{inProgressTickets}</span>
-                  <Activity size={14} className="text-ink-muted" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Active resolution</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-red-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">5. Reopened</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className={`text-2xl font-bold ${reopenedTicketsCount > 0 ? 'text-critical' : 'text-ink'}`}>{reopenedTicketsCount}</span>
-                  <AlertTriangle size={14} className={reopenedTicketsCount > 0 ? 'text-critical animate-pulse' : 'text-ink-muted'} />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Rework loop count</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-emerald-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">6. Resolved</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-emerald-700">{resolvedTickets}</span>
-                  <CheckCircle2 size={14} className="text-success" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Awaiting closure</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-emerald-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">7. Closed</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-emerald-700">{closedTickets}</span>
-                  <FileCheck size={14} className="text-success" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Verified archives</span>
-              </Card>
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-ink-muted">Volume &amp; Status</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                <StatCard dense label="Total Tickets" value={totalTickets} icon={FileText} tone="neutral" sub="Total scope size" />
+                <StatCard dense label="Open" value={openTickets} icon={Timer} tone="brand" sub="Unresolved backlog" />
+                <StatCard dense label="Unassigned" value={unassignedTickets} icon={Hourglass} tone="warning" sub="Awaiting resource" />
+                <StatCard dense label="In Progress" value={inProgressTickets} icon={Activity} tone="info" sub="Active resolution" />
+                <StatCard dense label="Reopened" value={reopenedTicketsCount} icon={AlertTriangle} tone="critical" sub="Rework loop count" />
+                <StatCard dense label="Resolved" value={resolvedTickets} icon={CheckCircle2} tone="success" sub="Awaiting closure" />
+                <StatCard dense label="Closed" value={closedTickets} icon={FileCheck} tone="success" sub="Verified archives" />
+              </div>
             </div>
 
-            {/* Group 2: Scope & Actions */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">8. Technical Scope</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-ink">{technicalTickets}</span>
-                  <Wrench size={14} className="text-ink-secondary" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">ABAP / BASIS / CPI</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">9. Functional Scope</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-ink">{functionalTickets}</span>
-                  <FolderDot size={14} className="text-ink-secondary" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">FICO / MM / SD / PP</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-amber-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">10. On Hold</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-amber-750">{onHoldTickets}</span>
-                  <Clock size={14} className="text-amber-550" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Paused waiting updates</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-red-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">11. Raised to SAP</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className={`text-2xl font-bold ${raisedToSapTickets > 0 ? 'text-critical' : 'text-ink'}`}>{raisedToSapTickets}</span>
-                  <ShieldAlert size={14} className={raisedToSapTickets > 0 ? 'text-red-550' : 'text-ink-muted'} />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Vendor support scope</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-amber-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">12. Customer Action Pending</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-amber-750">{customerActionPendingTickets}</span>
-                  <UserCheck size={14} className="text-amber-550" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Awaiting your approval</span>
-              </Card>
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-ink-muted">Scope &amp; Action</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                <StatCard dense label="Technical Scope" value={technicalTickets} icon={Wrench} tone="neutral" sub="ABAP / BASIS / CPI" />
+                <StatCard dense label="Functional Scope" value={functionalTickets} icon={FolderDot} tone="neutral" sub="FICO / MM / SD / PP" />
+                <StatCard dense label="On Hold" value={onHoldTickets} icon={Clock} tone="warning" sub="Paused waiting updates" />
+                <StatCard dense label="Raised to SAP" value={raisedToSapTickets} icon={ShieldAlert} tone="critical" sub="Vendor support scope" />
+                <StatCard dense label="Customer Action" value={customerActionPendingTickets} icon={UserCheck} tone="warning" sub="Awaiting your approval" />
+              </div>
             </div>
 
-            {/* Group 3: Priority, SLA & Performance */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-red-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">13. Critical P1</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className={`text-2xl font-bold ${criticalTickets > 0 ? 'text-critical font-black' : 'text-ink'}`}>{criticalTickets}</span>
-                  <Flame size={14} className={criticalTickets > 0 ? 'text-critical animate-bounce' : 'text-ink-muted'} />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Severe blocker incidents</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-emerald-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">14. SLA Healthy</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-emerald-700">{slaHealthy}</span>
-                  <CheckCircle2 size={14} className="text-success" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Incidents on schedule</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-amber-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">15. SLA Warnings</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-amber-700">{slaWarning}</span>
-                  <Hourglass size={14} className="text-amber-500" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Warning threshold limits</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card border-l-2 border-l-red-500 h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">16. SLA Breached</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className={`text-2xl font-bold ${slaBreached > 0 ? 'text-critical' : 'text-ink'}`}>{slaBreached}</span>
-                  <AlertTriangle size={14} className={slaBreached > 0 ? 'text-critical' : 'text-ink-muted'} />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Escalated misses</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">17. Avg Ticket Age</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-xl font-bold text-ink">
-                    {avgTicketAgeDays.toFixed(1)}d
-                  </span>
-                  <Calendar size={14} className="text-ink-muted" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Mean age active tickets</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">18. Avg MTTR Time</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-xl font-bold text-ink">
-                    {avgResolutionTimeHours.toFixed(1)}h
-                  </span>
-                  <Timer size={14} className="text-ink-muted" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Mean time to resolution</span>
-              </Card>
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-ink-muted">Priority, SLA &amp; Performance</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <StatCard dense label="Critical P1" value={criticalTickets} icon={Flame} tone="critical" sub="Severe blocker incidents" />
+                <StatCard dense label="SLA Healthy" value={slaHealthy} icon={CheckCircle2} tone="success" sub="Incidents on schedule" />
+                <StatCard dense label="SLA Warnings" value={slaWarning} icon={Hourglass} tone="warning" sub="Warning threshold limits" />
+                <StatCard dense label="SLA Breached" value={slaBreached} icon={AlertTriangle} tone="critical" sub="Escalated misses" />
+                <StatCard dense label="Avg Ticket Age" value={`${avgTicketAgeDays.toFixed(1)}d`} icon={Calendar} tone="info" sub="Mean age active tickets" />
+                <StatCard dense label="Avg MTTR" value={`${avgResolutionTimeHours.toFixed(1)}h`} icon={Timer} tone="info" sub="Mean time to resolution" />
+              </div>
             </div>
 
-            {/* Group 4: Effort */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">19. Quoted Efforts</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-ink">{totalQuotedHours.toFixed(1)}h</span>
-                  <Briefcase size={14} className="text-ink-secondary" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Accumulated quoted scope</span>
-              </Card>
-
-              <Card className="border-line bg-surface p-3 flex flex-col justify-between shadow-card h-24">
-                <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">20. Efforts (Logged/Approved)</div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-ink">
-                    {dashboardData.totalLoggedHoursUsed.toFixed(1)}h / {totalConsumedHours.toFixed(1)}h
-                  </span>
-                  <Award size={14} className="text-ink-secondary" />
-                </div>
-                <span className="text-[11px] text-ink-muted block">Total logged vs verified approved logs</span>
-              </Card>
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-ink-muted">Effort</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <StatCard dense label="Quoted Efforts" value={`${totalQuotedHours.toFixed(1)}h`} icon={Briefcase} tone="neutral" sub="Accumulated quoted scope" />
+                <StatCard dense label="Efforts (Logged / Approved)" value={`${dashboardData.totalLoggedHoursUsed.toFixed(1)}h / ${totalConsumedHours.toFixed(1)}h`} icon={Award} tone="neutral" sub="Total logged vs verified approved logs" />
+              </div>
             </div>
           </div>
 
