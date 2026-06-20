@@ -207,6 +207,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Time Period</span>
             <select
+              aria-label="Time period"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -260,6 +261,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Year</span>
             <select
+              aria-label="Year"
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -277,6 +279,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Month</span>
             <select
+              aria-label="Month"
               value={monthFilter}
               onChange={(e) => setMonthFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -294,6 +297,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Quarter</span>
             <select
+              aria-label="Quarter"
               value={quarterFilter}
               onChange={(e) => setQuarterFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -312,6 +316,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Customer</span>
             <select
+              aria-label="Customer"
               value={customerFilter}
               onChange={(e) => setCustomerFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -329,6 +334,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Consultant</span>
             <select
+              aria-label="Consultant"
               value={consultantFilter}
               onChange={(e) => setConsultantFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -346,6 +352,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Functional Cons.</span>
             <select
+              aria-label="Functional consultant"
               value={functionalConsultantFilter}
               onChange={(e) => setFunctionalConsultantFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -363,6 +370,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Technical Cons.</span>
             <select
+              aria-label="Technical consultant"
               value={technicalConsultantFilter}
               onChange={(e) => setTechnicalConsultantFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -380,6 +388,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Manager</span>
             <select
+              aria-label="Manager"
               value={managerFilter}
               onChange={(e) => setManagerFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -397,6 +406,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">SAP Module</span>
             <select
+              aria-label="SAP module"
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -414,6 +424,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Status</span>
             <select
+              aria-label="Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -431,6 +442,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Priority</span>
             <select
+              aria-label="Priority"
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -449,6 +461,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Ticket Type</span>
             <select
+              aria-label="Ticket type"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -466,6 +479,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Classification</span>
             <select
+              aria-label="Classification"
               value={scopeFilter}
               onChange={(e) => setScopeFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -482,6 +496,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">SLA Status</span>
             <select
+              aria-label="SLA status"
               value={slaFilter}
               onChange={(e) => setSlaFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -498,6 +513,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Allocation State</span>
             <select
+              aria-label="Allocation state"
               value={assignStateFilter}
               onChange={(e) => setAssignStateFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -514,6 +530,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Closure State</span>
             <select
+              aria-label="Closure state"
               value={closureStateFilter}
               onChange={(e) => setClosureStateFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
@@ -531,6 +548,7 @@ export const TicketFilterPanel: React.FC<TicketFilterPanelProps> = ({
           <div className="space-y-1 flex flex-col">
             <span className="text-[11px] font-bold text-ink-muted uppercase">Approval State</span>
             <select
+              aria-label="Approval state"
               value={approvalStateFilter}
               onChange={(e) => setApprovalStateFilter(e.target.value)}
               className="w-full h-8 border border-line bg-surface rounded px-2 text-[11px] text-ink-secondary outline-none focus:border-zinc-400 cursor-pointer"
