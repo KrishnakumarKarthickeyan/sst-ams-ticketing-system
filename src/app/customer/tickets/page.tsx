@@ -34,7 +34,8 @@ import {
 import { Card, CardContent } from '../../../components/ui/card';
 import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { Badge } from '../../../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
+import { TanstackTable } from '../../../components/ui/tanstack-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '../../../components/ui/toggle-group';
 import {
@@ -330,6 +331,91 @@ export default function CustomerTicketsPage() {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentTickets = sortedTickets.slice(indexOfFirstItem, indexOfLastItem);
+
+  // ── Table-view (TanStack) column model ──
+  const rowSlaMeta = (t: any) => {
+    const isIncident = t.ticketType === 'Incident' || !t.ticketType;
+    const hasSla = isIncident && t.slaDueAt !== 'SLA Not Applicable';
+    let sla = { label: 'N/A', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' };
+    if (hasSla) {
+      const nowTime = Date.now();
+      const due = new Date(t.slaDueAt).getTime();
+      const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
+      if (resolved) {
+        sla = resolved > due
+          ? { label: 'Breached', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' }
+          : { label: 'Met', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
+      } else if (nowTime > due) {
+        sla = { label: 'Overdue', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' };
+      } else if (due - nowTime < 12 * 60 * 60 * 1000) {
+        sla = { label: 'At Risk', color: 'bg-amber-50 text-amber-650 border-amber-200', dot: 'bg-amber-500' };
+      } else {
+        sla = { label: 'On Track', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
+      }
+    }
+    let remaining = 'N/A';
+    if (hasSla) {
+      if (t.status === 'Resolved' || t.status === 'Closed') remaining = 'SLA Met';
+      else {
+        const diffMs = new Date(t.slaDueAt).getTime() - Date.now();
+        if (diffMs <= 0) remaining = 'Breached';
+        else { const h = Math.floor(diffMs / 3600000); const m = Math.floor((diffMs % 3600000) / 60000); remaining = `${h}h ${m}m left`; }
+      }
+    }
+    const escalationLevel = t.escalations && t.escalations.length > 0 ? t.escalations.length : (t.escalationFlag ? 1 : 0);
+    return { hasSla, sla, remaining, escalationLevel };
+  };
+
+  const ticketColumns = useMemo<ColumnDef<any, unknown>[]>(() => [
+    { id: 'ticketNumber', accessorKey: 'ticketNumber', header: 'Ticket #',
+      cell: ({ row }) => <span className="font-bold text-xs text-ink-secondary">{row.original.ticketNumber}</span> },
+    { id: 'title', accessorKey: 'title', header: 'Title',
+      cell: ({ row }) => <span className="font-semibold text-ink">{row.original.title}</span> },
+    { id: 'module', accessorFn: (t: any) => t.sapModule || 'General', header: 'Module',
+      cell: ({ getValue }) => <span className="font-medium text-ink-secondary text-[11px]">{getValue() as string}</span> },
+    { id: 'status', accessorKey: 'status', header: 'Status',
+      cell: ({ row }) => {
+        const t = row.original;
+        const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200'
+          : t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        return <Badge className={`${statusColor} border text-[11px] font-bold uppercase`}>{t.status}</Badge>;
+      } },
+    { id: 'priority', accessorKey: 'priority', header: 'Priority',
+      cell: ({ row }) => {
+        const t = row.original;
+        const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200'
+          : t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200'
+          : t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-surface-subtle text-ink-secondary border-line';
+        return (
+          <div className="flex gap-1.5 items-center">
+            <Badge className={`${priorityColor} border text-[11px] font-bold uppercase`}>{t.priority}</Badge>
+            {t.escalationFlag && t.escalationAcknowledgedAt && (
+              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 border text-[11px] font-bold uppercase">Priority Handling</Badge>
+            )}
+          </div>
+        );
+      } },
+    { id: 'createdAt', accessorKey: 'createdAt', header: 'Created',
+      cell: ({ row }) => <span className="text-ink-secondary text-xs">{new Date(row.original.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> },
+    { id: 'slaStatus', header: 'SLA Status', enableSorting: false,
+      cell: ({ row }) => { const { sla } = rowSlaMeta(row.original); return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${sla.color}`}>
+          <span className={`w-1 h-1 rounded-full ${sla.dot}`}></span>{sla.label}
+        </span>); } },
+    { id: 'remaining', header: 'Remaining Time', enableSorting: false,
+      cell: ({ row }) => { const { sla, remaining } = rowSlaMeta(row.original); const t = row.original;
+        const cls = (t.status === 'Resolved' || t.status === 'Closed') ? 'text-emerald-650'
+          : (sla.label === 'Overdue' || sla.label === 'Breached') ? 'text-critical'
+          : sla.label === 'At Risk' ? 'text-amber-655' : 'text-ink-secondary';
+        return <span className={`text-xs font-bold ${cls}`}>{remaining}</span>; } },
+    { id: 'dueDate', accessorKey: 'slaDueAt', header: 'Due Date',
+      cell: ({ row }) => { const t = row.original; return <span className="text-ink-secondary text-xs">{t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' ? new Date(t.slaDueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</span>; } },
+    { id: 'escalation', header: 'Escalation', enableSorting: false,
+      cell: ({ row }) => { const { escalationLevel } = rowSlaMeta(row.original); return escalationLevel > 0
+        ? <Badge className="bg-red-50 text-red-755 border border-red-200 uppercase text-[11px] font-black">Level {escalationLevel}</Badge>
+        : <span className="text-ink-muted text-[11px]">Nominal</span>; } },
+  ], []);
 
   // SLA Color Class logic
   const getSlaBadge = (t: any) => {
@@ -890,147 +976,19 @@ ${ticket.description}
             )}
           </div>
         ) : (
-          <Card className="border-line shadow-card bg-surface overflow-hidden">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto w-full">
-                <Table className="min-w-[800px]">
-                  <TableHeader className="bg-surface-muted border-b border-line">
-                    <TableRow>
-                      <TableHead className="font-bold text-[11px] uppercase w-[120px] py-3 px-4">Ticket #</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase py-3 px-4">Title</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase w-[100px] py-3 px-4">Module</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase w-[120px] py-3 px-4">Status</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase w-[100px] py-3 px-4">Priority</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase w-[120px] py-3 px-4">Created</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase w-[110px] py-3 px-4">SLA Status</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase w-[120px] py-3 px-4">Remaining Time</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase w-[120px] py-3 px-4">Due Date</TableHead>
-                      <TableHead className="font-bold text-[11px] uppercase w-[110px] py-3 px-4">Escalation</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentTickets.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={10} className="h-24 text-center text-ink-secondary font-medium">
-                          No records found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      currentTickets.map((t: any) => {
-                        const isIncident = t.ticketType === 'Incident' || !t.ticketType;
-                        const hasSla = isIncident && t.slaDueAt !== 'SLA Not Applicable';
-                        
-                        const getSlaStatus = () => {
-                          if (!hasSla) return { label: 'N/A', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' };
-                          const nowTime = Date.now();
-                          const due = new Date(t.slaDueAt).getTime();
-                          const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
-                          if (resolved) {
-                            if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' };
-                            return { label: 'Met', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
-                          }
-                          if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' };
-                          if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-amber-650 border-amber-200', dot: 'bg-amber-500' };
-                          return { label: 'On Track', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
-                        };
-                        const sla = getSlaStatus();
-
-                        const getRemainingTimeStr = () => {
-                          if (!hasSla) return 'N/A';
-                          if (t.status === 'Resolved' || t.status === 'Closed') return 'SLA Met';
-                          const due = new Date(t.slaDueAt).getTime();
-                          const diffMs = due - Date.now();
-                          if (diffMs <= 0) return 'Breached';
-                          const diffHrs = diffMs / (1000 * 60 * 60);
-                          const hrs = Math.floor(diffHrs);
-                          const mins = Math.floor((diffHrs - hrs) * 60);
-                          return `${hrs}h ${mins}m left`;
-                        };
-                        const remainingTimeStr = getRemainingTimeStr();
-
-                        const escalationLevel = t.escalations && t.escalations.length > 0
-                          ? t.escalations.length
-                          : (t.escalationFlag ? 1 : 0);
-
-                        const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
-                                              t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                              t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                              'bg-surface-subtle text-ink-secondary border-line';
-
-                        const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                             (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                             t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                             'bg-indigo-50 text-indigo-700 border-indigo-200';
-
-                        return (
-                          <TableRow
-                            key={t.id}
-                            onClick={() => router.push(`/customer/tickets/${t.id}`)}
-                            className="cursor-pointer hover:bg-surface-muted transition-colors"
-                          >
-                            <TableCell className="font-bold text-xs text-ink-secondary py-3 px-4">
-                              {t.ticketNumber}
-                            </TableCell>
-                            <TableCell className="font-semibold text-ink py-3 px-4">
-                              {t.title}
-                            </TableCell>
-                            <TableCell className="font-medium text-ink-secondary text-[11px] py-3 px-4">
-                              {t.sapModule || 'General'}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              <Badge className={`${statusColor} border text-[11px] font-bold uppercase`}>{t.status}</Badge>
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              <div className="flex gap-1.5 items-center">
-                                <Badge className={`${priorityColor} border text-[11px] font-bold uppercase`}>{t.priority}</Badge>
-                                {t.escalationFlag && t.escalationAcknowledgedAt && (
-                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 border text-[11px] font-bold uppercase">Priority Handling</Badge>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-ink-secondary text-xs py-3 px-4">
-                              {new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${sla.color}`}>
-                                <span className={`w-1 h-1 rounded-full ${sla.dot}`}></span>
-                                {sla.label}
-                              </span>
-                            </TableCell>
-                            <TableCell className={`text-xs font-bold py-3 px-4 ${
-                              t.status === 'Resolved' || t.status === 'Closed' ? 'text-emerald-650' :
-                              sla.label === 'Overdue' || sla.label === 'Breached' ? 'text-critical animate-pulse' :
-                              sla.label === 'At Risk' ? 'text-amber-655' : 'text-ink-secondary'
-                            }`}>
-                              {remainingTimeStr}
-                            </TableCell>
-                            <TableCell className="text-ink-secondary text-xs py-3 px-4">
-                              {t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable'
-                                ? new Date(t.slaDueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                                : 'N/A'}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {escalationLevel > 0 ? (
-                                <Badge className="bg-red-50 text-red-755 border border-red-200 uppercase text-[11px] font-black animate-pulse">
-                                  Level {escalationLevel}
-                                </Badge>
-                              ) : (
-                                <span className="text-ink-muted text-[11px]">Nominal</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+          <TanstackTable
+            columns={ticketColumns}
+            data={filteredTickets}
+            pageSize={itemsPerPage}
+            initialSort={[{ id: 'createdAt', desc: true }]}
+            onRowClick={(t) => router.push(`/customer/tickets/${t.id}`)}
+            emptyTitle="No records found"
+            emptyDescription="No tickets match the selected filters or active workspace tab."
+          />
         )}
 
-        {/* Footer Pagination console */}
-        {totalPages > 1 && (
+        {/* Footer Pagination console (card view; table view paginates internally) */}
+        {viewMode === 'card' && totalPages > 1 && (
           <div className="flex items-center justify-between border border-line rounded-lg p-4 bg-surface shadow-card text-[11px]">
             <div className="text-ink-secondary font-bold">
               Showing <span className="text-ink">{indexOfFirstItem + 1}</span> to{' '}
