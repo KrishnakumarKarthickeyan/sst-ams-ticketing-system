@@ -89,6 +89,9 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [companyTickets]);
 
+  // Give each module ~28px so all labels fit (floor 180 keeps it aligned with neighbour cards).
+  const moduleChartHeight = Math.max(180, modules.length * 28 + 24);
+
   const usagePct = contractUsage && contractUsage.total > 0
     ? Math.min(100, Math.round((contractUsage.used / contractUsage.total) * 100))
     : null;
@@ -183,12 +186,12 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
           </ResponsiveContainer>
         </ChartFrame>
 
-        {/* By module */}
-        <ChartFrame title="By Module" context="All my tickets per module" icon={Layers} loading={loading} ready={modules.length > 0} emptyHint="No tickets with a module yet." height={180}>
-          <ResponsiveContainer width="100%" height={180} initialDimension={{ width: 320, height: 180 }}>
+        {/* By module — height scales with module count so every label renders (interval=0) */}
+        <ChartFrame title="By Module" context="All my tickets per module" icon={Layers} loading={loading} ready={modules.length > 0} emptyHint="No tickets with a module yet." height={moduleChartHeight}>
+          <ResponsiveContainer width="100%" height={moduleChartHeight} initialDimension={{ width: 320, height: moduleChartHeight }}>
             <BarChart data={modules} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" {...axisProps} width={64} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={64} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
