@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { truncateTick } from '../../lib/analytics/chart-kit';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Cell, LabelList, RadialBarChart, RadialBar, PolarAngleAxis, Legend,
+  CartesianGrid, Tooltip, Cell, LabelList, RadialBarChart, RadialBar, PolarAngleAxis, Legend, ReferenceLine,
 } from 'recharts';
 import { Activity, Layers, AlertTriangle, Gauge, FileText, ListChecks, Tags, FolderTree, Flame, Timer } from 'lucide-react';
 import { ChartFrame } from './chart-frame';
@@ -19,6 +19,8 @@ import type { Ticket } from '../../types/ticket';
 interface Props {
   companyTickets: Ticket[];
   contractUsage?: { used: number; total: number } | null;
+  /** Monthly allocated contract hours — the burn-rate reference line. */
+  monthlyQuota?: number | null;
   loading: boolean;
   now: number;
 }
@@ -36,7 +38,7 @@ function lifecycleOf(status: string): 'Open' | 'In Progress' | 'Resolved' | 'Clo
   return 'Open';
 }
 
-export function CustomerServiceHealth({ companyTickets, contractUsage, loading, now }: Props) {
+export function CustomerServiceHealth({ companyTickets, contractUsage, monthlyQuota, loading, now }: Props) {
   // ── Tickets by real lifecycle stage (always render all four — honest zeros) ──
   const lifecycle = useMemo(() => {
     const order: ('Open' | 'In Progress' | 'Resolved' | 'Closed')[] = ['Open', 'In Progress', 'Resolved', 'Closed'];
@@ -110,6 +112,33 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
   }, [companyTickets]);
   // Two bars per module → ~38px each so labels + both bars breathe.
   const hoursChartHeight = Math.max(180, hoursByModule.length * 38 + 28);
+
+  // ── Monthly contract burn: approved hours consumed per month (last 12) vs the quota ──
+  const monthlyBurn = useMemo(() => {
+    const ref = new Date(now);
+    const buckets: { key: string; label: string }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const dt = new Date(ref.getFullYear(), ref.getMonth() - i, 1);
+      buckets.push({ key: `${dt.getFullYear()}-${dt.getMonth()}`, label: dt.toLocaleString('en-US', { month: 'short' }) });
+    }
+    const idx = new Map(buckets.map((b, i) => [b.key, i]));
+    const rows = buckets.map(b => ({ month: b.label, consumed: 0 }));
+    companyTickets.forEach(t => {
+      // Approval timestamp is authoritative; fall back to the ticket's resolution/creation
+      // date for rows whose approved_at was never stamped (legacy/seed) — all real dates.
+      const fallback = t.resolvedAt || t.closedAt || t.updatedAt || t.createdAt;
+      (t.actualHoursLogs || []).forEach(a => {
+        if (a.approvalStatus?.toLowerCase() !== 'approved') return;
+        const when = a.approvedAt || a.createdAt || fallback;
+        if (!when) return;
+        const dt = new Date(when);
+        const i = idx.get(`${dt.getFullYear()}-${dt.getMonth()}`);
+        if (i != null) rows[i].consumed += a.actualHours || 0;
+      });
+    });
+    return rows.map(r => ({ ...r, consumed: Math.round(r.consumed * 10) / 10 }));
+  }, [companyTickets, now]);
+  const burnReady = monthlyBurn.some(r => r.consumed > 0);
 
   const usagePct = contractUsage && contractUsage.total > 0
     ? Math.min(100, Math.round((contractUsage.used / contractUsage.total) * 100))
@@ -246,6 +275,32 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
               </Bar>
               <Bar dataKey="consumed" name="Consumed" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={11}>
                 <LabelList dataKey="consumed" position="right" className="type-num" fill={CHART.ink} fontSize={10} formatter={(v) => `${v}h`} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartFrame>
+
+        {/* Monthly contract burn — full width: consumed hours per month vs the monthly allowance */}
+        <ChartFrame title="Monthly Contract Burn" context={monthlyQuota ? `Approved hours consumed per month vs your ${Math.round(monthlyQuota)}h monthly allowance` : 'Approved hours consumed per month'} icon={Flame} loading={loading} ready={burnReady} emptyHint="Monthly burn appears once approved effort is logged." height={220} className="lg:col-span-3">
+          <ResponsiveContainer width="100%" height={220} initialDimension={{ width: 720, height: 220 }}>
+            <BarChart data={monthlyBurn} margin={{ top: 20, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="month" {...axisProps} interval={0} />
+              <YAxis {...axisProps} allowDecimals={false} width={40} unit="h" />
+              <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: CHART.grid }} />
+              {monthlyQuota ? (
+                <ReferenceLine
+                  y={monthlyQuota}
+                  stroke={CHART.critical}
+                  strokeDasharray="5 4"
+                  label={{ value: `Monthly quota ${Math.round(monthlyQuota)}h`, position: 'insideTopRight', fill: CHART.critical, fontSize: 11 }}
+                />
+              ) : null}
+              <Bar dataKey="consumed" name="Consumed" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                {monthlyBurn.map((r, i) => (
+                  <Cell key={i} fill={monthlyQuota && r.consumed > monthlyQuota ? CHART.critical : monthlyQuota && r.consumed >= monthlyQuota * 0.8 ? CHART.warning : CHART.brand} />
+                ))}
+                <LabelList dataKey="consumed" position="top" className="type-num" fill={CHART.ink} fontSize={11} formatter={(v) => (v ? `${v}h` : '')} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
