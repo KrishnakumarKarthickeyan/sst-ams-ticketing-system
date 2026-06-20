@@ -4,9 +4,9 @@ import React, { useMemo } from 'react';
 import { truncateTick } from '../../lib/analytics/chart-kit';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Cell, LabelList,
+  CartesianGrid, Tooltip, Cell, LabelList, RadialBarChart, RadialBar, PolarAngleAxis, Legend,
 } from 'recharts';
-import { Activity, Layers, AlertTriangle, Gauge, FileText, ListChecks, Tags, FolderTree, Flame } from 'lucide-react';
+import { Activity, Layers, AlertTriangle, Gauge, FileText, ListChecks, Tags, FolderTree, Flame, Timer } from 'lucide-react';
 import { ChartFrame } from './chart-frame';
 import {
   CHART, PRIORITY_FILL, LIFECYCLE_FILL, axisProps, gridProps, ChartTooltip, hasTrendSignal, HONEST_LINE, timeBuckets,
@@ -92,6 +92,25 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
   // Give each module ~28px so all labels fit (floor 180 keeps it aligned with neighbour cards).
   const moduleChartHeight = Math.max(180, modules.length * 28 + 24);
 
+  // ── Quoted vs approved-consumed hours, per module (scope adherence) ──
+  const hoursByModule = useMemo(() => {
+    const map: Record<string, { name: string; quoted: number; consumed: number }> = {};
+    companyTickets.forEach(t => {
+      const m = t.sapModule;
+      if (!m) return;
+      if (!map[m]) map[m] = { name: m, quoted: 0, consumed: 0 };
+      map[m].quoted += t.quotedHours || 0;
+      map[m].consumed += (t.actualHoursLogs || [])
+        .filter(a => a.approvalStatus?.toLowerCase() === 'approved')
+        .reduce((s, a) => s + (a.actualHours || 0), 0);
+    });
+    return Object.values(map)
+      .filter(d => d.quoted > 0 || d.consumed > 0)
+      .sort((a, b) => (b.quoted + b.consumed) - (a.quoted + a.consumed));
+  }, [companyTickets]);
+  // Two bars per module → ~38px each so labels + both bars breathe.
+  const hoursChartHeight = Math.max(180, hoursByModule.length * 38 + 28);
+
   const usagePct = contractUsage && contractUsage.total > 0
     ? Math.min(100, Math.round((contractUsage.used / contractUsage.total) * 100))
     : null;
@@ -155,18 +174,32 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
 
         {/* Contract usage */}
         <ChartFrame title="Contract Usage" context="Approved hours consumed" icon={FileText} loading={loading} ready={usagePct !== null} emptyTitle="No active contract" emptyHint="Contract consumption appears once a contract is active." emptyIcon={FileText} height={180}>
-          <div className="flex h-full flex-col justify-center">
-            <div className="flex items-baseline gap-2">
-              <span className="type-num text-4xl font-semibold tracking-tight text-ink">{usagePct}<span className="text-2xl text-ink-muted">%</span></span>
-            </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-subtle">
-              <div
-                className={`h-full rounded-full ${usagePct !== null && usagePct >= 90 ? 'bg-critical' : usagePct !== null && usagePct >= 75 ? 'bg-warning' : 'bg-brand'}`}
-                style={{ width: `${usagePct ?? 0}%` }}
-              />
-            </div>
-            <div className="type-status mt-2 text-ink-muted">
-              {contractUsage ? `${contractUsage.used.toFixed(1)}h of ${contractUsage.total.toFixed(1)}h` : ''}
+          <div className="relative flex h-full items-center justify-center">
+            <ResponsiveContainer width="100%" height={150} initialDimension={{ width: 240, height: 150 }}>
+              <RadialBarChart
+                data={[{ value: usagePct ?? 0 }]}
+                innerRadius="72%"
+                outerRadius="100%"
+                startAngle={220}
+                endAngle={-40}
+                barSize={14}
+              >
+                <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
+                <RadialBar
+                  dataKey="value"
+                  cornerRadius={10}
+                  background={{ fill: CHART.grid }}
+                  fill={usagePct !== null && usagePct >= 90 ? CHART.critical : usagePct !== null && usagePct >= 75 ? CHART.warning : CHART.brand}
+                />
+              </RadialBarChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <div className="type-num text-3xl font-semibold tracking-tight text-ink">
+                {usagePct}<span className="text-xl text-ink-muted">%</span>
+              </div>
+              <div className="type-status mt-0.5 text-ink-muted">
+                {contractUsage ? `${contractUsage.used.toFixed(0)}h / ${contractUsage.total.toFixed(0)}h` : ''}
+              </div>
             </div>
           </div>
         </ChartFrame>
@@ -195,6 +228,24 @@ export function CustomerServiceHealth({ companyTickets, contractUsage, loading, 
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartFrame>
+
+        {/* Quoted vs consumed hours per module — scope adherence (fills the By Module row) */}
+        <ChartFrame title="Hours: Quoted vs Consumed" context="Approved effort against what was quoted, by module" icon={Timer} loading={loading} ready={hoursByModule.length > 0} emptyHint="Quoted and consumed hours appear once effort is logged and approved." height={hoursChartHeight} className="lg:col-span-2">
+          <ResponsiveContainer width="100%" height={hoursChartHeight} initialDimension={{ width: 480, height: hoursChartHeight }}>
+            <BarChart data={hoursByModule} layout="vertical" margin={{ top: 0, right: 40, left: 4, bottom: 0 }} barGap={2}>
+              <XAxis type="number" hide allowDecimals={false} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={64} interval={0} tickFormatter={truncateTick} />
+              <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: CHART.grid }} />
+              <Legend verticalAlign="top" align="right" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingBottom: 8 }} />
+              <Bar dataKey="quoted" name="Quoted" fill={CHART.axis} radius={[0, 4, 4, 0]} barSize={11}>
+                <LabelList dataKey="quoted" position="right" className="type-num" fill={CHART.ink} fontSize={10} formatter={(v) => `${v}h`} />
+              </Bar>
+              <Bar dataKey="consumed" name="Consumed" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={11}>
+                <LabelList dataKey="consumed" position="right" className="type-num" fill={CHART.ink} fontSize={10} formatter={(v) => `${v}h`} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
