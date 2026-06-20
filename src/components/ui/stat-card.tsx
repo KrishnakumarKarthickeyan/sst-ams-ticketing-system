@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { TrendingUp, TrendingDown, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Skeleton } from './skeleton';
@@ -29,6 +30,8 @@ export function StatCard({
   sub,
   loading = false,
   onClick,
+  href,
+  dense = false,
   active = false,
   className,
 }: {
@@ -43,32 +46,35 @@ export function StatCard({
   sub?: React.ReactNode;
   loading?: boolean;
   onClick?: () => void;
+  /** Navigate on click (e.g. to a filtered list). Renders as a Next <Link>. */
+  href?: string;
+  /** Compact variant for dense dashboards (tighter padding + smaller value). */
+  dense?: boolean;
   active?: boolean;
   className?: string;
 }) {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag
-      onClick={onClick}
-      className={cn(
-        'rounded-lg border border-line bg-surface p-4 text-left shadow-card',
-        onClick && 'card-hover cursor-pointer',
-        active && 'border-brand ring-1 ring-brand',
-        className
-      )}
-    >
+  const interactive = !!onClick || !!href;
+  const cardClass = cn(
+    'block rounded-lg border border-line bg-surface text-left shadow-card',
+    dense ? 'p-3' : 'p-4',
+    interactive && 'card-hover cursor-pointer',
+    active && 'border-brand ring-1 ring-brand',
+    className,
+  );
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <span className="type-status text-ink-muted uppercase tracking-wider">{label}</span>
         {Icon && (
-          <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md', ICON_TONES[tone])}>
-            <Icon size={14} />
+          <span className={cn('flex shrink-0 items-center justify-center rounded-md', dense ? 'h-6 w-6' : 'h-7 w-7', ICON_TONES[tone])}>
+            <Icon size={dense ? 12 : 14} />
           </span>
         )}
       </div>
       {loading ? (
         <Skeleton className="mt-2 h-7 w-20" />
       ) : (
-        <div className="type-num mt-1 text-2xl font-semibold tracking-tight text-ink">{value}</div>
+        <div className={cn('type-num mt-1 font-semibold tracking-tight text-ink', dense ? 'text-xl' : 'text-2xl')}>{value}</div>
       )}
       {(delta || sub) && !loading && (
         <div className="mt-1 flex items-center gap-2">
@@ -89,6 +95,14 @@ export function StatCard({
           {sub && <span className="type-status text-ink-muted">{sub}</span>}
         </div>
       )}
-    </Tag>
+    </>
   );
+
+  if (href) {
+    return <Link href={href} className={cardClass}>{body}</Link>;
+  }
+  if (onClick) {
+    return <button type="button" onClick={onClick} className={cardClass}>{body}</button>;
+  }
+  return <div className={cardClass}>{body}</div>;
 }
