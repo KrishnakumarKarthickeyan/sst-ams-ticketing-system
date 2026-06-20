@@ -854,6 +854,7 @@ export default function CustomerDashboardPage() {
           <CustomerServiceHealth
             companyTickets={companyTickets}
             contractUsage={contractMetrics ? { used: contractMetrics.totalUtilizedHours, total: contractMetrics.totalHours } : null}
+            monthlyQuota={contractMetrics ? contractMetrics.monthlyBudgetHours : null}
             loading={loading}
             now={Date.now()}
           />
