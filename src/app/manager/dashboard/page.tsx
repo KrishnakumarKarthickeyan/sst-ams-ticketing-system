@@ -65,6 +65,7 @@ import { Label } from '../../../components/ui/label';
 import { SAPModule, TicketPriority, TicketStatus, EffortLog, TicketClosureRequest, TicketUnlockRequest, Ticket } from '../../../types/ticket';
 
 import { COLORS, chartColors } from '../../../lib/chart-theme';
+import { isUnassigned } from '../../../lib/manager-desk-predicates';
 
 const SAP_MODULES_LIST: SAPModule[] = [
   'FICO', 'MM', 'SD', 'PP', 'HCM', 'ABAP', 'BASIS', 'CPI/Integration', 'Fiori', 'Security/GRC', 'PM', 'QM', 'TRM'
@@ -269,7 +270,7 @@ export default function ManagerDashboardPage() {
     const atRisk = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() - now > 0 && new Date(t.slaDueAt).getTime() - now < 12 * 3600e3);
     const breached = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() < now);
     const unackedEscalations = tickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt);
-    const unassigned = open.filter(t => !t.assignedConsultant);
+    const unassigned = open.filter(t => !t.leadConsultantId); // dispatch backlog = no lead yet (matches desk Unassigned tab)
     const loadMap: Record<string, number> = {};
     open.forEach(t => {
       if (t.assignedConsultant) loadMap[t.assignedConsultant] = (loadMap[t.assignedConsultant] || 0) + 1;
@@ -1134,7 +1135,7 @@ export default function ManagerDashboardPage() {
     const customersAwaitingClosure = new Set(ticketsList.filter(t => ['Request for Closure', 'Awaiting Manager Approval', 'Waiting for Hours Approval'].includes(t.status)).map(t => t.organization)).size;
 
     const openCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
-    const unassignedCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && !t.assignedConsultant).length;
+    const unassignedCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && !t.leadConsultantId).length;
     const reqGatheringCount = ticketsList.filter(t => t.status === 'Requirement Gathering').length;
     const ipFuncCount = ticketsList.filter(t => ['In Progress - Functional', 'Awaiting Functional Submission', 'In Progress'].includes(t.status)).length;
     const ipTechCount = ticketsList.filter(t => ['In Progress - Technical', 'Awaiting Technical Submission'].includes(t.status)).length;
@@ -2478,13 +2479,13 @@ export default function ManagerDashboardPage() {
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
                     <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider flex items-center gap-1">
-                      Immediate Assignment Queue ({filteredDashboardTickets.filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved').length})
+                      Immediate Assignment Queue ({filteredDashboardTickets.filter(isUnassigned).length})
                     </span>
                     <Badge className="bg-surface-subtle text-ink text-[11px] font-bold">UNASSIGNED</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                     {filteredDashboardTickets
-                      .filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved')
+                      .filter(isUnassigned)
                       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                       .map(t => {
                         const slaInfo = getSlaBreachInfo(t);
@@ -2498,7 +2499,7 @@ export default function ManagerDashboardPage() {
                           />
                         );
                       })}
-                    {filteredDashboardTickets.filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved').length === 0 && (
+                    {filteredDashboardTickets.filter(isUnassigned).length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-10 font-sans">
                         All active workload allocated.
                       </div>

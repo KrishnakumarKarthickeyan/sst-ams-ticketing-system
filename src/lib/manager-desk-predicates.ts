@@ -18,9 +18,16 @@ export type ManagerDeskTab =
   | 'closed'
   | 'pendingApprovals';
 
-/** No assigned consultant and no allocated resources. */
+/**
+ * "Needs dispatch" — no LEAD consultant assigned yet. The SLA clock only starts on
+ * lead assignment, so a ticket without a lead is the dispatch backlog. This single
+ * canonical predicate is shared by the Unassigned tab AND the dashboard Dispatch
+ * Backlog so their counts can never diverge.
+ */
 export function isUnassigned(t: Ticket): boolean {
-  return !t.assignedConsultant && (!t.consultantEfforts || t.consultantEfforts.length === 0);
+  // Closed/Resolved tickets are done — they are never "awaiting dispatch".
+  if (t.status === 'Closed' || t.status === 'Resolved') return false;
+  return !t.leadConsultantId;
 }
 
 /**
