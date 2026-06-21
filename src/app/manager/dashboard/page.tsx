@@ -132,7 +132,7 @@ const QueueTicketRow = ({
   return (
     <div className={`p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
       <div className="flex justify-between items-center">
-        <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-bold text-ink hover:underline">
+        <Link href={`/manager/tickets/${ticket.id}`} className="font-bold text-ink hover:underline">
           {ticket.ticketNumber}
         </Link>
         <div className="flex gap-1 items-center">
@@ -197,7 +197,7 @@ const EscalationTicketRow = ({
       {/* Row 1: Ticket Number, ESCALATED Badge, Priority Badge */}
       <div className="flex items-center gap-2 flex-wrap text-xs">
         <span className="font-medium text-ink">
-          <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="hover:underline">
+          <Link href={`/manager/tickets/${ticket.id}`} className="hover:underline">
             {ticket.ticketNumber}
           </Link>
         </span>
@@ -2526,7 +2526,7 @@ export default function ManagerDashboardPage() {
                     {pendingClosureRequests.map(r => (
                       <div key={r.requestId} className="p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-ink">Closure: {r.ticketNumber}</span>
+                          <span className="font-bold text-ink">Closure: <Link href={`/manager/tickets/${r.ticketId}`} className="hover:underline">{r.ticketNumber}</Link></span>
                           <span className="text-[11px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase">Closure Approval</span>
                         </div>
                         <span className="text-ink-secondary truncate block font-sans">Total Hours: {r.funcHours + r.techHours}h</span>
@@ -2609,7 +2609,7 @@ export default function ManagerDashboardPage() {
                           .map(t => (
                             <div key={t.id} className="p-2 bg-surface-muted/60 border border-line rounded-lg flex flex-col justify-between gap-1">
                               <div className="flex justify-between items-center">
-                                <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-semibold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
+                                <Link href={`/manager/tickets/${t.id}`} className="font-semibold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
                                 <div className="flex gap-1.5 items-center">
                                   <Badge className="bg-emerald-50 text-emerald-700 border-emerald-150 text-[11px] font-semibold py-0.5 px-1.5 uppercase leading-none h-4.5 flex items-center gap-1">
                                     <Check className="size-2.5 text-success" /> Ack
@@ -2661,7 +2661,7 @@ export default function ManagerDashboardPage() {
                       return (
                         <div key={t.id} className={`p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
                           <div className="flex justify-between items-center">
-                            <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
+                            <Link href={`/manager/tickets/${t.id}`} className="font-bold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
                             <div className="flex gap-1 items-center">
                               {isEscalated && <Badge variant="destructive" className="text-[11px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
                               {slaInfo && (
@@ -3898,7 +3898,7 @@ export default function ManagerDashboardPage() {
                   {waitingAssignmentTickets.map((t) => (
                     <div key={t.id} className="p-2.5 bg-surface-muted border border-line rounded-lg hover:border-line-strong transition flex flex-col justify-between gap-1.5">
                       <div className="flex justify-between items-start">
-                        <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-extrabold text-ink hover:underline text-[11px] uppercase">
+                        <Link href={`/manager/tickets/${t.id}`} className="font-extrabold text-ink hover:underline text-[11px] uppercase">
                           {t.ticketNumber}
                         </Link>
                         <span className={`text-[11px] font-extrabold uppercase px-1 py-0.5 rounded ${

@@ -664,7 +664,7 @@ export default function ManagerTicketsPage() {
                         onChange={() => toggleSelectTicket(t.id)}
                         className="cursor-pointer rounded border-line-strong text-ink focus:ring-brand/30"
                       />
-                      <span className="font-bold text-[11px] text-ink tracking-wider">{t.ticketNumber || t.id}</span>
+                      <Link href={`/manager/tickets/${t.id}`} className="font-bold text-[11px] text-ink tracking-wider hover:underline">{t.ticketNumber || t.id}</Link>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`inline-flex items-center px-1.5 py-0.2 rounded border text-[11px] font-bold uppercase ${statusCfg.color}`}>
