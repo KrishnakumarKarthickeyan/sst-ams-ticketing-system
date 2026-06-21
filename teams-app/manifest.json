@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "REPLACE_WITH_MS_APP_ID",
+  "developer": {
+    "name": "Support Studio Technologies",
+    "websiteUrl": "https://your-app-domain.example.com",
+    "privacyUrl": "https://your-app-domain.example.com/privacy",
+    "termsOfUseUrl": "https://your-app-domain.example.com/terms"
+  },
+  "name": {
+    "short": "Assist360",
+    "full": "Assist360 SAP Support Desk"
+  },
+  "description": {
+    "short": "Operational alerts from Assist360.",
+    "full": "Posts SLA breach / at-risk, escalation raised / acknowledged, new Critical ticket, and closure-pending-approval alerts from the Assist360 SAP support desk. One-way, notification-only."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#2563EB",
+  "bots": [
+    {
+      "botId": "REPLACE_WITH_MS_APP_ID",
+      "scopes": ["personal", "groupChat", "team"],
+      "supportsFiles": false,
+      "isNotificationOnly": true
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["your-app-domain.example.com"]
+}

@@ -65,6 +65,14 @@ connector:
 Teams delivery is fire-and-forget: a webhook outage is logged and swallowed and can
 never block or fail a user's ticket action.
 
+### Optional Tier 2 — custom "Assist360" bot
+
+The webhook posts as Microsoft's built-in **"Workflows"** Flow bot (its name can't be
+changed). To have alerts post as a bot named **"Assist360"** instead, register a Bot
+Framework app and set `MS_APP_ID` / `MS_APP_PASSWORD` — the dispatcher then posts via
+the bot to every chat it's installed in, and falls back to the webhook when those are
+unset. Full runbook (Azure Bot, app registration, manifest, install): **`teams-app/README.md`**.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

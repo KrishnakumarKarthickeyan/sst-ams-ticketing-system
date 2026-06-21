@@ -13,7 +13,8 @@
  * Reached only through the server route /api/notify. Never imported by client code.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { buildAdaptiveCard, postToTeams } from './teams';
+import { buildAdaptiveCard, buildAdaptiveCardContent, postToTeams } from './teams';
+import { isBotConfigured, postCardViaBot } from './teams-bot';
 
 export type NotifyEvent =
   // ── Events that fan out to Microsoft Teams ──
@@ -110,20 +111,27 @@ export async function notify(event: NotifyEvent, payload: NotifyPayload, db: Sup
   );
 
   // (b) SELECTED events only → Microsoft Teams. Fire-and-forget; never throws.
-  // The webhook URL is read solely inside teams.ts (postToTeams no-ops if unset),
-  // so this dispatcher never references the secret directly.
+  // Prefer the Tier-2 "Assist360" bot when configured (sender chip = Assist360);
+  // otherwise fall back to the Tier-1 webhook (sender chip = "Workflows"). The
+  // webhook URL and bot secrets are read only inside teams.ts / teams-bot.ts.
   if (TEAMS_EVENTS.has(event)) {
+    const cardInput = {
+      event,
+      ticketNumber: payload.ticketNumber,
+      priority: payload.priority,
+      customerOrg: payload.customerOrg,
+      message: payload.message,
+      linkPath: payload.linkPath,
+    };
     try {
-      await postToTeams(
-        buildAdaptiveCard({
-          event,
-          ticketNumber: payload.ticketNumber,
-          priority: payload.priority,
-          customerOrg: payload.customerOrg,
-          message: payload.message,
-          linkPath: payload.linkPath,
-        }),
-      );
+      if (isBotConfigured()) {
+        const delivered = await postCardViaBot(buildAdaptiveCardContent(cardInput));
+        if (!delivered) {
+          console.warn('[notify] Teams bot configured but no chats have installed Assist360 yet — card not posted');
+        }
+      } else {
+        await postToTeams(buildAdaptiveCard(cardInput));
+      }
     } catch (err) {
       console.error('[notify] Teams dispatch failed (swallowed):', err);
     }
