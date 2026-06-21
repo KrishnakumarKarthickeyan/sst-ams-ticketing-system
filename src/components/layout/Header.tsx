@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { matchesTicketNumber } from '../../lib/ticket-search';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
@@ -48,7 +49,7 @@ export const Header: React.FC = () => {
     if (s.length < 2) return [];
     return (tickets || [])
       .filter(t =>
-        (t.ticketNumber || '').toLowerCase().includes(s) ||
+        matchesTicketNumber(t.ticketNumber, s) ||
         (t.title || '').toLowerCase().includes(s) ||
         (t.organization || '').toLowerCase().includes(s) ||
         (t.sapModule || '').toLowerCase().includes(s))

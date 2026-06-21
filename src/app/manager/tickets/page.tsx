@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { matchesTicketNumber } from '../../../lib/ticket-search';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
@@ -271,12 +272,13 @@ export default function ManagerTicketsPage() {
         if (approvalStateFilter === 'None' && (hasEstimatePending || hasActualsPending || hasClosurePending)) return false;
       }
 
-      // Search Query
+      // Search Query — ticket NUMBER matches exactly (full string or numeric suffix)
+      // so "24" returns only BIT-000024, not BIT-000124/000240 etc. (corrections item 4).
+      // Title / customer / description / consultant stay as free-text substring search.
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.trim().toLowerCase();
         return (
-          t.id.toLowerCase().includes(q) ||
-          (t.ticketNumber && t.ticketNumber.toLowerCase().includes(q)) ||
+          matchesTicketNumber(t.ticketNumber, q) ||
           t.title.toLowerCase().includes(q) ||
           t.organization.toLowerCase().includes(q) ||
           (t.description || '').toLowerCase().includes(q) ||

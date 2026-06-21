@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { matchesTicketNumber } from '../../../lib/ticket-search';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
@@ -224,7 +225,7 @@ export default function CustomerTicketsPage() {
         const q = searchQuery.toLowerCase();
         const matches =
           t.id.toLowerCase().includes(q) ||
-          (t.ticketNumber && t.ticketNumber.toLowerCase().includes(q)) ||
+          matchesTicketNumber(t.ticketNumber, q) ||
           t.title.toLowerCase().includes(q) ||
           t.description.toLowerCase().includes(q);
         if (!matches) return false;
