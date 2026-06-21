@@ -43,6 +43,7 @@ import {
   MOCK_CONTACTS
 } from '../utils/mockData';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
+import { dispatchNotify } from '../lib/notifications/client';
 import { useAuth } from './AuthContext';
 import { getOrganizationMap, getOrganizationShortCodeMap } from '../app/actions/auth';
 
@@ -3107,24 +3108,18 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     setNotifications(prev => [newNotif, ...prev]);
 
-    if (isSupabaseConfigured && supabase && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
-      try {
-        // Inserts go through a SECURITY DEFINER RPC: direct INSERT is admin-only
-        // since the notification-spoofing hardening (20260611000002).
-        const { error } = await supabase.rpc('create_notification', {
-          p_user_id: resolvedUuid,
-          p_title: data.title,
-          p_message: data.message,
-          p_ticket_id: data.ticketId ?? null,
-          p_type: data.type ?? 'system',
-          p_link_path: data.linkPath ?? null
-        });
-        if (error) {
-          console.warn('create_notification RPC failed:', error.message);
-        }
-      } catch (err) {
-        console.error('Error creating database notification:', err);
-      }
+    if (isSupabaseConfigured && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
+      // Persist through the single server dispatcher (notify → create_notification RPC).
+      // In-app behaviour is identical (same SECURITY DEFINER RPC, same row); the
+      // dispatcher additionally fans the selected events out to Microsoft Teams.
+      await dispatchNotify(data.type ?? 'system', {
+        recipients: [resolvedUuid],
+        title: data.title,
+        message: data.message,
+        ticketId: data.ticketId,
+        linkPath: data.linkPath,
+        type: data.type ?? 'system',
+      });
     }
   };
 
