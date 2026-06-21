@@ -35,6 +35,8 @@ interface TanstackTableProps<T> {
   emptyDescription?: string;
   /** Whole-row click (e.g. navigate to detail). */
   onRowClick?: (row: T) => void;
+  /** Per-row extra classes (e.g. escalation/locked highlight). */
+  rowClassName?: (row: T) => string | undefined;
   className?: string;
 }
 
@@ -48,6 +50,7 @@ export function TanstackTable<T>({
   emptyTitle = 'No records found',
   emptyDescription = 'Nothing matches the current filters.',
   onRowClick,
+  rowClassName,
   className,
 }: TanstackTableProps<T>) {
   const [sorting, setSorting] = React.useState<SortingState>(initialSort);
@@ -112,7 +115,7 @@ export function TanstackTable<T>({
                 <TableRow
                   key={row.id}
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                  className={cn('hover:bg-surface-muted/60', onRowClick && 'cursor-pointer')}
+                  className={cn('hover:bg-surface-muted/60', onRowClick && 'cursor-pointer', rowClassName?.(row.original))}
                 >
                   {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id} className="align-middle">
