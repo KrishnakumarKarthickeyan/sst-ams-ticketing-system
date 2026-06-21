@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useTickets } from '../../../context/TicketContext';
 import { User, Plus, ShieldCheck, Mail, ShieldAlert, XCircle, Lock, KeyRound } from 'lucide-react';
+import { TanstackTable } from '../../../components/ui/tanstack-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -647,6 +649,48 @@ export default function AdminUsersPage() {
     }
   };
 
+  // TanStack column model for the users list (sortable + paginated).
+  const userColumns = useMemo<ColumnDef<any, unknown>[]>(() => [
+    { id: 'name', accessorKey: 'name', header: 'Name',
+      cell: ({ row }) => { const u = row.original; return (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-surface-subtle flex items-center justify-center text-ink font-bold uppercase shrink-0">
+            {u.name ? u.name.split(' ').map((n: string) => n[0]).join('') : 'U'}
+          </div>
+          <div>
+            <span className="font-bold text-ink text-xs block">{u.name}</span>
+            {user?.email === u.email && <span className="text-[11px] bg-ink text-white px-1 rounded block w-max mt-0.5">YOUR SESSION</span>}
+          </div>
+        </div>); } },
+    { id: 'email', accessorKey: 'email', header: 'Email',
+      cell: ({ row }) => <span className="flex items-center gap-1.5 text-ink-secondary"><Mail size={12} />{row.original.email}</span> },
+    { id: 'role', accessorKey: 'role', header: 'SaaS Role',
+      cell: ({ row }) => { const r = row.original.role; return (
+        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+          r === 'SuperAdmin' ? 'bg-ink text-white' : r === 'Manager' ? 'bg-zinc-800 text-white' :
+          r === 'Consultant' ? 'bg-surface-subtle text-ink border border-line-strong' : 'bg-surface text-ink-secondary border border-line'
+        }`}>{r}</span>); } },
+    { id: 'organization', accessorKey: 'organization', header: 'Company Assigned',
+      cell: ({ row }) => <span className="font-semibold text-ink-secondary">{row.original.organization}</span> },
+    { id: 'status', accessorFn: (u: any) => (u.active ? 'Active' : 'Disabled'), header: 'Status',
+      cell: ({ row }) => { const a = row.original.active; return (
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-bold ${a ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-750'}`}>
+          {a ? <ShieldCheck size={11} className="text-success" /> : <XCircle size={11} className="text-red-605" />}{a ? 'Active' : 'Disabled'}
+        </span>); } },
+    { id: 'actions', header: 'Actions', enableSorting: false,
+      cell: ({ row }) => { const u = row.original; const isAdmin = u.role === 'SuperAdmin'; return (
+        <div className="flex items-center justify-end gap-2">
+          {!isAdmin && (<>
+            <button onClick={() => { setResetTargetUser(u); setResetManualPassword(''); setResetGeneratedPassword(generatePass()); setResetDone(false); setResetDialogOpen(true); }}
+              className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-line-strong hover:bg-surface-muted transition cursor-pointer">Reset Password</button>
+            <button onClick={() => { setUpdateTargetUser(u); setUpdateNewPassword(''); setUpdateConfirmPassword(''); setUpdateForceChange(false); setUpdateDialogOpen(true); }}
+              className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-line-strong hover:bg-surface-muted transition cursor-pointer">Update Password</button>
+          </>)}
+          <button onClick={() => handleOpenUserModal(u, 'view')}
+            className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded border border-ink bg-ink text-white hover:bg-zinc-800 transition cursor-pointer">Manage</button>
+        </div>); } },
+  ], []);
+
   return (
     <div className="space-y-6 text-xs text-ink">
       <PageHeader
@@ -806,110 +850,14 @@ export default function AdminUsersPage() {
       )}
 
       {/* Users Table List */}
-      <div className="bg-surface border border-line rounded overflow-hidden shadow-card">
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
-              <th className="p-4">Name</th>
-              <th className="p-4">Email</th>
-              <th className="p-4">SaaS Role</th>
-              <th className="p-4">Company Assigned</th>
-              <th className="p-4">Status</th>
-              <th className="p-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {usersList.map((u) => {
-              const isAdmin = u.role === 'SuperAdmin';
-              const isManager = u.role === 'Manager';
-              const isConsultant = u.role === 'Consultant';
+      <TanstackTable
+        columns={userColumns}
+        data={usersList}
+        pageSize={15}
+        emptyTitle="No users found"
+        emptyDescription="No users match the current filters."
+      />
 
-              return (
-                <tr key={u.id} className="hover:bg-surface-muted/60">
-                  <td className="p-4 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-surface-subtle flex items-center justify-center text-ink font-bold uppercase shrink-0">
-                      {u.name ? u.name.split(' ').map(n => n[0]).join('') : 'U'}
-                    </div>
-                    <div>
-                      <span className="font-bold text-ink text-xs block">{u.name}</span>
-                      {user?.email === u.email && (
-                        <span className="text-[11px] bg-ink text-white px-1 rounded block w-max mt-0.5">YOUR SESSION</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4 text-ink-secondary">
-                    <span className="flex items-center gap-1.5">
-                      <Mail size={12} />
-                      {u.email}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                      isAdmin ? 'bg-ink text-white' :
-                      isManager ? 'bg-zinc-800 text-white' :
-                      isConsultant ? 'bg-surface-subtle text-ink border border-line-strong' :
-                      'bg-surface text-ink-secondary border border-line'
-                    }`}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="p-4 font-semibold text-ink-secondary">{u.organization}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-bold ${
-                      u.active ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-750'
-                    }`}>
-                      {u.active ? (
-                        <ShieldCheck size={11} className="text-success" />
-                      ) : (
-                        <XCircle size={11} className="text-red-605" />
-                      )}
-                      {u.active ? 'Active' : 'Disabled'}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {!isAdmin && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setResetTargetUser(u);
-                              setResetManualPassword('');
-                              setResetGeneratedPassword(generatePass());
-                              setResetDone(false);
-                              setResetDialogOpen(true);
-                            }}
-                            className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-line-strong hover:border-line-strong hover:bg-surface-muted transition cursor-pointer"
-                          >
-                            Reset Password
-                          </button>
-                          <button
-                            onClick={() => {
-                              setUpdateTargetUser(u);
-                              setUpdateNewPassword('');
-                              setUpdateConfirmPassword('');
-                              setUpdateForceChange(false);
-                              setUpdateDialogOpen(true);
-                            }}
-                            className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-line-strong hover:border-line-strong hover:bg-surface-muted transition cursor-pointer"
-                          >
-                            Update Password
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => handleOpenUserModal(u, 'view')}
-                        className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded border border-ink bg-ink text-white hover:bg-zinc-800 transition cursor-pointer"
-                      >
-                        Manage
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
 
       {/* Unified User Management Modal */}
       {selectedUser && (
