@@ -203,7 +203,7 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height={280} initialDimension={{ width: 320, height: 280 }}>
             <BarChart data={approvals.rows} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" {...axisProps} width={78} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={78} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.warning} radius={[0, 4, 4, 0]} barSize={20}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
@@ -276,7 +276,7 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 320, height: 200 }}>
             <BarChart data={tmix} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" {...axisProps} width={96} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={96} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.info} radius={[0, 4, 4, 0]} barSize={18}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />
@@ -289,7 +289,7 @@ export function ManagerTeamCockpit({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height={200} initialDimension={{ width: 480, height: 200 }}>
             <BarChart data={cats} layout="vertical" margin={{ top: 0, right: 28, left: 4, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" {...axisProps} width={130} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" {...axisProps} width={130} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: CHART.grid }} />
               <Bar dataKey="value" fill={CHART.brand} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" className="type-num" fill={CHART.ink} fontSize={11} />

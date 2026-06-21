@@ -380,7 +380,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={demandHeat} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="module" tick={{ fontSize: 12 }} width={90} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="module" tick={{ fontSize: 12 }} width={90} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} itemSorter={null} />
               {PRIORITIES.map((p, i) => (

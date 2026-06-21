@@ -243,7 +243,7 @@ export function AdminOperationIntelligence({ tickets, previousTickets, loading, 
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={modules} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={70} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={70} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="Tickets" fill={CHART_COLORS[1]} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" fontSize={11} />
@@ -257,7 +257,7 @@ export function AdminOperationIntelligence({ tickets, previousTickets, loading, 
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={customers} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={90} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={90} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
               <Bar dataKey="value" name="Tickets" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={16}>
                 <LabelList dataKey="value" position="right" fontSize={11} />
@@ -355,7 +355,7 @@ export function AdminOperationIntelligence({ tickets, previousTickets, loading, 
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={utilization} layout="vertical" margin={{ top: 4, right: 36, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 12 }} allowDecimals={false} unit="h" />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} tickFormatter={truncateTick} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} interval={0} tickFormatter={truncateTick} />
               <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: 'hsl(var(--muted))' }} />
               {capacityHours > 0 && (
                 <ReferenceLine x={capacityHours} stroke={SEMANTIC.danger} strokeDasharray="4 4" label={{ value: '100% capacity', fontSize: 10, fill: SEMANTIC.danger, position: 'top' }} />
