@@ -48,10 +48,15 @@ export function isSlaBreached(t: Pick<Ticket, 'status' | 'slaDueAt' | 'slaStatus
   return Number.isFinite(due) && due < nowMs;
 }
 
-/** A closure request, estimate, actuals log, or unlock request awaiting the manager. */
+/**
+ * A genuinely manager-actionable item awaits sign-off: a pending effort/actuals
+ * log, a closure request awaiting approval, or an unlock request. This MIRRORS the
+ * dashboard's "Pending Approvals" definition so the tab badge and the dashboard
+ * count cannot diverge. A merely *submitted* hour estimate is NOT pending approval
+ * (almost every ticket has one) — including it swept ~all tickets into the tab.
+ */
 export function hasPendingApproval(t: Ticket): boolean {
   return (
-    (t.hourEstimates?.some(e => e.status === 'Submitted') ?? false) ||
     (t.efforts?.some(e => e.status === 'Pending' || e.status === 'Pending Approval') ?? false) ||
     (t.closureRequests?.some(c => c.status === 'Pending Manager Approval') ?? false) ||
     (t.unlockRequests?.some(u => u.status === 'Pending') ?? false)
