@@ -29,6 +29,42 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Microsoft Teams notifications (Tier 1: one-way, app → channel)
+
+Selected domain events are mirrored to a Microsoft Teams channel as Adaptive Cards,
+in addition to the in-app notifications. There is a **single dispatcher**
+(`src/lib/notifications/dispatcher.ts`, reached through the `POST /api/notify`
+route); the only module that talks to Teams is `src/lib/notifications/teams.ts`.
+
+**Events posted to Teams** (everything else stays in-app only):
+SLA breached · SLA at-risk · escalation raised · escalation acknowledged ·
+new Critical ticket · closure pending approval.
+
+### Create the channel webhook (Workflows / Power Automate)
+
+This integration uses the **supported Workflows path**, not the deprecated Office 365
+connector:
+
+1. In Microsoft Teams, open the target **channel → ⋯ (More options) → Workflows**.
+2. Choose the template **"Post to a channel when a webhook request is received."**
+3. Confirm the Team and Channel, then **Add workflow**. Teams generates an
+   **HTTP POST URL** — this is your webhook URL.
+4. Copy that URL. The app posts an Adaptive Card wrapped in the
+   `{ type: "message", attachments: [...] }` envelope this trigger expects.
+
+### Store the URL as a server-only secret
+
+- Set **`TEAMS_WEBHOOK_URL`** to the webhook URL **without** a `NEXT_PUBLIC_` prefix
+  (it is server-only and must never reach the browser or the repo).
+  - **Vercel:** Project → Settings → Environment Variables → add `TEAMS_WEBHOOK_URL`
+    (and `APP_BASE_URL`, your public app URL for the card's deep link).
+  - **Local:** add both to `.env.local` (git-ignored). See `.env.example`.
+- Leave `TEAMS_WEBHOOK_URL` **unset** to disable Teams delivery entirely — the app
+  then sends in-app notifications only (every Teams send becomes a silent no-op).
+
+Teams delivery is fire-and-forget: a webhook outage is logged and swallowed and can
+never block or fail a user's ticket action.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
