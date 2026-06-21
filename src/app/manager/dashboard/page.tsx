@@ -65,6 +65,7 @@ import { Label } from '../../../components/ui/label';
 import { SAPModule, TicketPriority, TicketStatus, EffortLog, TicketClosureRequest, TicketUnlockRequest, Ticket } from '../../../types/ticket';
 
 import { COLORS, chartColors } from '../../../lib/chart-theme';
+import { isUnassigned } from '../../../lib/manager-desk-predicates';
 
 const SAP_MODULES_LIST: SAPModule[] = [
   'FICO', 'MM', 'SD', 'PP', 'HCM', 'ABAP', 'BASIS', 'CPI/Integration', 'Fiori', 'Security/GRC', 'PM', 'QM', 'TRM'
@@ -132,7 +133,7 @@ const QueueTicketRow = ({
   return (
     <div className={`p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
       <div className="flex justify-between items-center">
-        <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="font-bold text-ink hover:underline">
+        <Link href={`/manager/tickets/${ticket.id}`} className="font-bold text-ink hover:underline">
           {ticket.ticketNumber}
         </Link>
         <div className="flex gap-1 items-center">
@@ -197,7 +198,7 @@ const EscalationTicketRow = ({
       {/* Row 1: Ticket Number, ESCALATED Badge, Priority Badge */}
       <div className="flex items-center gap-2 flex-wrap text-xs">
         <span className="font-medium text-ink">
-          <Link href={`/manager/tickets?search=${ticket.ticketNumber}`} className="hover:underline">
+          <Link href={`/manager/tickets/${ticket.id}`} className="hover:underline">
             {ticket.ticketNumber}
           </Link>
         </span>
@@ -269,7 +270,7 @@ export default function ManagerDashboardPage() {
     const atRisk = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() - now > 0 && new Date(t.slaDueAt).getTime() - now < 12 * 3600e3);
     const breached = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() < now);
     const unackedEscalations = tickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt);
-    const unassigned = open.filter(t => !t.assignedConsultant);
+    const unassigned = open.filter(t => !t.leadConsultantId); // dispatch backlog = no lead yet (matches desk Unassigned tab)
     const loadMap: Record<string, number> = {};
     open.forEach(t => {
       if (t.assignedConsultant) loadMap[t.assignedConsultant] = (loadMap[t.assignedConsultant] || 0) + 1;
@@ -1134,7 +1135,7 @@ export default function ManagerDashboardPage() {
     const customersAwaitingClosure = new Set(ticketsList.filter(t => ['Request for Closure', 'Awaiting Manager Approval', 'Waiting for Hours Approval'].includes(t.status)).map(t => t.organization)).size;
 
     const openCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length;
-    const unassignedCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && !t.assignedConsultant).length;
+    const unassignedCount = ticketsList.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && !t.leadConsultantId).length;
     const reqGatheringCount = ticketsList.filter(t => t.status === 'Requirement Gathering').length;
     const ipFuncCount = ticketsList.filter(t => ['In Progress - Functional', 'Awaiting Functional Submission', 'In Progress'].includes(t.status)).length;
     const ipTechCount = ticketsList.filter(t => ['In Progress - Technical', 'Awaiting Technical Submission'].includes(t.status)).length;
@@ -2478,13 +2479,13 @@ export default function ManagerDashboardPage() {
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex justify-between items-center border-b border-line pb-2 mb-3">
                     <span className="font-extrabold text-ink uppercase text-[11px] tracking-wider flex items-center gap-1">
-                      Immediate Assignment Queue ({filteredDashboardTickets.filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved').length})
+                      Immediate Assignment Queue ({filteredDashboardTickets.filter(isUnassigned).length})
                     </span>
                     <Badge className="bg-surface-subtle text-ink text-[11px] font-bold">UNASSIGNED</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                     {filteredDashboardTickets
-                      .filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved')
+                      .filter(isUnassigned)
                       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                       .map(t => {
                         const slaInfo = getSlaBreachInfo(t);
@@ -2498,7 +2499,7 @@ export default function ManagerDashboardPage() {
                           />
                         );
                       })}
-                    {filteredDashboardTickets.filter(t => (!t.assignedConsultantId || t.status === 'New') && t.status !== 'Closed' && t.status !== 'Resolved').length === 0 && (
+                    {filteredDashboardTickets.filter(isUnassigned).length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-ink-muted italic text-center py-10 font-sans">
                         All active workload allocated.
                       </div>
@@ -2526,7 +2527,7 @@ export default function ManagerDashboardPage() {
                     {pendingClosureRequests.map(r => (
                       <div key={r.requestId} className="p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-ink">Closure: {r.ticketNumber}</span>
+                          <span className="font-bold text-ink">Closure: <Link href={`/manager/tickets/${r.ticketId}`} className="hover:underline">{r.ticketNumber}</Link></span>
                           <span className="text-[11px] bg-red-100 text-red-800 px-1 py-0.2 rounded font-bold uppercase">Closure Approval</span>
                         </div>
                         <span className="text-ink-secondary truncate block font-sans">Total Hours: {r.funcHours + r.techHours}h</span>
@@ -2609,7 +2610,7 @@ export default function ManagerDashboardPage() {
                           .map(t => (
                             <div key={t.id} className="p-2 bg-surface-muted/60 border border-line rounded-lg flex flex-col justify-between gap-1">
                               <div className="flex justify-between items-center">
-                                <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-semibold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
+                                <Link href={`/manager/tickets/${t.id}`} className="font-semibold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
                                 <div className="flex gap-1.5 items-center">
                                   <Badge className="bg-emerald-50 text-emerald-700 border-emerald-150 text-[11px] font-semibold py-0.5 px-1.5 uppercase leading-none h-4.5 flex items-center gap-1">
                                     <Check className="size-2.5 text-success" /> Ack
@@ -2661,7 +2662,7 @@ export default function ManagerDashboardPage() {
                       return (
                         <div key={t.id} className={`p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
                           <div className="flex justify-between items-center">
-                            <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-bold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
+                            <Link href={`/manager/tickets/${t.id}`} className="font-bold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
                             <div className="flex gap-1 items-center">
                               {isEscalated && <Badge variant="destructive" className="text-[11px] font-bold py-0 px-1 uppercase leading-none h-4">Escalated</Badge>}
                               {slaInfo && (
@@ -3898,7 +3899,7 @@ export default function ManagerDashboardPage() {
                   {waitingAssignmentTickets.map((t) => (
                     <div key={t.id} className="p-2.5 bg-surface-muted border border-line rounded-lg hover:border-line-strong transition flex flex-col justify-between gap-1.5">
                       <div className="flex justify-between items-start">
-                        <Link href={`/manager/tickets?search=${t.ticketNumber}`} className="font-extrabold text-ink hover:underline text-[11px] uppercase">
+                        <Link href={`/manager/tickets/${t.id}`} className="font-extrabold text-ink hover:underline text-[11px] uppercase">
                           {t.ticketNumber}
                         </Link>
                         <span className={`text-[11px] font-extrabold uppercase px-1 py-0.5 rounded ${

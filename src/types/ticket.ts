@@ -158,6 +158,11 @@ export type TicketType =
   | 'Service Request'
   | 'Enhancement Request'
   | 'Change Request'
+  // ITIL types present in live data — were missing from the union/select, so a
+  // ticket of these types fell back to displaying "Incident" (corrections doc item 23).
+  | 'Problem Record'
+  | 'Support Request'
+  | 'Access Request'
   | 'Training Request'
   | 'Configuration Request'
   | 'Report Request';

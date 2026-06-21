@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { matchesTicketNumber } from '../../../lib/ticket-search';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
@@ -271,12 +272,13 @@ export default function ManagerTicketsPage() {
         if (approvalStateFilter === 'None' && (hasEstimatePending || hasActualsPending || hasClosurePending)) return false;
       }
 
-      // Search Query
+      // Search Query — ticket NUMBER matches exactly (full string or numeric suffix)
+      // so "24" returns only BIT-000024, not BIT-000124/000240 etc. (corrections item 4).
+      // Title / customer / description / consultant stay as free-text substring search.
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.trim().toLowerCase();
         return (
-          t.id.toLowerCase().includes(q) ||
-          (t.ticketNumber && t.ticketNumber.toLowerCase().includes(q)) ||
+          matchesTicketNumber(t.ticketNumber, q) ||
           t.title.toLowerCase().includes(q) ||
           t.organization.toLowerCase().includes(q) ||
           (t.description || '').toLowerCase().includes(q) ||
@@ -664,7 +666,7 @@ export default function ManagerTicketsPage() {
                         onChange={() => toggleSelectTicket(t.id)}
                         className="cursor-pointer rounded border-line-strong text-ink focus:ring-brand/30"
                       />
-                      <span className="font-bold text-[11px] text-ink tracking-wider">{t.ticketNumber || t.id}</span>
+                      <Link href={`/manager/tickets/${t.id}`} className="font-bold text-[11px] text-ink tracking-wider hover:underline">{t.ticketNumber || t.id}</Link>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`inline-flex items-center px-1.5 py-0.2 rounded border text-[11px] font-bold uppercase ${statusCfg.color}`}>

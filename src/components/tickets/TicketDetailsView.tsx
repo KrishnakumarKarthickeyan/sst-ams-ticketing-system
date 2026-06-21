@@ -849,7 +849,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
             <div className="flex flex-wrap gap-4 text-[11px] border-b border-line pb-3 font-bold text-ink-muted uppercase tracking-wider">
               <span className="flex items-center gap-1"><Building2 size={11} /> {ticket.organization}</span>
               <span>By: {ticket.requestedBy}</span>
-              <span className="flex items-center gap-1"><Tag size={11} /> {ticket.category}</span>
+              <span className="flex items-center gap-1"><Tag size={11} /> {ticket.ticketType || 'Incident'}</span>
               <span className="bg-surface-subtle text-ink-secondary px-1.5 py-0.2 rounded">Source: {ticket.source}</span>
             </div>
             
@@ -929,7 +929,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                       <span className="font-bold text-ink block mt-0.5">{ticket.sapModule}</span>
                     </div>
                     <div>
-                      <span className="text-[11px] text-ink-muted uppercase font-bold block">Urgency Classification</span>
+                      <span className="text-[11px] text-ink-muted uppercase font-bold block">Issue Category</span>
                       <span className="font-semibold text-ink block mt-0.5">{ticket.category}</span>
                     </div>
                     <div>
@@ -1783,7 +1783,10 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                     className="bg-surface border border-line rounded p-1 text-[11px] font-bold text-ink focus:outline-none"
                   >
                     <option value="Incident">Incident</option>
+                    <option value="Problem Record">Problem Record</option>
                     <option value="Service Request">Service Request</option>
+                    <option value="Support Request">Support Request</option>
+                    <option value="Access Request">Access Request</option>
                     <option value="Enhancement Request">Enhancement Request</option>
                     <option value="Change Request">Change Request</option>
                     <option value="Training Request">Training Request</option>

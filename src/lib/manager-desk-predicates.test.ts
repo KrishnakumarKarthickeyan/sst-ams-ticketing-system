@@ -37,11 +37,13 @@ describe('isSlaBreached — single source of truth', () => {
 });
 
 describe('isUnassigned', () => {
-  it('true with no consultant and no efforts', () => {
-    expect(isUnassigned(mk({ assignedConsultant: '', consultantEfforts: [] }))).toBe(true);
+  // Canonical "needs dispatch" = no LEAD consultant assigned yet (SLA starts on
+  // lead assignment). Shared by the Unassigned tab and the dashboard Dispatch Backlog.
+  it('true when no lead consultant is assigned', () => {
+    expect(isUnassigned(mk({ leadConsultantId: undefined }))).toBe(true);
   });
-  it('false when an effort is allocated', () => {
-    expect(isUnassigned(mk({ consultantEfforts: [{ consultantName: 'A', consultantType: 'Functional' } as never] }))).toBe(false);
+  it('false once a lead consultant is assigned (even before efforts are logged)', () => {
+    expect(isUnassigned(mk({ leadConsultantId: 'lead-uuid-1' }))).toBe(false);
   });
 });
 
