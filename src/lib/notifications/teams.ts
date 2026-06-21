@@ -41,7 +41,11 @@ export interface TeamsCardInput {
  * Build the Microsoft Teams Workflows envelope wrapping a severity-styled
  * Adaptive Card. Returns the exact JSON the Workflows trigger expects.
  */
-export function buildAdaptiveCard(input: TeamsCardInput) {
+/**
+ * Build the raw Adaptive Card object (no envelope). Used directly by the Tier-2
+ * bot (proactive sendActivity); the webhook path wraps it via buildAdaptiveCard().
+ */
+export function buildAdaptiveCardContent(input: TeamsCardInput) {
   const sev = SEVERITY[input.event] ?? { emoji: 'ℹ️', title: 'Notification', color: 'accent' as Severity };
   const base = (process.env.APP_BASE_URL || '').replace(/\/+$/, '');
   const url = input.linkPath ? `${base}${input.linkPath}` : base || undefined;
@@ -53,26 +57,32 @@ export function buildAdaptiveCard(input: TeamsCardInput) {
   ].filter((f): f is { title: string; value: string } => f !== null);
 
   const body: unknown[] = [
-    { type: 'TextBlock', size: 'Large', weight: 'Bolder', color: sev.color, text: `${sev.emoji} ${sev.title}`, wrap: true },
+    // Brand header — on the webhook path the Flow bot sender chip reads "Workflows"
+    // and can't be renamed, so the card itself carries the Assist360 identity. On
+    // the Tier-2 bot path the sender IS "Assist360", and this header still reinforces it.
+    { type: 'TextBlock', text: 'ASSIST360 · SAP SUPPORT DESK', size: 'Small', weight: 'Bolder', color: 'accent', spacing: 'None', isSubtle: true, wrap: true },
+    { type: 'TextBlock', size: 'Large', weight: 'Bolder', color: sev.color, text: `${sev.emoji} ${sev.title}`, wrap: true, spacing: 'Small' },
   ];
   if (facts.length) body.push({ type: 'FactSet', facts });
   if (input.message) body.push({ type: 'TextBlock', text: input.message, wrap: true, spacing: 'Small', isSubtle: true });
 
-  const adaptiveCard = {
+  return {
     type: 'AdaptiveCard',
     $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
     version: '1.4',
     body,
     actions: url ? [{ type: 'Action.OpenUrl', title: 'View in Assist360', url }] : [],
   };
+}
 
+export function buildAdaptiveCard(input: TeamsCardInput) {
   // Workflows ("Post to a channel when a webhook request is received") envelope.
   return {
     type: 'message',
     attachments: [
       {
         contentType: 'application/vnd.microsoft.card.adaptive',
-        content: adaptiveCard,
+        content: buildAdaptiveCardContent(input),
       },
     ],
   };
