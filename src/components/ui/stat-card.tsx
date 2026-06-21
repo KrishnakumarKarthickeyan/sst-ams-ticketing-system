@@ -16,6 +16,16 @@ const ICON_TONES: Record<PillTone, string> = {
   info: 'bg-info-soft text-info',
 };
 
+/** Solid fill for the optional progress bar, keyed by tone. */
+const PROGRESS_FILL: Record<PillTone, string> = {
+  neutral: 'bg-ink-muted',
+  brand: 'bg-brand',
+  success: 'bg-success',
+  warning: 'bg-warning',
+  critical: 'bg-critical',
+  info: 'bg-info',
+};
+
 /**
  * Canonical KPI/stat card. One visual grammar for every metric on every
  * dashboard: label, tabular-numeral value, optional delta and context line.
@@ -28,6 +38,9 @@ export function StatCard({
   delta,
   deltaIsGood,
   sub,
+  progress,
+  progressTone = 'brand',
+  footer,
   loading = false,
   onClick,
   href,
@@ -44,6 +57,12 @@ export function StatCard({
   /** colors the delta: true → success, false → critical, undefined → neutral */
   deltaIsGood?: boolean;
   sub?: React.ReactNode;
+  /** 0–100 → renders a thin progress bar under the value/sub. */
+  progress?: number;
+  /** Color of the progress fill (default brand). */
+  progressTone?: PillTone;
+  /** Extra slot below everything — grade text, threshold note, a badge, etc. */
+  footer?: React.ReactNode;
   loading?: boolean;
   onClick?: () => void;
   /** Navigate on click (e.g. to a filtered list). Renders as a Next <Link>. */
@@ -95,6 +114,15 @@ export function StatCard({
           {sub && <span className="type-status text-ink-muted">{sub}</span>}
         </div>
       )}
+      {progress != null && !loading && (
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-subtle">
+          <div
+            className={cn('h-full rounded-full transition-all duration-500', PROGRESS_FILL[progressTone])}
+            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+          />
+        </div>
+      )}
+      {footer && !loading && <div className="mt-2">{footer}</div>}
     </>
   );
 

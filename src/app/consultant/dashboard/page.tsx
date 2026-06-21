@@ -63,6 +63,9 @@ import {
   Line
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
+import { StatCard } from '../../../components/ui/stat-card';
+import type { PillTone } from '../../../components/ui/status-pill';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
@@ -104,6 +107,24 @@ const STATUS_TILE_STYLE: Record<string, { icon: React.ComponentType<{ size?: num
   resolved: { icon: CheckCircle, color: 'bg-emerald-500', textColor: 'text-success' },
   closed: { icon: CheckCircle, color: 'bg-emerald-600', textColor: 'text-success' },
   reopened: { icon: RotateCcw, color: 'bg-amber-500', textColor: 'text-amber-600' },
+};
+
+// Status tile → shared StatCard tone (icon chip + progress fill use the same semantic).
+const STATUS_TILE_TONE: Record<string, PillTone> = {
+  all: 'neutral',
+  new: 'brand',
+  in_progress: 'brand',
+  in_progress_functional: 'info',
+  in_progress_technical: 'info',
+  requirement_gathering: 'brand',
+  customer_action: 'warning',
+  on_hold: 'neutral',
+  raised_sap: 'critical',
+  request_closure: 'info',
+  escalated: 'critical',
+  resolved: 'success',
+  closed: 'success',
+  reopened: 'warning',
 };
 
 export default function ConsultantDashboardPage() {
@@ -961,53 +982,38 @@ export default function ConsultantDashboardPage() {
         )}
       </Card>
 
-      {/* --- WORKING CAPACITY BAR CHART SUMMARY --- */}
-      <Card className="bg-surface border border-line/80 shadow-[0_2px_8px_rgba(0,0,0,0.015)] overflow-hidden">
-        <div className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 divide-y md:divide-y-0 md:divide-x divide-line w-full">
-          <div className="space-y-1 pr-6 flex-1">
-            <div className="text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">Expected Capacity Hours</div>
-            <div className="text-3xl font-extrabold text-ink">
-              {monthlyStats.expectedHours} <span className="text-xs text-ink-muted font-normal">hours</span>
-            </div>
-            <p className="text-[11px] text-ink-muted font-sans">
-              Based on {monthlyStats.workingDays} working days (8h/day) · Sunday through Thursday
-            </p>
-          </div>
-
-          <div className="space-y-1 pt-4 md:pt-0 md:pl-8 flex-1">
-            <div className="text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">Actual Logged Hours</div>
-            <div className="text-3xl font-extrabold text-ink">
-              {monthlyStats.actualHours.toFixed(1)} <span className="text-xs text-ink-muted font-normal">hours</span>
-            </div>
-            <p className="text-[11px] text-ink-muted font-sans">
-              Billable: {monthlyStats.billableHours.toFixed(1)}h · Non-Billable: {monthlyStats.nonBillableHours.toFixed(1)}h
-            </p>
-          </div>
-
-          <div className="space-y-1 pt-4 md:pt-0 md:pl-8 flex-1">
-            <div className="text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">Remaining Capacity</div>
-            <div className="text-3xl font-extrabold text-ink">
-              {monthlyStats.remainingCapacity.toFixed(1)} <span className="text-xs text-ink-muted font-normal">hours</span>
-            </div>
-            <p className="text-[11px] text-ink-muted font-sans">
-              Unallocated bandwidth in current cycle
-            </p>
-          </div>
-
-          <div className="space-y-2 pt-4 md:pt-0 md:pl-8 flex-1 w-full">
-            <div className="flex justify-between items-center text-[11px] font-bold text-ink-muted uppercase tracking-widest font-sans">
-              <span>Monthly Utilization</span>
-              <span className="text-ink text-xs">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
-            </div>
-            <div className="w-full bg-surface-subtle h-2 rounded-full overflow-hidden">
-              <div 
-                className="h-full rounded-full bg-ink transition-all duration-500" 
-                style={{ width: `${monthlyStats.utilizationPercent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </Card>
+      {/* --- WORKING CAPACITY SUMMARY (shared StatCard) --- */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Expected Capacity Hours"
+          icon={Calendar}
+          tone="neutral"
+          value={<>{monthlyStats.expectedHours}<span className="text-sm font-normal text-ink-muted"> hrs</span></>}
+          sub={`${monthlyStats.workingDays} working days · 8h/day · Sun–Thu`}
+        />
+        <StatCard
+          label="Actual Logged Hours"
+          icon={Activity}
+          tone="brand"
+          value={<>{monthlyStats.actualHours.toFixed(1)}<span className="text-sm font-normal text-ink-muted"> hrs</span></>}
+          sub={`Billable ${monthlyStats.billableHours.toFixed(1)}h · Non-billable ${monthlyStats.nonBillableHours.toFixed(1)}h`}
+        />
+        <StatCard
+          label="Remaining Capacity"
+          icon={Hourglass}
+          tone="success"
+          value={<>{monthlyStats.remainingCapacity.toFixed(1)}<span className="text-sm font-normal text-ink-muted"> hrs</span></>}
+          sub="Unallocated bandwidth in current cycle"
+        />
+        <StatCard
+          label="Monthly Utilization"
+          icon={Percent}
+          tone={monthlyStats.utilizationPercent > 92 ? 'critical' : 'brand'}
+          value={`${monthlyStats.utilizationPercent.toFixed(1)}%`}
+          progress={monthlyStats.utilizationPercent}
+          progressTone={monthlyStats.utilizationPercent > 92 ? 'critical' : 'brand'}
+        />
+      </div>
 
       {/* --- MY TICKET STATUS SUMMARY --- */}
       <div className="space-y-4">
@@ -1020,31 +1026,21 @@ export default function ConsultantDashboardPage() {
             const style = STATUS_TILE_STYLE[cat.key] || STATUS_TILE_STYLE.all;
             const count = ticketStatusCounts[cat.key] ?? 0;
             const label = cat.key === 'all' ? 'All Tickets' : cat.label;
-            const IconComponent = style.icon;
+            const tone = STATUS_TILE_TONE[cat.key] || 'neutral';
             const pct = ticketStatusCounts.all > 0 ? (count / ticketStatusCounts.all) * 100 : 0;
             return (
-              <Card
+              <StatCard
                 key={cat.key}
+                label={label}
+                value={count}
+                icon={style.icon as LucideIcon}
+                tone={tone}
+                sub={`${pct.toFixed(0)}% of total`}
+                progress={pct}
+                progressTone={tone}
+                dense
                 onClick={() => router.push(`/consultant/my-tickets?tab=${cat.key}`)}
-                className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-28 hover:shadow-md hover:border-line-strong transition duration-200 cursor-pointer"
-              >
-                <div className="flex justify-between items-start text-ink-muted">
-                  <span className="text-[11px] font-bold uppercase tracking-wider line-clamp-1">{label}</span>
-                  <IconComponent size={14} className={style.textColor} />
-                </div>
-                <div className="mt-2 space-y-1.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xl font-bold text-ink">{count}</span>
-                    <span className="text-[11px] text-ink-muted">{pct.toFixed(0)}%</span>
-                  </div>
-                  <div className="w-full bg-surface-subtle h-1 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${style.color} transition-all duration-500`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              </Card>
+              />
             );
           })}
         </div>
@@ -1054,86 +1050,66 @@ export default function ConsultantDashboardPage() {
       <div className="space-y-4">
         <h2 className="text-xs font-bold text-ink-muted uppercase tracking-widest">My Performance Command Center</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          
+
           {/* 1. Utilization */}
-          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-ink-muted">
-              <span className="text-[11px] font-bold uppercase tracking-widest">Utilization Gauge</span>
-              <Clock size={14} />
-            </div>
-            <div className="mt-2 space-y-1.5">
-              <span className="text-xl font-bold text-ink">{monthlyStats.utilizationPercent.toFixed(1)}%</span>
-              <div className="w-full bg-surface-subtle h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full ${monthlyStats.utilizationPercent > 92 ? 'bg-red-500' : 'bg-zinc-800'}`} 
-                  style={{ width: `${monthlyStats.utilizationPercent}%` }}
-                />
-              </div>
-            </div>
-          </Card>
+          <StatCard
+            label="Utilization Gauge"
+            icon={Clock}
+            tone={monthlyStats.utilizationPercent > 92 ? 'critical' : 'neutral'}
+            value={`${monthlyStats.utilizationPercent.toFixed(1)}%`}
+            progress={monthlyStats.utilizationPercent}
+            progressTone={monthlyStats.utilizationPercent > 92 ? 'critical' : 'neutral'}
+          />
 
           {/* 2. Productivity Score */}
-          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-ink-muted">
-              <span className="text-[11px] font-bold uppercase tracking-widest">Productivity Score</span>
-              <Award size={14} />
-            </div>
-            <div className="mt-2">
-              <span className="text-xl font-bold text-ink">{monthlyStats.productivityScore} <span className="text-[11px] text-ink-muted font-normal">/ 100</span></span>
-              <span className="text-[11px] text-success font-medium block mt-1 font-sans">Quality Grade: Excellent</span>
-            </div>
-          </Card>
+          <StatCard
+            label="Productivity Score"
+            icon={Award}
+            tone="brand"
+            value={<>{monthlyStats.productivityScore}<span className="text-sm font-normal text-ink-muted"> / 100</span></>}
+            footer={<span className="type-status font-medium text-success">Quality Grade: Excellent</span>}
+          />
 
           {/* 3. SLA Score */}
-          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-ink-muted">
-              <span className="text-[11px] font-bold uppercase tracking-widest">SLA Score</span>
-              <ShieldCheck size={14} />
-            </div>
-            <div className="mt-2">
-              <span className="text-xl font-bold text-success">{monthlyStats.slaCompliancePercent.toFixed(1)}%</span>
-              <span className="text-[11px] text-ink-muted block mt-1">Target Threshold: 95%</span>
-            </div>
-          </Card>
+          <StatCard
+            label="SLA Score"
+            icon={ShieldCheck}
+            tone="success"
+            value={<span className="text-success">{monthlyStats.slaCompliancePercent.toFixed(1)}%</span>}
+            sub="Target Threshold: 95%"
+          />
 
           {/* 4. Resolution Score */}
-          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-ink-muted">
-              <span className="text-[11px] font-bold uppercase tracking-widest">Resolution Score</span>
-              <Hourglass size={14} />
-            </div>
-            <div className="mt-2">
-              <span className="text-xl font-bold text-ink">{monthlyStats.avgResolutionTime.toFixed(1)}h</span>
-              <span className="text-[11px] text-ink-muted block mt-1">Avg Resolution Cycle</span>
-            </div>
-          </Card>
+          <StatCard
+            label="Resolution Score"
+            icon={Hourglass}
+            tone="neutral"
+            value={`${monthlyStats.avgResolutionTime.toFixed(1)}h`}
+            sub="Avg Resolution Cycle"
+          />
 
           {/* 5. Workload Score */}
-          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-ink-muted">
-              <span className="text-[11px] font-bold uppercase tracking-widest">Workload Score</span>
-              <Layers size={14} />
-            </div>
-            <div className="mt-2">
-              <span className={`text-sm font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+          <StatCard
+            label="Workload Score"
+            icon={Layers}
+            tone={monthlyStats.workloadHealth === 'Overloaded' ? 'critical' : monthlyStats.workloadHealth === 'Underutilized' ? 'warning' : 'success'}
+            value={
+              <span className={`inline-block text-sm font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
                 monthlyStats.workloadHealth === 'Overloaded' ? 'bg-red-50 text-red-700' :
                 monthlyStats.workloadHealth === 'Underutilized' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
               }`}>{monthlyStats.workloadHealth}</span>
-              <span className="text-[11px] text-ink-muted block mt-2">{monthlyStats.ticketsAssigned} assigned backlogs</span>
-            </div>
-          </Card>
+            }
+            sub={`${monthlyStats.ticketsAssigned} assigned backlogs`}
+          />
 
           {/* 6. Billable Efficiency */}
-          <Card className="bg-surface border border-line/80 p-4 shadow-card flex flex-col justify-between h-32 hover:shadow-md transition">
-            <div className="flex justify-between items-start text-ink-muted">
-              <span className="text-[11px] font-bold uppercase tracking-widest">Billable Efficiency</span>
-              <DollarSign size={14} />
-            </div>
-            <div className="mt-2">
-              <span className="text-xl font-bold text-indigo-650">{monthlyStats.billableEfficiencyScore.toFixed(0)}%</span>
-              <span className="text-[11px] text-ink-muted block mt-1">Billable vs Non-Billable</span>
-            </div>
-          </Card>
+          <StatCard
+            label="Billable Efficiency"
+            icon={DollarSign}
+            tone="info"
+            value={<span className="text-info">{monthlyStats.billableEfficiencyScore.toFixed(0)}%</span>}
+            sub="Billable vs Non-Billable"
+          />
 
         </div>
       </div>
