@@ -53,6 +53,8 @@ import {
   TableHead,
   TableCell
 } from '../../../components/ui/table';
+import { TanstackTable } from '../../../components/ui/tanstack-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { statusConfig, priorityConfig } from '../../../lib/status-theme';
 import { categoryOf, TICKET_CATEGORIES, categoryCounts } from '../../../lib/ticket-categories';
 
@@ -462,6 +464,41 @@ export default function ConsultantMyTicketsPage() {
   // Shared reconciling tally — every ticket lands in exactly one bucket.
   const counts = useMemo(() => categoryCounts(dropdownFilteredTickets), [dropdownFilteredTickets]);
 
+  // TanStack column model for the compact list view (sortable, paginated, row-styled).
+  const consultantTicketColumns = useMemo<ColumnDef<any, unknown>[]>(() => [
+    { id: 'ticket', accessorKey: 'ticketNumber', header: 'Ticket ID',
+      cell: ({ row }) => { const t = row.original; const { isLocked } = getTicketMeta(t); const isEscAck = t.isEscalated && t.escalationAcknowledgedAt; return (
+        <div className="flex items-center gap-1.5 flex-wrap font-bold text-ink-secondary whitespace-nowrap">
+          <span>{t.ticketNumber || t.id}</span>
+          {isEscAck && <Badge variant="destructive" className="text-[11px] font-bold py-0.5 px-1.5 uppercase leading-none h-4">TOP PRIORITY</Badge>}
+          {isLocked && <Lock size={9} className="text-ink-muted" />}
+        </div>); } },
+    { id: 'customer', accessorKey: 'organization', header: 'Customer',
+      cell: ({ row }) => <span className="font-semibold text-ink-secondary truncate max-w-[150px] inline-block align-middle" title={row.original.organization}>{row.original.organization}</span> },
+    { id: 'subject', accessorKey: 'title', header: 'Subject',
+      cell: ({ row }) => <Link href={`/consultant/tickets/${row.original.id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-ink hover:text-blue-600 transition-colors truncate max-w-[320px] inline-block align-middle">{row.original.title}</Link> },
+    { id: 'modules', accessorKey: 'sapModule', header: 'Modules', enableSorting: false,
+      cell: ({ row }) => <Badge variant="outline" className="text-[11px] font-bold uppercase bg-surface-muted text-ink-secondary border-line hover:bg-surface-muted">{row.original.sapModule}</Badge> },
+    { id: 'priority', accessorKey: 'priority', header: 'Priority',
+      cell: ({ row }) => <PriorityBadge priority={row.original.priority} /> },
+    { id: 'status', accessorKey: 'status', header: 'Status',
+      cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+    { id: 'age', accessorFn: (t: any) => getTicketMeta(t).age, header: 'Age',
+      cell: ({ row }) => <span className="text-ink-secondary text-[11px] whitespace-nowrap">{getTicketMeta(row.original).age}d old</span> },
+    { id: 'est', accessorFn: (t: any) => getTicketMeta(t).estHours, header: 'Est Hrs',
+      cell: ({ row }) => <span className="block text-right font-semibold text-ink-secondary">{getTicketMeta(row.original).estHours.toFixed(1)}h</span> },
+    { id: 'act', accessorFn: (t: any) => getTicketMeta(t).actHours, header: 'Act Hrs',
+      cell: ({ row }) => <span className="block text-right font-semibold text-success">{getTicketMeta(row.original).actHours.toFixed(1)}h</span> },
+    { id: 'updated', accessorKey: 'updatedAt', header: 'Updated',
+      cell: ({ row }) => <span className="text-ink-muted text-[11px] whitespace-nowrap">{new Date(row.original.updatedAt).toLocaleDateString()}</span> },
+    { id: 'actions', header: 'Actions', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Link href={`/consultant/tickets/${row.original.id}`}><Button size="icon" variant="outline" className="h-7 w-7 text-ink-secondary cursor-pointer"><Eye size={12} /></Button></Link>
+          <TicketActionMenu t={row.original} />
+        </div>) },
+  ], []);
+
   // ── Ticket Action Dropdown ──
   const TicketActionMenu = ({ t }: { t: typeof myAssignedTickets[0] }) => {
     const { latestEst, rejectedClosure, isLocked } = getTicketMeta(t);
@@ -673,100 +710,16 @@ export default function ConsultantMyTicketsPage() {
 
   // ── COMPACT LIST VIEW ──
   const CompactListView = () => (
-    <div className="bg-surface border border-line rounded-lg overflow-hidden shadow-card">
-      <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-        <Table className="w-full">
-          <TableHeader className="bg-surface-muted/70 sticky top-0 z-10 border-b border-line">
-            <TableRow>
-              <TableHead className="w-[100px]">Ticket ID</TableHead>
-              <TableHead className="w-[150px]">Customer</TableHead>
-              <TableHead className="min-w-[200px]">Subject</TableHead>
-              <TableHead className="w-[80px]">Modules</TableHead>
-              <TableHead className="w-[90px]">Priority</TableHead>
-              <TableHead className="w-[110px]">Status</TableHead>
-              <TableHead className="w-[80px]">Age</TableHead>
-              <TableHead className="w-[70px] text-right">Est Hrs</TableHead>
-              <TableHead className="w-[70px] text-right">Act Hrs</TableHead>
-              <TableHead className="w-[100px]">Updated</TableHead>
-              <TableHead className="w-[80px] text-center">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedTickets.map(t => {
-              const { estHours, actHours, isLocked, age } = getTicketMeta(t);
-              const isEscAck = t.isEscalated && t.escalationAcknowledgedAt;
-              return (
-                <TableRow key={t.id} onClick={() => openTicket(t.id)} className={`cursor-pointer hover:bg-surface-muted/40 transition-colors ${isLocked ? 'bg-surface-muted/25' : ''} ${isEscAck ? 'border-l-4 border-l-destructive' : ''}`}>
-                  <TableCell className="font-bold text-ink-secondary whitespace-nowrap">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span>{t.ticketNumber || t.id}</span>
-                      {isEscAck && (
-                        <Badge variant="destructive" className="text-[11px] font-bold py-0.5 px-1.5 uppercase leading-none h-4">
-                          TOP PRIORITY
-                        </Badge>
-                      )}
-                      {isLocked && <Lock size={9} className="text-ink-muted" />}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-semibold text-ink-secondary whitespace-nowrap truncate max-w-[150px]" title={t.organization}>
-                    {t.organization}
-                  </TableCell>
-                  <TableCell className="min-w-[200px] max-w-[320px] truncate" title={t.title}>
-                    <div className="flex items-center gap-1.5 truncate">
-                      <Link href={`/consultant/tickets/${t.id}`} className="font-bold text-ink hover:text-blue-600 transition-colors truncate">
-                        {t.title}
-                      </Link>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[11px] font-bold uppercase bg-surface-muted text-ink-secondary border-line hover:bg-surface-muted">
-                      {t.sapModule}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <PriorityBadge priority={t.priority} />
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={t.status} />
-                  </TableCell>
-                  <TableCell className="text-ink-secondary text-[11px] whitespace-nowrap">
-                    {age}d old
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-ink-secondary">
-                    {estHours.toFixed(1)}h
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-success">
-                    {actHours.toFixed(1)}h
-                  </TableCell>
-                  <TableCell className="text-ink-muted text-[11px] whitespace-nowrap">
-                    {new Date(t.updatedAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Link href={`/consultant/tickets/${t.id}`}>
-                        <Button size="icon" variant="outline" className="h-7 w-7 text-ink-secondary cursor-pointer">
-                          <Eye size={12} />
-                        </Button>
-                      </Link>
-                      <TicketActionMenu t={t} />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-
-            {paginatedTickets.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={11} className="py-20 text-center text-ink-muted italic font-sans">
-                  <Flag size={24} className="mx-auto mb-2 opacity-30" />
-                  No tickets found matching your query filters.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+    <TanstackTable
+      columns={consultantTicketColumns}
+      data={filteredTickets}
+      pageSize={12}
+      initialSort={[{ id: 'updated', desc: true }]}
+      onRowClick={(t) => openTicket(t.id)}
+      rowClassName={(t) => { const { isLocked } = getTicketMeta(t); const isEscAck = t.isEscalated && t.escalationAcknowledgedAt; return `${isLocked ? 'bg-surface-muted/25 ' : ''}${isEscAck ? 'border-l-4 border-l-destructive' : ''}`.trim() || undefined; }}
+      emptyTitle="No tickets found"
+      emptyDescription="No tickets match your query filters."
+    />
   );
 
   // ── MODAL FORMS ──
@@ -1143,8 +1096,8 @@ export default function ConsultantMyTicketsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Pagination (card view; compact list paginates internally) */}
+      {viewMode === 'card' && totalPages > 1 && (
         <div className="flex items-center justify-between pt-4 border-t border-line">
           <span className="text-[11px] text-ink-secondary uppercase tracking-wider">
             Page {currentPage} of {totalPages} · {filteredTickets.length} tickets
