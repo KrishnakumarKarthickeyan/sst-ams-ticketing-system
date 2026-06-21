@@ -12,7 +12,7 @@
  *
  * Reached only through the server route /api/notify. Never imported by client code.
  */
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { buildAdaptiveCard, postToTeams } from './teams';
 
 export type NotifyEvent =
@@ -60,29 +60,54 @@ const getAdminClient = () => {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 };
 
-export async function notify(event: NotifyEvent, payload: NotifyPayload): Promise<void> {
-  // (a) ALWAYS — in-app rows via the existing create_notification RPC (one per recipient).
-  const admin = getAdminClient();
-  if (admin) {
-    const recipients = (payload.recipients || []).filter((r) => typeof r === 'string' && UUID_RE.test(r));
-    await Promise.all(
-      recipients.map(async (userId) => {
-        try {
-          const { error } = await admin.rpc('create_notification', {
-            p_user_id: userId,
-            p_title: payload.title,
-            p_message: payload.message,
-            p_ticket_id: payload.ticketId ?? null,
-            p_type: payload.type ?? event,
-            p_link_path: payload.linkPath ?? null,
-          });
-          if (error) console.warn('[notify] create_notification failed:', error.message);
-        } catch (err) {
-          console.error('[notify] create_notification threw:', err);
-        }
-      }),
-    );
+/** Events that are time-driven (no single actor) and may be detected concurrently. */
+const DEDUPE_EVENTS = new Set<string>(['sla_breached', 'sla_at_risk']);
+
+/**
+ * @param db  The request's cookie-authenticated Supabase client. The in-app insert
+ *            goes through the EXISTING create_notification RPC, which is SECURITY
+ *            DEFINER and requires an authenticated caller (auth.uid()), so it must
+ *            run under the user's session — exactly as the old client path did.
+ */
+export async function notify(event: NotifyEvent, payload: NotifyPayload, db: SupabaseClient): Promise<void> {
+  // SLA breach/at-risk can be detected by many clients at once. De-dupe at the
+  // source using the service-role client (bypasses RLS, sees every user's rows):
+  // if a notification of this type already exists for the ticket, the breach was
+  // already announced — skip BOTH the in-app insert and Teams so the event posts
+  // at most once, ever, regardless of how many browsers fire it.
+  if (DEDUPE_EVENTS.has(event) && payload.ticketId) {
+    const admin = getAdminClient();
+    if (admin) {
+      const { data: existing } = await admin
+        .from('notifications')
+        .select('id')
+        .eq('ticket_id', payload.ticketId)
+        .eq('type', payload.type ?? event)
+        .limit(1);
+      if (existing && existing.length > 0) return;
+    }
   }
+
+  // (a) ALWAYS — in-app rows via the existing create_notification RPC (one per
+  // recipient), under the user's session so the SECURITY DEFINER auth check passes.
+  const recipients = (payload.recipients || []).filter((r) => typeof r === 'string' && UUID_RE.test(r));
+  await Promise.all(
+    recipients.map(async (userId) => {
+      try {
+        const { error } = await db.rpc('create_notification', {
+          p_user_id: userId,
+          p_title: payload.title,
+          p_message: payload.message,
+          p_ticket_id: payload.ticketId ?? null,
+          p_type: payload.type ?? event,
+          p_link_path: payload.linkPath ?? null,
+        });
+        if (error) console.warn('[notify] create_notification failed:', error.message);
+      } catch (err) {
+        console.error('[notify] create_notification threw:', err);
+      }
+    }),
+  );
 
   // (b) SELECTED events only → Microsoft Teams. Fire-and-forget; never throws.
   // The webhook URL is read solely inside teams.ts (postToTeams no-ops if unset),

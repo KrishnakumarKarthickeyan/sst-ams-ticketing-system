@@ -44,7 +44,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'bad request' }, { status: 400 });
     }
 
-    await notify(event, payload as NotifyPayload);
+    // Pass the user's authenticated client: the create_notification RPC is SECURITY
+    // DEFINER and requires auth.uid(), so the insert runs under the caller's session.
+    await notify(event, payload as NotifyPayload, supabase);
     return NextResponse.json({ ok: true });
   } catch (err) {
     // Soft-fail: never break the originating user action over a notification problem.

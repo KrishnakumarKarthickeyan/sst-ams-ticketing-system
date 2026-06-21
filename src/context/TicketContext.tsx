@@ -636,6 +636,61 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // realtime — the previous schema-wide '*' subscription caused constant full refetches
   // that blocked navigation while users were inside a ticket.
   const ticketRefetchTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // ── SLA breach / at-risk → Microsoft Teams + in-app (assigned consultants + managers) ──
+  // SLA status is time-driven, so there is no single actor handler. We detect the
+  // crossing client-side, but de-dupe three ways so the event posts at most once:
+  //   1) a per-session ref (don't re-fire while this tab is open),
+  //   2) the current user's loaded notifications (already announced for me),
+  //   3) the server dispatcher's source-of-truth de-dupe (handles many browsers).
+  // Gated to managers/admins to keep the trigger near a single authority; the
+  // recipients still include each ticket's assigned consultants. (The fully
+  // authoritative trigger is the server escalate_breached_tickets cron calling
+  // /api/notify — this client path keeps it working until that is scheduled.)
+  const slaNotifiedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    if (user?.role !== 'Manager' && user?.role !== 'SuperAdmin') return;
+    const managerIds = (profiles || [])
+      .filter(p => p.role === 'Manager' || p.role === 'SuperAdmin')
+      .map(p => p.id);
+    for (const t of tickets) {
+      const st = t.slaStatus;
+      if (st !== 'Breached' && st !== 'At Risk') continue;
+      const event = st === 'Breached' ? 'sla_breached' : 'sla_at_risk';
+      // Skip stale breaches (older than 48h) so a first load can't burst the channel.
+      if (event === 'sla_breached' && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable') {
+        const due = new Date(t.slaDueAt).getTime();
+        if (!Number.isNaN(due) && Date.now() - due > 48 * 60 * 60 * 1000) continue;
+      }
+      const key = `${t.id}:${event}`;
+      if (slaNotifiedRef.current.has(key)) continue;
+      if (notifications.some(n => n.ticketId === t.id && n.type === event)) {
+        slaNotifiedRef.current.add(key);
+        continue;
+      }
+      slaNotifiedRef.current.add(key);
+      const consultantIds = [
+        t.leadConsultantId,
+        t.assignedConsultantId,
+        ...(t.consultantEfforts || []).filter(e => !e.isDeleted).map(e => e.consultantId),
+      ].filter((v): v is string => typeof v === 'string' && v.length > 0);
+      const recipients = Array.from(new Set([...consultantIds, ...managerIds]));
+      if (recipients.length === 0) continue;
+      void dispatchNotify(event, {
+        recipients,
+        type: event,
+        title: event === 'sla_breached' ? 'SLA Breached' : 'SLA At Risk',
+        message: `Ticket ${t.ticketNumber || t.id} (${t.priority}) for ${t.organization} is ${event === 'sla_breached' ? 'past its SLA due time' : 'approaching its SLA due time'}.`,
+        ticketId: t.id,
+        ticketNumber: t.ticketNumber,
+        priority: t.priority,
+        customerOrg: t.organization,
+        linkPath: `/manager/tickets/${t.id}`,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets, notifications, user?.role, profiles]);
   const fetchTicketByIdRef = useRef<(id: string) => Promise<any>>(async () => null);
 
   const scheduleTicketRefetch = (ticketId: string) => {
@@ -1652,18 +1707,22 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const mappedTicket = mapDbTicket(dbTicket, dbProfiles || [], dbContacts || [], orgMap, slaTargetsByOrg);
           setTickets(prev => [mappedTicket, ...prev]);
 
-          // Send asynchronous background notifications
+          // Send asynchronous background notifications. New CRITICAL tickets also
+          // fan out to Microsoft Teams (once, via the dispatcher); other priorities
+          // stay in-app only. One dispatchNotify → in-app rows for all managers.
           const managers = (profiles || []).filter(p => p.role === 'Manager');
-          for (const mgr of managers) {
-            await createDBNotification({
-              userId: mgr.id,
-              type: 'ticket_created',
-              title: `New Ticket Created`,
-              message: `Ticket #${mappedTicket.ticketNumber || ticketId.slice(0, 8)}: "${data.title}" has been created.`,
-              ticketId: ticketId,
-              linkPath: `/manager/tickets/${ticketId}`
-            });
-          }
+          const isCriticalTicket = data.priority === 'Critical';
+          await dispatchNotify(isCriticalTicket ? 'ticket_created_critical' : 'ticket_created', {
+            recipients: managers.map(m => m.id),
+            type: 'ticket_created',
+            title: isCriticalTicket ? 'New Critical Ticket' : 'New Ticket Created',
+            message: `Ticket #${mappedTicket.ticketNumber || ticketId.slice(0, 8)}: "${data.title}" has been created.`,
+            ticketId: ticketId,
+            ticketNumber: mappedTicket.ticketNumber,
+            priority: data.priority,
+            customerOrg: mappedTicket.organization,
+            linkPath: `/manager/tickets/${ticketId}`,
+          });
           if (consultantId) {
             await createDBNotification({
               userId: consultantId,
@@ -1759,18 +1818,20 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           new_value: `${severity} Severity Escalation`
         });
 
-        // Notify all managers and super-admins
+        // Notify all managers and super-admins — once, in-app for all + a single
+        // Microsoft Teams post (escalation_raised is a Teams-enabled event).
         const managersAndAdmins = (profiles || []).filter(p => p.role === 'Manager' || p.role === 'SuperAdmin');
-        for (const target of managersAndAdmins) {
-          await createDBNotification({
-            userId: target.id,
-            type: 'escalation_raised',
-            title: 'Ticket Escalated by Customer',
-            message: `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}". Reason: "${reason}"`,
-            ticketId: ticketId,
-            linkPath: `/manager/tickets/${ticketId}`
-          });
-        }
+        await dispatchNotify('escalation_raised', {
+          recipients: managersAndAdmins.map(t => t.id),
+          type: 'escalation_raised',
+          title: 'Ticket Escalated by Customer',
+          message: `${actorName} has escalated ticket ${currentTicket?.ticketNumber || ticketId}: "${currentTicket?.title || ''}". Reason: "${reason}"`,
+          ticketId: ticketId,
+          ticketNumber: currentTicket?.ticketNumber,
+          priority: currentTicket?.priority,
+          customerOrg: currentTicket?.organization,
+          linkPath: `/manager/tickets/${ticketId}`,
+        });
 
         await fetchData();
         return { success: true };
@@ -3110,9 +3171,12 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (isSupabaseConfigured && resolvedUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
       // Persist through the single server dispatcher (notify → create_notification RPC).
-      // In-app behaviour is identical (same SECURITY DEFINER RPC, same row); the
-      // dispatcher additionally fans the selected events out to Microsoft Teams.
-      await dispatchNotify(data.type ?? 'system', {
+      // In-app behaviour is identical (same SECURITY DEFINER RPC, same row). This
+      // per-recipient helper is ALWAYS in-app only — it dispatches the non-Teams
+      // 'inapp' event so a `type` that happens to match a Teams event name can never
+      // trigger a duplicate channel post. The six Teams events are dispatched
+      // explicitly (once, with all recipients) from their handlers.
+      await dispatchNotify('inapp', {
         recipients: [resolvedUuid],
         title: data.title,
         message: data.message,
@@ -3168,14 +3232,19 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
         });
 
+        // Escalation acknowledged → customer in-app + a single Microsoft Teams post
+        // for the event. Consultant in-app notifications below stay in-app only.
         if (customerUserId) {
-          await createDBNotification({
-            userId: customerUserId,
+          await dispatchNotify('escalation_acknowledged', {
+            recipients: [customerUserId],
             type: 'escalation_acknowledged',
             title: 'Escalation Acknowledged',
             message: `Your escalation for ticket ${ticketObj.ticketNumber || ticketObj.id} has been acknowledged. Your support team is actively working on this as a top priority.`,
             ticketId: ticketId,
-            linkPath: `/customer/tickets/${ticketId}`
+            ticketNumber: ticketObj.ticketNumber,
+            priority: ticketObj.priority,
+            customerOrg: ticketObj.organization,
+            linkPath: `/customer/tickets/${ticketId}`,
           });
         }
 
@@ -4732,12 +4801,21 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
     syncTickets(updated);
 
-    createSystemNotification(
-      'manager@supportstudio.com',
-      'Closure Request Raised',
-      `Primary consultant ${consultantName} has submitted actual hours and requested closure for ticket ${ticketId}. Awaiting Manager Approval.`,
-      ticketId
-    );
+    // Closure pending approval → real managers/admins (resolved from profiles, not a
+    // hardcoded address), in-app + a single Microsoft Teams post for the event.
+    const closureTicket = tickets.find(t => t.id === ticketId);
+    const closureManagers = (profiles || []).filter(p => p.role === 'Manager' || p.role === 'SuperAdmin');
+    await dispatchNotify('closure_pending_approval', {
+      recipients: closureManagers.map(m => m.id),
+      type: 'closure_pending',
+      title: 'Closure Request — Approval Needed',
+      message: `Primary consultant ${consultantName} submitted actual hours and requested closure for ticket ${closureTicket?.ticketNumber || ticketId}. Awaiting manager approval.`,
+      ticketId: ticketId,
+      ticketNumber: closureTicket?.ticketNumber,
+      priority: closureTicket?.priority,
+      customerOrg: closureTicket?.organization,
+      linkPath: `/manager/tickets/${ticketId}`,
+    });
 
     return { success: true };
   };
