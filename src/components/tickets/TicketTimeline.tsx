@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { Ticket, Comment, EffortLog, TicketHourEstimate, TicketClosureRequest, AuditHistory } from '../../types/ticket';
 import { Clock, Plus, Check, Play, UserCheck, AlertCircle, ArrowUpRight, MessageSquare, Paperclip, ChevronRight, FileText, CheckCircle2, XCircle, Activity, Filter, ChevronDown, ChevronUp, RotateCcw, Lock, Unlock, Zap } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
 interface TicketTimelineProps {
   ticket: Ticket;
@@ -470,27 +471,22 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
           </p>
         </div>
         
-        {/* Filter Pills */}
-        <div className="flex flex-wrap gap-1">
+        {/* Filter — shadcn ToggleGroup */}
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(v) => v && setFilter(v as FilterType)}
+          className="flex-wrap bg-surface-subtle"
+        >
           {filterOptions.filter(f => f.count > 0 || f.key === 'all').map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all duration-200 ${
-                filter === f.key
-                  ? 'bg-ink text-white shadow-card'
-                  : 'bg-surface-subtle text-ink-secondary hover:bg-surface-subtle border border-line'
-              }`}
-            >
+            <ToggleGroupItem key={f.key} value={f.key} aria-label={f.label} className="gap-1.5 px-2.5 py-1 text-[11px] normal-case tracking-normal">
               {f.label}
-              <span className={`text-[11px] px-1 py-px rounded-full font-bold ${
-                filter === f.key ? 'bg-surface/20 text-white' : 'bg-zinc-200/80 text-ink-secondary'
-              }`}>
+              <span className="rounded-full bg-surface-muted px-1.5 text-[10px] font-bold text-ink-secondary data-[state=on]:bg-surface-subtle">
                 {f.count}
               </span>
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
 
       {/* Activity timeline — redesigned visuals; event data, wording and role
@@ -523,7 +519,8 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
                     const roleBadge = getRoleBadge(item.role);
                     const isExpanded = expanded[item.id];
                     const isLatest = item.id === filteredItems[0]?.id;
-                    const hasDetails = !!(item.oldValue || item.newValue || item.remarks || (item.attachments && item.attachments.length > 0));
+                    const hasValueChange = !!(item.oldValue || item.newValue);
+                    const hasExpandable = !!(item.remarks || (item.attachments && item.attachments.length > 0));
 
                     return (
                       <div key={item.id} className="relative flex gap-3 pb-4 last:pb-1">
@@ -551,29 +548,35 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
                           {/* Event sentence — wording unchanged */}
                           <button
                             type="button"
-                            onClick={() => hasDetails && toggleExpand(item.id)}
-                            className={`mt-1 flex w-full items-start gap-1 text-left ${hasDetails ? 'cursor-pointer' : 'cursor-default'}`}
+                            onClick={() => hasExpandable && toggleExpand(item.id)}
+                            className={`mt-1 flex w-full items-start gap-1 text-left ${hasExpandable ? 'cursor-pointer' : 'cursor-default'}`}
                           >
                             <span className="text-[12px] leading-snug text-ink-secondary">{formatTimelineEvent(item)}</span>
-                            {hasDetails && (
+                            {hasExpandable && (
                               <span className="mt-0.5 flex-shrink-0 text-ink-muted">{isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}</span>
                             )}
                           </button>
 
-                          {/* Expanded details — unchanged */}
-                          {isExpanded && hasDetails && (
-                            <div className="mt-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
-                              {(item.oldValue || item.newValue) && (
-                                <div className="flex items-center gap-2 rounded-lg border border-line/70 bg-surface-muted px-3 py-1.5 text-[11px]">
-                                  {item.oldValue && (
-                                    <>
-                                      <span className="text-ink-muted line-through">{item.oldValue}</span>
-                                      <ChevronRight size={12} className="shrink-0 text-ink-muted" />
-                                    </>
-                                  )}
-                                  <span className="font-semibold text-ink">{item.newValue}</span>
-                                </div>
+                          {/* Inline value change — small muted chips, always visible (not raw text) */}
+                          {hasValueChange && (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                              {item.oldValue && (
+                                <span className="inline-flex items-center rounded-md border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-ink-muted line-through">
+                                  {item.oldValue}
+                                </span>
                               )}
+                              {item.oldValue && item.newValue && <ChevronRight size={11} className="flex-shrink-0 text-ink-muted" />}
+                              {item.newValue && (
+                                <span className="inline-flex items-center rounded-md border border-line bg-surface-subtle px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+                                  {item.newValue}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Expanded details — remarks + attachments (long content) */}
+                          {isExpanded && hasExpandable && (
+                            <div className="mt-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
                               {item.remarks && (
                                 <div className="whitespace-pre-wrap rounded-lg border border-line/50 bg-surface-muted/60 px-3 py-2 text-[11px] leading-relaxed text-ink-secondary">
                                   {highlightMentions(item.remarks)}
