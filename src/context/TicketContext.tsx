@@ -801,6 +801,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       getTargetHours(t.priority, slaTargets[t.organization_id] || DEFAULT_SLA_TARGETS),
     );
     const getProfile = (id: string) => dbProfiles.find(p => p.id === id || p.full_name === id || p.email === id);
+    // Safety net: never let a raw UUID surface as a human-readable label anywhere in the UI.
+    const isUuid = (v: any) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const noUuid = (v: any, fallback = 'System') => (!v || isUuid(v) ? fallback : v);
     const reqProfile = t.requested_by_profile || getProfile(t.requested_by);
     const createdProfile = t.created_by_profile || getProfile(t.created_by_user);
     const consultant = getProfile(t.assigned_consultant_id);
@@ -823,9 +826,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ticketNumber: t.ticket_number || t.id,
       title: t.title,
       description: t.description,
-      organization: (t.organization_id ? activeOrgMap[t.organization_id] : null) || (t.organizations as any)?.name || t.organization_id, // Organization Name
+      organization: (t.organization_id ? activeOrgMap[t.organization_id] : null) || (t.organizations as any)?.name || noUuid(t.organization_id, 'Organization'), // Organization Name
       organizationId: t.organization_id,
-      requestedBy: reqProfile?.full_name || t.created_by_name || t.requested_by,
+      requestedBy: reqProfile?.full_name || noUuid(t.created_by_name || t.requested_by, 'Customer'),
       requestedByEmail: reqProfile?.email || '',
       requestedByPhone: requestedByPhone,
       sapModule: t.sap_module as SAPModule,
@@ -878,7 +881,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   fileUrl: a.file_url,
                   fileType: a.file_type || '',
                   fileSize: a.file_size || 0,
-                  uploadedBy: a.uploaded_by,
+                  uploadedBy: getProfile(a.uploaded_by)?.full_name || noUuid(a.uploaded_by),
                   visibility: c.is_internal ? 'internal' : 'public',
                   createdAt: a.created_at
                 }))
@@ -898,7 +901,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           fileUrl: a.file_path,
           fileType: a.mime_type || '',
           fileSize: a.file_size || 0,
-          uploadedBy: getProfile(a.uploaded_by)?.full_name || a.uploaded_by,
+          uploadedBy: getProfile(a.uploaded_by)?.full_name || noUuid(a.uploaded_by),
           visibility: 'public',
           createdAt: a.created_at
         })) : []),
@@ -913,7 +916,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             fileUrl: a.file_url,
             fileType: a.file_type || '',
             fileSize: a.file_size || 0,
-            uploadedBy: getProfile(a.uploaded_by)?.full_name || a.uploaded_by,
+            uploadedBy: getProfile(a.uploaded_by)?.full_name || noUuid(a.uploaded_by),
             visibility: comment?.is_internal ? 'internal' : 'public',
             createdAt: a.created_at
           };
@@ -945,7 +948,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return {
           id: h.id,
           ticketId: h.ticket_id,
-          changedBy: historyActor?.full_name || h.changed_by,
+          changedBy: historyActor?.full_name || noUuid(h.changed_by),
           fieldChanged: h.field_changed,
           oldValue: h.old_value || '',
           newValue: h.new_value || '',
@@ -979,7 +982,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return {
           id: esc.id,
           ticketId: esc.ticket_id,
-          escalatedBy: escActor?.full_name || esc.escalated_by,
+          escalatedBy: escActor?.full_name || noUuid(esc.escalated_by),
           reason: esc.reason,
           severity: esc.severity,
           status: esc.status,
@@ -987,7 +990,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
       }) : [],
 
-      createdByName: t.created_by_name || createdProfile?.full_name || reqProfile?.full_name || t.requested_by,
+      createdByName: t.created_by_name || createdProfile?.full_name || reqProfile?.full_name || noUuid(t.requested_by, 'Customer'),
       createdByUser: t.created_by_user,
       softDeleteStatus: (t.soft_delete_status as 'Active' | 'Pending Delete' | 'Archived') || 'Active',
       escalationAcknowledgedAt: t.escalation_acknowledged_at,
@@ -995,7 +998,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       escalationAcknowledgedByName: getProfile(t.escalation_acknowledged_by)?.full_name || undefined,
       isEscalated: !!t.is_escalated,
       escalatedAt: t.escalated_at,
-      escalatedBy: t.escalated_by,
+      escalatedBy: getProfile(t.escalated_by)?.full_name || noUuid(t.escalated_by),
       escalationReason: t.escalation_reason,
       sapModules: t.ticket_modules && t.ticket_modules.length > 0
         ? t.ticket_modules.map((m: any) => m.module_id as SAPModule)
@@ -1006,7 +1009,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return {
           id: r.id,
           ticketId: r.ticket_id,
-          requestedBy: reqActor?.full_name || r.requested_by,
+          requestedBy: reqActor?.full_name || noUuid(r.requested_by, 'Customer'),
           requestedAt: r.requested_at,
           reason: r.reason,
           managerApproval: r.manager_approval as 'Pending' | 'Approved' | 'Rejected',
@@ -1065,7 +1068,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return {
           id: r.id,
           ticketId: r.ticket_id,
-          requestedBy: reqActor?.full_name || r.requested_by,
+          requestedBy: reqActor?.full_name || noUuid(r.requested_by, 'Customer'),
           functionalActualHours,
           technicalActualHours,
           totalActualHours,
@@ -1204,7 +1207,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         fileUrl: a.file_url,
         fileType: a.file_type || '',
         fileSize: a.file_size || 0,
-        uploadedBy: a.uploaded_by,
+        uploadedBy: getProfile(a.uploaded_by)?.full_name || noUuid(a.uploaded_by),
         createdAt: a.created_at
       })) : []
     };

@@ -277,7 +277,7 @@ export default function CustomerDashboardPage() {
 
   // F. Recent Activity chronological feed
   const timelineActivityFeed = useMemo(() => {
-    const feed: { id: string; type: 'create' | 'comment' | 'attachment' | 'status'; timestamp: string; title: string; desc: string; ticketId: string }[] = [];
+    const feed: { id: string; type: 'create' | 'comment' | 'attachment' | 'status'; timestamp: string; title: string; desc: string; ticketId: string; ticketNumber: string }[] = [];
 
     companyTickets.forEach(t => {
       // Creation
@@ -287,7 +287,7 @@ export default function CustomerDashboardPage() {
         timestamp: t.createdAt,
         title: `Ticket Created: ${t.ticketNumber}`,
         desc: `"${t.title}" was submitted by ${t.requestedBy || 'Customer'}.`,
-        ticketId: t.id
+        ticketId: t.id, ticketNumber: t.ticketNumber || '—'
       });
 
       // Comments
@@ -298,7 +298,7 @@ export default function CustomerDashboardPage() {
           timestamp: c.createdAt,
           title: `New Comment on ${t.ticketNumber}`,
           desc: `[${c.authorRole || 'Customer'}] ${c.authorName || 'User'}: "${(c.content || '').slice(0, 80)}${(c.content || '').length > 80 ? '...' : ''}"`,
-          ticketId: t.id
+          ticketId: t.id, ticketNumber: t.ticketNumber || '—'
         });
       });
 
@@ -310,7 +310,7 @@ export default function CustomerDashboardPage() {
           timestamp: a.createdAt,
           title: `File Uploaded on ${t.ticketNumber}`,
           desc: `${a.uploadedBy} uploaded "${a.fileName}" (${(a.fileSize / 1024).toFixed(0)} KB)`,
-          ticketId: t.id
+          ticketId: t.id, ticketNumber: t.ticketNumber || '—'
         });
       });
 
@@ -324,7 +324,7 @@ export default function CustomerDashboardPage() {
             timestamp: h.createdAt,
             title: `State Transition on ${t.ticketNumber}`,
             desc: `Status mutated from "${h.oldValue || ''}" to "${h.newValue || ''}" by ${h.changedBy || 'System'}`,
-            ticketId: t.id
+            ticketId: t.id, ticketNumber: t.ticketNumber || '—'
           });
         });
     });
@@ -1057,7 +1057,7 @@ export default function CustomerDashboardPage() {
                         <div className="flex items-center gap-1 text-[11px] text-ink-muted">
                           <span>Ticket Registry:</span>
                           <Link href={`/customer/tickets/${feedItem.ticketId}`} className="font-bold text-ink hover:underline">
-                            {feedItem.ticketId}
+                            {feedItem.ticketNumber}
                           </Link>
                         </div>
                       </div>
@@ -1230,7 +1230,7 @@ export default function CustomerDashboardPage() {
                       </Badge>
                     </div>
                     <span className="text-[11px] text-ink-muted">
-                      ID: {activeContract.id}
+                      Valid through {activeContract.endDate ? new Date(activeContract.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                     </span>
                   </div>
 
