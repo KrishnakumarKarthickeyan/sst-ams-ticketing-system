@@ -73,7 +73,7 @@ export default function CustomerDashboardPage() {
 
   // --- FILTERS & STATE ---
   const [filters, setFilters] = React.useState({
-    period: 'This Year',
+    period: 'This Month',
     dateFrom: '',
     dateTo: '',
     status: 'All',
@@ -738,7 +738,7 @@ export default function CustomerDashboardPage() {
             variant="ghost"
             size="sm"
             onClick={() => setFilters({
-              period: 'This Year',
+              period: 'This Month',
               dateFrom: '',
               dateTo: '',
               status: 'All',
