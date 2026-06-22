@@ -52,6 +52,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Badge } from '../../../../components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '../../../../components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../../components/ui/tabs';
+import { TicketTimeline } from '../../../../components/tickets/TicketTimeline';
 import {
   Dialog,
   DialogContent,
@@ -1064,6 +1065,17 @@ export default function CustomerTicketDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Operation Timeline — shared, redesigned TicketTimeline (open & closed tickets) */}
+              <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
+                <div className="px-6 py-4 border-b border-line flex items-center gap-2">
+                  <History size={16} className="text-indigo-500" />
+                  <h3 className="text-sm font-semibold text-ink">Operation Timeline</h3>
+                </div>
+                <div className="p-6">
+                  <TicketTimeline ticket={ticket} userRole="Customer" />
+                </div>
+              </div>
             </TabsContent>
 
             {/* TAB 2: Conversation */}

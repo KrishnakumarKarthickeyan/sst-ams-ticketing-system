@@ -338,15 +338,12 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
     return <Activity size={14} />;
   };
 
-  const getNodeColors = (type: TimelineItem['type'], action: string) => {
-    const act = action.toLowerCase();
-    if (act.includes('approved') || act.includes('closed')) return { ring: 'ring-emerald-200', bg: 'bg-emerald-50', text: 'text-success' };
-    if (act.includes('rejected')) return { ring: 'ring-red-200', bg: 'bg-red-50', text: 'text-critical' };
-    if (act.includes('escalat')) return { ring: 'ring-orange-200', bg: 'bg-orange-50', text: 'text-warning' };
-    if (type === 'effort') return { ring: 'ring-blue-200', bg: 'bg-blue-50', text: 'text-blue-500' };
-    if (type === 'estimate') return { ring: 'ring-indigo-200', bg: 'bg-indigo-50', text: 'text-indigo-500' };
-    if (type === 'closure') return { ring: 'ring-amber-200', bg: 'bg-amber-50', text: 'text-warning' };
-    return { ring: 'ring-zinc-200', bg: 'bg-surface-muted', text: 'text-ink-secondary' };
+  // Initials for the actor avatar (e.g. "Faisal Al-Qahtani" -> "FA").
+  const getInitials = (name: string): string => {
+    const clean = (name || '').replace(/\(.*?\)/g, '').trim();
+    if (!clean || /system/i.test(clean)) return 'SY';
+    const parts = clean.split(/\s+/).filter(Boolean);
+    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || clean.slice(0, 2).toUpperCase();
   };
 
   const getRoleBadge = (role: TimelineItem['role']) => {
@@ -402,7 +399,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
       } else if (date.toDateString() === yesterday.toDateString()) {
         label = 'Yesterday';
       } else {
-        label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        label = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
       }
       
       if (label !== currentLabel) {
@@ -496,94 +493,96 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
         </div>
       </div>
 
-      {/* Timeline */}
+      {/* Activity timeline — redesigned visuals; event data, wording and role
+          resolution are unchanged (see timelineItems / formatTimelineEvent / getPerformerInfo). */}
       {filteredItems.length === 0 ? (
-        <div className="py-12 text-center">
-          <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-surface-subtle flex items-center justify-center">
+        <div className="rounded-lg border border-dashed border-line bg-surface-muted/40 py-12 text-center">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface-subtle">
             <Activity size={18} className="text-ink-muted" />
           </div>
-          <p className="text-sm text-ink-secondary font-medium">No events found</p>
-          <p className="text-xs text-ink-muted mt-0.5">Try selecting a different filter</p>
+          <p className="text-sm font-medium text-ink-secondary">No activity yet</p>
+          <p className="mt-0.5 text-xs text-ink-muted">Events will appear here as the ticket progresses.</p>
         </div>
       ) : (
-        <div className="relative">
-          {groupedByDate.map((group, gIdx) => (
-            <div key={group.label} className={gIdx > 0 ? 'mt-6' : ''}>
-              {/* Date Group Header */}
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider whitespace-nowrap">
+        <div className="space-y-5">
+          {groupedByDate.map((group) => (
+            <div key={group.label}>
+              {/* Day separator */}
+              <div className="mb-3 flex items-center gap-3">
+                <span className="rounded-full bg-surface-subtle px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink-secondary whitespace-nowrap">
                   {group.label}
                 </span>
-                <div className="flex-1 h-px bg-zinc-200" />
+                <div className="h-px flex-1 bg-line" />
               </div>
 
-              {/* Events */}
-              <div className="relative ml-3">
-                {/* Vertical Line */}
-                <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gradient-to-b from-zinc-300 via-zinc-200 to-transparent" />
-
-                <div className="space-y-1.5">
-                  {group.items.map((item, idx) => {
-                    const colors = getNodeColors(item.type, item.action);
+              {/* Rail + nodes */}
+              <div className="relative">
+                <div className="pointer-events-none absolute left-[15px] top-3 bottom-3 w-px bg-line" aria-hidden />
+                <div className="space-y-0">
+                  {group.items.map((item) => {
                     const roleBadge = getRoleBadge(item.role);
                     const isExpanded = expanded[item.id];
+                    const isLatest = item.id === filteredItems[0]?.id;
                     const hasDetails = !!(item.oldValue || item.newValue || item.remarks || (item.attachments && item.attachments.length > 0));
 
                     return (
-                      <div key={item.id} className="relative flex gap-3 group">
-                        {/* Node */}
-                        <div className={`relative z-10 flex-shrink-0 w-6 h-6 rounded-full ${colors.bg} ring-2 ${colors.ring} flex items-center justify-center shadow-card transition-transform group-hover:scale-110`}>
-                          <span className={colors.text}>{getTimelineIcon(item.type, item.action)}</span>
+                      <div key={item.id} className="relative flex gap-3 pb-4 last:pb-1">
+                        {/* Node — single muted color for past, primary (brand) for the latest/active */}
+                        <div className={`relative z-10 mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border ${isLatest ? 'border-brand bg-brand text-white shadow-card' : 'border-line bg-surface text-ink-secondary'}`}>
+                          {getTimelineIcon(item.type, item.action)}
                         </div>
 
                         {/* Content */}
-                        <div className={`flex-1 min-w-0 pb-3 ${idx < group.items.length - 1 ? '' : ''}`}>
-                          {/* Compact Row */}
-                          <div 
-                            className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer select-none ${hasDetails ? 'hover:opacity-80' : ''}`}
-                            onClick={() => hasDetails && toggleExpand(item.id)}
-                          >
-                            <span className="text-[12px] font-semibold text-ink leading-tight flex-1">
-                              {formatTimelineEvent(item)}
+                        <div className="min-w-0 flex-1">
+                          {/* Actor row: avatar initials + name + role badge + relative time (absolute on hover) */}
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-surface-subtle text-[9px] font-bold uppercase text-ink-secondary">
+                              {getInitials(item.performer)}
                             </span>
-                            <span className="text-[11px] text-ink-muted ml-auto whitespace-nowrap pr-2">
+                            <span className="text-[12px] font-bold text-ink">{item.performer}</span>
+                            <span className={`rounded border px-1.5 py-px text-[10px] font-bold uppercase ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}>
+                              {item.role}
+                            </span>
+                            <span className="ml-auto whitespace-nowrap text-[11px] text-ink-muted" title={new Date(item.date).toLocaleString()}>
                               {formatRelativeTime(item.date)}
                             </span>
-                            {hasDetails && (
-                              <span className="text-ink-muted">
-                                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                              </span>
-                            )}
                           </div>
 
-                          {/* Expanded Details */}
+                          {/* Event sentence — wording unchanged */}
+                          <button
+                            type="button"
+                            onClick={() => hasDetails && toggleExpand(item.id)}
+                            className={`mt-1 flex w-full items-start gap-1 text-left ${hasDetails ? 'cursor-pointer' : 'cursor-default'}`}
+                          >
+                            <span className="text-[12px] leading-snug text-ink-secondary">{formatTimelineEvent(item)}</span>
+                            {hasDetails && (
+                              <span className="mt-0.5 flex-shrink-0 text-ink-muted">{isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}</span>
+                            )}
+                          </button>
+
+                          {/* Expanded details — unchanged */}
                           {isExpanded && hasDetails && (
-                            <div className="mt-2 ml-0.5 space-y-2 animate-in slide-in-from-top-1 duration-200">
-                              {/* Value Change */}
+                            <div className="mt-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
                               {(item.oldValue || item.newValue) && (
-                                <div className="flex items-center gap-2 text-[11px] bg-surface-muted border border-line/70 rounded-lg px-3 py-1.5">
+                                <div className="flex items-center gap-2 rounded-lg border border-line/70 bg-surface-muted px-3 py-1.5 text-[11px]">
                                   {item.oldValue && (
                                     <>
                                       <span className="text-ink-muted line-through">{item.oldValue}</span>
-                                      <ChevronRight size={12} className="text-ink-muted shrink-0" />
+                                      <ChevronRight size={12} className="shrink-0 text-ink-muted" />
                                     </>
                                   )}
-                                  <span className="text-ink font-semibold">{item.newValue}</span>
+                                  <span className="font-semibold text-ink">{item.newValue}</span>
                                 </div>
                               )}
-
-                              {/* Remarks */}
                               {item.remarks && (
-                                <div className="text-[11px] text-ink-secondary leading-relaxed bg-surface-muted/60 border border-line/50 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                                <div className="whitespace-pre-wrap rounded-lg border border-line/50 bg-surface-muted/60 px-3 py-2 text-[11px] leading-relaxed text-ink-secondary">
                                   {highlightMentions(item.remarks)}
                                 </div>
                               )}
-
-                              {/* Attachments */}
                               {item.attachments && item.attachments.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5">
                                   {item.attachments.map((file, fIdx) => (
-                                    <span key={fIdx} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-surface-muted border border-line rounded-md text-[11px] text-ink-secondary">
+                                    <span key={fIdx} className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface-muted px-2 py-0.5 text-[11px] text-ink-secondary">
                                       <Paperclip size={10} className="text-ink-muted" />
                                       {file.fileName}
                                     </span>
