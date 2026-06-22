@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { moduleLabel } from '../../../lib/sap-modules';
 import { useTickets } from '../../../context/TicketContext';
 import { validateTicketCreate } from '../../../lib/schemas/ticket';
 import { useAuth } from '../../../context/AuthContext';
@@ -260,7 +261,7 @@ export default function ManagerCreateTicketPage() {
   const filteredModules = useMemo(() => {
     if (!moduleSearchQuery.trim()) return AVAILABLE_MODULES;
     const q = moduleSearchQuery.toLowerCase();
-    return AVAILABLE_MODULES.filter(m => m.toLowerCase().includes(q));
+    return AVAILABLE_MODULES.filter(m => moduleLabel(m).toLowerCase().includes(q));
   }, [moduleSearchQuery]);
 
   // Toggle SAP module selection
@@ -695,7 +696,7 @@ export default function ManagerCreateTicketPage() {
                                       : 'hover:bg-surface-muted text-ink-secondary'
                                   }`}
                                 >
-                                  <span>{mod}</span>
+                                  <span>{moduleLabel(mod)}</span>
                                   {isChecked && <Check size={11} className="text-white" />}
                                 </div>
                               );
