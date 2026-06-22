@@ -69,7 +69,7 @@ export default function ManagerTicketsPage() {
 
   React.useEffect(() => {
     if (tabParam) {
-      const validTabs = ['all', 'unassigned', 'critical', 'slaBreached', 'raisedToSap', 'customerAction', 'reqClosure', 'reopened', 'closed', 'pendingApprovals'];
+      const validTabs = ['all', 'unassigned', 'critical', 'slaBreached', 'raisedToSap', 'customerAction', 'reqClosure', 'reopened', 'closed', 'escalated', 'pendingApprovals'];
       if (validTabs.includes(tabParam)) {
         setActiveTab(tabParam as any);
       }
@@ -313,6 +313,7 @@ export default function ManagerTicketsPage() {
       reqClosure: countTab('reqClosure'),
       reopened: countTab('reopened'),
       closed: countTab('closed'),
+      escalated: countTab('escalated'),
       pendingApprovals: countTab('pendingApprovals'),
     };
   }, [deskFilteredTickets]);
@@ -447,6 +448,7 @@ export default function ManagerTicketsPage() {
           { id: 'customerAction', label: 'Waiting Client', count: tabCounts.customerAction },
           { id: 'reqClosure', label: 'Req Closure', count: tabCounts.reqClosure },
           { id: 'reopened', label: 'Reopened', count: tabCounts.reopened },
+          { id: 'escalated', label: 'Escalated', count: tabCounts.escalated },
           { id: 'closed', label: 'Closed', count: tabCounts.closed },
           { id: 'pendingApprovals', label: 'Pending Appr', count: tabCounts.pendingApprovals },
         ] as const).map(tab => (

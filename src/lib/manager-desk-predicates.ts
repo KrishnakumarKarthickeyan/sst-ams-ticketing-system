@@ -16,6 +16,7 @@ export type ManagerDeskTab =
   | 'reqClosure'
   | 'reopened'
   | 'closed'
+  | 'escalated'
   | 'pendingApprovals';
 
 /**
@@ -80,6 +81,8 @@ export function matchesTab(tab: ManagerDeskTab, t: Ticket, nowMs: number): boole
       return t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval';
     case 'reopened':
       return t.status === 'Reopened';
+    case 'escalated':
+      return t.status === 'Escalated' || !!t.isEscalated || !!t.escalationFlag;
     case 'closed':
       return t.status === 'Closed';
     case 'pendingApprovals':
