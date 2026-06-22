@@ -5,8 +5,9 @@ import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
-import { 
-  Check, 
+import { moduleLabel } from '../../../lib/sap-modules';
+import {
+  Check,
   ArrowLeft, 
   Send, 
   Upload, 
@@ -207,7 +208,7 @@ export default function CustomerCreateTicketPage() {
   const filteredModules = useMemo(() => {
     if (!moduleSearchQuery.trim()) return AVAILABLE_MODULES;
     const q = moduleSearchQuery.toLowerCase();
-    return AVAILABLE_MODULES.filter(m => m.toLowerCase().includes(q));
+    return AVAILABLE_MODULES.filter(m => moduleLabel(m).toLowerCase().includes(q));
   }, [moduleSearchQuery]);
 
   // Toggle SAP module selection
@@ -649,7 +650,7 @@ export default function CustomerCreateTicketPage() {
                                       : 'hover:bg-surface-muted text-ink-secondary'
                                   }`}
                                 >
-                                  <span>{mod}</span>
+                                  <span>{moduleLabel(mod)}</span>
                                   {isChecked && <Check size={11} className="text-white" />}
                                 </div>
                               );

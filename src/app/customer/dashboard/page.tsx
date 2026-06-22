@@ -73,7 +73,7 @@ export default function CustomerDashboardPage() {
 
   // --- FILTERS & STATE ---
   const [filters, setFilters] = React.useState({
-    period: 'This Year',
+    period: 'This Month',
     dateFrom: '',
     dateTo: '',
     status: 'All',
@@ -329,7 +329,11 @@ export default function CustomerDashboardPage() {
         });
     });
 
+    // Exclude ticket-registry (creation) entries from THIS feed only — they are the
+    // "Ticket Created" registration rows, not operational activity. Comments,
+    // attachments and status transitions remain. Underlying data is untouched.
     return feed
+      .filter(f => f.type !== 'create')
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 10);
   }, [companyTickets]);
@@ -738,7 +742,7 @@ export default function CustomerDashboardPage() {
             variant="ghost"
             size="sm"
             onClick={() => setFilters({
-              period: 'This Year',
+              period: 'This Month',
               dateFrom: '',
               dateTo: '',
               status: 'All',
@@ -1120,18 +1124,18 @@ export default function CustomerDashboardPage() {
                   const monthlyPending = Math.max(0, monthlyLogged - monthlyApproved);
                   const monthlyBurnPct = (monthlyApproved / monthlyAllocated) * 100;
                   
-                  // Color thresholds: <70% default (zinc-950), 70-90% warning (amber-500), >90% destructive (red-600)
+                  // Color thresholds: <70% healthy (success), 70-90% warning, >90% critical
                   const barColorClass = monthlyBurnPct > 90 
-                    ? 'bg-red-650 bg-red-600' 
+                    ? 'bg-critical' 
                     : monthlyBurnPct >= 70 
-                      ? 'bg-amber-500' 
-                      : 'bg-ink';
+                      ? 'bg-warning' 
+                      : 'bg-success';
 
                   const textColorClass = monthlyBurnPct > 90 
                     ? 'text-critical' 
                     : monthlyBurnPct >= 70 
-                      ? 'text-amber-500' 
-                      : 'text-ink';
+                      ? 'text-warning' 
+                      : 'text-success';
 
                   return (
                     <div className="space-y-2">
@@ -1165,18 +1169,18 @@ export default function CustomerDashboardPage() {
                   const totalPending = Math.max(0, totalLogged - totalApproved);
                   const totalBurnPct = (totalApproved / totalContractHours) * 100;
 
-                  // Color thresholds: <70% default (zinc-950), 70-90% warning (amber-500), >90% destructive (red-600)
+                  // Color thresholds: <70% healthy (success), 70-90% warning, >90% critical
                   const barColorClass = totalBurnPct > 90 
-                    ? 'bg-red-650 bg-red-600' 
+                    ? 'bg-critical' 
                     : totalBurnPct >= 70 
-                      ? 'bg-amber-500' 
-                      : 'bg-ink';
+                      ? 'bg-warning' 
+                      : 'bg-success';
 
                   const textColorClass = totalBurnPct > 90 
                     ? 'text-critical' 
                     : totalBurnPct >= 70 
-                      ? 'text-amber-500' 
-                      : 'text-ink';
+                      ? 'text-warning' 
+                      : 'text-success';
 
                   return (
                     <div className="space-y-2">
