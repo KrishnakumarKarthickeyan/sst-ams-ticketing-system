@@ -48,7 +48,9 @@ const AVAILABLE_MODULES = [
 
 const REQUEST_TYPES = [
   'Incident',
+  'Problem Record',
   'Service Request',
+  'Support Request',
   'Change Request',
   'Enhancement Request',
   'Access Request',
