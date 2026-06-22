@@ -59,6 +59,7 @@ import { ChartContainer, ChartTooltipContent } from '../../../components/ui/char
 import { chartColors, priorityColors } from '../../../lib/chart-theme';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { StatCard } from '../../../components/ui/stat-card';
+import { EmptyState } from '../../../components/ui/empty-state';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { RotateCcw } from 'lucide-react';
@@ -276,29 +277,43 @@ export default function CustomerDashboardPage() {
   );
 
   // F. Recent Activity chronological feed
+  type FeedType = 'comment' | 'attachment' | 'status' | 'escalation';
   const timelineActivityFeed = useMemo(() => {
-    const feed: { id: string; type: 'create' | 'comment' | 'attachment' | 'status'; timestamp: string; title: string; desc: string; ticketId: string; ticketNumber: string }[] = [];
+    const feed: { id: string; type: FeedType; timestamp: string; message: string; detail: string; ticketId: string; ticketNumber: string }[] = [];
+
+    // History rows store the event label in field_changed (old/new values are empty),
+    // so map each label to a clean past-tense, role-neutral sentence with ticket_number.
+    const describeHistory = (field: string, actor: string, num: string): { message: string; type: FeedType } | null => {
+      switch (field) {
+        case 'Closed': return { message: `${actor} closed ${num}`, type: 'status' };
+        case 'Assigned':
+        case 'Assigned Lead Consultant':
+        case 'Resource Assigned': return { message: `${actor} updated the assignment on ${num}`, type: 'status' };
+        case 'Hours Submitted':
+        case 'Actual Hours Submitted': return { message: `${actor} logged work on ${num}`, type: 'status' };
+        case 'Estimated Hours Quoted': return { message: `${actor} quoted estimated effort on ${num}`, type: 'status' };
+        case 'Approval Requested': return { message: `${actor} requested approval on ${num}`, type: 'status' };
+        case 'Closure Requested': return { message: `${actor} requested closure of ${num}`, type: 'status' };
+        case 'Status':
+        case 'Status Changed': return { message: `${actor} updated the status of ${num}`, type: 'status' };
+        case 'Escalation Raised': return { message: `${num} was escalated by ${actor}`, type: 'escalation' };
+        // 'Incident Created' / 'Ticket' / 'Comment Added' are excluded (registration / handled elsewhere).
+        default: return null;
+      }
+    };
 
     companyTickets.forEach(t => {
-      // Creation
-      feed.push({
-        id: `create-${t.id}-${t.createdAt}`,
-        type: 'create',
-        timestamp: t.createdAt,
-        title: `Ticket Created: ${t.ticketNumber}`,
-        desc: `"${t.title}" was submitted by ${t.requestedBy || 'Customer'}.`,
-        ticketId: t.id, ticketNumber: t.ticketNumber || '—'
-      });
+      const num = t.ticketNumber || '—';
 
-      // Comments
+      // Comments — role-prefixed actor, past tense, ticket_number.
       (t.comments || []).forEach(c => {
         feed.push({
           id: `comment-${c.id}`,
           type: 'comment',
           timestamp: c.createdAt,
-          title: `New Comment on ${t.ticketNumber}`,
-          desc: `[${c.authorRole || 'Customer'}] ${c.authorName || 'User'}: "${(c.content || '').slice(0, 80)}${(c.content || '').length > 80 ? '...' : ''}"`,
-          ticketId: t.id, ticketNumber: t.ticketNumber || '—'
+          message: `${c.authorName || 'A user'} (${c.authorRole || 'Customer'}) commented on ${num}`,
+          detail: (c.content || '').trim(),
+          ticketId: t.id, ticketNumber: num
         });
       });
 
@@ -308,35 +323,57 @@ export default function CustomerDashboardPage() {
           id: `attachment-${a.id}`,
           type: 'attachment',
           timestamp: a.createdAt,
-          title: `File Uploaded on ${t.ticketNumber}`,
-          desc: `${a.uploadedBy} uploaded "${a.fileName}" (${(a.fileSize / 1024).toFixed(0)} KB)`,
-          ticketId: t.id, ticketNumber: t.ticketNumber || '—'
+          message: `${a.uploadedBy || 'A user'} attached a file to ${num}`,
+          detail: `${a.fileName} · ${(a.fileSize / 1024).toFixed(0)} KB`,
+          ticketId: t.id, ticketNumber: num
         });
       });
 
-      // Status shifts
-      (t.history || [])
-        .filter(h => h.fieldChanged === 'Status')
-        .forEach(h => {
-          feed.push({
-            id: `status-${h.id}`,
-            type: 'status',
-            timestamp: h.createdAt,
-            title: `State Transition on ${t.ticketNumber}`,
-            desc: `Status mutated from "${h.oldValue || ''}" to "${h.newValue || ''}" by ${h.changedBy || 'System'}`,
-            ticketId: t.id, ticketNumber: t.ticketNumber || '—'
-          });
+      // Status transitions & escalations (mapped from the event label)
+      (t.history || []).forEach(h => {
+        const described = describeHistory(h.fieldChanged || '', h.changedBy || 'System', num);
+        if (!described) return;
+        feed.push({
+          id: `hist-${h.id}`,
+          type: described.type,
+          timestamp: h.createdAt,
+          message: described.message,
+          detail: '',
+          ticketId: t.id, ticketNumber: num
         });
+      });
     });
 
-    // Exclude ticket-registry (creation) entries from THIS feed only — they are the
-    // "Ticket Created" registration rows, not operational activity. Comments,
-    // attachments and status transitions remain. Underlying data is untouched.
+    // Latest 15 operational events (creations are excluded — they are registration
+    // rows, not activity). Underlying data is untouched.
     return feed
-      .filter(f => f.type !== 'create')
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 10);
+      .slice(0, 15);
   }, [companyTickets]);
+
+  // Group the feed by calendar day for subtle date separators.
+  const feedByDay = useMemo(() => {
+    const dayLabel = (d: Date) => {
+      const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+      const diff = Math.round((startOf(new Date(SYSTEM_NOW)) - startOf(d)) / 86400000);
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Yesterday';
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    const groups: { label: string; items: typeof timelineActivityFeed }[] = [];
+    const byKey = new Map<string, { label: string; items: typeof timelineActivityFeed }>();
+    timelineActivityFeed.forEach(item => {
+      const d = new Date(item.timestamp);
+      const key = d.toDateString();
+      if (!byKey.has(key)) {
+        const g = { label: dayLabel(d), items: [] as typeof timelineActivityFeed };
+        byKey.set(key, g);
+        groups.push(g);
+      }
+      byKey.get(key)!.items.push(item);
+    });
+    return groups;
+  }, [timelineActivityFeed]);
 
   // Relative Time Helper
   const formatTimeAgo = (dateStr: string) => {
@@ -1025,51 +1062,80 @@ export default function CustomerDashboardPage() {
                 Support Operation Timeline Feed
               </CardTitle>
               <CardDescription className="text-[11px]">
-                Full chronological logging of comments, file attachments, ticket creations, and state changes.
+                Comments, file attachments, status changes and escalations across your tickets.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="relative border-l border-line ml-3 pl-6 space-y-6">
-                {timelineActivityFeed.map((feedItem) => {
-                  const getIconAndColor = () => {
-                    if (feedItem.type === 'create') return { icon: <FileText size={12} />, color: 'bg-ink text-white border-zinc-900' };
-                    if (feedItem.type === 'comment') return { icon: <MessageSquare size={12} />, color: 'bg-surface-subtle text-ink border-line' };
-                    if (feedItem.type === 'attachment') return { icon: <Paperclip size={12} />, color: 'bg-surface-subtle text-ink border-line' };
-                    return { icon: <TrendingUp size={12} />, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-                  };
-                  const { icon, color } = getIconAndColor();
-
-                  return (
-                    <div key={feedItem.id} className="relative group">
-                      {/* Timeline point */}
-                      <span className={`absolute -left-[31px] top-1 flex h-6 w-6 items-center justify-center rounded-full border text-[11px] ${color}`}>
-                        {icon}
-                      </span>
-                      {/* Content */}
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-ink font-sans">{feedItem.title}</span>
-                          <span className="text-[11px] text-ink-muted">{formatTimeAgo(feedItem.timestamp)}</span>
-                        </div>
-                        <p className="text-xs text-ink-secondary font-medium leading-relaxed max-w-3xl">
-                          {feedItem.desc}
-                        </p>
-                        <div className="flex items-center gap-1 text-[11px] text-ink-muted">
-                          <span>Ticket Registry:</span>
-                          <Link href={`/customer/tickets/${feedItem.ticketId}`} className="font-bold text-ink hover:underline">
-                            {feedItem.ticketNumber}
-                          </Link>
-                        </div>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="space-y-4 p-6">
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i} className="flex items-start gap-3">
+                      <Skeleton className="h-7 w-7 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-3 w-2/3" />
+                        <Skeleton className="h-2.5 w-1/4" />
                       </div>
                     </div>
-                  );
-                })}
-                {timelineActivityFeed.length === 0 && (
-                  <div className="text-center text-ink-muted italic text-xs py-4">
-                    No recent workspace operations recorded.
+                  ))}
+                </div>
+              ) : timelineActivityFeed.length === 0 ? (
+                <EmptyState
+                  icon={Activity}
+                  title="No recent activity"
+                  description="Comments, attachments, status changes and escalations on your tickets will appear here."
+                  compact
+                />
+              ) : (
+                <div className="divide-y divide-line">
+                  {feedByDay.map(group => (
+                    <div key={group.label}>
+                      <div className="sticky top-0 z-[1] border-b border-line bg-surface-muted/70 px-6 py-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-muted backdrop-blur-sm">
+                        {group.label}
+                      </div>
+                      <ul>
+                        {group.items.map(item => {
+                          const isLatest = item.id === timelineActivityFeed[0]?.id;
+                          const isSeverity = item.type === 'escalation';
+                          const Icon = item.type === 'comment' ? MessageSquare
+                            : item.type === 'attachment' ? Paperclip
+                              : item.type === 'escalation' ? ShieldAlert
+                                : Activity;
+                          return (
+                            <li key={item.id} className="flex items-start gap-3 px-6 py-3 transition-colors hover:bg-surface-muted/40">
+                              <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
+                                isSeverity ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                  : isLatest ? 'border-brand bg-brand text-white'
+                                    : 'border-line bg-surface-subtle text-ink-secondary'
+                              }`}>
+                                <Icon size={13} />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-baseline justify-between gap-3">
+                                  <p className="truncate text-xs font-semibold text-ink" title={item.message}>{item.message}</p>
+                                  <span className="shrink-0 text-[11px] text-ink-muted" title={new Date(item.timestamp).toLocaleString()}>
+                                    {formatTimeAgo(item.timestamp)}
+                                  </span>
+                                </div>
+                                {item.detail && (
+                                  <p className="mt-0.5 truncate text-[11px] text-ink-muted" title={item.detail}>{item.detail}</p>
+                                )}
+                                <Link href={`/customer/tickets/${item.ticketId}`} className="mt-1 inline-block text-[11px] font-bold text-brand hover:underline">
+                                  {item.ticketNumber}
+                                </Link>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                  <div className="px-6 py-2.5 text-center">
+                    <Link href="/customer/tickets" className="text-[11px] font-semibold text-brand hover:underline">
+                      View all activity →
+                    </Link>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
