@@ -56,7 +56,6 @@ import { Badge } from '../../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { PageHeader } from '../../../components/ui/page-header';
 import { AICard, AIInsightRow } from '../../../components/ui/ai-card';
-import { ManagerTeamCockpit } from '../../../components/analytics/manager-team-cockpit';
 import { ManagerTeamPerformance } from '../../../components/analytics/manager-team-performance';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog';
 import { Skeleton } from '../../../components/ui/skeleton';
@@ -2772,10 +2771,9 @@ export default function ManagerDashboardPage() {
             </div>
           </div>
 
-          {/* Curated team performance (replaces the 10-chart showcase) */}
-          <ManagerTeamCockpit tickets={filteredTickets} loading={loading} now={Date.now()} />
-
-          {/* Team Performance leaderboard + Demand & Quality analytics */}
+          {/* Team Performance + Demand & Quality — single home (titles render once).
+              The former ManagerTeamCockpit duplicated these section titles and was
+              fully hand-rolled (raw table, raw stat divs, ChartFrame); retired. */}
           <ManagerTeamPerformance tickets={filteredTickets} loading={loading} now={Date.now()} />
         </TabsContent>
 
