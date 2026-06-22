@@ -329,7 +329,11 @@ export default function CustomerDashboardPage() {
         });
     });
 
+    // Exclude ticket-registry (creation) entries from THIS feed only — they are the
+    // "Ticket Created" registration rows, not operational activity. Comments,
+    // attachments and status transitions remain. Underlying data is untouched.
     return feed
+      .filter(f => f.type !== 'create')
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 10);
   }, [companyTickets]);
