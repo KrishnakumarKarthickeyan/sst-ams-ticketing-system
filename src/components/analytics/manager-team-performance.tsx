@@ -1,17 +1,16 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { truncateTick } from './chart-primitives';
 import {
-  ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, Cell, LabelList,
-} from 'recharts';
-import { ArrowUpDown, RefreshCw, ShieldAlert, RotateCcw } from 'lucide-react';
+  Users, Gauge, Timer, ShieldCheck, ShieldAlert, RotateCcw, CheckCircle2, AlertTriangle,
+} from 'lucide-react';
 import type { Ticket } from '../../types/ticket';
-import { ChartCard, ChartTooltip } from './chart-primitives';
-import { Card } from '../ui/card';
+import { ChartCard } from './chart-primitives';
+import { BarH, BarV, Trend } from './chart-builders';
+import { StatCard } from '../ui/stat-card';
+import { DataTable, type DataTableColumn } from '../ui/data-table';
+import { StatusPill, type PillTone } from '../ui/status-pill';
 import { Progress } from '../ui/progress';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { supabase } from '../../lib/supabase/client';
 import { CHART_COLORS, SEMANTIC, PRIORITY_COLOR } from '../../lib/chart-theme';
 import {
@@ -28,12 +27,16 @@ interface Props {
 
 const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
 
-// Per-bar row height for the consultant charts (so all consultants fit + scroll).
+// Per-row height for the consultant charts (so every consultant fits + scrolls).
 const ROW_PX = 32;
 const chartHeight = (count: number) => Math.max(320, count * ROW_PX);
-// Truncate to ~16 chars so a name always fits the 140px axis on ONE line (no
-// two-line wrapping); the full name still shows in the bar tooltip.
-const truncName = (v: unknown): string => { const s = String(v ?? ''); return s.length > 16 ? s.slice(0, 15) + '…' : s; };
+
+// Utilization band → semantic Progress fill / pill tone (the contract: <70 ok,
+// 70–90 warn, >90 over). One mapping, reused for cells and KPI cards.
+const BAND_FILL: Record<'ok' | 'warning' | 'over', string> = { ok: 'bg-info', warning: 'bg-warning', over: 'bg-critical' };
+const BAND_TONE: Record<'ok' | 'warning' | 'over', PillTone> = { ok: 'brand', warning: 'warning', over: 'critical' };
+const pctTone = (pct: number): PillTone => (pct >= 95 ? 'success' : pct >= 80 ? 'warning' : 'critical');
+const slaColor = (pct: number) => (pct >= 95 ? SEMANTIC.success : pct >= 80 ? SEMANTIC.warning : SEMANTIC.danger);
 
 function businessDays(startMs: number, endMs: number): number {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return 0;
@@ -42,16 +45,10 @@ function businessDays(startMs: number, endMs: number): number {
   return n;
 }
 
-const UTIL_INDICATOR: Record<'ok' | 'warning' | 'over', string> = {
-  ok: 'bg-blue-600', warning: 'bg-amber-500', over: 'bg-red-600',
-};
-
-type SortKey = 'name' | 'handled' | 'avgResolutionH' | 'slaAdherence' | 'loggedHours' | 'utilization';
+type LeaderRow = ConsultantAgg & { utilization: number };
 
 export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
   const [reopenHistory, setReopenHistory] = useState<{ ticket_id: string; requested_at: string }[]>([]);
-  const [sortKey, setSortKey] = useState<SortKey>('handled');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Reopen history (all statuses) — the page only holds PENDING requests, so we
   // fetch the full set here to build an honest reopen-rate trend.
@@ -74,31 +71,26 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
   }, [tickets, now]);
 
   const capacityHours = useMemo(() => businessDays(periodStart, periodEnd) * 8, [periodStart, periodEnd]);
-
   const agg = useMemo(() => aggregateConsultants(tickets, now), [tickets, now]);
   const utilOf = (a: ConsultantAgg) => (capacityHours > 0 ? Math.round((a.loggedHours / capacityHours) * 100) : 0);
 
-  const leaderboard = useMemo(() => {
-    const rows = agg.map(a => ({ ...a, utilization: utilOf(a) }));
-    const dir = sortDir === 'asc' ? 1 : -1;
-    return rows.sort((x, y) => {
-      const get = (r: typeof x) => {
-        const v = r[sortKey];
-        return v === null || v === undefined ? (sortKey === 'name' ? '' : -1) : v;
-      };
-      const a = get(x), b = get(y);
-      if (typeof a === 'string' || typeof b === 'string') return String(a).localeCompare(String(b)) * dir;
-      return ((a as number) - (b as number)) * dir;
-    });
-  }, [agg, sortKey, sortDir, capacityHours]);
+  // Leaderboard rows (DataTable sorts/paginates internally).
+  const rows = useMemo<LeaderRow[]>(() => agg.map(a => ({ ...a, utilization: utilOf(a) })), [agg, capacityHours]);
 
-  const toggleSort = (k: SortKey) => {
-    if (k === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
-    else { setSortKey(k); setSortDir(k === 'name' ? 'asc' : 'desc'); }
-  };
+  // ── TEAM PERFORMANCE KPIs ──
+  const teamKpis = useMemo(() => {
+    const utils = agg.map(utilOf);
+    const avgUtil = utils.length ? Math.round(utils.reduce((s, v) => s + v, 0) / utils.length) : 0;
+    let resSum = 0, resN = 0;
+    tickets.forEach(t => { const r = resolutionHours(t); if (r !== null) { resSum += r; resN++; } });
+    const avgRes = resN ? Math.round((resSum / resN) * 10) / 10 : null;
+    let slaTotal = 0, slaMet = 0;
+    agg.forEach(a => { slaTotal += a.slaTotal; slaMet += a.slaMet; });
+    const slaAdh = slaTotal ? Math.round((slaMet / slaTotal) * 100) : null;
+    return { activeConsultants: agg.length, avgUtil, avgRes, slaAdh };
+  }, [agg, tickets, capacityHours]);
 
-  // ── Charts ── (no slice caps — every consultant renders; the cards scale +
-  // scroll instead of clipping; all sorted desc by value)
+  // ── Charts (no slice caps — every consultant renders; cards scale + scroll) ──
   const closedPer = useMemo(() => agg.map(a => ({ name: a.name, value: a.closed }))
     .filter(d => d.value > 0).sort((a, b) => b.value - a.value), [agg]);
 
@@ -112,20 +104,20 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
   const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
 
   const demandVsClosed = useMemo(() => {
-    const rows = buckets.map(b => ({ label: b.label, Created: 0, Closed: 0 }));
+    const r = buckets.map(b => ({ label: b.label, Created: 0, Closed: 0 }));
     tickets.forEach(t => {
       const ci = bucketIndex(buckets, new Date(t.createdAt).getTime());
-      if (ci >= 0) rows[ci].Created++;
+      if (ci >= 0) r[ci].Created++;
       if (isClosed(t)) {
-        const r = t.resolvedAt || t.closedAt;
-        if (r) { const ri = bucketIndex(buckets, new Date(r).getTime()); if (ri >= 0) rows[ri].Closed++; }
+        const d = t.resolvedAt || t.closedAt;
+        if (d) { const ri = bucketIndex(buckets, new Date(d).getTime()); if (ri >= 0) r[ri].Closed++; }
       }
     });
-    return rows;
+    return r;
   }, [buckets, tickets]);
   const demandEmpty = demandVsClosed.every(r => r.Created === 0 && r.Closed === 0);
 
-  // Reopen rate (KPI) + trend (from ticket_reopen_requests, scoped to these tickets)
+  // Reopen rate (KPI) + trend
   const ticketIds = useMemo(() => new Set(tickets.map(t => t.id)), [tickets]);
   const reopenRate = useMemo(() => {
     if (tickets.length === 0) return 0;
@@ -133,13 +125,13 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
     return Math.round((reopened / tickets.length) * 100);
   }, [tickets]);
   const reopenTrend = useMemo(() => {
-    const rows = buckets.map(b => ({ label: b.label, value: 0 }));
-    reopenHistory.forEach(r => {
-      if (!ticketIds.has(r.ticket_id)) return;
-      const i = bucketIndex(buckets, new Date(r.requested_at).getTime());
-      if (i >= 0) rows[i].value++;
+    const r = buckets.map(b => ({ label: b.label, value: 0 }));
+    reopenHistory.forEach(x => {
+      if (!ticketIds.has(x.ticket_id)) return;
+      const i = bucketIndex(buckets, new Date(x.requested_at).getTime());
+      if (i >= 0) r[i].value++;
     });
-    return rows;
+    return r;
   }, [buckets, reopenHistory, ticketIds]);
   const reopenTrendEmpty = reopenTrend.every(r => r.value === 0);
 
@@ -156,240 +148,165 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
       (b.Critical + b.High + b.Medium + b.Low) - (a.Critical + a.High + a.Medium + a.Low)).slice(0, 10);
   }, [tickets]);
 
-  // SLA Breach by Priority — first-response SLA is not in the schema, so we report
-  // the resolution SLA we DO track: hasSlaTarget (ticketType + slaDueAt) decides
-  // eligibility, slaBreached (slaDueAt vs resolved/closed-or-now) decides outcome.
+  // SLA breach by priority — resolution SLA we DO track (within vs breached).
   const slaByPriority = useMemo(() => {
     const idx: Record<string, number> = Object.fromEntries(PRIORITIES.map((p, i) => [p, i]));
-    const rows = PRIORITIES.map(p => ({ priority: p, 'Within SLA': 0, Breached: 0 }));
+    const r = PRIORITIES.map(p => ({ priority: p, 'Within SLA': 0, Breached: 0 }));
     tickets.forEach(t => {
       if (!hasSlaTarget(t)) return;
       const i = idx[t.priority as string];
       if (i === undefined) return;
-      if (slaBreached(t, now)) rows[i].Breached++;
-      else rows[i]['Within SLA']++;
+      if (slaBreached(t, now)) r[i].Breached++;
+      else r[i]['Within SLA']++;
     });
-    return rows;
+    return r;
   }, [tickets, now]);
   const slaByPriorityEmpty = slaByPriority.every(r => r['Within SLA'] === 0 && r.Breached === 0);
 
-  // Quality KPIs
+  // ── DEMAND & QUALITY KPIs ──
   const quality = useMemo(() => {
     const total = tickets.length || 1;
     const escalated = tickets.filter(t => t.escalationFlag).length;
-    const reopensTotal = tickets.reduce((s, t) => s + (t.reopenedCount || 0), 0);
     const closed = tickets.filter(isClosed);
     const onTime = closed.filter(t => hasSlaTarget(t) && !slaBreached(t, now));
     const closedWithSla = closed.filter(hasSlaTarget);
     return {
       escalationRate: Math.round((escalated / total) * 100),
-      avgReopens: Math.round((reopensTotal / total) * 100) / 100,
       onTimeClosure: closedWithSla.length ? Math.round((onTime.length / closedWithSla.length) * 100) : null,
     };
   }, [tickets, now]);
+  const slaBreachCount = useMemo(() => tickets.filter(t => slaBreached(t, now)).length, [tickets, now]);
 
-  const slaColor = (pct: number) => (pct >= 95 ? SEMANTIC.success : pct >= 80 ? SEMANTIC.warning : SEMANTIC.danger);
-  const Th = ({ k, label, className }: { k: SortKey; label: string; className?: string }) => (
-    <TableHead className={className}>
-      <button onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground">
-        {label}<ArrowUpDown className={`h-3 w-3 ${sortKey === k ? 'text-foreground' : 'text-muted-foreground/50'}`} />
-      </button>
-    </TableHead>
-  );
+  const utilBand = utilizationBand(teamKpis.avgUtil);
+
+  // ── Leaderboard columns ──
+  const columns = useMemo<DataTableColumn<LeaderRow>[]>(() => [
+    {
+      key: 'name', header: 'Consultant', sortValue: r => r.name,
+      render: r => <span className="font-medium text-ink">{r.name}</span>,
+    },
+    {
+      key: 'handled', header: 'Tickets Handled', align: 'right', sortValue: r => r.handled,
+      render: r => <span className="type-num text-ink">{r.handled}</span>,
+    },
+    {
+      key: 'avgRes', header: 'Avg Resolution', align: 'right', sortValue: r => r.avgResolutionH ?? -1,
+      exportValue: r => r.avgResolutionH ?? 0,
+      render: r => <span className="type-num">{r.avgResolutionH !== null ? `${r.avgResolutionH.toFixed(1)}h` : '—'}</span>,
+    },
+    {
+      key: 'sla', header: 'SLA Adherence', align: 'right', sortValue: r => r.slaAdherence ?? -1,
+      exportValue: r => r.slaAdherence ?? 0,
+      render: r => r.slaAdherence !== null
+        ? <StatusPill tone={pctTone(r.slaAdherence)}>{r.slaAdherence}%</StatusPill>
+        : <span className="text-ink-muted">—</span>,
+    },
+    {
+      key: 'logged', header: 'Logged Hours', align: 'right', sortValue: r => r.loggedHours,
+      render: r => <span className="type-num text-ink">{r.loggedHours.toFixed(1)}</span>,
+    },
+    {
+      key: 'util', header: 'Utilization', width: '200px', sortValue: r => r.utilization,
+      render: r => {
+        const band = utilizationBand(r.utilization);
+        return (
+          <div className="flex items-center gap-2">
+            <Progress value={r.utilization} indicatorClassName={BAND_FILL[band]} className="h-2 flex-1" />
+            <span className="type-num w-10 shrink-0 text-right text-ink-secondary">{r.utilization}%</span>
+          </div>
+        );
+      },
+    },
+  ], []);
 
   return (
-    <div className="space-y-4">
-      {/* ── TEAM PERFORMANCE ── */}
-      <h3 className="mt-8 mb-4 text-lg font-semibold tracking-tight">Team Performance</h3>
-
-      <Card className="overflow-hidden">
-        <div className="border-b p-4">
-          <h4 className="text-sm font-semibold">Consultant Leaderboard</h4>
-          <p className="text-xs text-muted-foreground">Tap a column to sort. Utilization = approved logged hours vs ≈{capacityHours}h capacity.</p>
+    <div className="space-y-8">
+      {/* ───────────────────────── TEAM PERFORMANCE ───────────────────────── */}
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold tracking-tight text-ink">Team Performance</h3>
+          <p className="type-meta text-ink-muted">Consultant throughput, utilization and SLA across the period.</p>
         </div>
-        <div className="max-h-[420px] overflow-auto">
-          <Table>
-            <TableHeader className="sticky top-0 bg-background">
-              <TableRow>
-                <Th k="name" label="Consultant" />
-                <Th k="handled" label="Handled" className="text-right" />
-                <Th k="avgResolutionH" label="Avg Res (h)" className="text-right" />
-                <Th k="slaAdherence" label="SLA %" className="text-right" />
-                <Th k="loggedHours" label="Logged (h)" className="text-right" />
-                <Th k="utilization" label="Utilization" className="w-[180px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">Loading…</TableCell></TableRow>
-              ) : leaderboard.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">No consultant activity for this period.</TableCell></TableRow>
-              ) : leaderboard.map(r => {
-                const band = utilizationBand(r.utilization);
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.handled}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.avgResolutionH !== null ? r.avgResolutionH.toFixed(1) : '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.slaAdherence !== null ? `${r.slaAdherence}%` : '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.loggedHours.toFixed(1)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={r.utilization} indicatorClassName={UTIL_INDICATOR[band]} className="h-2 flex-1" />
-                        <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{r.utilization}%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Active Consultants" value={teamKpis.activeConsultants} icon={Users} tone="brand" loading={loading} />
+          <StatCard label="Avg Utilization" value={`${teamKpis.avgUtil}%`} icon={Gauge} tone={BAND_TONE[utilBand]} progress={teamKpis.avgUtil} progressTone={BAND_TONE[utilBand]} sub={`≈${capacityHours}h capacity`} loading={loading} />
+          <StatCard label="Avg Resolution Time" value={teamKpis.avgRes !== null ? `${teamKpis.avgRes}h` : '—'} icon={Timer} tone="info" loading={loading} />
+          <StatCard label="Team SLA Adherence" value={teamKpis.slaAdh !== null ? `${teamKpis.slaAdh}%` : '—'} icon={ShieldCheck} tone={teamKpis.slaAdh !== null ? pctTone(teamKpis.slaAdh) : 'neutral'} progress={teamKpis.slaAdh ?? undefined} progressTone={teamKpis.slaAdh !== null ? pctTone(teamKpis.slaAdh) : 'neutral'} loading={loading} />
         </div>
-      </Card>
 
-      {/* items-start so each card takes its natural height (no forced equal rows) */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        {/* Tickets Closed per Consultant — every consultant, dynamic height + scroll */}
-        <ChartCard title="Tickets Closed per Consultant" isEmpty={closedPer.length === 0} height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
-          <div style={{ height: chartHeight(closedPer.length) }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={closedPer} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
-                <XAxis type="number" hide allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} interval={0} tickFormatter={truncName} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
-                <Bar dataKey="value" name="Closed" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={16}>
-                  <LabelList dataKey="value" position="right" fontSize={11} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+        {/* Consultant Leaderboard */}
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={r => r.id}
+          loading={loading}
+          pageSize={10}
+          exportName="consultant-leaderboard"
+          emptyIcon={Users}
+          emptyTitle="No consultant activity"
+          emptyDescription="No tickets were handled by consultants in this period."
+        />
 
-        {/* Functional vs Technical Effort Split — every consultant, dynamic height + scroll */}
-        <ChartCard title="Functional vs Technical Effort Split" isEmpty={ftSplit.length === 0} emptyHint="No approved closure effort logged yet" height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
-          <div style={{ height: chartHeight(ftSplit.length) }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ftSplit} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
-                <XAxis type="number" tick={{ fontSize: 12 }} unit="h" />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} interval={0} tickFormatter={truncName} />
-                <Tooltip content={<ChartTooltip unit="h" />} cursor={{ fill: 'hsl(var(--muted))' }} />
-                <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="Functional" stackId="ft" fill={CHART_COLORS[0]} barSize={16} />
-                <Bar dataKey="Technical" stackId="ft" fill={CHART_COLORS[1]} radius={[0, 4, 4, 0]} barSize={16} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          <ChartCard title="Tickets Closed per Consultant" isEmpty={closedPer.length === 0} height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
+            <div style={{ height: chartHeight(closedPer.length) }}>
+              <BarH data={closedPer} categoryKey="name" series={[{ key: 'value', name: 'Closed', color: CHART_COLORS[2] }]} hideAxis valueLabels />
+            </div>
+          </ChartCard>
 
-        {/* SLA Adherence by Consultant — horizontal so all consultants list + scroll;
-            0% consultants still render a labeled tick (zero-width bar + label) */}
-        <ChartCard title="SLA Adherence by Consultant" isEmpty={slaByConsultant.length === 0} className="lg:col-span-2" height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
-          <div style={{ height: chartHeight(slaByConsultant.length) }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={slaByConsultant} layout="vertical" margin={{ top: 4, right: 44, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} interval={0} tickFormatter={truncName} />
-                <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'hsl(var(--muted))' }} />
-                <Bar dataKey="value" name="SLA Adherence" radius={[0, 4, 4, 0]} barSize={16} minPointSize={2}>
-                  {slaByConsultant.map(d => <Cell key={d.name} fill={slaColor(d.value)} />)}
-                  <LabelList dataKey="value" position="right" fontSize={11} formatter={(v) => `${v}%`} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-      </div>
+          <ChartCard title="Functional vs Technical Effort Split" isEmpty={ftSplit.length === 0} emptyHint="No approved closure effort logged yet" height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
+            <div style={{ height: chartHeight(ftSplit.length) }}>
+              <BarH data={ftSplit} categoryKey="name" series={[{ key: 'Functional' }, { key: 'Technical' }]} unit="h" legend />
+            </div>
+          </ChartCard>
 
-      {/* ── DEMAND & QUALITY ── */}
-      <h3 className="mt-8 mb-4 text-lg font-semibold tracking-tight">Demand &amp; Quality</h3>
+          <ChartCard title="SLA Adherence by Consultant" isEmpty={slaByConsultant.length === 0} className="lg:col-span-2" height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
+            <div style={{ height: chartHeight(slaByConsultant.length) }}>
+              <BarH data={slaByConsultant} categoryKey="name" series={[{ key: 'value', name: 'SLA Adherence' }]} unit="%" domainMax={100} valueLabels colorFor={r => slaColor(r.value)} />
+            </div>
+          </ChartCard>
+        </div>
+      </section>
 
-      {/* Quality KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="p-4">
-          <div className="flex items-center justify-between"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Escalation Rate</p><ShieldAlert className="h-4 w-4 text-muted-foreground" /></div>
-          <p className="mt-2 text-2xl font-bold tabular-nums">{quality.escalationRate}%</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center justify-between"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Avg Reopens / Ticket</p><RotateCcw className="h-4 w-4 text-muted-foreground" /></div>
-          <p className="mt-2 text-2xl font-bold tabular-nums">{quality.avgReopens}</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center justify-between"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">On-time Closure</p><RefreshCw className="h-4 w-4 text-muted-foreground" /></div>
-          <p className="mt-2 text-2xl font-bold tabular-nums">{quality.onTimeClosure !== null ? `${quality.onTimeClosure}%` : '—'}</p>
-        </Card>
-      </div>
+      {/* ───────────────────────── DEMAND & QUALITY ───────────────────────── */}
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold tracking-tight text-ink">Demand &amp; Quality</h3>
+          <p className="type-meta text-ink-muted">Incoming demand, resolution flow and quality signals.</p>
+        </div>
 
-      {/* Balanced 2×2 grid — every cell filled, no lone chart beside dead space.
-          All cards default h-[300px] so row siblings match height. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Demand vs Closed */}
-        <ChartCard title="Demand vs Closed" isEmpty={demandEmpty}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={demandVsClosed} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={20} />
-              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={34} />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} itemSorter={null} />
-              <Line type="linear" dataKey="Created" stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ r: 2 }} />
-              <Line type="linear" dataKey="Closed" stroke={SEMANTIC.success} strokeWidth={2} dot={{ r: 2 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Escalation Rate" value={`${quality.escalationRate}%`} icon={ShieldAlert} tone={quality.escalationRate > 10 ? 'critical' : 'warning'} loading={loading} />
+          <StatCard label="Reopen Rate" value={`${reopenRate}%`} icon={RotateCcw} tone={reopenRate > 10 ? 'critical' : 'warning'} loading={loading} />
+          <StatCard label="On-Time Closure" value={quality.onTimeClosure !== null ? `${quality.onTimeClosure}%` : '—'} icon={CheckCircle2} tone={quality.onTimeClosure !== null ? pctTone(quality.onTimeClosure) : 'neutral'} progress={quality.onTimeClosure ?? undefined} progressTone={quality.onTimeClosure !== null ? pctTone(quality.onTimeClosure) : 'neutral'} loading={loading} />
+          <StatCard label="SLA Breach Count" value={slaBreachCount} icon={AlertTriangle} tone={slaBreachCount > 0 ? 'critical' : 'success'} loading={loading} />
+        </div>
 
-        {/* Reopen Requests Trend — genuinely 0 reopen requests in the data, so the
-            (vertically-centered) empty state is the honest, correct rendering. */}
-        <ChartCard
-          title="Reopen Requests Trend"
-          isEmpty={reopenTrendEmpty}
-          emptyIcon={RotateCcw}
-          emptyHint="No reopen requests in this period"
-          action={<span className="text-xs text-muted-foreground">Reopen rate {reopenRate}%</span>}
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={reopenTrend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={20} />
-              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={34} />
-              <Tooltip content={<ChartTooltip />} />
-              <Line type="linear" dataKey="value" name="Reopens" stroke={SEMANTIC.warning} strokeWidth={2} dot={{ r: 3, fill: SEMANTIC.warning }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <ChartCard title="Demand vs Closed" isEmpty={demandEmpty}>
+            <Trend data={demandVsClosed} categoryKey="label" series={[{ key: 'Created' }, { key: 'Closed', color: SEMANTIC.success }]} legend />
+          </ChartCard>
 
-        {/* SLA Breach by Priority — resolution SLA we DO track (within vs breached). */}
-        <ChartCard title="SLA Breach by Priority" isEmpty={slaByPriorityEmpty} emptyHint="No SLA-tracked tickets in this period">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={slaByPriority} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="priority" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={34} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
-              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} itemSorter={null} />
-              <Bar dataKey="Within SLA" fill={SEMANTIC.success} radius={[4, 4, 0, 0]} maxBarSize={36} />
-              <Bar dataKey="Breached" fill={SEMANTIC.danger} radius={[4, 4, 0, 0]} maxBarSize={36} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          <ChartCard
+            title="Reopen Requests Trend"
+            isEmpty={reopenTrendEmpty}
+            emptyIcon={RotateCcw}
+            emptyHint="No reopen requests in this period"
+            action={<span className="type-status text-ink-muted">Reopen rate {reopenRate}%</span>}
+          >
+            <Trend data={reopenTrend} categoryKey="label" series={[{ key: 'value', name: 'Reopens', color: SEMANTIC.warning }]} />
+          </ChartCard>
 
-        {/* Demand Heat: Module × Priority — legend/stack locked to severity order
-            (Critical→High→Medium→Low) via itemSorter={null}; Recharts defaults to
-            alphabetical, which wrongly put Low before Medium. */}
-        <ChartCard title="Demand Heat — Module × Priority" isEmpty={demandHeat.length === 0}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={demandHeat} layout="vertical" margin={{ top: 4, right: 20, left: 8, bottom: 0 }}>
-              <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="module" tick={{ fontSize: 12 }} width={90} interval={0} tickFormatter={truncateTick} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
-              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} itemSorter={null} />
-              {PRIORITIES.map((p, i) => (
-                <Bar key={p} dataKey={p} stackId="prio" fill={PRIORITY_COLOR[p]} barSize={16} radius={i === PRIORITIES.length - 1 ? [0, 4, 4, 0] : undefined} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
+          <ChartCard title="SLA Breach by Priority" isEmpty={slaByPriorityEmpty} emptyHint="No SLA-tracked tickets in this period">
+            <BarV data={slaByPriority} categoryKey="priority" series={[{ key: 'Within SLA', color: SEMANTIC.success }, { key: 'Breached', color: SEMANTIC.danger }]} legend />
+          </ChartCard>
+
+          <ChartCard title="Demand Heat — Module × Priority" isEmpty={demandHeat.length === 0}>
+            <BarH data={demandHeat} categoryKey="module" series={PRIORITIES.map(p => ({ key: p, color: PRIORITY_COLOR[p] }))} legend categoryWidth={90} />
+          </ChartCard>
+        </div>
+      </section>
     </div>
   );
 }
