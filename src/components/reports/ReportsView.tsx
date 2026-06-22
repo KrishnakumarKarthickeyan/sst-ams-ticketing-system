@@ -298,39 +298,70 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
   const chartMax = Math.max(...Object.values(chartData), 1);
 
   // Actions
+  // Single source for both exports — the same rows the report is showing.
+  const buildReportTable = (): { headers: string[]; rows: (string | number)[][] } => {
+    if (reportType === 'Effort Hours') {
+      return {
+        headers: ['Log ID', 'Ticket #', 'Consultant', 'Date', 'Start Time', 'End Time', 'Activity', 'Hours', 'Billable', 'Status', 'Description'],
+        rows: filteredEfforts.map(e => [e.id, e.ticketNumber || e.ticketId, e.consultantName, e.activityDate, e.startTime, e.endTime, e.activityType, e.hoursLogged, e.billable ? 'Yes' : 'No', e.status, e.description]),
+      };
+    }
+    return {
+      headers: ['Ticket #', 'Title', 'Customer', 'Module', 'Issue Category', 'Type', 'Priority', 'Status', 'SLA Due', 'Created At'],
+      rows: filteredTickets.map(t => [t.ticketNumber || t.id, t.title, t.organization, t.sapModule, t.category, t.ticketType || 'Incident', t.priority, t.status, t.slaDueAt, t.createdAt]),
+    };
+  };
+
+  const csvCell = (v: string | number) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
   const handleExportCsv = () => {
+    const { headers, rows } = buildReportTable();
+    if (rows.length === 0) { showNotification('No rows match the current filters — nothing to export.'); return; }
     setExportingCsv(true);
-    setTimeout(() => {
-      setExportingCsv(false);
-      // Construct CSV content
-      let csvContent = "data:text/csv;charset=utf-8,";
-      if (reportType === 'Effort Hours') {
-        const headers = ['Log ID', 'Ticket #', 'Consultant', 'Date', 'Start Time', 'End Time', 'Activity', 'Hours', 'Billable', 'Status', 'Description'];
-        const rows = filteredEfforts.map(e => [e.id, e.ticketNumber || e.ticketId, e.consultantName, e.activityDate, e.startTime, e.endTime, e.activityType, e.hoursLogged, e.billable, e.status, e.description]);
-        csvContent += [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
-      } else {
-        const headers = ['Ticket #', 'Title', 'Customer', 'Module', 'Category', 'Priority', 'Status', 'SLA Due', 'Created At'];
-        const rows = filteredTickets.map(t => [t.ticketNumber || t.id, t.title, t.organization, t.sapModule, t.category, t.priority, t.status, t.slaDueAt, t.createdAt]);
-        csvContent += [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
-      }
-      
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `sap_desk_report_${reportType.toLowerCase().replace(/ /g, '_')}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showNotification('CSV compiled and downloaded.');
-    }, 1000);
+    // Robust download via Blob (the old data: URI silently produced empty files on
+    // real content). BOM prefix so Excel reads UTF-8 correctly.
+    const csv = '﻿' + [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sap_desk_report_${reportType.toLowerCase().replace(/ /g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setExportingCsv(false);
+    showNotification(`CSV exported — ${rows.length} row${rows.length === 1 ? '' : 's'}.`);
   };
 
   const handleExportPdf = () => {
+    const { headers, rows } = buildReportTable();
+    if (rows.length === 0) { showNotification('No rows match the current filters — nothing to export.'); return; }
     setExportingPdf(true);
-    setTimeout(() => {
-      setExportingPdf(false);
-      showNotification('PDF generation placeholder triggered. File compilation simulated.');
-    }, 1500);
+    // Real print-to-PDF (no extra dependency): render the report in a clean window
+    // and open the browser print dialog, where the user can Save as PDF.
+    const esc = (v: unknown) => String(v ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Assist360 — ${esc(reportType)} Report</title>
+      <style>
+        body{font-family:Inter,Arial,sans-serif;color:#1f2430;margin:24px;}
+        h1{font-size:16px;margin:0 0 2px;} .meta{font-size:11px;color:#5f6772;margin-bottom:16px;}
+        table{width:100%;border-collapse:collapse;font-size:10px;}
+        th,td{border:1px solid #e4e7ec;padding:4px 6px;text-align:left;vertical-align:top;}
+        th{background:#f4f4f5;text-transform:uppercase;font-size:9px;letter-spacing:.04em;}
+        tr:nth-child(even) td{background:#fafafa;}
+      </style></head><body>
+      <h1>Assist360 — ${esc(reportType)} Report</h1>
+      <div class="meta">${rows.length} record${rows.length === 1 ? '' : 's'} · generated ${new Date().toLocaleString()}</div>
+      <table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      <script>window.onload=function(){window.print();}</script>
+      </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { setExportingPdf(false); showNotification('Allow pop-ups to export the PDF.'); return; }
+    w.document.write(html);
+    w.document.close();
+    setExportingPdf(false);
+    showNotification('PDF ready — use the print dialog to Save as PDF.');
   };
 
   const handleSavePreset = () => {
@@ -373,7 +404,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
             className="px-3 py-1.5 border border-zinc-900 hover:bg-surface-muted text-ink rounded font-bold uppercase text-[11px] tracking-wider transition disabled:opacity-50 flex items-center gap-1"
           >
             <FileText size={11} />
-            {exportingPdf ? 'Printing PDF...' : 'Download PDF (MOCK)'}
+            {exportingPdf ? 'Preparing PDF...' : 'Download PDF'}
           </button>
         </div>
       </div>

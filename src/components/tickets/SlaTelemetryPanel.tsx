@@ -136,7 +136,7 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
     <Card className="bg-surface border border-line rounded-lg p-5 shadow-card space-y-4">
       <div className="flex justify-between items-center border-b border-line pb-2">
         <h3 className="font-bold text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
-          <Clock size={14} className="text-ink-secondary" /> SLA SLA Governance
+          <Clock size={14} className="text-ink-secondary" /> SLA Governance
         </h3>
         {statusBadge()}
       </div>

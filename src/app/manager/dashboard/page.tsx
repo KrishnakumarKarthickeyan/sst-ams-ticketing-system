@@ -3029,7 +3029,7 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.statusData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} tickLine={false} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={7} tickLine={false} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
@@ -3044,7 +3044,7 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.priorityData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={8} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="value" fill={COLORS.red} radius={[2, 2, 0, 0]} />
@@ -3080,7 +3080,7 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.typeData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={8} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="value" fill={COLORS.gray} radius={[2, 2, 0, 0]} />
@@ -3095,7 +3095,7 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.agingData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={8} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="value" fill={COLORS.gray} radius={[2, 2, 0, 0]} />
@@ -3288,7 +3288,7 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={consultantsLoad.map(c => ({ name: c.name, value: c.activeCount }))} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} tickLine={false} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={7} tickLine={false} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
@@ -3311,7 +3311,7 @@ export default function ManagerDashboardPage() {
                       return { name: c.name, Expected: workingDaysInMonth * 8, Logged: loggedAll || 0, Approved: approvedOnly || 0 };
                     })} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={7} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Legend wrapperStyle={{ fontSize: 8 }} />
@@ -3410,7 +3410,7 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dashboardData.topCustomersVolume} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={7} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
@@ -3709,7 +3709,7 @@ export default function ManagerDashboardPage() {
                       { name: 'Approved', Hours: dashboardData.financials.approvedActHrs }
                     ]} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={8} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={8} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="Hours" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
@@ -3795,7 +3795,7 @@ export default function ManagerDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartsData.moduleData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="name" stroke="#71717a" fontSize={7} />
+                      <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={7} />
                       <YAxis stroke="#71717a" fontSize={8} />
                       <RechartsTooltip contentStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
                       <Bar dataKey="value" fill={COLORS.blue} radius={[2, 2, 0, 0]} />
