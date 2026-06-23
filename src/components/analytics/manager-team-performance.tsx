@@ -180,8 +180,10 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
       if (t.priority && PRIORITIES.includes(t.priority)) (row as Record<string, number | string>)[t.priority] = (row[t.priority as 'Critical'] as number) + 1;
     });
     return Array.from(m.values()).sort((a, b) =>
-      (b.Critical + b.High + b.Medium + b.Low) - (a.Critical + a.High + a.Medium + a.Low)).slice(0, 10);
+      (b.Critical + b.High + b.Medium + b.Low) - (a.Critical + a.High + a.Medium + a.Low));
   }, [tickets]);
+  // Compact top-N modules + pagination (legend stays Critical→High→Medium→Low).
+  const heatPg = useTopNPages(demandHeat, TOP_N);
 
   // SLA breach by priority — resolution SLA we DO track (within vs breached).
   const slaByPriority = useMemo(() => {
@@ -355,8 +357,12 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
             <BarV data={slaByPriority} categoryKey="priority" series={[{ key: 'Within SLA', color: SEMANTIC.success }, { key: 'Breached', color: SEMANTIC.danger }]} legend />
           </ChartCard>
 
-          <ChartCard title="Demand Heat — Module × Priority" isEmpty={demandHeat.length === 0}>
-            <BarH data={demandHeat} categoryKey="module" series={PRIORITIES.map(p => ({ key: p, color: PRIORITY_COLOR[p] }))} legend categoryWidth={90} />
+          <ChartCard
+            title="Demand Heat — Module × Priority"
+            isEmpty={demandHeat.length === 0}
+            action={<ChartPager page={heatPg.page} pageCount={heatPg.pageCount} onPage={heatPg.setPage} />}
+          >
+            <BarH data={heatPg.pageRows} categoryKey="module" series={PRIORITIES.map(p => ({ key: p, color: PRIORITY_COLOR[p] }))} legend categoryWidth={90} />
           </ChartCard>
         </div>
       </section>
