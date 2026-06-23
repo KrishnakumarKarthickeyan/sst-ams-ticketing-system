@@ -7,10 +7,13 @@ import {
 import type { Ticket } from '../../types/ticket';
 import { ChartCard } from './chart-primitives';
 import { BarH, BarV, Trend } from './chart-builders';
+import { useTopNPages, ChartPager } from './chart-pager';
 import { StatCard } from '../ui/stat-card';
 import { DataTable, type DataTableColumn } from '../ui/data-table';
 import { StatusPill, type PillTone } from '../ui/status-pill';
 import { Progress } from '../ui/progress';
+import { RadialGauge, type GaugeBand } from '../ui/radial-gauge';
+import { Sparkline, type SparklineTone } from '../ui/sparkline';
 import { supabase } from '../../lib/supabase/client';
 import { CHART_COLORS, SEMANTIC, PRIORITY_COLOR } from '../../lib/chart-theme';
 import {
@@ -26,10 +29,7 @@ interface Props {
 }
 
 const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
-
-// Per-row height for the consultant charts (so every consultant fits + scrolls).
-const ROW_PX = 32;
-const chartHeight = (count: number) => Math.max(320, count * ROW_PX);
+const TOP_N = 8;
 
 // Utilization band → semantic Progress fill / pill tone (the contract: <70 ok,
 // 70–90 warn, >90 over). One mapping, reused for cells and KPI cards.
@@ -37,6 +37,20 @@ const BAND_FILL: Record<'ok' | 'warning' | 'over', string> = { ok: 'bg-info', wa
 const BAND_TONE: Record<'ok' | 'warning' | 'over', PillTone> = { ok: 'brand', warning: 'warning', over: 'critical' };
 const pctTone = (pct: number): PillTone => (pct >= 95 ? 'success' : pct >= 80 ? 'warning' : 'critical');
 const slaColor = (pct: number) => (pct >= 95 ? SEMANTIC.success : pct >= 80 ? SEMANTIC.warning : SEMANTIC.danger);
+// Gauge color bands for SLA adherence (red <80, amber <95, emerald ≥95).
+const SLA_GAUGE_BANDS: GaugeBand[] = [
+  { upTo: 79, color: SEMANTIC.danger },
+  { upTo: 94, color: SEMANTIC.warning },
+  { upTo: 100, color: SEMANTIC.success },
+];
+// Direction of a mini series → sparkline tone.
+const trendTone = (s: number[]): SparklineTone => {
+  if (!s || s.length < 2) return 'neutral';
+  const half = Math.floor(s.length / 2);
+  const a = s.slice(0, half).reduce((x, y) => x + y, 0);
+  const b = s.slice(half).reduce((x, y) => x + y, 0);
+  return b > a ? 'positive' : b < a ? 'negative' : 'neutral';
+};
 
 function businessDays(startMs: number, endMs: number): number {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return 0;
@@ -45,7 +59,7 @@ function businessDays(startMs: number, endMs: number): number {
   return n;
 }
 
-type LeaderRow = ConsultantAgg & { utilization: number };
+type LeaderRow = ConsultantAgg & { utilization: number; closedTrend: number[] };
 
 export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
   const [reopenHistory, setReopenHistory] = useState<{ ticket_id: string; requested_at: string }[]>([]);
@@ -73,9 +87,24 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
   const capacityHours = useMemo(() => businessDays(periodStart, periodEnd) * 8, [periodStart, periodEnd]);
   const agg = useMemo(() => aggregateConsultants(tickets, now), [tickets, now]);
   const utilOf = (a: ConsultantAgg) => (capacityHours > 0 ? Math.round((a.loggedHours / capacityHours) * 100) : 0);
+  const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
+
+  // Per-consultant tickets-closed-per-bucket mini series (for the leaderboard Sparkline column).
+  const closedTrendByName = useMemo(() => {
+    const m = new Map<string, number[]>();
+    agg.forEach(a => m.set(a.name, buckets.map(() => 0)));
+    tickets.forEach(t => {
+      if (!t.assignedConsultant || !isClosed(t)) return;
+      const arr = m.get(t.assignedConsultant); if (!arr) return;
+      const d = t.resolvedAt || t.closedAt; if (!d) return;
+      const i = bucketIndex(buckets, new Date(d).getTime());
+      if (i >= 0) arr[i]++;
+    });
+    return m;
+  }, [agg, buckets, tickets]);
 
   // Leaderboard rows (DataTable sorts/paginates internally).
-  const rows = useMemo<LeaderRow[]>(() => agg.map(a => ({ ...a, utilization: utilOf(a) })), [agg, capacityHours]);
+  const rows = useMemo<LeaderRow[]>(() => agg.map(a => ({ ...a, utilization: utilOf(a), closedTrend: closedTrendByName.get(a.name) || [] })), [agg, capacityHours, closedTrendByName]);
 
   // ── TEAM PERFORMANCE KPIs ──
   const teamKpis = useMemo(() => {
@@ -101,7 +130,13 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
     .map(a => ({ name: a.name, value: a.slaAdherence as number }))
     .sort((a, b) => b.value - a.value), [agg]);
 
-  const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
+  // Clamp the F/T axis so the longest stacked bar doesn't bleed to the plot edge.
+  const ftMax = useMemo(() => Math.max(1, ...ftSplit.map(d => d.Functional + d.Technical)), [ftSplit]);
+
+  // Compact top-N paging for the three per-consultant highlight charts.
+  const closedPg = useTopNPages(closedPer, TOP_N);
+  const ftPg = useTopNPages(ftSplit, TOP_N);
+  const slaPg = useTopNPages(slaByConsultant, TOP_N);
 
   const demandVsClosed = useMemo(() => {
     const r = buckets.map(b => ({ label: b.label, Created: 0, Closed: 0 }));
@@ -206,6 +241,10 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
       render: r => <span className="type-num text-ink">{r.loggedHours.toFixed(1)}</span>,
     },
     {
+      key: 'trend', header: 'Closed Trend', width: '110px',
+      render: r => <Sparkline data={r.closedTrend} tone={trendTone(r.closedTrend)} />,
+    },
+    {
       key: 'util', header: 'Utilization', width: '200px', sortValue: r => r.utilization,
       render: r => {
         const band = utilizationBand(r.utilization);
@@ -228,14 +267,20 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           <p className="type-meta text-ink-muted">Consultant throughput, utilization and SLA across the period.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Active Consultants" value={teamKpis.activeConsultants} icon={Users} tone="brand" loading={loading} />
-          <StatCard label="Avg Utilization" value={`${teamKpis.avgUtil}%`} icon={Gauge} tone={BAND_TONE[utilBand]} progress={teamKpis.avgUtil} progressTone={BAND_TONE[utilBand]} sub={`≈${capacityHours}h capacity`} loading={loading} />
-          <StatCard label="Avg Resolution Time" value={teamKpis.avgRes !== null ? `${teamKpis.avgRes}h` : '—'} icon={Timer} tone="info" loading={loading} />
-          <StatCard label="Team SLA Adherence" value={teamKpis.slaAdh !== null ? `${teamKpis.slaAdh}%` : '—'} icon={ShieldCheck} tone={teamKpis.slaAdh !== null ? pctTone(teamKpis.slaAdh) : 'neutral'} progress={teamKpis.slaAdh ?? undefined} progressTone={teamKpis.slaAdh !== null ? pctTone(teamKpis.slaAdh) : 'neutral'} loading={loading} />
+        {/* Hero SLA gauge beside the KPI cards */}
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <div className="flex shrink-0 items-center justify-center rounded-lg border border-line bg-surface p-4 shadow-card lg:w-56">
+            <RadialGauge value={teamKpis.slaAdh} label="Team SLA Adherence" sublabel={`${teamKpis.activeConsultants} consultants`} bands={SLA_GAUGE_BANDS} loading={loading} />
+          </div>
+          <div className="grid flex-1 grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Active Consultants" value={teamKpis.activeConsultants} icon={Users} tone="brand" loading={loading} />
+            <StatCard label="Avg Utilization" value={`${teamKpis.avgUtil}%`} icon={Gauge} tone={BAND_TONE[utilBand]} progress={teamKpis.avgUtil} progressTone={BAND_TONE[utilBand]} sub={`≈${capacityHours}h capacity`} loading={loading} />
+            <StatCard label="Avg Resolution Time" value={teamKpis.avgRes !== null ? `${teamKpis.avgRes}h` : '—'} icon={Timer} tone="info" loading={loading} />
+            <StatCard label="Team SLA Adherence" value={teamKpis.slaAdh !== null ? `${teamKpis.slaAdh}%` : '—'} icon={ShieldCheck} tone={teamKpis.slaAdh !== null ? pctTone(teamKpis.slaAdh) : 'neutral'} progress={teamKpis.slaAdh ?? undefined} progressTone={teamKpis.slaAdh !== null ? pctTone(teamKpis.slaAdh) : 'neutral'} loading={loading} />
+          </div>
         </div>
 
-        {/* Consultant Leaderboard */}
+        {/* Full roster — every consultant, paginated; the charts are compact top-8 highlights. */}
         <DataTable
           columns={columns}
           rows={rows}
@@ -249,22 +294,30 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
         />
 
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-          <ChartCard title="Tickets Closed per Consultant" isEmpty={closedPer.length === 0} height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
-            <div style={{ height: chartHeight(closedPer.length) }}>
-              <BarH data={closedPer} categoryKey="name" series={[{ key: 'value', name: 'Closed', color: CHART_COLORS[2] }]} hideAxis valueLabels />
-            </div>
+          <ChartCard
+            title="Tickets Closed per Consultant"
+            isEmpty={closedPer.length === 0}
+            action={<ChartPager page={closedPg.page} pageCount={closedPg.pageCount} onPage={closedPg.setPage} />}
+          >
+            <BarH data={closedPg.pageRows} categoryKey="name" series={[{ key: 'value', name: 'Closed', color: CHART_COLORS[2] }]} hideAxis valueLabels />
           </ChartCard>
 
-          <ChartCard title="Functional vs Technical Effort Split" isEmpty={ftSplit.length === 0} emptyHint="No approved closure effort logged yet" height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
-            <div style={{ height: chartHeight(ftSplit.length) }}>
-              <BarH data={ftSplit} categoryKey="name" series={[{ key: 'Functional' }, { key: 'Technical' }]} unit="h" legend />
-            </div>
+          <ChartCard
+            title="Functional vs Technical Effort Split"
+            isEmpty={ftSplit.length === 0}
+            emptyHint="No approved closure effort logged yet"
+            action={<ChartPager page={ftPg.page} pageCount={ftPg.pageCount} onPage={ftPg.setPage} />}
+          >
+            <BarH data={ftPg.pageRows} categoryKey="name" series={[{ key: 'Functional' }, { key: 'Technical' }]} unit="h" domainMax={Math.ceil(ftMax * 1.15)} legend />
           </ChartCard>
 
-          <ChartCard title="SLA Adherence by Consultant" isEmpty={slaByConsultant.length === 0} className="lg:col-span-2" height="" contentClassName="min-h-[320px] max-h-[520px] overflow-y-auto">
-            <div style={{ height: chartHeight(slaByConsultant.length) }}>
-              <BarH data={slaByConsultant} categoryKey="name" series={[{ key: 'value', name: 'SLA Adherence' }]} unit="%" domainMax={100} valueLabels colorFor={r => slaColor(r.value)} />
-            </div>
+          <ChartCard
+            title="SLA Adherence by Consultant"
+            isEmpty={slaByConsultant.length === 0}
+            className="lg:col-span-2"
+            action={<ChartPager page={slaPg.page} pageCount={slaPg.pageCount} onPage={slaPg.setPage} />}
+          >
+            <BarH data={slaPg.pageRows} categoryKey="name" series={[{ key: 'value', name: 'SLA Adherence' }]} unit="%" domainMax={100} valueLabels colorFor={r => slaColor(r.value)} />
           </ChartCard>
         </div>
       </section>
