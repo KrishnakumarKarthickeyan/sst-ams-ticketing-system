@@ -334,7 +334,7 @@ export default function AdminCreateTicketPage() {
               ))}
             </select>
             {assignedConsultant && (
-              <p className="text-[11px] text-success mt-1">Ticket will be auto-set to "Assigned" status.</p>
+              <p className="text-[11px] text-success mt-1">Ticket will be auto-set to &quot;Assigned&quot; status.</p>
             )}
           </div>
         </div>

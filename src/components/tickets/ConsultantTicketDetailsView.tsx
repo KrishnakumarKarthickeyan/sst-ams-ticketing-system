@@ -237,7 +237,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
   if (!ticket) {
     return (
       <div className="p-8 text-center text-critical font-bold bg-red-50 border border-red-200 rounded-lg">
-        ERROR: Ticket ID "{ticketId}" not found in database registry.
+        ERROR: Ticket ID &quot;{ticketId}&quot; not found in database registry.
       </div>
     );
   }
@@ -1118,7 +1118,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
               {ticket.businessJustification && (
                 <div className="md:col-span-3 space-y-1 pt-1 border-t border-slate-50">
                   <span className="text-slate-400 block text-[11px] uppercase font-bold">Business Justification</span>
-                  <p className="text-slate-700 font-sans text-xs italic">"{ticket.businessJustification}"</p>
+                  <p className="text-slate-700 font-sans text-xs italic">&quot;{ticket.businessJustification}&quot;</p>
                 </div>
               )}
             </div>
@@ -1322,7 +1322,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
                 {myEstimate && (
                   <div className="bg-slate-50 p-3 border border-slate-200 rounded text-xs space-y-1.5 text-slate-655">
-                    <div>Remarks: <span className="text-slate-900 italic">"{myEstimate.remarks || 'No remarks listed'}"</span></div>
+                    <div>Remarks: <span className="text-slate-900 italic">&quot;{myEstimate.remarks || 'No remarks listed'}&quot;</span></div>
                     <div className="flex justify-between text-[11px] pt-1 text-slate-400 border-t border-slate-200/50">
                       <span>Submitted by: <strong>{consultantName}</strong></span>
                       <span>Date: <strong>{new Date(myEstimate.submittedAt).toLocaleDateString()}</strong></span>
@@ -1352,7 +1352,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                             </div>
                             {est.remarks && (
                               <div className="text-[11px] text-slate-400 italic mt-1 bg-slate-50/50 p-1 rounded border border-slate-100">
-                                "{est.remarks}"
+                                &quot;{est.remarks}&quot;
                               </div>
                             )}
                           </div>
@@ -1375,7 +1375,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                   Pending Estimate Revision Request
                 </div>
                 <div>Proposed: <strong>{currentRevisionReq.totalEstimatedHours} h</strong> (Func: {currentRevisionReq.functionalEstimatedHours}h, Tech: {currentRevisionReq.technicalEstimatedHours}h)</div>
-                <div className="italic">Justification: "{currentRevisionReq.remarks}"</div>
+                <div className="italic">Justification: &quot;{currentRevisionReq.remarks}&quot;</div>
               </div>
             )}
           </Card>
@@ -1493,7 +1493,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     {latestClosureReq.status === 'Rejected' && (
                       <div className="bg-red-50 p-3 rounded border border-red-200 space-y-2 mt-2">
                         <div className="text-red-850 font-bold text-[11px] uppercase">Manager Rejection Reason:</div>
-                        <p className="text-slate-900 italic">"{latestClosureReq.rejectionReason || 'No reason specified.'}"</p>
+                        <p className="text-slate-900 italic">&quot;{latestClosureReq.rejectionReason || 'No reason specified.'}&quot;</p>
                         {isPrimaryConsultant ? (
                           <Button
                             onClick={() => {
@@ -1647,7 +1647,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                             'text-warning'
                           }>{est.status}</span>
                         </div>
-                        {est.remarks && <div className="text-[11px] text-slate-450 truncate">"{est.remarks}"</div>}
+                        {est.remarks && <div className="text-[11px] text-slate-450 truncate">&quot;{est.remarks}&quot;</div>}
                         {est.rejectionReason && <div className="text-[11px] text-critical">Rejection: {est.rejectionReason}</div>}
                       </div>
                     ))}

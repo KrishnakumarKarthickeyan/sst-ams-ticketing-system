@@ -222,7 +222,7 @@ const EscalationTicketRow = ({
 
       {/* Row 4: Escalation Reason quote block */}
       <div className="border-l-2 border-line-strong pl-2.5 italic text-xs text-ink-secondary font-sans leading-relaxed">
-        "{escReason}"
+        &quot;{escReason}&quot;
       </div>
       
       {/* Footer: right-aligned Acknowledge Button */}
@@ -1408,7 +1408,7 @@ export default function ManagerDashboardPage() {
     }
 
     // 1. Ticket Trend (Daily, Weekly, Monthly, Yearly)
-    let ticketTrendData: { name: string; Tickets: number }[] = [];
+    const ticketTrendData: { name: string; Tickets: number }[] = [];
     if (trendGrouping === 'daily') {
       const curr = new Date(start);
       while (curr <= end) {

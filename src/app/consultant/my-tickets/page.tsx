@@ -779,7 +779,7 @@ export default function ConsultantMyTicketsPage() {
                     <option value="Customer Action">5. Customer Action</option>
                     <option value="Request for Closure">6. Request for Closure (Logs Actuals)</option>
                   </select>
-                  <span className="text-[11px] text-ink-muted block">"Request for Closure" will prompt actual hours entry.</span>
+                  <span className="text-[11px] text-ink-muted block">&quot;Request for Closure&quot; will prompt actual hours entry.</span>
                 </div>
                 <div className="flex justify-end gap-2 border-t border-line pt-3">
                   <Button type="button" variant="outline" onClick={closeActionModal} className="text-[11px] font-bold uppercase h-8">Cancel</Button>
