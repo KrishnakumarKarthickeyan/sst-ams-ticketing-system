@@ -1682,7 +1682,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                             <span className="font-bold text-green-700 flex items-center gap-0.5">
                               {ticket.rating.score}/5 <Star size={11} className="fill-green-600 text-green-600" />
                             </span>
-                            <span className="text-ink-muted italic">"{ticket.rating.feedback}"</span>
+                            <span className="text-ink-muted italic">&quot;{ticket.rating.feedback}&quot;</span>
                           </div>
                         ) : (
                           <span className="text-ink-muted italic mt-0.5 block">Pending resolution rating</span>
@@ -1890,7 +1890,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                       <div key={est.id} className="space-y-2">
                         <p className="text-[11px] text-ink-secondary">Submitted by: <strong className="text-ink">{est.consultantId}</strong></p>
                         <p className="font-bold text-[11px] text-ink">F: {est.functionalEstimatedHours}h | T: {est.technicalEstimatedHours}h (Total: {est.totalEstimatedHours}h)</p>
-                        <p className="text-[11px] text-ink-secondary italic">"{est.remarks}"</p>
+                        <p className="text-[11px] text-ink-secondary italic">&quot;{est.remarks}&quot;</p>
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -1958,7 +1958,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                       <div key={cls.id} className="space-y-2">
                         <p className="text-[11px] text-ink-secondary">Requested by: <strong className="text-ink">{cls.requestedBy}</strong></p>
                         <p className="font-bold text-[11px] text-ink">F: {cls.functionalActualHours}h | T: {cls.technicalActualHours}h (Total: {cls.totalActualHours}h)</p>
-                        <p className="text-[11px] text-ink-secondary truncate">"{cls.workCompletedSummary}"</p>
+                        <p className="text-[11px] text-ink-secondary truncate">&quot;{cls.workCompletedSummary}&quot;</p>
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -1995,7 +1995,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                       <div key={unl.id} className="space-y-2">
                         <p className="text-[11px] text-ink-secondary">Requested by: <strong className="text-ink">{unl.requestedBy}</strong></p>
                         <p className="text-[11px] text-ink font-bold">Reason: {unl.reason}</p>
-                        <p className="text-[11px] text-ink-secondary italic">"Correction: {unl.requestedChange}"</p>
+                        <p className="text-[11px] text-ink-secondary italic">&quot;Correction: {unl.requestedChange}&quot;</p>
                         <div className="flex gap-2">
                           <button
                             type="button"

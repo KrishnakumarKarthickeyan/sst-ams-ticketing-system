@@ -689,7 +689,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         linkPath: `/manager/tickets/${t.id}`,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [tickets, notifications, user?.role, profiles]);
   const fetchTicketByIdRef = useRef<(id: string) => Promise<any>>(async () => null);
 
@@ -3373,7 +3373,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let prioritySuggestion: TicketPriority = 'Medium';
     let rootCauseSuggestion = 'Standard configuration misalignment or missing transaction conditions.';
     let resolutionSuggestion = 'Verify SAP configuration records in transaction SPRO. Check active conditions.';
-    let matchArticle = kbArticles.find(a => a.sapModule === sapModule);
+    const matchArticle = kbArticles.find(a => a.sapModule === sapModule);
 
     if (msg.includes('production') || msg.includes('prd') || msg.includes('down') || msg.includes('failure') || msg.includes('block')) {
       prioritySuggestion = 'Critical';
@@ -3859,7 +3859,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         const aggregateTotal = newEstimates.reduce((sum, est) => sum + est.estimatedHours, 0);
 
-        let mergedEfforts = [...(t.consultantEfforts || [])];
+        const mergedEfforts = [...(t.consultantEfforts || [])];
         newEfforts.forEach(ne => {
           const idx = mergedEfforts.findIndex(e => e.consultantId === ne.consultantId && e.consultantType === ne.consultantType && !e.isDeleted);
           if (idx >= 0) {
@@ -4057,7 +4057,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           }
         ];
 
-        let mergedEfforts = [...(t.consultantEfforts || [])];
+        const mergedEfforts = [...(t.consultantEfforts || [])];
         newEfforts.forEach(ne => {
           const idx = mergedEfforts.findIndex(e => e.consultantId === ne.consultantId && e.consultantType === ne.consultantType && !e.isDeleted);
           if (idx >= 0) {

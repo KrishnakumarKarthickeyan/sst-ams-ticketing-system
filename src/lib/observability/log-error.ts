@@ -44,7 +44,7 @@ export function logError(error: unknown, context: ErrorContext): void {
   };
 
   // Structured single-line record — greppable in logs.
-  // eslint-disable-next-line no-console
+   
   console.error('[assist360:error]', JSON.stringify(payload));
 
   // Forward to an external collector when configured (no-op otherwise).

@@ -74,7 +74,7 @@ export default function AdminManagersPage() {
       const requests = data || [];
       const userIds = requests.map(r => r.user_id).filter(Boolean);
 
-      let profileMap: Record<string, string> = {};
+      const profileMap: Record<string, string> = {};
       if (userIds.length > 0) {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
