@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Users, Gauge, Timer, ShieldCheck, ShieldAlert, RotateCcw, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
@@ -86,7 +86,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
 
   const capacityHours = useMemo(() => businessDays(periodStart, periodEnd) * 8, [periodStart, periodEnd]);
   const agg = useMemo(() => aggregateConsultants(tickets, now), [tickets, now]);
-  const utilOf = (a: ConsultantAgg) => (capacityHours > 0 ? Math.round((a.loggedHours / capacityHours) * 100) : 0);
+  const utilOf = useCallback((a: ConsultantAgg) => (capacityHours > 0 ? Math.round((a.loggedHours / capacityHours) * 100) : 0), [capacityHours]);
   const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
 
   // Per-consultant tickets-closed-per-bucket mini series (for the leaderboard Sparkline column).
@@ -104,7 +104,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
   }, [agg, buckets, tickets]);
 
   // Leaderboard rows (DataTable sorts/paginates internally).
-  const rows = useMemo<LeaderRow[]>(() => agg.map(a => ({ ...a, utilization: utilOf(a), closedTrend: closedTrendByName.get(a.name) || [] })), [agg, capacityHours, closedTrendByName]);
+  const rows = useMemo<LeaderRow[]>(() => agg.map(a => ({ ...a, utilization: utilOf(a), closedTrend: closedTrendByName.get(a.name) || [] })), [agg, utilOf, closedTrendByName]);
 
   // ── TEAM PERFORMANCE KPIs ──
   const teamKpis = useMemo(() => {
@@ -117,7 +117,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
     agg.forEach(a => { slaTotal += a.slaTotal; slaMet += a.slaMet; });
     const slaAdh = slaTotal ? Math.round((slaMet / slaTotal) * 100) : null;
     return { activeConsultants: agg.length, avgUtil, avgRes, slaAdh };
-  }, [agg, tickets, capacityHours]);
+  }, [agg, tickets, utilOf]);
 
   // ── Charts (no slice caps — every consultant renders; cards scale + scroll) ──
   const closedPer = useMemo(() => agg.map(a => ({ name: a.name, value: a.closed }))
