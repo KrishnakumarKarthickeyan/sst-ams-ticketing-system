@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -392,9 +393,9 @@ export default function ManagerDashboardPage() {
 
       toast.success(`Request approved! Temporary password: ${res.tempPassword}`, { id: loadId, duration: 15000 });
       fetchPasswordRequests();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error approving request:', err);
-      toast.error(`Failed to approve request: ${err.message}`, { id: loadId });
+      toast.error(`Failed to approve request: ${getErrorMessage(err)}`, { id: loadId });
     }
   };
 
@@ -414,9 +415,9 @@ export default function ManagerDashboardPage() {
       if (error) throw error;
       toast.success('Request rejected.', { id: loadId });
       fetchPasswordRequests();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error rejecting request:', err);
-      toast.error(`Failed to reject request: ${err.message}`, { id: loadId });
+      toast.error(`Failed to reject request: ${getErrorMessage(err)}`, { id: loadId });
     }
   };
 
@@ -487,9 +488,9 @@ export default function ManagerDashboardPage() {
       toast.success('Ticket has been successfully reopened.', { id: loadId });
       fetchReopenRequests();
       if (refetchData) refetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error approving reopen:', err);
-      toast.error(`Failed to approve: ${err.message}`, { id: loadId });
+      toast.error(`Failed to approve: ${getErrorMessage(err)}`, { id: loadId });
     }
   };
 
@@ -558,9 +559,9 @@ export default function ManagerDashboardPage() {
       toast.success('Reopen request rejected.', { id: loadId });
       fetchReopenRequests();
       if (refetchData) refetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error rejecting reopen:', err);
-      toast.error(`Failed to reject: ${err.message}`, { id: loadId });
+      toast.error(`Failed to reject: ${getErrorMessage(err)}`, { id: loadId });
     }
   };
 

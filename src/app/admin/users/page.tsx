@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useTickets } from '../../../context/TicketContext';
@@ -122,8 +123,8 @@ export default function AdminUsersPage() {
         setResetDone(true);
         toast.success('Password reset successfully.', { id: toastId });
         fetchUsers();
-      } catch (err: any) {
-        toast.error(`Reset failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Reset failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       const tempPass = manualPassword !== '' ? manualPassword : ('Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!');
@@ -162,8 +163,8 @@ export default function AdminUsersPage() {
         toast.success('Password updated successfully.', { id: toastId });
         setUpdateDialogOpen(false);
         fetchUsers();
-      } catch (err: any) {
-        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Update failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       toast.success(`Local password updated successfully (Force Change: ${forcePasswordChange ? 'Yes' : 'No'})`);
@@ -369,8 +370,8 @@ export default function AdminUsersPage() {
         setNewPassword('');
         setPwdOption('auto');
         setShowAddForm(false);
-      } catch (err: any) {
-        let msg = err.message;
+      } catch (err: unknown) {
+        let msg = getErrorMessage(err);
         if (msg.includes('security purposes') || msg.includes('rate limit') || msg.includes('too many requests')) {
           msg += ' (To bypass security rate limits, configure the SUPABASE_SERVICE_ROLE_KEY environment variable in your .env.local file to use the Admin API)';
         }
@@ -449,8 +450,8 @@ export default function AdminUsersPage() {
         toast.success('User profile updated successfully.', { id: toastId });
         setSelectedUser(null);
         await triggerDoubleRefetch();
-      } catch (err: any) {
-        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Update failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       // Local fallback
@@ -494,8 +495,8 @@ export default function AdminUsersPage() {
         setGeneratedPassResult(res.tempPassword);
         toast.success('Password reset successfully.', { id: toastId });
         fetchUsers();
-      } catch (err: any) {
-        toast.error(`Reset failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Reset failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       const tempPass = 'Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!';
@@ -539,8 +540,8 @@ export default function AdminUsersPage() {
         setModalPassInput('');
         setSelectedUser(null);
         fetchUsers();
-      } catch (err: any) {
-        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Update failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       toast.success(`Local Password updated to: ${finalPassword}`);
@@ -563,8 +564,8 @@ export default function AdminUsersPage() {
         toast.success(`Account access changed to: ${!currentActive ? 'Active' : 'Disabled'}`, { id: toastId });
         setSelectedUser(null);
         await triggerDoubleRefetch();
-      } catch (err: any) {
-        toast.error(`Operation failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Operation failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       const updated = usersList.map(u => {
@@ -588,8 +589,8 @@ export default function AdminUsersPage() {
         toast.success('Force setup enabled. User must create new credentials on next authentication.', { id: toastId });
         setSelectedUser(null);
         await triggerDoubleRefetch();
-      } catch (err: any) {
-        toast.error(`Force setup failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Force setup failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       toast.success('Local password change forced.');
@@ -612,8 +613,8 @@ export default function AdminUsersPage() {
         toast.success('Account unlocked successfully.', { id: toastId });
         setSelectedUser(null);
         await triggerDoubleRefetch();
-      } catch (err: any) {
-        toast.error(`Unlock failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Unlock failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       toast.success('Local account unlocked.');
@@ -637,8 +638,8 @@ export default function AdminUsersPage() {
           toast.success('User removed completely.', { id: toastId });
           setSelectedUser(null);
           await triggerDoubleRefetch();
-        } catch (err: any) {
-          toast.error(`Prune failed: ${err.message}`, { id: toastId });
+        } catch (err: unknown) {
+          toast.error(`Prune failed: ${getErrorMessage(err)}`, { id: toastId });
         }
       } else {
         const updated = usersList.filter(u => u.id !== id);

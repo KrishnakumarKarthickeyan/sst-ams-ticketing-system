@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -386,8 +387,8 @@ export default function CustomerCreateTicketPage() {
       } else {
         throw new Error(res.error || 'Server error occurred while inserting records.');
       }
-    } catch (err: any) {
-      toast.error(`Failed to create ticket: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Failed to create ticket: ${getErrorMessage(err)}`, { id: toastId });
     } finally {
       setSubmitting(false);
     }

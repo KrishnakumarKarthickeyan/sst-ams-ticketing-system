@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -66,7 +67,7 @@ const fetchWithRetryAndTimeout = async <T,>(
         setTimeout(() => reject(new Error('Database query timed out')), timeoutMs)
       );
       return await Promise.race([promise, timeoutPromise]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       attempt++;
       if (attempt > retries) {
         throw error;
@@ -589,7 +590,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         })) : []);
 
         setLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Fatal fetchData error:', err);
         setLoading(false);
       }
@@ -1246,7 +1247,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
 
         return mapped;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Fatal fetchTicketById error:', err);
         throw err;
       }
@@ -1342,7 +1343,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         // Return the relative storage path (not a public URL) so createSignedUrl works
         return storagePath;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in uploadAttachmentToSupabase:', err);
         throw err;
       }
@@ -1428,9 +1429,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           createdAt: new Date().toISOString()
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Attachment upload failed during ticket creation:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: getErrorMessage(err) };
     }
 
     const ticketSource = data.source || 'Created by Client';
@@ -1741,9 +1742,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return { success: true, ticketId: mappedTicket.id, ticketNumber: mappedTicket.ticketNumber };
         }
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[TICKET CREATION FATAL RUNTIME ERROR]:', err);
-        return { success: false, error: err.message || 'Fatal database transaction error' };
+        return { success: false, error: getErrorMessage(err) || 'Fatal database transaction error' };
       }
     }
 
@@ -1838,9 +1839,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         await fetchData();
         return { success: true };
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in requestEscalation Supabase update:', err);
-        return { success: false, error: err.message || 'Database error occurred' };
+        return { success: false, error: getErrorMessage(err) || 'Database error occurred' };
       }
     }
 
@@ -2246,9 +2247,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           createdAt: new Date().toISOString()
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Attachment upload failed during addComment:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: getErrorMessage(err) };
     }
 
     const commentAttachments: TicketCommentAttachment[] = newAttachments.map(att => ({
@@ -2359,9 +2360,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             new_value: `${isInternal ? 'Internal note' : 'Public comment'} added by ${authorName}`
           });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in addComment Supabase update:', err);
-        return { success: false, error: err.message || 'Database error adding comment.' };
+        return { success: false, error: getErrorMessage(err) || 'Database error adding comment.' };
       }
     }
 
@@ -3274,9 +3275,9 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         await fetchData();
         return { success: true };
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in acknowledgeEscalation:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: getErrorMessage(err) };
       }
     } else {
       return { success: true };
@@ -4695,7 +4696,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         return { success: true };
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[CLOSURE WORKFLOW] Error raising closure request in Supabase (initiating rollback):', err);
         // ROLLBACK
         if (dbClosureReqId) {
@@ -4720,7 +4721,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             updated_at: new Date().toISOString()
           }).eq('ticket_id', ticketId).eq('consultant_id', rh.consultantId);
         }
-        return { success: false, error: err.message || 'Database transaction failed' };
+        return { success: false, error: getErrorMessage(err) || 'Database transaction failed' };
       }
     }
 
@@ -5129,7 +5130,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         return { success: true };
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[CLOSURE WORKFLOW] Error resubmitting closure request in Supabase (initiating rollback):', err);
         // ROLLBACK
         if (dbClosureReqId) {
@@ -5158,7 +5159,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
             updated_at: new Date().toISOString()
           }).eq('ticket_id', ticketId).eq('consultant_id', rh.consultantId);
         }
-        return { success: false, error: err.message || 'Database transaction failed' };
+        return { success: false, error: getErrorMessage(err) || 'Database transaction failed' };
       }
     }
 
@@ -5434,7 +5435,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
 
         return { success: true };
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error approving closure request in Supabase (initiating rollback):', err);
         // ROLLBACK
         if (previousRequestState) {
@@ -5469,7 +5470,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           await supabase.from('satisfaction_ratings').delete().eq('id', satisfactionRatingId);
         }
 
-        return { success: false, error: err.message || 'Database transaction failed' };
+        return { success: false, error: getErrorMessage(err) || 'Database transaction failed' };
       }
     }
 
@@ -5661,7 +5662,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
         });
         if (histErr2) throw histErr2;
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error rejecting closure request in Supabase (initiating rollback):', err);
         // ROLLBACK
         if (previousRequestState) {
@@ -5685,7 +5686,7 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
           updated_at: new Date().toISOString()
         }).eq('ticket_id', ticketId);
 
-        return { success: false, error: err.message || 'Database transaction failed' };
+        return { success: false, error: getErrorMessage(err) || 'Database transaction failed' };
       }
     }
 
@@ -6393,9 +6394,9 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       debouncedRefetch();
 
       return { success: true, attachment: newAttachment };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error in addAttachment:', err);
-      return { success: false, error: err.message || 'Failed to add attachment' };
+      return { success: false, error: getErrorMessage(err) || 'Failed to add attachment' };
     }
   };
 
@@ -6441,9 +6442,9 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       debouncedRefetch();
 
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error in deleteAttachment:', err);
-      return { success: false, error: err.message || 'Failed to delete attachment' };
+      return { success: false, error: getErrorMessage(err) || 'Failed to delete attachment' };
     }
   };
 
@@ -6470,8 +6471,8 @@ ${moduleFaqStr || '* No FAQ listed for this module. Refer to BASIS admin.'}
       if (error) return { success: false, error: error.message };
       setSlaTargetsByOrg(prev => ({ ...prev, [organizationId]: targets }));
       return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e?.message || 'Failed to save SLA targets' };
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) || 'Failed to save SLA targets' };
     }
   };
 

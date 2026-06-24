@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -109,9 +110,9 @@ export default function FirstLoginResetPage() {
         redirectToDashboard(user.role);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Password reset failure:', err);
-      setError(err.message || 'An error occurred during password update.');
+      setError(getErrorMessage(err) || 'An error occurred during password update.');
       setUpdating(false);
       toast.error('Failed to update credentials.', { id: toastId });
     }

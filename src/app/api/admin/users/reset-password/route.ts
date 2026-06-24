@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/lib/errors';
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -168,8 +169,8 @@ export async function POST(request: Request) {
     await logUserAuditAction(targetProfile.email, 'Password Reset', requesterProfile.email || 'SuperAdmin');
 
     return NextResponse.json({ success: true, tempPassword });
-  } catch (err: any) {
+  } catch (err: unknown) {
     logError(err, { source: 'api:reset-password' });
-    return NextResponse.json({ success: false, error: err.message || 'An unexpected error occurred.' }, { status: 500 });
+    return NextResponse.json({ success: false, error: getErrorMessage(err) || 'An unexpected error occurred.' }, { status: 500 });
   }
 }

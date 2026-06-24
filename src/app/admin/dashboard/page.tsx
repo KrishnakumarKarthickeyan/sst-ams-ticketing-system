@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useTickets } from '../../../context/TicketContext';
@@ -111,8 +112,8 @@ export default function AdminDashboardPage() {
         .order('created_at', { ascending: false });
       if (error) throw error;
       setAuditLogs(data || []);
-    } catch (err: any) {
-      console.error('Failed to fetch audit logs:', err.message);
+    } catch (err: unknown) {
+      console.error('Failed to fetch audit logs:', getErrorMessage(err));
     } finally {
       setAuditsLoading(false);
     }
@@ -774,8 +775,8 @@ export default function AdminDashboardPage() {
       if (error) throw error;
       toast.success(`Effort log ${action.toLowerCase()} successfully.`, { id: toastId });
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Operation failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Operation failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -812,8 +813,8 @@ export default function AdminDashboardPage() {
 
       toast.success(`Closure ${action.toLowerCase()} successfully.`, { id: toastId });
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Operation failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Operation failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -845,8 +846,8 @@ export default function AdminDashboardPage() {
 
       toast.success(`Soft delete ${action.toLowerCase()} successfully.`, { id: toastId });
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Operation failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Operation failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -960,8 +961,8 @@ export default function AdminDashboardPage() {
       if (!res.success) throw new Error(res.error);
       toast.success(`Account status changed to: ${nextActive ? 'Active' : 'Disabled'}`, { id: toastId });
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Operation failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Operation failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -979,8 +980,8 @@ export default function AdminDashboardPage() {
       if (!res.success) throw new Error(res.error);
       toast.success('Account unlocked successfully.', { id: toastId });
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Unlock failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Unlock failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -1000,8 +1001,8 @@ export default function AdminDashboardPage() {
       toast.success('Password reset completed successfully. Temporary credentials ready.', { id: toastId });
       setManualPassword('');
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Reset failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Reset failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -1028,8 +1029,8 @@ export default function AdminDashboardPage() {
       setManualPassword('');
       setIsIAMModalOpen(false);
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Update failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Update failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 

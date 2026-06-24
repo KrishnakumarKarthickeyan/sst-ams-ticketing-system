@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { ShieldCheck, User, Check, Mail, KeyRound, Lock } from 'lucide-react';
@@ -67,9 +68,9 @@ export default function AdminProfilePage() {
       setNewPassword('');
       setConfirmNewPassword('');
       toast.success('Password updated successfully.', { id: toastId });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Password change error:', err);
-      setPasswordError(err.message || 'Failed to update password.');
+      setPasswordError(getErrorMessage(err) || 'Failed to update password.');
       toast.error('Failed to change password.', { id: toastId });
     } finally {
       setPasswordUpdating(false);

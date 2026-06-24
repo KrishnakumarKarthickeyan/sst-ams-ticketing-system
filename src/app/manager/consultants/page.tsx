@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import {
@@ -285,8 +286,8 @@ export default function ManagerConsultantsPage() {
 
         await refetchData();
         closeActionModal();
-      } catch (err: any) {
-        let msg = err.message;
+      } catch (err: unknown) {
+        let msg = getErrorMessage(err);
         if (msg.includes('security purposes') || msg.includes('rate limit') || msg.includes('too many requests')) {
           msg += ' (To bypass security rate limits, configure the SUPABASE_SERVICE_ROLE_KEY environment variable in your .env.local file to use the Admin API)';
         }
@@ -336,8 +337,8 @@ export default function ManagerConsultantsPage() {
         toast.success('Consultant profile updated.', { id: toastId });
         await fetchStakeholders();
         closeActionModal();
-      } catch (err: any) {
-        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Update failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       const updated = consultants.map(c => {
@@ -375,8 +376,8 @@ export default function ManagerConsultantsPage() {
         if (error) throw new Error(error.message);
         toast.success(`Account access changed to: ${!current.active ? 'Active' : 'Disabled'}`, { id: toastId });
         await fetchStakeholders();
-      } catch (err: any) {
-        toast.error(`Operation failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Operation failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       const updated = consultants.map(c => {
@@ -406,8 +407,8 @@ export default function ManagerConsultantsPage() {
 
           toast.success('Consultant removed completely.', { id: toastId });
           await fetchStakeholders();
-        } catch (err: any) {
-          toast.error(`Prune failed: ${err.message}`, { id: toastId });
+        } catch (err: unknown) {
+          toast.error(`Prune failed: ${getErrorMessage(err)}`, { id: toastId });
         }
       } else {
         const updated = consultants.filter(c => c.id !== id);
@@ -557,8 +558,8 @@ export default function ManagerConsultantsPage() {
 
         await refetchData();
         closeActionModal();
-      } catch (err: any) {
-        let msg = err.message;
+      } catch (err: unknown) {
+        let msg = getErrorMessage(err);
         if (msg.includes('security purposes') || msg.includes('rate limit') || msg.includes('too many requests')) {
           msg += ' (To bypass security rate limits, configure the SUPABASE_SERVICE_ROLE_KEY environment variable in your .env.local file to use the Admin API)';
         }
@@ -655,8 +656,8 @@ export default function ManagerConsultantsPage() {
         toast.success('Customer profile saved.', { id: toastId });
         await fetchStakeholders();
         closeActionModal();
-      } catch (err: any) {
-        toast.error(`Update failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Update failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       const updated = customers.map(c => {
@@ -694,8 +695,8 @@ export default function ManagerConsultantsPage() {
         if (error) throw new Error(error.message);
         toast.success(`Account access changed to: ${!current.active ? 'Active' : 'Disabled'}`, { id: toastId });
         await fetchStakeholders();
-      } catch (err: any) {
-        toast.error(`Operation failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Operation failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       const updated = customers.map(c => {
@@ -725,8 +726,8 @@ export default function ManagerConsultantsPage() {
 
           toast.success('Customer record pruned.', { id: toastId });
           await fetchStakeholders();
-        } catch (err: any) {
-          toast.error(`Prune failed: ${err.message}`, { id: toastId });
+        } catch (err: unknown) {
+          toast.error(`Prune failed: ${getErrorMessage(err)}`, { id: toastId });
         }
       } else {
         const updated = customers.filter(c => c.id !== id);
@@ -768,8 +769,8 @@ export default function ManagerConsultantsPage() {
         } else {
           throw new Error(res.error);
         }
-      } catch (err: any) {
-        toast.error(`Authorization failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Authorization failed: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       const tempPass = isManual ? manualPwd : ('Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!');
