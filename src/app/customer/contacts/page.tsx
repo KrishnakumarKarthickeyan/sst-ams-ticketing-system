@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
@@ -54,9 +55,9 @@ export default function CustomerContactsPage() {
           } else {
             setContacts([]);
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error('Error fetching customer organization contacts:', err);
-          toast.error(`Failed to load directory: ${err.message}`);
+          toast.error(`Failed to load directory: ${getErrorMessage(err)}`);
         } finally {
           setLoading(false);
         }

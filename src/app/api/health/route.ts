@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/client';
 
@@ -27,12 +28,12 @@ export async function GET() {
       databaseConnected: true,
       hasData: !!data
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Database keep-warm healthcheck failed:', error);
     return NextResponse.json(
       {
         status: 'error',
-        message: error.message || 'Unknown database connection error'
+        message: getErrorMessage(error) || 'Unknown database connection error'
       },
       { status: 500 }
     );

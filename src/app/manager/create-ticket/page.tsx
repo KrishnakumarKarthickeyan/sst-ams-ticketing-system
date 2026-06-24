@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { moduleLabel } from '../../../lib/sap-modules';
 import { useTickets } from '../../../context/TicketContext';
@@ -194,9 +195,9 @@ export default function ManagerCreateTicketPage() {
           }));
           setCustomersList(list);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching customers from Supabase:', err);
-        toast.error(`Database query failed: ${err.message || err}`);
+        toast.error(`Database query failed: ${getErrorMessage(err) || err}`);
       } finally {
         setLoadingCustomers(false);
       }
@@ -445,8 +446,8 @@ export default function ManagerCreateTicketPage() {
       } else {
         throw new Error(res.error || 'Server error occurred while inserting records.');
       }
-    } catch (err: any) {
-      toast.error(`Failed to create ticket: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Failed to create ticket: ${getErrorMessage(err)}`, { id: toastId });
     } finally {
       setSubmitting(false);
     }

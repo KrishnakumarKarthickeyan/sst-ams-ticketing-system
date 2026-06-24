@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
@@ -129,9 +130,9 @@ export default function AdminManagersPage() {
 
       toast.success(`Request approved! Temporary password: ${res.tempPassword}`, { id: loadId, duration: 15000 });
       fetchPasswordRequests();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error approving request:', err);
-      toast.error(`Failed to approve request: ${err.message}`, { id: loadId });
+      toast.error(`Failed to approve request: ${getErrorMessage(err)}`, { id: loadId });
     }
   };
 
@@ -151,9 +152,9 @@ export default function AdminManagersPage() {
       if (error) throw error;
       toast.success('Request rejected.', { id: loadId });
       fetchPasswordRequests();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error rejecting request:', err);
-      toast.error(`Failed to reject request: ${err.message}`, { id: loadId });
+      toast.error(`Failed to reject request: ${getErrorMessage(err)}`, { id: loadId });
     }
   };
 
@@ -208,9 +209,9 @@ export default function AdminManagersPage() {
       });
 
       setManagers(mapped);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching manager details:', err);
-      toast.error(`Failed to load managers: ${err.message}`);
+      toast.error(`Failed to load managers: ${getErrorMessage(err)}`);
     } finally {
       setLoading(false);
     }
@@ -253,8 +254,8 @@ export default function AdminManagersPage() {
         } else {
           throw new Error(res.error);
         }
-      } catch (err: any) {
-        toast.error(`Failed to provision manager: ${err.message}`, { id: loadId });
+      } catch (err: unknown) {
+        toast.error(`Failed to provision manager: ${getErrorMessage(err)}`, { id: loadId });
       }
     } else {
       // Local fallback
@@ -295,8 +296,8 @@ export default function AdminManagersPage() {
         if (error) throw error;
         toast.success(`Manager is now ${nextActive ? 'Active' : 'Disabled'}`, { id: loadId });
         fetchManagersData();
-      } catch (err: any) {
-        toast.error(`Failed to toggle manager status: ${err.message}`, { id: loadId });
+      } catch (err: unknown) {
+        toast.error(`Failed to toggle manager status: ${getErrorMessage(err)}`, { id: loadId });
       }
     } else {
       const updated = managers.map(m => m.id === mgr.id ? { ...m, active: nextActive } : m);
@@ -326,8 +327,8 @@ export default function AdminManagersPage() {
         if (!apiRes.ok || !res.success) throw new Error(res.error || 'API request failed');
         
         toast.success(`Credentials updated successfully. Password: ${res.tempPassword}`, { id: loadId, duration: 12000 });
-      } catch (err: any) {
-        toast.error(`Reset failed: ${err.message}`, { id: loadId });
+      } catch (err: unknown) {
+        toast.error(`Reset failed: ${getErrorMessage(err)}`, { id: loadId });
       }
     } else {
       const finalPass = 'Temp@' + (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + 'x7gT9qLpKm').slice(0, 12) + 'A1!';
@@ -363,8 +364,8 @@ export default function AdminManagersPage() {
         if (selectedManager?.id === mgr.id) {
           setSelectedManager(null);
         }
-      } catch (err: any) {
-        toast.error(`Deletion failed: ${err.message}`, { id: loadId });
+      } catch (err: unknown) {
+        toast.error(`Deletion failed: ${getErrorMessage(err)}`, { id: loadId });
       }
     } else {
       const updated = managers.filter(m => m.id !== mgr.id);
@@ -391,9 +392,9 @@ export default function AdminManagersPage() {
           .order('created_at', { ascending: false });
         if (error) throw error;
         setManagerTickets(data || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching manager cockpit tickets:', err);
-        toast.error(`Failed to fetch assignments: ${err.message}`);
+        toast.error(`Failed to fetch assignments: ${getErrorMessage(err)}`);
       } finally {
         setLoadingTickets(false);
       }

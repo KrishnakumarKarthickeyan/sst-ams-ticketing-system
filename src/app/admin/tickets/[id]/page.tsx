@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useTickets } from '../../../../context/TicketContext';
@@ -33,9 +34,9 @@ export default function AdminTicketDetailPage() {
         } else {
           if (active) setLocalLoading(false);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (active) {
-          setFetchError(err instanceof Error ? err : new Error(err?.message || 'Database load failure.'));
+          setFetchError(err instanceof Error ? err : new Error(getErrorMessage(err) || 'Database load failure.'));
           setLocalLoading(false);
         }
       }

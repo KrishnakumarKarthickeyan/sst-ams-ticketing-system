@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { 
@@ -96,9 +97,9 @@ export default function AdminContactsPage() {
         });
 
         setContacts(mapped);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching contacts registry:', err);
-        toast.error(`Database query failed: ${err.message}`);
+        toast.error(`Database query failed: ${getErrorMessage(err)}`);
       } finally {
         setLoading(false);
       }
@@ -171,9 +172,9 @@ export default function AdminContactsPage() {
         setShowAddDialog(false);
         resetFormFields();
         fetchContactsData();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error adding contact:', err);
-        toast.error(`Save failed: ${err.message}`, { id: loadId });
+        toast.error(`Save failed: ${getErrorMessage(err)}`, { id: loadId });
       }
     } else {
       // Local addition
@@ -255,9 +256,9 @@ export default function AdminContactsPage() {
         setEditingContact(null);
         resetFormFields();
         fetchContactsData();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error updating contact:', err);
-        toast.error(`Update failed: ${err.message}`, { id: loadId });
+        toast.error(`Update failed: ${getErrorMessage(err)}`, { id: loadId });
       }
     } else {
       // Local edit
@@ -298,9 +299,9 @@ export default function AdminContactsPage() {
         if (error) throw error;
         toast.success('Contact removed from system.', { id: loadId });
         fetchContactsData();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error deleting contact:', err);
-        toast.error(`Deletion failed: ${err.message}`, { id: loadId });
+        toast.error(`Deletion failed: ${getErrorMessage(err)}`, { id: loadId });
       }
     } else {
       setContacts(contacts.filter(item => item.id !== c.id));

@@ -1,5 +1,6 @@
 'use server';
 
+import { getErrorMessage } from '@/lib/errors';
 import { createClient } from '@supabase/supabase-js';
 
 const getAdminClient = () => {
@@ -86,8 +87,8 @@ export async function createAuthUser(email: string, password: string, fullName: 
 
     if (error) return { success: false, error: error.message };
     return { success: true, user: data.user };
-  } catch (e: any) {
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -470,8 +471,8 @@ export async function provisionUser(params: {
     await logUserAuditAction(email, 'Initial Password Generated', performedBy);
 
     return { success: true, userId, password };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Provisioning failed' };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) || 'Provisioning failed' };
   }
 }
 
@@ -523,9 +524,9 @@ export async function logUserAuditAction(userEmail: string, action: string, perf
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Audit log fatal error:', e);
-    return { success: false, error: e.message };
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -587,11 +588,11 @@ export async function resetUserPasswordAdmin(
     await logUserAuditAction(targetEmail, 'Password Reset', performedBy || 'SuperAdmin');
 
     return { success: true, password };
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (targetEmail) {
       await logUserAuditAction(targetEmail, 'Failed Password Reset', performedBy || 'SuperAdmin');
     }
-    return { success: false, error: e.message || 'Reset failed' };
+    return { success: false, error: getErrorMessage(e) || 'Reset failed' };
   }
 }
 
@@ -644,11 +645,11 @@ export async function adminUpdatePasswordDirect(userId: string, newPassword: str
     await logUserAuditAction(targetEmail, 'Password Updated', performedBy || 'SuperAdmin');
 
     return { success: true };
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (targetEmail) {
       await logUserAuditAction(targetEmail, 'Failed Password Update', performedBy || 'SuperAdmin');
     }
-    return { success: false, error: e.message || 'Update failed' };
+    return { success: false, error: getErrorMessage(e) || 'Update failed' };
   }
 }
 
@@ -715,8 +716,8 @@ export async function updateUserAuthStatus(
     }
 
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Status update failed' };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) || 'Status update failed' };
   }
 }
 
@@ -737,8 +738,8 @@ export async function adminForcePasswordChange(userId: string, userEmail: string
 
     await logUserAuditAction(userEmail, 'Force Password Change', performedBy);
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Force password change failed' };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) || 'Force password change failed' };
   }
 }
 
@@ -763,7 +764,7 @@ export async function checkUserLockedStatus(email: string) {
       }
     }
     return { success: true };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Lock status check error:', e);
     return { success: true };
   }
@@ -818,7 +819,7 @@ export async function handleFailedLogin(email: string) {
 
       return { locked: false, attemptsRemaining: 5 - newAttempts };
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Failed login tracker fatal error:', e);
     return { locked: false };
   }
@@ -846,7 +847,7 @@ export async function handleSuccessfulLogin(email: string) {
 
     if (dbErr) throw dbErr;
     return { success: true };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Successful login reset fatal error:', e);
     return { success: false };
   }
@@ -862,8 +863,8 @@ export async function deleteAuthUser(userId: string) {
     const { error } = await client.auth.admin.deleteUser(userId);
     if (error) return { success: false, error: error.message };
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Deletion failed' };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) || 'Deletion failed' };
   }
 }
 
@@ -882,9 +883,9 @@ export async function getUserProfileServer(userId: string) {
 
     if (error) return { success: false, error: error.message };
     return { success: true, profile };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('getUserProfileServer error:', e);
-    return { success: false, error: e.message || 'Failed to fetch user profile' };
+    return { success: false, error: getErrorMessage(e) || 'Failed to fetch user profile' };
   }
 }
 
@@ -1062,8 +1063,8 @@ export async function updateUserRoster(params: {
 
     await logUserAuditAction(params.email, `Profile updated by Manager`, performedBy);
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Update failed' };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) || 'Update failed' };
   }
 }
 

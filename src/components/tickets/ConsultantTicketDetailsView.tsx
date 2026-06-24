@@ -438,7 +438,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
         } else {
           window.open(path, '_blank');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[STORAGE] Error generating signed URL:', err);
         window.open(path, '_blank');
       }

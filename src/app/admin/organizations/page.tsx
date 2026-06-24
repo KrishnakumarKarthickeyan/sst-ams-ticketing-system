@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
@@ -145,9 +146,9 @@ export default function AdminOrganizationsPage() {
           .select('*');
         if (profErr) throw profErr;
         setProfiles(profData || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching customers directory:', err);
-        toast.error(`Database retrieval failed: ${err.message}`);
+        toast.error(`Database retrieval failed: ${getErrorMessage(err)}`);
       } finally {
         setLoading(false);
       }
@@ -406,8 +407,8 @@ export default function AdminOrganizationsPage() {
       } else {
         throw new Error(res.error);
       }
-    } catch (e: any) {
-      toast.error(`Setup failed: ${e.message}`, { id: toastId });
+    } catch (e: unknown) {
+      toast.error(`Setup failed: ${getErrorMessage(e)}`, { id: toastId });
     }
   };
 
@@ -428,8 +429,8 @@ export default function AdminOrganizationsPage() {
       if (error) throw error;
       toast.success(`Organization status changed to ${newStatus}`, { id: toastId });
       await fetchAllData();
-    } catch (err: any) {
-      toast.error(`Update failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Update failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -445,8 +446,8 @@ export default function AdminOrganizationsPage() {
       setSelectedOrg(null);
       await refetchData();
       await fetchAllData();
-    } catch (err: any) {
-      toast.error(`Deletion failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Deletion failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -476,8 +477,8 @@ export default function AdminOrganizationsPage() {
       toast.success('Audits updated successfully.', { id: toastId });
       setEditDialogOpen(false);
       await fetchAllData();
-    } catch (err: any) {
-      toast.error(`Update failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Update failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -514,8 +515,8 @@ export default function AdminOrganizationsPage() {
         setPasswordDialogOpen(false);
       }
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Credential update failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Credential update failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -549,8 +550,8 @@ export default function AdminOrganizationsPage() {
       setExtendDialogOpen(false);
       await refetchData();
       await fetchAllData();
-    } catch (err: any) {
-      toast.error(`Extension failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Extension failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 

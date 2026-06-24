@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useRef } from 'react';
 import { useTickets } from '../../context/TicketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -178,16 +179,16 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
         } else {
           throw new Error(res.error || 'Upload error');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         clearInterval(progressInterval);
         setQueue((prev) =>
           prev.map((item) =>
             item.id === queueId
-              ? { ...item, status: 'error', errorMessage: err.message || 'Upload failed' }
+              ? { ...item, status: 'error', errorMessage: getErrorMessage(err) || 'Upload failed' }
               : item
           )
         );
-        toast.error(`Failed to upload ${file.name}: ${err.message || 'Server error'}`);
+        toast.error(`Failed to upload ${file.name}: ${getErrorMessage(err) || 'Server error'}`);
       }
     }
   };
@@ -225,7 +226,7 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
         } else {
           window.open(path, '_blank');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[STORAGE] Signed URL exception:', err);
         window.open(path, '_blank');
       }
@@ -248,8 +249,8 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
       } else {
         toast.error(`Delete failed: ${res.error}`);
       }
-    } catch (err: any) {
-      toast.error(`Delete error: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Delete error: ${getErrorMessage(err)}`);
     } finally {
       setDeletingId(null);
     }

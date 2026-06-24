@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { ShieldCheck, User, Check, Mail, Clock, KeyRound } from 'lucide-react';
@@ -73,9 +74,9 @@ export default function ManagerProfilePage() {
       setPendingRequest(data);
       setShowRequestDialog(false);
       toast.success('Password change request submitted successfully.', { id: toastId });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Request submit error:', err);
-      toast.error(err.message || 'Failed to submit request.', { id: toastId });
+      toast.error(getErrorMessage(err) || 'Failed to submit request.', { id: toastId });
     } finally {
       setRequestLoading(false);
     }

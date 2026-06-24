@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
@@ -134,9 +135,9 @@ export default function AdminConsultantsPage() {
           .select('*');
         if (effErr) throw effErr;
         setEfforts(effData || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error loading consultants registry:', err);
-        toast.error(`Database retrieval failed: ${err.message}`);
+        toast.error(`Database retrieval failed: ${getErrorMessage(err)}`);
       } finally {
         setLoading(false);
       }
@@ -339,8 +340,8 @@ export default function AdminConsultantsPage() {
       } else {
         throw new Error(res.error);
       }
-    } catch (e: any) {
-      toast.error(`Provisioning failed: ${e.message}`, { id: toastId });
+    } catch (e: unknown) {
+      toast.error(`Provisioning failed: ${getErrorMessage(e)}`, { id: toastId });
     }
   };
 
@@ -355,8 +356,8 @@ export default function AdminConsultantsPage() {
       if (error) throw error;
       toast.success(`Account status modified.`, { id: toastId });
       await fetchConsultantsAndEfforts();
-    } catch (err: any) {
-      toast.error(`Status toggle failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Status toggle failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -371,8 +372,8 @@ export default function AdminConsultantsPage() {
       toast.success('Consultant pruned successfully.', { id: toastId });
       setSelectedConsultant(null);
       await fetchConsultantsAndEfforts();
-    } catch (err: any) {
-      toast.error(`Pruning failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Pruning failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 
@@ -407,8 +408,8 @@ export default function AdminConsultantsPage() {
         setPasswordDialogOpen(false);
       }
       await refetchData();
-    } catch (err: any) {
-      toast.error(`Credential update failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Credential update failed: ${getErrorMessage(err)}`, { id: toastId });
     }
   };
 

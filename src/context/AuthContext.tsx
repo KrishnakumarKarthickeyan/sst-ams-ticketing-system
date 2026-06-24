@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
@@ -99,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         return sessionUser;
 
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('Fatal profile query exception:', e);
         await supabase!.auth.signOut();
         setUser(null);
@@ -267,12 +268,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await supabase.auth.signOut();
         setUser(null);
         return { success: false, error: 'User profile mapping failed.' };
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (supabase) {
           await supabase.auth.signOut().catch(() => {});
         }
         setUser(null);
-        return { success: false, error: e.message || 'An error occurred during authentication.' };
+        return { success: false, error: getErrorMessage(e) || 'An error occurred during authentication.' };
       } finally {
         setTimeout(() => { isLoggingInRef.current = false; }, 1500);
       }

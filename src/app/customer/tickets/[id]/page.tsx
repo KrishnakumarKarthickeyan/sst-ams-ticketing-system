@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTickets } from '../../../../context/TicketContext';
@@ -120,9 +121,9 @@ export default function CustomerTicketDetailPage() {
         } else {
           if (active) setLocalLoading(false);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (active) {
-          setFetchError(err instanceof Error ? err : new Error(err.message || 'Failed to load ticket details'));
+          setFetchError(err instanceof Error ? err : new Error(getErrorMessage(err) || 'Failed to load ticket details'));
           setLocalLoading(false);
         }
       }
@@ -444,7 +445,7 @@ export default function CustomerTicketDetailPage() {
         } else {
           window.open(path, '_blank');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[STORAGE] Error generating signed URL:', err);
         window.open(path, '_blank');
       }
@@ -502,9 +503,9 @@ export default function CustomerTicketDetailPage() {
         setReopenReason('');
         toast.success('Ticket reopen request submitted to support managers.', { id: toastId });
         showBannerMessage('Reopen request has been submitted to support managers.');
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error submitting reopen request:', err);
-        toast.error(`Failed to submit request: ${err.message}`, { id: toastId });
+        toast.error(`Failed to submit request: ${getErrorMessage(err)}`, { id: toastId });
       }
     } else {
       // Local fallback
@@ -539,8 +540,8 @@ export default function CustomerTicketDetailPage() {
       } else {
         toast.error(res.error || "Failed to escalate ticket.", { id: toastId });
       }
-    } catch (err: any) {
-      toast.error(err.message || "An unexpected error occurred.", { id: toastId });
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "An unexpected error occurred.", { id: toastId });
     } finally {
       setShowEscalateDialog(false);
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTickets } from '@/context/TicketContext';
@@ -209,8 +210,8 @@ export default function UserManagementPage() {
       await refetchData();
       await fetchOrgs();
       toast.success('User records refreshed');
-    } catch (e: any) {
-      toast.error('Failed to refresh data: ' + e.message);
+    } catch (e: unknown) {
+      toast.error('Failed to refresh data: ' + getErrorMessage(e));
     } finally {
       setIsRefreshing(false);
     }
@@ -432,8 +433,8 @@ export default function UserManagementPage() {
       setEditUserOpen(false);
       await refetchData();
       await fetchOrgs();
-    } catch (err: any) {
-      toast.error('Failed to update user: ' + err.message, { id: toastId });
+    } catch (err: unknown) {
+      toast.error('Failed to update user: ' + getErrorMessage(err), { id: toastId });
     } finally {
       setEditLoading(false);
     }
@@ -456,8 +457,8 @@ export default function UserManagementPage() {
       });
       setProvisionSuccessOpen(true);
       setEditUserOpen(false);
-    } catch (err: any) {
-      toast.error('Reset failed: ' + err.message, { id: toastId });
+    } catch (err: unknown) {
+      toast.error('Reset failed: ' + getErrorMessage(err), { id: toastId });
     }
   };
 
@@ -483,8 +484,8 @@ export default function UserManagementPage() {
       toast.success(`User ${!selectedUser.isActive ? 'activated' : 'deactivated'} successfully`, { id: toastId });
       setDeactivateAlertOpen(false);
       await refetchData();
-    } catch (err: any) {
-      toast.error('Activation update failed: ' + err.message, { id: toastId });
+    } catch (err: unknown) {
+      toast.error('Activation update failed: ' + getErrorMessage(err), { id: toastId });
     }
   };
 
@@ -578,7 +579,7 @@ export default function UserManagementPage() {
       } else {
         setDeleteGuardStatus({ loading: false, blocked: false, reason: '' });
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       setDeleteGuardStatus({ loading: false, blocked: true, reason: 'Failed to verify linked records status.' });
     }
   };
@@ -605,8 +606,8 @@ export default function UserManagementPage() {
       toast.success('User permanently deleted', { id: toastId });
       setDeleteAlertOpen(false);
       await refetchData();
-    } catch (err: any) {
-      toast.error('Deletion failed: ' + err.message, { id: toastId });
+    } catch (err: unknown) {
+      toast.error('Deletion failed: ' + getErrorMessage(err), { id: toastId });
     }
   };
 
@@ -701,8 +702,8 @@ export default function UserManagementPage() {
       setViewContractEditMode(false);
       setContractDialogOpen(false);
       await refetchData();
-    } catch (err: any) {
-      toast.error('Failed to update contract: ' + err.message, { id: toastId });
+    } catch (err: unknown) {
+      toast.error('Failed to update contract: ' + getErrorMessage(err), { id: toastId });
     } finally {
       setCViewLoading(false);
     }

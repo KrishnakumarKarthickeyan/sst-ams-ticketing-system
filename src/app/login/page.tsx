@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -102,11 +103,11 @@ export default function LoginPage() {
         setError(res.error || 'Invalid credentials.');
         setAuthenticating(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId);
       if (!timedOut) {
         console.error('Login submission error:', err);
-        setError(err.message || 'An unexpected authentication error occurred.');
+        setError(getErrorMessage(err) || 'An unexpected authentication error occurred.');
         setAuthenticating(false);
       }
     }
