@@ -4,12 +4,16 @@ import React, { useMemo, useState } from 'react';
 import { Users, Gauge, Clock, AlertTriangle, Building2, Briefcase } from 'lucide-react';
 import type { Ticket, CustomerContract } from '../../types/ticket';
 import { ChartCard } from './chart-primitives';
-import { BarH, BarV, Trend } from './chart-builders';
+import { BarH, Trend } from './chart-builders';
+import { useTopNPages, ChartPager } from './chart-pager';
 import { StatCard } from '../ui/stat-card';
 import { DataTable, type DataTableColumn } from '../ui/data-table';
 import { StatusPill, type PillTone } from '../ui/status-pill';
 import { Progress } from '../ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { LoadBuckets, type LoadItem } from '../ui/load-buckets';
+import { BulletRow, type BulletBand } from '../ui/bullet-row';
+import { Sparkline, type SparklineTone } from '../ui/sparkline';
 import { CHART_COLORS, SEMANTIC } from '../../lib/chart-theme';
 import {
   buildBuckets, bucketIndex, autoGranularity, approvedHours, completionDate,
@@ -26,10 +30,23 @@ interface Props {
 
 // Utilization band → semantic Progress fill (the contract: <70 ok, 70–90 warn, >90 over).
 const BAND_FILL: Record<'ok' | 'warning' | 'over', string> = { ok: 'bg-info', warning: 'bg-warning', over: 'bg-critical' };
-const utilColor = (pct: number) => (pct > 90 ? SEMANTIC.danger : pct >= 70 ? SEMANTIC.warning : CHART_COLORS[0]);
 
-const ROW_PX = 28;
-const dynHeight = (count: number) => Math.max(240, count * ROW_PX);
+const TOP_N = 8;
+// BulletRow color bands, aligned with the LoadBuckets thresholds
+// (idle <40 → neutral, healthy 40–75 → success, busy 75–90 → warning, overloaded → critical).
+const UTIL_BANDS: BulletBand[] = [
+  { upTo: 39, tone: 'neutral' },
+  { upTo: 74, tone: 'success' },
+  { upTo: 90, tone: 'warning' },
+  { upTo: Number.MAX_SAFE_INTEGER, tone: 'critical' },
+];
+const trendTone = (s: number[]): SparklineTone => {
+  if (!s || s.length < 2) return 'neutral';
+  const half = Math.floor(s.length / 2);
+  const a = s.slice(0, half).reduce((x, y) => x + y, 0);
+  const b = s.slice(half).reduce((x, y) => x + y, 0);
+  return b > a ? 'positive' : b < a ? 'negative' : 'neutral';
+};
 
 function businessDays(startMs: number, endMs: number): number {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return 0;
@@ -68,12 +85,26 @@ export function ManagerWorkloadAnalytics({ section, tickets, contracts, now }: P
 }
 
 // ─────────────────────────── CONSULTANTS ───────────────────────────
-type ConsRow = { id: string; name: string; active: number; resolved: number; loggedHours: number; avgHandling: number | null; utilization: number; busy: boolean };
+type ConsRow = { id: string; name: string; active: number; resolved: number; loggedHours: number; avgHandling: number | null; utilization: number; busy: boolean; hoursTrend: number[] };
 
 function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
   tickets: Ticket[]; now: number; buckets: Bucket[]; capacityHours: number;
 }) {
   const agg = useMemo(() => aggregateConsultants(tickets, now), [tickets, now]);
+
+  // Per-consultant hours-logged-per-bucket mini series (for the roster Sparkline column).
+  const hoursTrendByName = useMemo(() => {
+    const m = new Map<string, number[]>();
+    agg.forEach(a => m.set(a.name, buckets.map(() => 0)));
+    tickets.forEach(t => {
+      const c = t.assignedConsultant; if (!c) return;
+      const h = approvedHours(t); if (h <= 0) return;
+      const arr = m.get(c); if (!arr) return;
+      const i = bucketIndex(buckets, completionDate(t));
+      if (i >= 0) arr[i] += h;
+    });
+    return m;
+  }, [agg, buckets, tickets]);
 
   const rows = useMemo<ConsRow[]>(() => agg.map(a => {
     const utilization = capacityHours > 0 ? Math.round((a.loggedHours / capacityHours) * 100) : 0;
@@ -82,8 +113,9 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
       loggedHours: Math.round(a.loggedHours * 10) / 10,
       avgHandling: a.avgResolutionH !== null ? Math.round(a.avgResolutionH * 10) / 10 : null,
       utilization, busy: utilization > 80 || a.active > 5,
+      hoursTrend: hoursTrendByName.get(a.name) || [],
     };
-  }), [agg, capacityHours]);
+  }), [agg, capacityHours, hoursTrendByName]);
 
   const kpis = useMemo(() => {
     const totalLogged = Math.round(rows.reduce((s, r) => s + r.loggedHours, 0));
@@ -92,10 +124,14 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
     return { count: rows.length, totalLogged, avgUtil, overloaded };
   }, [rows]);
 
-  // Charts
-  const util = useMemo(() => rows.map(r => ({ name: r.name, value: r.utilization })).sort((a, b) => b.value - a.value), [rows]);
+  // LoadBuckets distribution + compact rosters/charts (top-N + pagination).
+  const loadItems = useMemo<LoadItem[]>(() => rows.map(r => ({ id: r.id, name: r.name, utilization: r.utilization })), [rows]);
+  const utilRoster = useMemo(() => [...rows].sort((a, b) => b.utilization - a.utilization), [rows]);
   const activeResolved = useMemo(() => rows.map(r => ({ name: r.name, Active: r.active, Resolved: r.resolved }))
     .filter(d => d.Active + d.Resolved > 0).sort((a, b) => (b.Active + b.Resolved) - (a.Active + a.Resolved)), [rows]);
+
+  const utilPg = useTopNPages(utilRoster, TOP_N);
+  const arPg = useTopNPages(activeResolved, TOP_N);
 
   const names = useMemo(() => rows.map(r => r.name).sort(), [rows]);
   const [selected, setSelected] = useState<string>('');
@@ -128,6 +164,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
       key: 'aht', header: 'Avg Handling', align: 'right', sortValue: r => r.avgHandling ?? -1, exportValue: r => r.avgHandling ?? 0,
       render: r => <span className="type-num">{r.avgHandling !== null ? `${r.avgHandling.toFixed(1)}h` : '—'}</span>,
     },
+    { key: 'trend', header: 'Hours Trend', width: '110px', render: r => <Sparkline data={r.hoursTrend} tone={trendTone(r.hoursTrend)} /> },
     { key: 'util', header: 'Utilization', width: '200px', sortValue: r => r.utilization, render: r => <UtilCell value={r.utilization} /> },
   ], []);
 
@@ -139,6 +176,9 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
         <StatCard label="Total Logged Hours" value={`${kpis.totalLogged}h`} icon={Clock} tone="info" />
         <StatCard label="Overloaded" value={kpis.overloaded} icon={AlertTriangle} tone={kpis.overloaded > 0 ? 'critical' : 'success'} />
       </div>
+
+      {/* At-a-glance workload distribution */}
+      <LoadBuckets items={loadItems} />
 
       <DataTable
         columns={columns}
@@ -152,9 +192,16 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
       />
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        <ChartCard title="Utilization %" isEmpty={util.length === 0} action={<span className="type-status text-ink-muted">≈{capacityHours}h capacity</span>} height="" contentClassName="min-h-[300px] max-h-[480px] overflow-y-auto">
-          <div style={{ height: dynHeight(util.length) }}>
-            <BarH data={util} categoryKey="name" series={[{ key: 'value', name: 'Utilization' }]} unit="%" referenceX={100} colorFor={r => utilColor(r.value)} categoryWidth={120} />
+        {/* Compact BulletRow roster: utilization vs capacity (100% target marker) */}
+        <ChartCard
+          title="Utilization vs Capacity"
+          isEmpty={utilRoster.length === 0}
+          action={<ChartPager page={utilPg.page} pageCount={utilPg.pageCount} onPage={utilPg.setPage} />}
+        >
+          <div className="flex h-full flex-col justify-center gap-2.5">
+            {utilPg.pageRows.map(r => (
+              <BulletRow key={r.id} label={r.name} value={r.utilization} max={120} target={100} bands={UTIL_BANDS} valueText={`${r.utilization}%`} />
+            ))}
           </div>
         </ChartCard>
 
@@ -172,10 +219,13 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
           <Trend data={hoursTrend} categoryKey="label" series={[{ key: 'value', name: 'Hours', color: CHART_COLORS[0] }]} unit="h" />
         </ChartCard>
 
-        <ChartCard title="Active vs Resolved per Consultant" isEmpty={activeResolved.length === 0} className="lg:col-span-2" height="" contentClassName="min-h-[300px] max-h-[480px] overflow-y-auto">
-          <div style={{ height: dynHeight(activeResolved.length) }}>
-            <BarH data={activeResolved} categoryKey="name" series={[{ key: 'Active', color: CHART_COLORS[0] }, { key: 'Resolved', color: SEMANTIC.success }]} stack={false} legend categoryWidth={120} />
-          </div>
+        <ChartCard
+          title="Active vs Resolved per Consultant"
+          isEmpty={activeResolved.length === 0}
+          className="lg:col-span-2"
+          action={<ChartPager page={arPg.page} pageCount={arPg.pageCount} onPage={arPg.setPage} />}
+        >
+          <BarH data={arPg.pageRows} categoryKey="name" series={[{ key: 'Active', color: CHART_COLORS[0] }, { key: 'Resolved', color: SEMANTIC.success }]} stack={false} legend categoryWidth={120} />
         </ChartCard>
       </div>
     </div>
@@ -216,6 +266,11 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
   const consumedVsAlloc = useMemo(() => rows.map(r => ({ org: r.org, Consumed: r.consumed, Allocation: r.allocation })), [rows]);
   const volume = useMemo(() => rows.map(r => ({ org: r.org, value: r.tickets })).sort((a, b) => b.value - a.value), [rows]);
   const breaches = useMemo(() => rows.map(r => ({ org: r.org, value: r.breaches })).filter(d => d.value > 0).sort((a, b) => b.value - a.value), [rows]);
+
+  // Compact top-N + pagination for the per-customer charts.
+  const cvaPg = useTopNPages(consumedVsAlloc, TOP_N);
+  const volPg = useTopNPages(volume, TOP_N);
+  const brPg = useTopNPages(breaches, TOP_N);
 
   const orgs = useMemo(() => rows.map(r => r.org).sort(), [rows]);
   const [selected, setSelected] = useState<string>('');
@@ -268,20 +323,16 @@ function CustomersSection({ tickets, contracts, now, buckets }: {
       />
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        <ChartCard title="Consumed vs Contract" isEmpty={consumedVsAlloc.length === 0} height="" contentClassName="min-h-[300px] max-h-[480px] overflow-y-auto">
-          <div style={{ height: dynHeight(consumedVsAlloc.length) }}>
-            <BarH data={consumedVsAlloc} categoryKey="org" series={[{ key: 'Allocation', color: CHART_COLORS[4] }, { key: 'Consumed', color: CHART_COLORS[0] }]} stack={false} unit="h" legend categoryWidth={110} />
-          </div>
+        <ChartCard title="Consumed vs Contract" isEmpty={consumedVsAlloc.length === 0} action={<ChartPager page={cvaPg.page} pageCount={cvaPg.pageCount} onPage={cvaPg.setPage} />}>
+          <BarH data={cvaPg.pageRows} categoryKey="org" series={[{ key: 'Allocation', color: CHART_COLORS[4] }, { key: 'Consumed', color: CHART_COLORS[0] }]} stack={false} unit="h" legend categoryWidth={110} />
         </ChartCard>
 
-        <ChartCard title="Ticket Volume per Customer" isEmpty={volume.length === 0} height="" contentClassName="min-h-[300px] max-h-[480px] overflow-y-auto">
-          <div style={{ height: dynHeight(volume.length) }}>
-            <BarH data={volume} categoryKey="org" series={[{ key: 'value', name: 'Tickets', color: CHART_COLORS[2] }]} hideAxis valueLabels categoryWidth={110} />
-          </div>
+        <ChartCard title="Ticket Volume per Customer" isEmpty={volume.length === 0} action={<ChartPager page={volPg.page} pageCount={volPg.pageCount} onPage={volPg.setPage} />}>
+          <BarH data={volPg.pageRows} categoryKey="org" series={[{ key: 'value', name: 'Tickets', color: CHART_COLORS[2] }]} hideAxis valueLabels categoryWidth={110} />
         </ChartCard>
 
-        <ChartCard title="SLA Breaches per Customer" isEmpty={breaches.length === 0} emptyHint="No SLA breaches in this period">
-          <BarH data={breaches} categoryKey="org" series={[{ key: 'value', name: 'Breaches', color: SEMANTIC.danger }]} hideAxis valueLabels categoryWidth={110} />
+        <ChartCard title="SLA Breaches per Customer" isEmpty={breaches.length === 0} emptyHint="No SLA breaches in this period" action={<ChartPager page={brPg.page} pageCount={brPg.pageCount} onPage={brPg.setPage} />}>
+          <BarH data={brPg.pageRows} categoryKey="org" series={[{ key: 'value', name: 'Breaches', color: SEMANTIC.danger }]} hideAxis valueLabels categoryWidth={110} />
         </ChartCard>
 
         <ChartCard
