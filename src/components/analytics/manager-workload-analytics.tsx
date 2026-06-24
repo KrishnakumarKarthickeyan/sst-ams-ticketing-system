@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Users, Gauge, Clock, AlertTriangle, Building2, Briefcase } from 'lucide-react';
+import { Users, Gauge, Clock, AlertTriangle, Building2 } from 'lucide-react';
 import type { Ticket, CustomerContract } from '../../types/ticket';
 import { ChartCard } from './chart-primitives';
 import { BarH, Trend } from './chart-builders';
