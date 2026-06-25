@@ -670,10 +670,10 @@ export default function AdminManagersPage() {
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-ink text-[11px]">{t.ticket_number || t.id}</span>
                           <span className={`px-1.5 py-0.2 rounded text-[11px] font-bold uppercase ${
-                            t.priority === 'Critical' ? 'bg-red-950 text-white' :
-                            t.priority === 'High' ? 'bg-amber-100 text-amber-800' :
-                            t.priority === 'Medium' ? 'bg-surface-subtle text-ink' :
-                            'bg-surface-muted text-ink-secondary'
+                            t.priority === 'Critical' ? 'bg-red-50 text-red-700 border border-red-200' :
+                            t.priority === 'High' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                            t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            'bg-surface-subtle text-ink-secondary border border-line'
                           }`}>
                             {t.priority}
                           </span>
