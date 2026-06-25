@@ -78,3 +78,28 @@ unset. Full runbook (Azure Bot, app registration, manifest, install): **`teams-a
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## App version & releases
+
+The version shown in the UI (sidebar footer for every role, the login page, and each Profile
+page's "About this build") comes from **one source** and updates **automatically every deploy** —
+never edit a version string in a component.
+
+- **Canonical version** = `package.json` `"version"`.
+- At build, `next.config.ts` injects three values (no manual edits):
+  - `NEXT_PUBLIC_APP_VERSION` ← `package.json` version
+  - `NEXT_PUBLIC_GIT_SHA` ← `VERCEL_GIT_COMMIT_SHA` (on Vercel) or `git rev-parse --short HEAD` (local), else `dev`
+  - `NEXT_PUBLIC_BUILD_DATE` ← the build timestamp
+- The UI reads these only via `src/lib/version.ts` (`label` = `v1.4.0`, `fullLabel` = `v1.4.0 · a1b2c3d`).
+
+### Bump the version on a release
+
+```bash
+npm version patch   # 1.4.0 → 1.4.1   (bug fixes)
+npm version minor   # 1.4.0 → 1.5.0   (new features)
+npm version major   # 1.4.0 → 2.0.0   (breaking changes)
+```
+
+`npm version …` updates `package.json` **and** creates a git tag. Then push and deploy — the new
+`vX.Y.Z` shows everywhere automatically. Even **without** a version bump, the displayed git SHA and
+build date change on every deploy, so each release is always distinguishable.
