@@ -709,7 +709,7 @@ export default function ManagerTicketsPage() {
                         )}
                         {techEfforts.length > 0 && (
                           <div className="text-[11px] text-ink-secondary truncate">
-                            <span className="font-bold text-violet-700">[T]: </span>
+                            <span className="font-bold text-info">[T]: </span>
                             {techEfforts.map(e => e.consultantName).join(', ')}
                           </div>
                         )}
@@ -903,7 +903,7 @@ export default function ManagerTicketsPage() {
                       <td className="py-2.5 px-4 font-semibold text-ink-secondary text-[11px]">
                         <div className="space-y-0.5 max-w-[150px] truncate">
                           {funcEfforts.length > 0 && <div className="truncate"><span className="font-bold text-indigo-700">[F] </span>{funcEfforts.map(e => e.consultantName).join(', ')}</div>}
-                          {techEfforts.length > 0 && <div className="truncate"><span className="font-bold text-violet-700">[T] </span>{techEfforts.map(e => e.consultantName).join(', ')}</div>}
+                          {techEfforts.length > 0 && <div className="truncate"><span className="font-bold text-info">[T] </span>{techEfforts.map(e => e.consultantName).join(', ')}</div>}
                           {funcEfforts.length === 0 && techEfforts.length === 0 && <span className="text-ink-muted italic">None</span>}
                         </div>
                       </td>

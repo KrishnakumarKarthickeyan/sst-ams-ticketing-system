@@ -989,7 +989,7 @@ export default function ManagerConsultantsPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
                       <Badge variant="outline" className={`text-[11px] font-bold px-1.5 py-0.5 ${
-                        c.consultantType === 'Functional' ? 'bg-indigo-50/50 text-indigo-700 border-indigo-100' : 'bg-violet-50/50 text-violet-700 border-violet-100'
+                        c.consultantType === 'Functional' ? 'bg-brand-soft text-brand-strong border-brand-border' : 'bg-info-soft text-info-strong border-info-border'
                       }`}>
                         {c.consultantType}
                       </Badge>

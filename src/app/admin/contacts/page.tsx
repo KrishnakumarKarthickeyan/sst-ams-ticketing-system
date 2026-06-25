@@ -450,7 +450,7 @@ export default function AdminContactsPage() {
 
       {/* Main Table Card */}
       <Card className="bg-surface border border-line rounded overflow-hidden shadow-card">
-        <table className="w-full border-collapse text-left">
+        <div className="overflow-x-auto"><table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
               <th className="p-4">Contact Info</th>
@@ -549,7 +549,7 @@ export default function AdminContactsPage() {
               ))
             )}
           </tbody>
-        </table>
+        </table></div>
       </Card>
 
       {/* Edit Dialog */}

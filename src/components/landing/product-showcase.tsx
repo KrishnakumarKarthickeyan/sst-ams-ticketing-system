@@ -95,9 +95,9 @@ const SHOWCASE: StickyScrollItem[] = [
     description:
       'Hour estimates, closures, reopens and escalations move through configurable approval chains with full audit trails and instant notifications.',
     content: (
-      <PreviewPanel icon={CheckCheck} accent="bg-purple-50 text-purple-600" title="Approval Center"
+      <PreviewPanel icon={CheckCheck} accent="bg-info-soft text-info" title="Approval Center"
         rows={[
-          { left: 'Closure — TKT-2218 (S/4 migration)', right: 'AWAITING MGR', tone: 'bg-purple-50 text-purple-600' },
+          { left: 'Closure — TKT-2218 (S/4 migration)', right: 'AWAITING MGR', tone: 'bg-info-soft text-info' },
           { left: 'Estimate 24h — TKT-2204', right: 'APPROVED', tone: 'bg-emerald-50 text-emerald-600' },
           { left: 'Reopen request — TKT-2151', right: 'ESCALATED', tone: 'bg-red-50 text-red-600' },
           { left: 'Effort log 6.5h — TKT-2233', right: 'APPROVED', tone: 'bg-emerald-50 text-emerald-600' },
@@ -170,10 +170,10 @@ const SHOWCASE: StickyScrollItem[] = [
     description:
       'Resolution histories and asset context become searchable knowledge that compounds — onboarding new consultants in days, not quarters.',
     content: (
-      <PreviewPanel icon={BookOpen} accent="bg-violet-50 text-violet-600" title="Knowledge & Assets"
+      <PreviewPanel icon={BookOpen} accent="bg-info-soft text-info" title="Knowledge & Assets"
         rows={[
-          { left: 'KB-0871 — IDoc reprocessing guide', right: '214 uses', tone: 'bg-violet-50 text-violet-600' },
-          { left: 'KB-0640 — Period-end close runbook', right: '178 uses', tone: 'bg-violet-50 text-violet-600' },
+          { left: 'KB-0871 — IDoc reprocessing guide', right: '214 uses', tone: 'bg-info-soft text-info' },
+          { left: 'KB-0640 — Period-end close runbook', right: '178 uses', tone: 'bg-info-soft text-info' },
           { left: 'Asset map — PRD landscape', right: 'SYNCED', tone: 'bg-emerald-50 text-emerald-600' },
           { left: 'Auto-suggested on similar tickets', right: 'ENABLED', tone: 'bg-blue-50 text-blue-600' },
         ]} />
