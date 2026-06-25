@@ -442,9 +442,9 @@ export default function ConsultantReportsPage() {
           <span className="text-[11px] font-bold text-slate-400 uppercase text-emerald-800">Approved Actual Hours</span>
           <span className="text-xl font-bold text-success mt-1">{kpis.totalAct.toFixed(1)} h</span>
         </Card>
-        <Card className="bg-surface border border-slate-200 p-4 shadow-card border-l-2 border-l-indigo-500 flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-indigo-800 uppercase">Billable Hours Log</span>
-          <span className="text-xl font-bold text-indigo-700 mt-1">{kpis.billableHours.toFixed(1)} h</span>
+        <Card className="bg-surface border border-slate-200 p-4 shadow-card border-l-2 border-l-info flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-info-strong uppercase">Billable Hours Log</span>
+          <span className="text-xl font-bold text-info-strong mt-1">{kpis.billableHours.toFixed(1)} h</span>
         </Card>
         <Card className="bg-surface border border-slate-200 p-4 shadow-card border-l-2 border-l-emerald-500 flex flex-col justify-between">
           <span className="text-[11px] font-bold text-emerald-800 uppercase">SLA Compliance Rate</span>

@@ -96,7 +96,7 @@ const STATUS_TILE_STYLE: Record<string, { icon: React.ComponentType<{ size?: num
   all: { icon: Layers, color: 'bg-zinc-800', textColor: 'text-ink' },
   new: { icon: FileText, color: 'bg-sky-500', textColor: 'text-sky-600' },
   in_progress: { icon: Activity, color: 'bg-blue-500', textColor: 'text-blue-600' },
-  in_progress_functional: { icon: Zap, color: 'bg-indigo-500', textColor: 'text-indigo-600' },
+  in_progress_functional: { icon: Zap, color: 'bg-info-soft0', textColor: 'text-info' },
   in_progress_technical: { icon: Cpu, color: 'bg-cyan-600', textColor: 'text-cyan-700' },
   requirement_gathering: { icon: FileText, color: 'bg-blue-400', textColor: 'text-blue-600' },
   customer_action: { icon: UserCheck, color: 'bg-orange-500', textColor: 'text-warning' },

@@ -379,7 +379,7 @@ export default function CustomerTicketsPage() {
         const t = row.original;
         const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
           : (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200'
-          : t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200';
+          : t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-info-soft text-info-strong border-info-border';
         return <Badge className={`${statusColor} border text-[11px] font-bold uppercase`}>{t.status}</Badge>;
       } },
     { id: 'priority', accessorKey: 'priority', header: 'Priority',
@@ -891,7 +891,7 @@ ${ticket.description}
                 const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                      (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200' :
                                      t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                     'bg-indigo-50 text-indigo-700 border-indigo-200';
+                                     'bg-info-soft text-info-strong border-info-border';
 
                 return (
                   <Card key={t.id} className="border-line shadow-card bg-surface overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col justify-between">
