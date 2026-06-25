@@ -103,7 +103,7 @@ const CATEGORIES = [
 const PRIORITIES = [
   { value: 'Critical', label: 'Critical (P1)', color: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30' },
   { value: 'High', label: 'High (P2)', color: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/30' },
-  { value: 'Medium', label: 'Medium (P3)', color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30' },
+  { value: 'Medium', label: 'Medium (P3)', color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30' },
   { value: 'Low', label: 'Low (P4)', color: 'bg-surface-muted text-ink-secondary border-line dark:bg-ink/20 dark:text-ink-muted dark:border-zinc-900/30' }
 ];
 
