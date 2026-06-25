@@ -47,7 +47,7 @@ export default function AdminSlaPage() {
 
       {/* SLA Policy Table */}
       <div className="bg-surface border border-line rounded overflow-hidden">
-        <table className="w-full border-collapse text-left">
+        <div className="overflow-x-auto"><table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
               <th className="p-4">Priority Severity</th>
@@ -103,7 +103,7 @@ export default function AdminSlaPage() {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {/* Info panel */}

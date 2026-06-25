@@ -2068,7 +2068,7 @@ export default function AdminDashboardPage() {
                             <Badge className={
                               item.type === 'Timesheet' ? 'bg-blue-50 text-blue-700 border border-blue-100 text-[11px]' :
                               item.type === 'Closure' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 text-[11px]' :
-                              item.type === 'Unlock' ? 'bg-purple-50 text-purple-700 border border-purple-100 text-[11px]' :
+                              item.type === 'Unlock' ? 'bg-info-soft text-info-strong border border-info-border text-[11px]' :
                               item.type === 'Delete' ? 'bg-red-50 text-red-700 border border-red-100 text-[11px]' :
                               'bg-surface-subtle text-ink-secondary border border-line text-[11px]'
                             }>

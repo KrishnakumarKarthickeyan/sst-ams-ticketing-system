@@ -148,7 +148,7 @@ export function Hero() {
                 {[
                   { label: 'Open', value: '128', icon: Activity, tone: 'text-blue-600' },
                   { label: 'Escalated', value: '6', icon: AlertTriangle, tone: 'text-red-500' },
-                  { label: 'Approvals', value: '14', icon: CheckCircle2, tone: 'text-purple-600' },
+                  { label: 'Approvals', value: '14', icon: CheckCircle2, tone: 'text-info' },
                 ].map(kpi => (
                   <div key={kpi.label} className="rounded-lg border border-zinc-100 bg-zinc-50/60 p-2.5">
                     <kpi.icon size={13} className={kpi.tone} />
