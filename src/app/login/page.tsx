@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { KeyRound, ShieldCheck, Mail, ArrowLeft, Activity, Star, ClipboardList, Shield, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { BrandedLogo } from '../../components/ui/BrandedLogo';
+import { AppVersion } from '../../components/ui/app-version';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -345,8 +346,9 @@ export default function LoginPage() {
         </div>
 
         {/* Footer Secure Badge */}
-        <div className="text-center text-[11px] text-ink-secondary flex items-center justify-center gap-1.5">
+        <div className="text-center text-[11px] text-ink-secondary flex flex-col items-center justify-center gap-1">
           <span>Copyright &copy; {new Date().getFullYear()} Assist360. All Rights Reserved.</span>
+          <AppVersion variant="full" />
         </div>
 
       </div>

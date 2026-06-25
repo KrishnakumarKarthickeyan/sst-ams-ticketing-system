@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { BrandedLogo } from '../ui/BrandedLogo';
+import { AppVersion } from '../ui/app-version';
 import { BRAND_CONFIG } from '../../config/branding';
 import {
   LayoutDashboard,
@@ -214,11 +215,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false }) => {
       )}
 
       {/* System Health / Footer */}
-      <div className="p-4 border-t border-line bg-surface-muted/60">
+      <div className="p-4 border-t border-line bg-surface-muted/60 space-y-1.5">
         <div className="flex items-center gap-2 text-[11px] text-ink-secondary font-bold uppercase tracking-wider justify-center md:justify-start">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping"></span>
           {!effectiveCollapsed && <span>System status: OK</span>}
         </div>
+        {/* App version — single shared placement, renders for every role on every page */}
+        {!effectiveCollapsed && (
+          <div className="flex justify-center md:justify-start">
+            <AppVersion variant="compact" />
+          </div>
+        )}
       </div>
     </aside>
   );

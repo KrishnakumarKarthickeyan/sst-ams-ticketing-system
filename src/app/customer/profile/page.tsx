@@ -1,5 +1,6 @@
 'use client';
 
+import { AppVersion } from '../../../components/ui/app-version';
 import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
@@ -271,6 +272,10 @@ export default function CustomerProfilePage() {
           )}
         </CardContent>
       </Card>
+      <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-ink-muted">
+        <span>About this build</span>
+        <AppVersion variant="full" />
+      </div>
     </div>
   );
 }
