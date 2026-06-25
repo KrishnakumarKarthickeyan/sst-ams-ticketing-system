@@ -222,7 +222,7 @@ export default function CustomerTicketDetailPage() {
         <p className="text-sm text-ink-secondary">
           The ticket with ID &quot;{ticketId}&quot; could not be found in your records.
         </p>
-        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
+        <Link href="/customer/tickets" className="inline-flex items-center gap-1.5 text-sm font-medium text-info hover:text-info transition">
           <ArrowLeft size={14} /> Back to tickets
         </Link>
       </div>
@@ -575,7 +575,7 @@ export default function CustomerTicketDetailPage() {
     return lines.map((line, idx) => {
       if (line.trim().startsWith('>')) {
         return (
-          <blockquote key={idx} className="border-l-[3px] border-indigo-300 pl-3 italic text-ink-secondary bg-indigo-50/50 py-1.5 px-3 rounded-r-lg my-2 text-[13px]">
+          <blockquote key={idx} className="border-l-[3px] border-info-border pl-3 italic text-ink-secondary bg-info-soft/50 py-1.5 px-3 rounded-r-lg my-2 text-[13px]">
             {line.trim().substring(1).trim()}
           </blockquote>
         );
@@ -595,7 +595,7 @@ export default function CustomerTicketDetailPage() {
     if (status === 'Resolved' || status === 'Closed') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     if (status === 'Waiting for Customer' || status === 'Customer Action') return 'bg-amber-50 text-amber-700 border-amber-200';
     if (status === 'New') return 'bg-blue-50 text-blue-700 border-blue-200';
-    if (status === 'In Progress' || status.includes('Progress')) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    if (status === 'In Progress' || status.includes('Progress')) return 'bg-info-soft text-info-strong border-info-border';
     if (status === 'Reopened' || status === 'Reopen Requested') return 'bg-orange-50 text-orange-700 border-orange-200';
     return 'bg-surface-subtle text-ink-secondary border-line';
   };
@@ -752,7 +752,7 @@ export default function CustomerTicketDetailPage() {
                               placeholder="Provide any closure comments or feedback..."
                               value={ratingFeedback}
                               onChange={(e) => setRatingFeedback(e.target.value)}
-                              className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-ink-muted resize-none"
+                              className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-info/20 focus:border-info-border transition placeholder:text-ink-muted resize-none"
                             />
                           </div>
                           <DialogFooter>
@@ -831,11 +831,11 @@ export default function CustomerTicketDetailPage() {
                             placeholder="Describe the recurring or new issue..."
                             value={reopenReason}
                             onChange={(e) => setReopenReason(e.target.value)}
-                            className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-ink-muted resize-none"
+                            className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-info/20 focus:border-info-border transition placeholder:text-ink-muted resize-none"
                           />
                         </div>
                         <DialogFooter>
-                          <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg">
+                          <Button type="submit" className="w-full bg-info hover:bg-info-strong text-white font-semibold py-2.5 rounded-lg">
                             Submit Reopen Request
                           </Button>
                         </DialogFooter>
@@ -1010,7 +1010,7 @@ export default function CustomerTicketDetailPage() {
               {/* Description Card */}
               <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
                 <div className="px-6 py-4 border-b border-line flex items-center gap-2">
-                  <FileText size={16} className="text-indigo-500" />
+                  <FileText size={16} className="text-info" />
                   <h3 className="text-sm font-semibold text-ink">Description</h3>
                 </div>
                 <div className="p-6 space-y-5">
@@ -1070,7 +1070,7 @@ export default function CustomerTicketDetailPage() {
               {/* Operation Timeline — shared, redesigned TicketTimeline (open & closed tickets) */}
               <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
                 <div className="px-6 py-4 border-b border-line flex items-center gap-2">
-                  <History size={16} className="text-indigo-500" />
+                  <History size={16} className="text-info" />
                   <h3 className="text-sm font-semibold text-ink">Operation Timeline</h3>
                 </div>
                 <div className="p-6">
@@ -1083,7 +1083,7 @@ export default function CustomerTicketDetailPage() {
             <TabsContent value="conversation" className="space-y-5 animate-in fade-in duration-200">
               <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
                 <div className="px-6 py-4 border-b border-line flex items-center gap-2">
-                  <MessageSquare size={16} className="text-indigo-500" />
+                  <MessageSquare size={16} className="text-info" />
                   <h3 className="text-sm font-semibold text-ink">Activity Timeline</h3>
                 </div>
                 <div className="p-6">
@@ -1108,13 +1108,13 @@ export default function CustomerTicketDetailPage() {
                               : isAudit
                                 ? 'bg-surface-muted/60 border-line/60'
                                 : isCustomer
-                                  ? 'bg-indigo-50/30 border-indigo-200/50'
+                                  ? 'bg-info-soft/30 border-info-border/50'
                                   : 'bg-surface border-line/60'
                           }`}>
                             <div className="flex items-start justify-between gap-3 mb-2">
                               <div className="flex items-center gap-2.5">
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 ${
-                                  isEsc ? 'bg-orange-500' : isAudit ? 'bg-zinc-400' : isCustomer ? 'bg-indigo-500' : 'bg-zinc-800'
+                                  isEsc ? 'bg-orange-500' : isAudit ? 'bg-zinc-400' : isCustomer ? 'bg-info-soft0' : 'bg-zinc-800'
                                 }`}>
                                   {isEsc ? <Zap size={13} /> : isAudit ? <History size={13} /> : <User size={13} />}
                                 </div>
@@ -1152,9 +1152,9 @@ export default function CustomerTicketDetailPage() {
                                     key={att.id}
                                     href="#"
                                     onClick={(e) => { e.preventDefault(); handleDownloadFile(att.fileName, att.fileUrl || att.filePath); }}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-line rounded-lg text-[12px] text-ink-secondary hover:border-indigo-300 hover:text-indigo-600 transition font-medium"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-line rounded-lg text-[12px] text-ink-secondary hover:border-info-border hover:text-info transition font-medium"
                                   >
-                                    <FileCode size={12} className="text-indigo-400" />
+                                    <FileCode size={12} className="text-info" />
                                     {att.fileName}
                                   </a>
                                 ))}
@@ -1172,7 +1172,7 @@ export default function CustomerTicketDetailPage() {
               {ticket.status !== 'Closed' && (
                 <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
                   <div className="px-6 py-4 border-b border-line flex items-center gap-2">
-                    <Send size={16} className="text-indigo-500" />
+                    <Send size={16} className="text-info" />
                     <h3 className="text-sm font-semibold text-ink">Reply</h3>
                   </div>
                   <div className="p-6">
@@ -1183,12 +1183,12 @@ export default function CustomerTicketDetailPage() {
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         placeholder="Write your message here..."
-                        className="w-full bg-surface-muted border border-line rounded-lg p-4 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-ink-muted resize-none"
+                        className="w-full bg-surface-muted border border-line rounded-lg p-4 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-info/20 focus:border-info-border transition placeholder:text-ink-muted resize-none"
                       />
 
                       {/* Attachments */}
                       <div className="space-y-3">
-                        <div className="relative border-2 border-dashed border-line rounded-lg p-5 bg-surface-muted/60 hover:bg-indigo-50/30 hover:border-indigo-300 transition flex flex-col items-center justify-center gap-2 cursor-pointer group">
+                        <div className="relative border-2 border-dashed border-line rounded-lg p-5 bg-surface-muted/60 hover:bg-info-soft/30 hover:border-info-border transition flex flex-col items-center justify-center gap-2 cursor-pointer group">
                           <input
                             type="file"
                             multiple
@@ -1196,8 +1196,8 @@ export default function CustomerTicketDetailPage() {
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed"
                           />
-                          <div className="w-10 h-10 rounded-full bg-surface border border-line flex items-center justify-center group-hover:border-indigo-300 group-hover:bg-indigo-50 transition">
-                            <Upload size={18} className="text-ink-muted group-hover:text-indigo-500 transition" />
+                          <div className="w-10 h-10 rounded-full bg-surface border border-line flex items-center justify-center group-hover:border-info-border group-hover:bg-info-soft transition">
+                            <Upload size={18} className="text-ink-muted group-hover:text-info transition" />
                           </div>
                           <span className="text-sm text-ink-secondary font-medium">Drop files here or click to browse</span>
                           <span className="text-[11px] text-ink-muted">Max 10MB per file</span>
@@ -1218,7 +1218,7 @@ export default function CustomerTicketDetailPage() {
                                   <p className="text-sm font-medium text-ink truncate pr-6">{pf.file.name}</p>
                                   <p className="text-[11px] text-ink-muted">{(pf.file.size / 1024).toFixed(0)} KB</p>
                                   <div className="w-full bg-zinc-200 rounded-full h-1 mt-1.5 overflow-hidden">
-                                    <div className="bg-indigo-500 h-full transition-all duration-300 rounded-full" style={{ width: `${pf.progress}%` }}></div>
+                                    <div className="bg-info-soft0 h-full transition-all duration-300 rounded-full" style={{ width: `${pf.progress}%` }}></div>
                                   </div>
                                 </div>
                                 <button
@@ -1235,7 +1235,7 @@ export default function CustomerTicketDetailPage() {
                       </div>
 
                       <div className="flex justify-end pt-2">
-                        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm h-10 px-6 rounded-lg shadow-card transition gap-1.5">
+                        <Button type="submit" className="bg-info hover:bg-info-strong text-white font-semibold text-sm h-10 px-6 rounded-lg shadow-card transition gap-1.5">
                           <Send size={14} /> Send Reply
                         </Button>
                       </div>
@@ -1250,7 +1250,7 @@ export default function CustomerTicketDetailPage() {
               {/* SLA Card */}
               <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
                 <div className="px-6 py-4 border-b border-line flex items-center gap-2">
-                  <Timer size={16} className="text-indigo-500" />
+                  <Timer size={16} className="text-info" />
                   <h3 className="text-sm font-semibold text-ink">SLA Details</h3>
                 </div>
                 <div className="p-6 space-y-4 text-sm">
@@ -1280,7 +1280,7 @@ export default function CustomerTicketDetailPage() {
                     </>
                   ) : (
                     <div className="bg-surface-muted border border-line rounded-lg p-4 flex items-start gap-3 mt-2">
-                      <Info size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+                      <Info size={16} className="text-info shrink-0 mt-0.5" />
                       <p className="text-[13px] text-ink-secondary leading-relaxed">
                         SLA tracking is applicable to Incident-type tickets only. Enhancement and change requests follow milestone-based delivery timelines.
                       </p>
@@ -1293,7 +1293,7 @@ export default function CustomerTicketDetailPage() {
               <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
                 <div className="px-6 py-4 border-b border-line flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Activity size={16} className="text-indigo-500" />
+                    <Activity size={16} className="text-info" />
                     <h3 className="text-sm font-semibold text-ink">Effort Hours</h3>
                   </div>
                   <Badge className="bg-surface-subtle text-ink-secondary border border-line text-[11px] font-medium px-2 py-0 rounded-full hover:bg-transparent">
@@ -1319,9 +1319,9 @@ export default function CustomerTicketDetailPage() {
                           <p className="text-[11px] text-ink-secondary font-medium uppercase tracking-wider">Technical</p>
                           <p className="text-2xl font-bold text-ink mt-1">{actualTechHours.toFixed(1)}<span className="text-sm font-normal text-ink-muted">h</span></p>
                         </div>
-                        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
-                          <p className="text-[11px] text-indigo-600 font-semibold uppercase tracking-wider">Total</p>
-                          <p className="text-2xl font-bold text-indigo-600 mt-1">{totalActualHours.toFixed(1)}<span className="text-sm font-normal text-indigo-400">h</span></p>
+                        <div className="p-4 bg-info-soft border border-info-border rounded-lg text-center">
+                          <p className="text-[11px] text-info font-semibold uppercase tracking-wider">Total</p>
+                          <p className="text-2xl font-bold text-info mt-1">{totalActualHours.toFixed(1)}<span className="text-sm font-normal text-info">h</span></p>
                         </div>
                       </div>
                     </div>
@@ -1385,7 +1385,7 @@ export default function CustomerTicketDetailPage() {
           {/* Assigned Team */}
           <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
             <div className="px-5 py-3.5 border-b border-line flex items-center gap-2">
-              <Users size={14} className="text-indigo-500" />
+              <Users size={14} className="text-info" />
               <h3 className="text-sm font-semibold text-ink">Assigned Team</h3>
             </div>
             <div className="p-5">
@@ -1403,12 +1403,12 @@ export default function CustomerTicketDetailPage() {
                     <div
                       key={assignment.consultantId}
                       className={`p-3.5 rounded-lg border flex items-center justify-between transition hover:shadow-card ${
-                        assignment.isPrimary ? 'bg-indigo-50/50 border-indigo-200/60' : 'bg-surface-muted/60 border-line'
+                        assignment.isPrimary ? 'bg-info-soft/50 border-info-border/60' : 'bg-surface-muted/60 border-line'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-                          assignment.isPrimary ? 'bg-indigo-500' : 'bg-zinc-400'
+                          assignment.isPrimary ? 'bg-info-soft0' : 'bg-zinc-400'
                         }`}>
                           {assignment.consultantName?.charAt(0) || 'C'}
                         </div>
@@ -1432,7 +1432,7 @@ export default function CustomerTicketDetailPage() {
           {/* Ticket Properties */}
           <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
             <div className="px-5 py-3.5 border-b border-line flex items-center gap-2">
-              <Layers size={14} className="text-indigo-500" />
+              <Layers size={14} className="text-info" />
               <h3 className="text-sm font-semibold text-ink">Properties</h3>
             </div>
             <div className="p-5 space-y-3 text-sm">
@@ -1518,7 +1518,7 @@ export default function CustomerTicketDetailPage() {
           {isSlaApplicable && (
             <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
               <div className="px-5 py-3.5 border-b border-line flex items-center gap-2">
-                <Clock size={14} className="text-indigo-500" />
+                <Clock size={14} className="text-info" />
                 <h3 className="text-sm font-semibold text-ink">SLA Clock</h3>
               </div>
               <div className="p-5 text-center space-y-3">
@@ -1529,7 +1529,7 @@ export default function CustomerTicketDetailPage() {
                 <div className={`p-2.5 rounded-lg border text-[11px] font-semibold ${
                   ticket.status === 'Resolved' || ticket.status === 'Closed'
                     ? 'bg-emerald-50 text-success border-emerald-200'
-                    : 'bg-indigo-50 text-indigo-600 border-indigo-200'
+                    : 'bg-info-soft text-info border-info-border'
                 }`}>
                   {ticket.status === 'Resolved' || ticket.status === 'Closed' ? '✓ Resolution Complete' : '◉ Clock Active'}
                 </div>
@@ -1559,7 +1559,7 @@ export default function CustomerTicketDetailPage() {
                   required
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition"
+                  className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-info/20 focus:border-info-border transition"
                 />
               </div>
               <div className="space-y-2">
@@ -1569,14 +1569,14 @@ export default function CustomerTicketDetailPage() {
                   required
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition resize-none"
+                  className="w-full bg-surface-muted border border-line rounded-lg p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-info/20 focus:border-info-border transition resize-none"
                 />
               </div>
               <DialogFooter className="gap-2">
                 <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)} className="rounded-lg border-line text-ink-secondary hover:bg-surface-muted">
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold">
+                <Button type="submit" className="bg-info hover:bg-info-strong text-white rounded-lg font-semibold">
                   Save Changes
                 </Button>
               </DialogFooter>

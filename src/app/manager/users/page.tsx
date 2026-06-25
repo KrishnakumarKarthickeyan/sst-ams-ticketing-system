@@ -1587,7 +1587,7 @@ export default function UserManagementPage() {
                           </div>
                           <div className="h-2 bg-surface-subtle border rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-indigo-600"
+                              className="h-full bg-info"
                               style={{ width: `${Math.min(selectedUser.activeContract.monthlyBudgetHours > 0 ? (selectedUser.activeContract.monthlyUsedHours / selectedUser.activeContract.monthlyBudgetHours) * 100 : 0, 100)}%` }}
                             />
                           </div>

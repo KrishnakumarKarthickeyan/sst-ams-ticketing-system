@@ -637,7 +637,7 @@ export default function ConsultantMyTicketsPage() {
                 <Badge variant="outline" className="text-[11px] font-bold uppercase px-1.5 py-0.5 bg-surface-muted text-ink-secondary border-line hover:bg-surface-muted">
                   {t.sapModule}
                 </Badge>
-                <Badge variant="outline" className="text-[11px] font-bold uppercase px-1.5 py-0.5 bg-indigo-50/50 text-indigo-700 border-indigo-100 hover:bg-indigo-50/50">
+                <Badge variant="outline" className="text-[11px] font-bold uppercase px-1.5 py-0.5 bg-info-soft/50 text-info-strong border-info-border hover:bg-info-soft/50">
                   {t.ticketType || 'Incident'}
                 </Badge>
               </div>

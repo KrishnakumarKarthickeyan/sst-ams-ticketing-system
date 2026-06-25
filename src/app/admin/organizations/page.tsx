@@ -868,7 +868,7 @@ export default function AdminOrganizationsPage() {
                             <div className="flex justify-between py-1 border-b border-line"><span className="text-ink-secondary font-semibold">Reg. Identifier:</span><span className="text-ink">{selectedOrg.registration_number || 'N/A'}</span></div>
                           </div>
                           <div className="space-y-2">
-                            <div className="flex justify-between py-1 border-b border-line"><span className="text-ink-secondary font-semibold">Website:</span><a href={selectedOrg.website ? `https://${selectedOrg.website}` : '#'} target="_blank" className="text-indigo-600 hover:underline">{selectedOrg.website || 'N/A'}</a></div>
+                            <div className="flex justify-between py-1 border-b border-line"><span className="text-ink-secondary font-semibold">Website:</span><a href={selectedOrg.website ? `https://${selectedOrg.website}` : '#'} target="_blank" className="text-info hover:underline">{selectedOrg.website || 'N/A'}</a></div>
                             <div className="flex justify-between py-1 border-b border-line"><span className="text-ink-secondary font-semibold">Location Address:</span><span className="text-ink text-right truncate max-w-[200px]">{selectedOrg.address || 'N/A'}</span></div>
                             <div className="flex justify-between py-1 border-b border-line"><span className="text-ink-secondary font-semibold">Primary contact point:</span><span className="text-ink font-medium">{org360.primaryContact?.full_name || 'N/A'}</span></div>
                           </div>
