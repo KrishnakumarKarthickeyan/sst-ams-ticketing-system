@@ -2,27 +2,37 @@
 --  RUN MANUALLY IN SUPABASE — IRREVERSIBLE
 -- =============================================================================
 --  Purpose : Wipe ALL tickets + ALL ticket data + ALL clients (customers,
---            client organizations, contracts, contacts, SLA targets), while
---            KEEPING every Consultant / Manager / SuperAdmin user. Then force a
+--            client organizations, contracts, contacts, SLA targets), KEEP every
+--            Consultant / Manager / SuperAdmin user, RESET the ticket-number
+--            counter so the next ticket is <SHORTCODE>-000001, and force a
 --            password reset for Manager + SuperAdmin.
 --
 --  HOW TO USE (verify-first):
 --    1. Take a Supabase backup / confirm Point-in-Time Recovery is enabled FIRST
 --       (Dashboard → Database → Backups). This script CANNOT be undone.
 --    2. Run PART A alone and read the counts. Confirm what will be deleted/kept.
---    3. Only if the counts look right, run PART B (transaction), then C, D, E.
---    4. PART E re-verifies the end state.
+--    3. Only if the counts look right, run PART B (transaction), then C, D, E, F.
+--    4. PART F re-verifies the end state (incl. the counter is back to yield 1).
 --
 --  Nothing in this file has been executed. It is for manual review + run in the
 --  Supabase SQL editor (which runs as a privileged role, so it can touch
---  auth.users for PARTs C/D).
+--  auth.users for PARTs D/E and ALTER the sequence for PART C).
 --
 --  ── SCHEMA VERIFIED AGAINST THE LIVE DB (read-only), values at authoring time ──
 --    role enum values .......... Customer, Consultant, Manager, SuperAdmin
 --    force-reset column ........ public.profiles.force_password_change (boolean)
---                                (the login MIDDLEWARE also reads
---                                 auth.users user_metadata.force_password_change —
---                                 so PART D sets BOTH; see PART D note.)
+--                                (the login MIDDLEWARE also reads auth.users
+--                                 user_metadata.force_password_change — so PART E
+--                                 sets BOTH; see PART E note.)
+--    TICKET NUMBER MECHANISM ... (a) a single GLOBAL Postgres SEQUENCE:
+--                                 public.ticket_sequence_seq (START WITH 1).
+--                                The BEFORE INSERT trigger trg_generate_ticket_number
+--                                (fn public.generate_ticket_number_trigger) ALWAYS
+--                                sets ticket_number = <org customer_short_code> || '-'
+--                                || LPAD(nextval('public.ticket_sequence_seq'),6,'0').
+--                                There is NO per-org counter; the app cannot override
+--                                it (the trigger overwrites on every insert).
+--                                → Reset = ALTER SEQUENCE ... RESTART WITH 1 (PART C).
 --    ticket child tables (exist) ticket_comment_attachments, ticket_attachments,
 --      ticket_mentions, ticket_actual_hours, ticket_comments,
 --      ticket_closure_requests, ticket_hour_estimates, ticket_estimates,
@@ -40,62 +50,54 @@
 --    organizations foreign key may be ON DELETE CASCADE, so deleting that
 --    internal org could CASCADE-DELETE the consultants.
 --    → Therefore this script deletes ONLY the CLIENT organizations (orgs that are
---      NOT referenced by any kept staff profile). The internal staff org is
---      preserved so consultants/managers/admins are never touched. This is a
---      deliberate, safer interpretation of "delete all organizations" — the
---      internal org is staff infrastructure, not a client.
+--      NOT referenced by any kept staff profile) and PRESERVES the internal staff
+--      org, so consultants/managers/admins are never touched. The next ticket
+--      still starts at <SHORTCODE>-000001 because PART C resets the global sequence
+--      and PART B empties the tickets table.
 -- =============================================================================
 
 
 -- =============================================================================
 --  PART A — PRE-COUNT (READ-ONLY). Run this FIRST and review before anything.
---  Use it to confirm what will be deleted and that no Consultant/Manager/Admin
---  was mis-stored as Customer (the KEEP counts below must match expectations).
+--  Confirms what will be deleted and that no Consultant/Manager/Admin was
+--  mis-stored as Customer (the KEEP counts must match expectations).
 -- =============================================================================
-SELECT 'tickets'                       AS item, count(*) AS rows FROM public.tickets
-UNION ALL SELECT 'ticket_comment_attachments', count(*) FROM public.ticket_comment_attachments
-UNION ALL SELECT 'ticket_attachments',         count(*) FROM public.ticket_attachments
-UNION ALL SELECT 'ticket_mentions',            count(*) FROM public.ticket_mentions
-UNION ALL SELECT 'ticket_actual_hours',        count(*) FROM public.ticket_actual_hours
-UNION ALL SELECT 'ticket_comments',            count(*) FROM public.ticket_comments
-UNION ALL SELECT 'ticket_closure_requests',    count(*) FROM public.ticket_closure_requests
-UNION ALL SELECT 'ticket_hour_estimates',      count(*) FROM public.ticket_hour_estimates
-UNION ALL SELECT 'ticket_estimates',           count(*) FROM public.ticket_estimates
-UNION ALL SELECT 'ticket_assignments',         count(*) FROM public.ticket_assignments
-UNION ALL SELECT 'ticket_consultant_efforts',  count(*) FROM public.ticket_consultant_efforts
-UNION ALL SELECT 'ticket_efforts',             count(*) FROM public.ticket_efforts
-UNION ALL SELECT 'ticket_escalations',         count(*) FROM public.ticket_escalations
-UNION ALL SELECT 'ticket_modules',             count(*) FROM public.ticket_modules
-UNION ALL SELECT 'ticket_delete_requests',     count(*) FROM public.ticket_delete_requests
-UNION ALL SELECT 'ticket_reopen_requests',     count(*) FROM public.ticket_reopen_requests
-UNION ALL SELECT 'ticket_unlock_requests',     count(*) FROM public.ticket_unlock_requests
-UNION ALL SELECT 'ticket_history',             count(*) FROM public.ticket_history
-UNION ALL SELECT 'satisfaction_ratings',       count(*) FROM public.satisfaction_ratings
-UNION ALL SELECT 'notifications (ALL — cleared)', count(*) FROM public.notifications
-UNION ALL SELECT 'customer_contracts',         count(*) FROM public.customer_contracts
-UNION ALL SELECT 'organization_contacts',      count(*) FROM public.organization_contacts
-UNION ALL SELECT 'organization_contact_tags',  count(*) FROM public.organization_contact_tags
-UNION ALL SELECT 'customer_contacts',          count(*) FROM public.customer_contacts
-UNION ALL SELECT 'password_change_requests (customer-owned)', count(*)
-  FROM public.password_change_requests
-  WHERE user_id IN (SELECT id FROM public.profiles WHERE role = 'Customer')
-UNION ALL SELECT 'client_sla_targets (CLIENT orgs)', count(*)
-  FROM public.client_sla_targets
-  WHERE organization_id NOT IN (
-    SELECT organization_id FROM public.profiles WHERE role <> 'Customer' AND organization_id IS NOT NULL)
-UNION ALL SELECT 'organizations — TOTAL',      count(*) FROM public.organizations
-UNION ALL SELECT 'organizations — CLIENT (DELETE)', count(*)
+SELECT 'tickets'                       AS item, count(*)::text AS value FROM public.tickets
+UNION ALL SELECT 'ticket_comment_attachments', count(*)::text FROM public.ticket_comment_attachments
+UNION ALL SELECT 'ticket_attachments',         count(*)::text FROM public.ticket_attachments
+UNION ALL SELECT 'ticket_mentions',            count(*)::text FROM public.ticket_mentions
+UNION ALL SELECT 'ticket_actual_hours',        count(*)::text FROM public.ticket_actual_hours
+UNION ALL SELECT 'ticket_comments',            count(*)::text FROM public.ticket_comments
+UNION ALL SELECT 'ticket_closure_requests',    count(*)::text FROM public.ticket_closure_requests
+UNION ALL SELECT 'ticket_hour_estimates',      count(*)::text FROM public.ticket_hour_estimates
+UNION ALL SELECT 'ticket_estimates',           count(*)::text FROM public.ticket_estimates
+UNION ALL SELECT 'ticket_assignments',         count(*)::text FROM public.ticket_assignments
+UNION ALL SELECT 'ticket_consultant_efforts',  count(*)::text FROM public.ticket_consultant_efforts
+UNION ALL SELECT 'ticket_efforts',             count(*)::text FROM public.ticket_efforts
+UNION ALL SELECT 'ticket_escalations',         count(*)::text FROM public.ticket_escalations
+UNION ALL SELECT 'ticket_modules',             count(*)::text FROM public.ticket_modules
+UNION ALL SELECT 'ticket_delete_requests',     count(*)::text FROM public.ticket_delete_requests
+UNION ALL SELECT 'ticket_reopen_requests',     count(*)::text FROM public.ticket_reopen_requests
+UNION ALL SELECT 'ticket_unlock_requests',     count(*)::text FROM public.ticket_unlock_requests
+UNION ALL SELECT 'ticket_history',             count(*)::text FROM public.ticket_history
+UNION ALL SELECT 'satisfaction_ratings',       count(*)::text FROM public.satisfaction_ratings
+UNION ALL SELECT 'notifications (ALL — cleared)', count(*)::text FROM public.notifications
+UNION ALL SELECT 'customer_contracts',         count(*)::text FROM public.customer_contracts
+UNION ALL SELECT 'organization_contacts',      count(*)::text FROM public.organization_contacts
+UNION ALL SELECT 'organization_contact_tags',  count(*)::text FROM public.organization_contact_tags
+UNION ALL SELECT 'customer_contacts',          count(*)::text FROM public.customer_contacts
+UNION ALL SELECT 'organizations — TOTAL',      count(*)::text FROM public.organizations
+UNION ALL SELECT 'organizations — CLIENT (DELETE)', count(*)::text
   FROM public.organizations
-  WHERE id NOT IN (
-    SELECT organization_id FROM public.profiles WHERE role <> 'Customer' AND organization_id IS NOT NULL)
-UNION ALL SELECT 'organizations — STAFF (KEEP)', count(*)
+  WHERE id NOT IN (SELECT organization_id FROM public.profiles WHERE role <> 'Customer' AND organization_id IS NOT NULL)
+UNION ALL SELECT 'organizations — STAFF (KEEP)', count(*)::text
   FROM public.organizations
-  WHERE id IN (
-    SELECT organization_id FROM public.profiles WHERE role <> 'Customer' AND organization_id IS NOT NULL)
-UNION ALL SELECT 'profiles: Customer   (DELETE)', count(*) FROM public.profiles WHERE role = 'Customer'
-UNION ALL SELECT 'profiles: Consultant (KEEP)',   count(*) FROM public.profiles WHERE role = 'Consultant'
-UNION ALL SELECT 'profiles: Manager    (KEEP)',   count(*) FROM public.profiles WHERE role = 'Manager'
-UNION ALL SELECT 'profiles: SuperAdmin (KEEP)',   count(*) FROM public.profiles WHERE role = 'SuperAdmin'
+  WHERE id IN (SELECT organization_id FROM public.profiles WHERE role <> 'Customer' AND organization_id IS NOT NULL)
+UNION ALL SELECT 'profiles: Customer   (DELETE)', count(*)::text FROM public.profiles WHERE role = 'Customer'
+UNION ALL SELECT 'profiles: Consultant (KEEP)',   count(*)::text FROM public.profiles WHERE role = 'Consultant'
+UNION ALL SELECT 'profiles: Manager    (KEEP)',   count(*)::text FROM public.profiles WHERE role = 'Manager'
+UNION ALL SELECT 'profiles: SuperAdmin (KEEP)',   count(*)::text FROM public.profiles WHERE role = 'SuperAdmin'
+UNION ALL SELECT 'ticket_sequence_seq last_value (current)', last_value::text FROM public.ticket_sequence_seq
 ORDER BY item;
 
 
@@ -107,8 +109,8 @@ ORDER BY item;
 BEGIN;
 
 -- The CLIENT organizations = orgs NOT referenced by any kept (non-Customer)
--- profile. Computed once up-front (independent of deletion order) so the
--- internal staff org "SST SAP Operations" is always excluded → consultants safe.
+-- profile. Computed once up-front (independent of deletion order) so the internal
+-- staff org "SST SAP Operations" is always excluded → consultants safe.
 CREATE TEMP TABLE _client_orgs ON COMMIT DROP AS
   SELECT id FROM public.organizations
   WHERE id NOT IN (
@@ -172,17 +174,28 @@ COMMIT;
 
 
 -- =============================================================================
---  PART C — ORPHANED AUTH CLEANUP (READ + DELETE on auth.users).
---  Removes the deleted customers' login accounts; keeps every account that
---  still has a public.profiles row (i.e. all consultants/managers/admins).
---  Run AFTER PART B has committed.
+--  PART C — RESET THE TICKET-NUMBER COUNTER (so the next ticket = 000001).
+--  Mechanism = (a) a single GLOBAL sequence public.ticket_sequence_seq consumed
+--  by the BEFORE INSERT trigger. Tickets are now empty (PART B), so restarting
+--  the sequence makes the trigger's next nextval() return 1 →
+--  <new org customer_short_code>-000001 for the first ticket created after the wipe.
+--  RESTART WITH 1 sets is_called=false, so the VERY NEXT nextval() returns 1.
+-- =============================================================================
+ALTER SEQUENCE public.ticket_sequence_seq RESTART WITH 1;
+--  (Equivalent alternative, if you prefer: SELECT setval('public.ticket_sequence_seq', 1, false); )
+
+
+-- =============================================================================
+--  PART D — ORPHANED AUTH CLEANUP (READ + DELETE on auth.users).
+--  Removes the deleted customers' login accounts; keeps every account that still
+--  has a public.profiles row (all consultants/managers/admins). Run AFTER PART B.
 -- =============================================================================
 DELETE FROM auth.users
   WHERE id NOT IN (SELECT id FROM public.profiles);
 
 
 -- =============================================================================
---  PART D — FORCE PASSWORD RESET for Manager + SuperAdmin.
+--  PART E — FORCE PASSWORD RESET for Manager + SuperAdmin.
 --  This app gates the forced reset in TWO places:
 --    • public.profiles.force_password_change  (read by AuthContext)
 --    • auth.users user_metadata.force_password_change (read by middleware.ts —
@@ -201,23 +214,27 @@ UPDATE auth.users
 
 
 -- =============================================================================
---  PART E — POST-VERIFY (READ-ONLY). Expect: tickets=0, all ticket children=0,
---  client orgs/contracts/sla=0, ONLY Consultant/Manager/SuperAdmin remain,
---  and the staff org is still present.
+--  PART F — POST-VERIFY (READ-ONLY). Expect: tickets=0, all ticket children=0,
+--  client orgs/contracts/sla=0, ONLY Consultant/Manager/SuperAdmin remain, the
+--  staff org is still present, and the sequence is back to yield 1 next.
+--  NOTE: this only READS the sequence (last_value/is_called) — it does NOT call
+--  nextval(), so it does not consume the 000001 value.
 -- =============================================================================
-SELECT 'tickets (expect 0)'              AS item, count(*) AS rows FROM public.tickets
-UNION ALL SELECT 'ticket_comments (expect 0)',        count(*) FROM public.ticket_comments
-UNION ALL SELECT 'ticket_history (expect 0)',         count(*) FROM public.ticket_history
-UNION ALL SELECT 'ticket_assignments (expect 0)',     count(*) FROM public.ticket_assignments
-UNION ALL SELECT 'satisfaction_ratings (expect 0)',   count(*) FROM public.satisfaction_ratings
-UNION ALL SELECT 'notifications (expect 0)',          count(*) FROM public.notifications
-UNION ALL SELECT 'customer_contracts (expect 0)',     count(*) FROM public.customer_contracts
-UNION ALL SELECT 'organization_contacts (expect 0)',  count(*) FROM public.organization_contacts
-UNION ALL SELECT 'organizations (expect 1 = staff org)', count(*) FROM public.organizations
-UNION ALL SELECT 'profiles: Customer (expect 0)',     count(*) FROM public.profiles WHERE role = 'Customer'
-UNION ALL SELECT 'profiles: Consultant (KEEP)',       count(*) FROM public.profiles WHERE role = 'Consultant'
-UNION ALL SELECT 'profiles: Manager (KEEP, reset)',   count(*) FROM public.profiles WHERE role = 'Manager'
-UNION ALL SELECT 'profiles: SuperAdmin (KEEP, reset)',count(*) FROM public.profiles WHERE role = 'SuperAdmin'
-UNION ALL SELECT 'Manager+Admin with force_password_change=true',
-  count(*) FROM public.profiles WHERE role IN ('Manager','SuperAdmin') AND force_password_change = true
+SELECT 'tickets (expect 0)'              AS item, count(*)::text AS value FROM public.tickets
+UNION ALL SELECT 'ticket_comments (expect 0)',        count(*)::text FROM public.ticket_comments
+UNION ALL SELECT 'ticket_history (expect 0)',         count(*)::text FROM public.ticket_history
+UNION ALL SELECT 'ticket_assignments (expect 0)',     count(*)::text FROM public.ticket_assignments
+UNION ALL SELECT 'satisfaction_ratings (expect 0)',   count(*)::text FROM public.satisfaction_ratings
+UNION ALL SELECT 'notifications (expect 0)',          count(*)::text FROM public.notifications
+UNION ALL SELECT 'customer_contracts (expect 0)',     count(*)::text FROM public.customer_contracts
+UNION ALL SELECT 'organization_contacts (expect 0)',  count(*)::text FROM public.organization_contacts
+UNION ALL SELECT 'organizations (expect 1 = staff org)', count(*)::text FROM public.organizations
+UNION ALL SELECT 'profiles: Customer (expect 0)',     count(*)::text FROM public.profiles WHERE role = 'Customer'
+UNION ALL SELECT 'profiles: Consultant (KEEP)',       count(*)::text FROM public.profiles WHERE role = 'Consultant'
+UNION ALL SELECT 'profiles: Manager (KEEP, reset)',   count(*)::text FROM public.profiles WHERE role = 'Manager'
+UNION ALL SELECT 'profiles: SuperAdmin (KEEP, reset)',count(*)::text FROM public.profiles WHERE role = 'SuperAdmin'
+UNION ALL SELECT 'Manager+Admin force_password_change=true',
+  count(*)::text FROM public.profiles WHERE role IN ('Manager','SuperAdmin') AND force_password_change = true
+UNION ALL SELECT 'ticket_sequence_seq last_value (expect 1)', last_value::text FROM public.ticket_sequence_seq
+UNION ALL SELECT 'ticket_sequence_seq is_called (expect f → next nextval = 1)', is_called::text FROM public.ticket_sequence_seq
 ORDER BY item;
