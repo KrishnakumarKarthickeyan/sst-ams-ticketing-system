@@ -146,15 +146,14 @@ DELETE FROM public.tickets;                       -- ALL tickets (mock AND real)
 -- ── Notifications (transient; reference tickets/users) — clear all ──
 DELETE FROM public.notifications;                 -- full clean slate
 
--- ── Client (customer organization) data, scoped to CLIENT orgs only ──
-DELETE FROM public.organization_contact_tags
-  WHERE contact_id IN (
-    SELECT id FROM public.organization_contacts
-    WHERE organization_id IN (SELECT id FROM _client_orgs)); -- tags on client contacts
-DELETE FROM public.organization_contacts
-  WHERE organization_id IN (SELECT id FROM _client_orgs);    -- client org contacts
+-- ── Client (customer organization) data ──
+-- organization_contacts has NO organization_id column — contacts are client
+-- contact-persons linked to orgs by NAME via organization_contact_tags. These
+-- two tables are entirely client-contact data, so clear them wholesale.
+DELETE FROM public.organization_contact_tags;               -- client contact↔org tags (FK→contacts)
+DELETE FROM public.organization_contacts;                   -- client contact persons
 DELETE FROM public.customer_contacts
-  WHERE organization_id IN (SELECT id FROM _client_orgs);    -- legacy customer contacts
+  WHERE organization_id IN (SELECT id FROM _client_orgs);   -- legacy customer contacts (has org id)
 DELETE FROM public.customer_contracts
   WHERE organization_id IN (SELECT id FROM _client_orgs);    -- client contracts
 DELETE FROM public.client_sla_targets
