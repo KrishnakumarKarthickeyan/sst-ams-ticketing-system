@@ -159,7 +159,7 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
             </span>
             <span className={`font-black text-[11px] block leading-tight ${
               slaMetrics.status === 'BREACHED' ? 'text-critical' : 
-              slaMetrics.status === 'WARNING' ? 'text-amber-700 animate-pulse' : 
+              slaMetrics.status === 'WARNING' ? 'text-warning-strong animate-pulse' : 
               'text-ink'
             }`}>
               {slaMetrics.timeLeft}

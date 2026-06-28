@@ -159,7 +159,7 @@ export default function FirstLoginResetPage() {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded p-3 text-xs text-red-800 font-bold">
+            <div className="bg-critical-soft border border-critical-border rounded p-3 text-xs text-red-800 font-bold">
               [SECURITY ERROR]: {error}
             </div>
           )}
@@ -192,7 +192,7 @@ export default function FirstLoginResetPage() {
                   ) : (
                     <Circle size={12} className="text-ink-muted shrink-0" />
                   )}
-                  <span className={hasMinLength ? 'text-emerald-700 font-medium' : ''}>Min. 8 characters</span>
+                  <span className={hasMinLength ? 'text-success-strong font-medium' : ''}>Min. 8 characters</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {hasUppercase ? (
@@ -200,7 +200,7 @@ export default function FirstLoginResetPage() {
                   ) : (
                     <Circle size={12} className="text-ink-muted shrink-0" />
                   )}
-                  <span className={hasUppercase ? 'text-emerald-700 font-medium' : ''}>Uppercase letter</span>
+                  <span className={hasUppercase ? 'text-success-strong font-medium' : ''}>Uppercase letter</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {hasLowercase ? (
@@ -208,7 +208,7 @@ export default function FirstLoginResetPage() {
                   ) : (
                     <Circle size={12} className="text-ink-muted shrink-0" />
                   )}
-                  <span className={hasLowercase ? 'text-emerald-700 font-medium' : ''}>Lowercase letter</span>
+                  <span className={hasLowercase ? 'text-success-strong font-medium' : ''}>Lowercase letter</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {hasNumber ? (
@@ -216,7 +216,7 @@ export default function FirstLoginResetPage() {
                   ) : (
                     <Circle size={12} className="text-ink-muted shrink-0" />
                   )}
-                  <span className={hasNumber ? 'text-emerald-700 font-medium' : ''}>Number digit</span>
+                  <span className={hasNumber ? 'text-success-strong font-medium' : ''}>Number digit</span>
                 </div>
                 <div className="flex items-center gap-1.5 col-span-2">
                   {hasSpecial ? (
@@ -224,7 +224,7 @@ export default function FirstLoginResetPage() {
                   ) : (
                     <Circle size={12} className="text-ink-muted shrink-0" />
                   )}
-                  <span className={hasSpecial ? 'text-emerald-700 font-medium' : ''}>Special character (!@#$%)</span>
+                  <span className={hasSpecial ? 'text-success-strong font-medium' : ''}>Special character (!@#$%)</span>
                 </div>
               </div>
             </div>

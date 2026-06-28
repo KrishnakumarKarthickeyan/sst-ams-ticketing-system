@@ -672,8 +672,8 @@ export default function AdminOrganizationsPage() {
                         <Badge 
                           variant="secondary" 
                           className={`text-[11px] font-bold uppercase tracking-wider ${
-                            org.status === 'Active' ? 'bg-emerald-50 text-emerald-700' :
-                            org.status === 'Inactive' ? 'bg-amber-50 text-amber-700' :
+                            org.status === 'Active' ? 'bg-success-soft text-success-strong' :
+                            org.status === 'Inactive' ? 'bg-warning-soft text-warning-strong' :
                             'bg-surface-subtle text-ink-muted'
                           }`}
                         >
@@ -741,12 +741,12 @@ export default function AdminOrganizationsPage() {
                       </Button>
                       
                       {selectedOrg.status !== 'Active' && (
-                        <Button variant="outline" size="sm" className="text-xs text-success border-emerald-200 hover:bg-emerald-50 cursor-pointer" onClick={() => updateOrgStatus(selectedOrg.id, 'Active')}>
+                        <Button variant="outline" size="sm" className="text-xs text-success border-success-border hover:bg-success-soft cursor-pointer" onClick={() => updateOrgStatus(selectedOrg.id, 'Active')}>
                           <Play size={12} className="mr-1" /> Activate
                         </Button>
                       )}
                       {selectedOrg.status === 'Active' && (
-                        <Button variant="outline" size="sm" className="text-xs text-warning border-amber-200 hover:bg-amber-50 cursor-pointer" onClick={() => updateOrgStatus(selectedOrg.id, 'Inactive')}>
+                        <Button variant="outline" size="sm" className="text-xs text-warning border-warning-border hover:bg-warning-soft cursor-pointer" onClick={() => updateOrgStatus(selectedOrg.id, 'Inactive')}>
                           <Pause size={12} className="mr-1" /> Deactivate
                         </Button>
                       )}
@@ -756,7 +756,7 @@ export default function AdminOrganizationsPage() {
                         </Button>
                       )}
 
-                      <Button variant="outline" size="sm" className="text-xs text-critical border-red-200 hover:bg-red-50 cursor-pointer" onClick={() => deleteOrganization(selectedOrg.id)}>
+                      <Button variant="outline" size="sm" className="text-xs text-critical border-critical-border hover:bg-critical-soft cursor-pointer" onClick={() => deleteOrganization(selectedOrg.id)}>
                         <Trash2 size={13} /> Delete
                       </Button>
                     </div>
@@ -843,15 +843,15 @@ export default function AdminOrganizationsPage() {
                         <div className="grid grid-cols-3 gap-4 text-center">
                           <div>
                             <span className="text-[11px] font-bold text-ink-muted uppercase block">Healthy SLA</span>
-                            <span className="text-sm font-bold text-emerald-700 mt-1 block">{org360.slaHealthy}</span>
+                            <span className="text-sm font-bold text-success-strong mt-1 block">{org360.slaHealthy}</span>
                           </div>
                           <div>
                             <span className="text-[11px] font-bold text-ink-muted uppercase block">Warning SLA</span>
-                            <span className="text-sm font-bold text-amber-700 mt-1 block">{org360.slaWarning}</span>
+                            <span className="text-sm font-bold text-warning-strong mt-1 block">{org360.slaWarning}</span>
                           </div>
                           <div>
                             <span className="text-[11px] font-bold text-ink-muted uppercase block">Breached SLA</span>
-                            <span className="text-sm font-bold text-red-700 mt-1 block">{org360.slaBreached}</span>
+                            <span className="text-sm font-bold text-critical-strong mt-1 block">{org360.slaBreached}</span>
                           </div>
                         </div>
                       </div>
@@ -1017,7 +1017,7 @@ export default function AdminOrganizationsPage() {
                                   <TableCell className="py-2 text-xs font-semibold">{u.full_name}</TableCell>
                                   <TableCell className="py-2 text-xs text-ink-secondary">{u.email}</TableCell>
                                   <TableCell className="py-2 text-xs">
-                                    <Badge variant="secondary" className={u.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}>
+                                    <Badge variant="secondary" className={u.is_active ? 'bg-success-soft text-success-strong' : 'bg-critical-soft text-critical-strong'}>
                                       {u.is_active ? 'Enabled' : 'Disabled'}
                                     </Badge>
                                   </TableCell>
@@ -1407,7 +1407,7 @@ export default function AdminOrganizationsPage() {
             )}
 
             {pwdGeneratedTemp && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded text-center space-y-2">
+              <div className="p-4 bg-success-soft border border-success-border rounded text-center space-y-2">
                 <span className="text-[11px] text-emerald-800 font-bold block uppercase">Temporary Password Registry</span>
                 <span className="text-sm font-bold bg-surface px-3 py-1.5 border border-emerald-250 rounded block select-all">
                   {pwdGeneratedTemp}

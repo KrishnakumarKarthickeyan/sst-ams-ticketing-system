@@ -529,7 +529,7 @@ export default function ManagerEffortApprovalsPage() {
                         <Badge className={`border font-bold uppercase text-[11px] py-0 px-1.5 ${
                           est.status === 'Submitted'
                             ? 'bg-surface-muted text-ink-secondary border-line hover:bg-surface-subtle'
-                            : 'bg-blue-50 text-blue-700 border-blue-250 hover:bg-blue-100'
+                            : 'bg-brand-soft text-brand-strong border-blue-250 hover:bg-blue-100'
                         }`}>
                           {est.status === 'Submitted' ? 'Initial quote' : 'Revision request'}
                         </Badge>
@@ -547,14 +547,14 @@ export default function ManagerEffortApprovalsPage() {
                         <div className="flex justify-end gap-1.5">
                           <button
                             onClick={() => handleApproveEstimate(est.ticketId, est.id)}
-                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-emerald-50 rounded transition"
+                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-success-soft rounded transition"
                             title="Approve Estimate"
                           >
                             <Check size={13} />
                           </button>
                           <button
                             onClick={() => triggerRejectionModal('estimate', est.ticketId, est.id, est.ticketNumber)}
-                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-red-50 rounded transition"
+                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-critical-soft rounded transition"
                             title="Reject Estimate"
                           >
                             <X size={13} />
@@ -629,7 +629,7 @@ export default function ManagerEffortApprovalsPage() {
                         <td className="py-3 px-4 text-ink-secondary max-w-[200px] truncate" title={log.description}>{log.description}</td>
                         <td className="py-3 px-4 text-center font-bold text-ink bg-surface-muted/60">{log.hoursLogged.toFixed(1)}h</td>
                         <td className="py-3 px-4 text-center font-bold">
-                          <span className={log.billable ? 'text-emerald-700' : 'text-ink-muted'}>
+                          <span className={log.billable ? 'text-success-strong' : 'text-ink-muted'}>
                             {log.billable ? 'Billable' : 'Internal'}
                           </span>
                         </td>
@@ -637,18 +637,18 @@ export default function ManagerEffortApprovalsPage() {
                           {log.status === 'Pending' || log.status === 'Pending Approval' || log.status === 'Resubmitted' ? (
                             <div className="flex justify-end items-center gap-1.5">
                               {log.status === 'Resubmitted' && (
-                                <span className="text-[11px] bg-blue-50 border border-blue-200 text-blue-700 px-1 py-0.5 rounded font-black uppercase animate-pulse mr-1">RESUB</span>
+                                <span className="text-[11px] bg-brand-soft border border-brand-border text-brand-strong px-1 py-0.5 rounded font-black uppercase animate-pulse mr-1">RESUB</span>
                               )}
                               <button
                                 onClick={() => handleApproveTimesheet(log.ticketId, log.id)}
-                                className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-emerald-50 rounded transition"
+                                className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-success-soft rounded transition"
                                 title="Approve Timesheet"
                               >
                                 <Check size={12} />
                               </button>
                               <button
                                 onClick={() => triggerRejectionModal('timesheet', log.ticketId, log.id, log.ticketNumber)}
-                                className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-red-50 rounded transition"
+                                className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-critical-soft rounded transition"
                                 title="Reject Timesheet"
                               >
                                 <X size={12} />
@@ -709,7 +709,7 @@ export default function ManagerEffortApprovalsPage() {
                           <div className="text-[11px] text-ink-secondary truncate max-w-[150px] mt-0.5">{req.ticketTitle}</div>
                           <div className="text-[11px] text-ink-muted mt-0.5">{req.organization}</div>
                           {req.status === 'Resubmitted' && (
-                            <span className="inline-block mt-1 text-[11px] bg-blue-50 border border-blue-200 text-blue-700 px-1 py-0.5 rounded font-black uppercase">Resubmitted</span>
+                            <span className="inline-block mt-1 text-[11px] bg-brand-soft border border-brand-border text-brand-strong px-1 py-0.5 rounded font-black uppercase">Resubmitted</span>
                           )}
                         </td>
                         <td className="py-3 px-4 font-bold text-ink align-top">{req.requestedBy}</td>
@@ -752,7 +752,7 @@ export default function ManagerEffortApprovalsPage() {
                                 <span className="text-ink-secondary">{req.estimatedFuncHours}h est</span>
                                 <span className="text-ink-muted">→</span>
                                 <span className="font-bold text-ink">{req.functionalActualHours}h act</span>
-                                <span className={`font-black ${funcVariance > 0 ? 'text-critical' : 'text-emerald-700'}`}>
+                                <span className={`font-black ${funcVariance > 0 ? 'text-critical' : 'text-success-strong'}`}>
                                   ({funcVariance >= 0 ? `+${funcVariance}` : funcVariance}h)
                                 </span>
                               </div>
@@ -765,7 +765,7 @@ export default function ManagerEffortApprovalsPage() {
                                 <span className="text-ink-secondary">{req.estimatedTechHours}h est</span>
                                 <span className="text-ink-muted">→</span>
                                 <span className="font-bold text-ink">{req.technicalActualHours}h act</span>
-                                <span className={`font-black ${techVariance > 0 ? 'text-critical' : 'text-emerald-700'}`}>
+                                <span className={`font-black ${techVariance > 0 ? 'text-critical' : 'text-success-strong'}`}>
                                   ({techVariance >= 0 ? `+${techVariance}` : techVariance}h)
                                 </span>
                               </div>
@@ -780,7 +780,7 @@ export default function ManagerEffortApprovalsPage() {
                                 <span className="text-ink-secondary">{req.estimatedTotalHours}h est</span>
                                 <span className="text-ink-muted">→</span>
                                 <span className="font-black text-ink">{req.totalActualHours}h act</span>
-                                <span className={`font-black px-1 rounded ${totalVariance > 0 ? 'bg-red-50 text-critical' : 'bg-emerald-50 text-emerald-700'}`}>
+                                <span className={`font-black px-1 rounded ${totalVariance > 0 ? 'bg-critical-soft text-critical' : 'bg-success-soft text-success-strong'}`}>
                                   {totalVariance >= 0 ? `+${totalVariance}` : totalVariance}h
                                 </span>
                               </div>
@@ -790,10 +790,10 @@ export default function ManagerEffortApprovalsPage() {
                         </td>
                         <td className="py-3 px-4 text-ink-secondary space-y-1 align-top max-w-[280px]">
                           <div><strong className="text-ink-secondary">Root Cause:</strong> <span className="text-ink-secondary font-semibold">{req.rootCause}</span></div>
-                          <div><strong className="text-ink-secondary">Resolution:</strong> <span className="text-emerald-700 font-semibold">{req.resolutionSummary}</span></div>
+                          <div><strong className="text-ink-secondary">Resolution:</strong> <span className="text-success-strong font-semibold">{req.resolutionSummary}</span></div>
                           <div><strong className="text-ink-secondary">Work completed:</strong> <span className="text-ink-secondary text-[11px]">{req.workCompletedSummary}</span></div>
                           {req.pendingItems && (
-                            <div className="text-[11px] bg-amber-50/50 border border-amber-100 rounded p-1 text-amber-800">
+                            <div className="text-[11px] bg-warning-soft/50 border border-amber-100 rounded p-1 text-amber-800">
                               <strong>Pending:</strong> {req.pendingItems}
                             </div>
                           )}
@@ -803,14 +803,14 @@ export default function ManagerEffortApprovalsPage() {
                           <div className="flex justify-end gap-1.5">
                             <button
                               onClick={() => handleApproveClosure(req.ticketId, req.id)}
-                              className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-emerald-50 rounded transition"
+                              className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-success-soft rounded transition"
                               title="Approve Closure"
                             >
                               <Check size={13} />
                             </button>
                             <button
                               onClick={() => triggerRejectionModal('closure', req.ticketId, req.id, req.ticketNumber)}
-                              className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-red-50 rounded transition"
+                              className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-critical-soft rounded transition"
                               title="Reject Closure Request"
                             >
                               <X size={13} />
@@ -863,7 +863,7 @@ export default function ManagerEffortApprovalsPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <Badge className="bg-critical-soft text-critical-strong border border-critical-border hover:bg-red-50 font-bold">
+                        <Badge className="bg-critical-soft text-critical-strong border border-critical-border hover:bg-critical-soft font-bold">
                           {req.reopenedCount}x Reopened
                         </Badge>
                       </td>
@@ -876,7 +876,7 @@ export default function ManagerEffortApprovalsPage() {
                         <div className="flex justify-end gap-1.5">
                           <button
                             onClick={() => handleApproveReopen(req.id)}
-                            className="inline-flex items-center gap-1 py-1 px-2.5 bg-surface border border-line text-success hover:bg-emerald-50 rounded transition font-bold text-[11px] uppercase"
+                            className="inline-flex items-center gap-1 py-1 px-2.5 bg-surface border border-line text-success hover:bg-success-soft rounded transition font-bold text-[11px] uppercase"
                             title="Approve Reopen (Resume Work)"
                           >
                             <RotateCcw size={11} />
@@ -884,7 +884,7 @@ export default function ManagerEffortApprovalsPage() {
                           </button>
                           <button
                             onClick={() => triggerRejectionModal('reopen', req.id, req.id, req.ticketNumber)}
-                            className="inline-flex items-center gap-1 py-1 px-2.5 bg-surface border border-line text-critical hover:bg-red-50 rounded transition font-bold text-[11px] uppercase"
+                            className="inline-flex items-center gap-1 py-1 px-2.5 bg-surface border border-line text-critical hover:bg-critical-soft rounded transition font-bold text-[11px] uppercase"
                             title="Reject Reopen & Close"
                           >
                             <X size={11} />
@@ -943,14 +943,14 @@ export default function ManagerEffortApprovalsPage() {
                         <div className="flex justify-end gap-1.5">
                           <button
                             onClick={() => handleApproveUnlock(req.ticketId, req.id)}
-                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-emerald-50 rounded transition"
+                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-success-soft rounded transition"
                             title="Approve Unlock"
                           >
                             <Check size={12} />
                           </button>
                           <button
                             onClick={() => triggerRejectionModal('unlock', req.ticketId, req.id, req.ticketNumber)}
-                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-red-50 rounded transition"
+                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-critical-soft rounded transition"
                             title="Reject Unlock"
                           >
                             <X size={12} />
@@ -1007,14 +1007,14 @@ export default function ManagerEffortApprovalsPage() {
                         <div className="flex justify-end gap-1.5">
                           <button
                             onClick={() => handleApproveDelete(req.ticketId, req.id)}
-                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-emerald-50 rounded transition"
+                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-success hover:bg-success-soft rounded transition"
                             title="Approve Delete Request"
                           >
                             <Check size={12} />
                           </button>
                           <button
                             onClick={() => triggerRejectionModal('delete', req.ticketId, req.id, req.ticketNumber)}
-                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-red-50 rounded transition"
+                            className="inline-flex items-center justify-center p-1 bg-surface border border-line text-critical hover:bg-critical-soft rounded transition"
                             title="Reject Delete Request"
                           >
                             <X size={12} />
@@ -1076,7 +1076,7 @@ export default function ManagerEffortApprovalsPage() {
                 disabled={!rejectionModal.rejectionReason.trim()}
                 className={`py-1.5 px-3 rounded font-bold transition uppercase text-white ${
                   rejectionModal.rejectionReason.trim()
-                    ? 'bg-red-650 hover:bg-red-700'
+                    ? 'bg-red-650 hover:bg-critical-strong'
                     : 'bg-zinc-300 cursor-not-allowed text-ink-secondary'
                 }`}
               >

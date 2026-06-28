@@ -160,7 +160,7 @@ export default function CustomerProfilePage() {
         <CardContent className="p-6">
           <div className="space-y-4 text-xs">
             {pendingRequest ? (
-              <div className="bg-amber-50/60 border border-amber-250 rounded-lg p-4 text-[11px] text-amber-800 font-bold space-y-2">
+              <div className="bg-warning-soft/60 border border-amber-250 rounded-lg p-4 text-[11px] text-amber-800 font-bold space-y-2">
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="animate-pulse" />
                   <span>PENDING MANAGER APPROVAL</span>

@@ -402,10 +402,10 @@ export default function AllCustomerTicketsPage() {
     const hoursLeft = (due - now) / (1000 * 60 * 60);
 
     if (hoursLeft < 0) {
-      return { label: 'SLA BREACHED', color: 'text-red-700 bg-red-50 border-red-200' };
+      return { label: 'SLA BREACHED', color: 'text-critical-strong bg-critical-soft border-critical-border' };
     }
     if (hoursLeft < 24) {
-      return { label: `SLA WARNING (${Math.round(hoursLeft)}h left)`, color: 'text-amber-700 bg-amber-50 border-amber-200' };
+      return { label: `SLA WARNING (${Math.round(hoursLeft)}h left)`, color: 'text-warning-strong bg-warning-soft border-warning-border' };
     }
     return { label: `SLA MET (${new Date(slaDueAt).toLocaleDateString()})`, color: 'text-ink-secondary bg-surface-muted border-line' };
   };
@@ -596,7 +596,7 @@ export default function AllCustomerTicketsPage() {
             <Clock size={14} className="text-amber-500" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-extrabold text-amber-700">
+            <span className="text-2xl font-extrabold text-warning-strong">
               {slaBreachedOrWarningCount}
             </span>
             <span className="text-[11px] text-warning block mt-1">Breached or &lt; 24h remaining</span>
@@ -612,7 +612,7 @@ export default function AllCustomerTicketsPage() {
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-extrabold text-ink">{totalEstimates}h</span>
               <span className="text-ink-muted text-[11px]">/</span>
-              <span className={`text-lg font-extrabold ${totalActuals > totalEstimates ? 'text-critical' : 'text-emerald-700'}`}>
+              <span className={`text-lg font-extrabold ${totalActuals > totalEstimates ? 'text-critical' : 'text-success-strong'}`}>
                 {totalActuals}h
               </span>
             </div>

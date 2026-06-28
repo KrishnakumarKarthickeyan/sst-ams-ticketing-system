@@ -410,7 +410,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
       </div>
 
       {notificationMsg && (
-        <div className="bg-emerald-50 border border-emerald-500 text-emerald-800 font-bold uppercase text-[11px] tracking-wider p-2.5 rounded flex items-center gap-1 animate-fade-in">
+        <div className="bg-success-soft border border-emerald-500 text-emerald-800 font-bold uppercase text-[11px] tracking-wider p-2.5 rounded flex items-center gap-1 animate-fade-in">
           <Check size={12} className="text-success" />
           {notificationMsg}
         </div>
@@ -636,9 +636,9 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
           <div className="bg-surface border border-line rounded-lg p-4 shadow-card flex justify-between items-center border-l-4 border-l-emerald-500">
             <div>
               <div className="text-ink-muted font-bold uppercase text-[11px]">Resolved / Closed count</div>
-              <div className="text-lg font-bold text-emerald-700 mt-1">{resolvedCount + closedCount} Tickets</div>
+              <div className="text-lg font-bold text-success-strong mt-1">{resolvedCount + closedCount} Tickets</div>
             </div>
-            <div className="bg-emerald-50 text-success p-2.5 rounded border border-emerald-100">
+            <div className="bg-success-soft text-success p-2.5 rounded border border-emerald-100">
               <Check size={16} className="text-success" />
             </div>
           </div>
@@ -651,7 +651,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                 <span className="text-[11px] block text-ink-muted font-normal mt-0.5">Billable: {billableHours.toFixed(1)}h | Non-Billable: {nonBillableHours.toFixed(1)}h</span>
               </div>
             </div>
-            <div className="bg-amber-50 text-warning p-2.5 rounded border border-amber-100">
+            <div className="bg-warning-soft text-warning p-2.5 rounded border border-amber-100">
               <Clock size={16} />
             </div>
           </div>
@@ -736,7 +736,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                       <td className="py-2 px-3 text-center font-bold">{log.hoursLogged.toFixed(1)}h</td>
                       <td className="py-2 px-3 text-center">{log.billable ? 'Yes' : 'No'}</td>
                       <td className={`py-2 px-3 text-right font-bold ${
-                        log.status === 'Approved' ? 'text-emerald-700' : log.status === 'Pending' ? 'text-warning' : 'text-critical'
+                        log.status === 'Approved' ? 'text-success-strong' : log.status === 'Pending' ? 'text-warning' : 'text-critical'
                       }`}>{log.status}</td>
                     </tr>
                   ))
@@ -770,7 +770,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
                     const now = Date.now();
                     const dueTime = new Date(t.slaDueAt).getTime();
                     const isClosedOrResolved = t.status === 'Closed' || t.status === 'Resolved';
-                    let slaBadge = <span className="text-emerald-700 font-bold">Healthy</span>;
+                    let slaBadge = <span className="text-success-strong font-bold">Healthy</span>;
                     if (!isClosedOrResolved) {
                       if (dueTime < now) {
                         slaBadge = <span className="text-critical font-bold">Breached</span>;

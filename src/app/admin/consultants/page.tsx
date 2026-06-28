@@ -489,7 +489,7 @@ export default function AdminConsultantsPage() {
                             <span className="text-[11px] text-ink-secondary font-medium">{c.role_title || `${c.consultant_type} Consultant`}</span>
                           </div>
                         </div>
-                        <Badge variant="secondary" className={`text-[11px] font-bold uppercase ${c.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                        <Badge variant="secondary" className={`text-[11px] font-bold uppercase ${c.is_active ? 'bg-success-soft text-success-strong' : 'bg-critical-soft text-critical-strong'}`}>
                           {c.is_active ? 'Active' : 'Suspended'}
                         </Badge>
                       </div>
@@ -548,12 +548,12 @@ export default function AdminConsultantsPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className={`text-[11px] h-7 px-2 cursor-pointer ${c.is_active ? 'text-warning border-amber-200' : 'text-success border-emerald-200'}`}
+                          className={`text-[11px] h-7 px-2 cursor-pointer ${c.is_active ? 'text-warning border-warning-border' : 'text-success border-success-border'}`}
                           onClick={() => toggleConsultantStatus(c)}
                         >
                           {c.is_active ? 'Disable' : 'Enable'}
                         </Button>
-                        <Button variant="outline" size="sm" className="text-[11px] h-7 px-2 text-critical border-red-200 cursor-pointer" onClick={() => deleteConsultant(c.id)}>
+                        <Button variant="outline" size="sm" className="text-[11px] h-7 px-2 text-critical border-critical-border cursor-pointer" onClick={() => deleteConsultant(c.id)}>
                           <Trash2 size={11} />
                         </Button>
                       </div>
@@ -906,7 +906,7 @@ export default function AdminConsultantsPage() {
             )}
 
             {pwdGeneratedTemp && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded text-center space-y-2">
+              <div className="p-4 bg-success-soft border border-success-border rounded text-center space-y-2">
                 <span className="text-[11px] text-emerald-800 font-bold block uppercase">Temporary Password Registry</span>
                 <span className="text-sm font-bold bg-surface px-3 py-1.5 border border-emerald-250 rounded block select-all">
                   {pwdGeneratedTemp}

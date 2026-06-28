@@ -160,7 +160,7 @@ export default function ConsultantProfilePage() {
         <CardContent className="p-6">
           <form onSubmit={handlePasswordUpdate} className="space-y-4 text-xs">
             {passwordError && (
-              <div className="bg-red-50 border border-red-200 rounded p-2.5 text-[11px] text-red-800 font-bold">
+              <div className="bg-critical-soft border border-critical-border rounded p-2.5 text-[11px] text-red-800 font-bold">
                 [ERROR]: {passwordError}
               </div>
             )}

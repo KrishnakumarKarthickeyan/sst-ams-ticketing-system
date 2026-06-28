@@ -50,21 +50,21 @@ export const SlaBadge: React.FC<SlaBadgeProps> = ({ ticket }) => {
   switch (slaStatus) {
     case 'MET':
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-success-soft border border-success-border text-success-strong text-[11px] font-bold">
           <Check size={11} className="text-success" />
           {timeLeftStr}
         </span>
       );
     case 'BREACHED':
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold animate-pulse">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-critical-soft border border-critical-border text-critical-strong text-[11px] font-bold animate-pulse">
           <ShieldX size={11} className="text-critical" />
           {timeLeftStr}
         </span>
       );
     case 'WARNING':
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-warning-soft border border-warning-border text-warning-strong text-[11px] font-bold">
           <ShieldAlert size={11} className="text-warning" />
           {timeLeftStr}
         </span>

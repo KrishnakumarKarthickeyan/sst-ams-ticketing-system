@@ -520,8 +520,8 @@ export default function ConsultantReportsPage() {
                         <td className="py-3 px-3 text-center font-bold text-success">{approvedCls?.totalActualHours || 0}h</td>
                         <td className="py-3 px-3">
                           <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[11px] ${
-                            t.status === 'Closed' ? 'text-emerald-700 bg-emerald-50' :
-                            t.status === 'Request for Closure' ? 'text-blue-700 bg-blue-50' :
+                            t.status === 'Closed' ? 'text-success-strong bg-success-soft' :
+                            t.status === 'Request for Closure' ? 'text-brand-strong bg-brand-soft' :
                             'text-slate-700 bg-slate-50'
                           }`}>{t.status}</span>
                         </td>
