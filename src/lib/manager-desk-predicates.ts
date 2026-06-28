@@ -20,15 +20,22 @@ export type ManagerDeskTab =
   | 'pendingApprovals';
 
 /**
- * "Needs dispatch" — no LEAD consultant assigned yet. The SLA clock only starts on
- * lead assignment, so a ticket without a lead is the dispatch backlog. This single
- * canonical predicate is shared by the Unassigned tab AND the dashboard Dispatch
- * Backlog so their counts can never diverge.
+ * "Needs dispatch" — NO consultant of any kind assigned yet (no lead, no assigned/
+ * primary consultant, no active assignment). The Immediate Assignment Queue and the
+ * Unassigned tab show ONLY these, so an escalated-but-assigned ticket is NEVER in the
+ * queue (it lives in the Escalation Center). This single canonical predicate is shared
+ * by the Unassigned tab AND the dashboard Assignment Queue so their counts can never
+ * diverge.
  */
 export function isUnassigned(t: Ticket): boolean {
   // Closed/Resolved tickets are done — they are never "awaiting dispatch".
   if (t.status === 'Closed' || t.status === 'Resolved') return false;
-  return !t.leadConsultantId;
+  const hasConsultant =
+    !!t.leadConsultantId ||
+    !!t.assignedConsultantId ||
+    !!t.primaryConsultantId ||
+    (t.assignments?.some(a => a.active) ?? false);
+  return !hasConsultant;
 }
 
 /**

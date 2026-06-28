@@ -37,13 +37,26 @@ describe('isSlaBreached — single source of truth', () => {
 });
 
 describe('isUnassigned', () => {
-  // Canonical "needs dispatch" = no LEAD consultant assigned yet (SLA starts on
-  // lead assignment). Shared by the Unassigned tab and the dashboard Dispatch Backlog.
-  it('true when no lead consultant is assigned', () => {
+  // Canonical "needs dispatch" = NO consultant of any kind assigned. Shared by the
+  // Unassigned tab and the Immediate Assignment Queue, so an escalated-but-assigned
+  // ticket is never in the queue.
+  it('true when no consultant of any kind is assigned', () => {
     expect(isUnassigned(mk({ leadConsultantId: undefined }))).toBe(true);
   });
-  it('false once a lead consultant is assigned (even before efforts are logged)', () => {
+  it('false once a lead consultant is assigned', () => {
     expect(isUnassigned(mk({ leadConsultantId: 'lead-uuid-1' }))).toBe(false);
+  });
+  it('false when assigned via assignedConsultantId (no lead yet)', () => {
+    expect(isUnassigned(mk({ leadConsultantId: undefined, assignedConsultantId: 'c-1' }))).toBe(false);
+  });
+  it('false when an active assignment exists (no lead yet)', () => {
+    expect(isUnassigned(mk({ leadConsultantId: undefined, assignments: [{ active: true } as never] }))).toBe(false);
+  });
+  it('escalated but assigned → NOT in the queue', () => {
+    expect(isUnassigned(mk({ escalationFlag: true, isEscalated: true, leadConsultantId: 'lead-1' }))).toBe(false);
+  });
+  it('escalated AND unassigned → still in the queue', () => {
+    expect(isUnassigned(mk({ escalationFlag: true, isEscalated: true, leadConsultantId: undefined }))).toBe(true);
   });
 });
 
