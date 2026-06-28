@@ -112,23 +112,15 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
 const QueueTicketRow = ({
   ticket,
   slaInfo,
-  acknowledgeEscalation,
-  user,
 }: {
   ticket: Ticket;
   slaInfo: { status: string; label: string } | null;
-  acknowledgeEscalation: (id: string, userId: string, userName: string) => void;
-  user: any;
 }) => {
-  const isHighPriority = ticket.priority === 'High' || ticket.priority === 'Critical';
-  const isEscalated = ticket.escalationFlag;
-  // Remove "ESCALATED" badge and red border on queue row unless priority is HIGH.
-  const showRedBorder = (isEscalated && isHighPriority) || (slaInfo?.status === 'breached');
-  const showEscalatedBadge = isEscalated && isHighPriority;
-
-  const borderClass = showRedBorder
+  // Queue cards show PRIORITY only — never an ESCALATED tag (escalation lives in the
+  // Escalation Center). The left rail is red ONLY for an active SLA breach.
+  const borderClass = slaInfo?.status === 'breached'
     ? 'border-l-4 border-l-destructive pl-2'
-    : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-amber-500 pl-2' : '');
+    : (slaInfo?.status === 'imminent' ? 'border-l-4 border-l-warning pl-2' : '');
 
   return (
     <div className={`p-2 bg-surface-muted border border-line rounded-lg flex flex-col justify-between gap-1 ${borderClass}`}>
@@ -137,14 +129,9 @@ const QueueTicketRow = ({
           {ticket.ticketNumber}
         </Link>
         <div className="flex gap-1 items-center">
-          {showEscalatedBadge && (
-            <Badge variant="destructive" className="text-[11px] font-bold py-0 px-1 uppercase leading-none h-4">
-              Escalated
-            </Badge>
-          )}
           {slaInfo && (
             <Badge className={`text-[11px] font-bold py-0 px-1 uppercase leading-none h-4 ${
-              slaInfo.status === 'breached' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+              slaInfo.status === 'breached' ? 'bg-critical-soft text-critical-strong hover:bg-critical-soft' : 'bg-warning-soft text-warning-strong hover:bg-warning-soft'
             }`}>{slaInfo.label}</Badge>
           )}
           <Badge className="bg-surface-subtle text-ink border-none font-bold text-[11px] py-0 px-1 uppercase">{ticket.priority}</Badge>
@@ -155,24 +142,6 @@ const QueueTicketRow = ({
         <span>Org: {ticket.organization}</span>
         <span>Module: {ticket.sapModule}</span>
       </div>
-      {isEscalated && (
-        ticket.escalationAcknowledgedAt ? (
-          <div className="text-[11px] text-ink-secondary font-sans mt-0.5 pt-0.5 border-t border-line flex justify-between items-center">
-            <span>Ack: {ticket.escalationAcknowledgedByName || 'Manager'}</span>
-            <span>{formatRelativeTime(ticket.escalationAcknowledgedAt)}</span>
-          </div>
-        ) : (
-          <div className="mt-1 flex justify-end">
-            <Button 
-              size="sm" 
-              onClick={() => acknowledgeEscalation(ticket.id, user?.id || '', user?.name || '')} 
-              className="h-5 text-[11px] font-bold bg-ink hover:bg-zinc-800 text-white rounded px-2"
-            >
-              Acknowledge
-            </Button>
-          </div>
-        )
-      )}
     </div>
   );
 };
@@ -2494,8 +2463,6 @@ export default function ManagerDashboardPage() {
                             key={t.id}
                             ticket={t}
                             slaInfo={slaInfo}
-                            acknowledgeEscalation={acknowledgeEscalation}
-                            user={user}
                           />
                         );
                       })}
