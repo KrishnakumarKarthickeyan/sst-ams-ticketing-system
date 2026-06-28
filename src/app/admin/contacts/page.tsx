@@ -538,7 +538,7 @@ export default function AdminContactsPage() {
                         size="icon"
                         variant="outline"
                         onClick={() => handleDeleteClick(c)}
-                        className="h-7 w-7 hover:bg-red-50 text-ink-muted hover:text-red-750 border-line cursor-pointer"
+                        className="h-7 w-7 hover:bg-critical-soft text-ink-muted hover:text-red-750 border-line cursor-pointer"
                         title="Remove Contact"
                       >
                         <Trash2 size={12} />

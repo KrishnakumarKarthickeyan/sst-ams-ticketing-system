@@ -732,7 +732,7 @@ export default function CustomerTicketDetailPage() {
                 <>
                   <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
                     <DialogTrigger asChild>
-                      <Button className="h-9 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1.5 shadow-card">
+                      <Button className="h-9 text-[13px] font-semibold bg-emerald-600 hover:bg-success-strong text-white rounded-lg gap-1.5 shadow-card">
                         <CheckCircle2 size={14} /> Accept & Close
                       </Button>
                     </DialogTrigger>
@@ -756,7 +756,7 @@ export default function CustomerTicketDetailPage() {
                             />
                           </div>
                           <DialogFooter>
-                            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg shadow-card">
+                            <Button type="submit" className="w-full bg-emerald-600 hover:bg-success-strong text-white font-semibold py-2.5 rounded-lg shadow-card">
                               Confirm & Close
                             </Button>
                           </DialogFooter>
@@ -792,7 +792,7 @@ export default function CustomerTicketDetailPage() {
                             />
                           </div>
                           <DialogFooter>
-                            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg">
+                            <Button type="submit" className="w-full bg-red-600 hover:bg-critical-strong text-white font-semibold py-2.5 rounded-lg">
                               Reopen Ticket
                             </Button>
                           </DialogFooter>
@@ -1611,7 +1611,7 @@ export default function CustomerTicketDetailPage() {
                 <Button type="button" variant="outline" onClick={() => setShowDeleteDialog(false)} className="rounded-lg border-line text-ink-secondary hover:bg-surface-muted">
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold">
+                <Button type="submit" className="bg-red-600 hover:bg-critical-strong text-white rounded-lg font-semibold">
                   Submit Request
                 </Button>
               </DialogFooter>

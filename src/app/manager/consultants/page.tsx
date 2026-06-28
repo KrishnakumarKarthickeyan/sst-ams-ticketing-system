@@ -1092,14 +1092,14 @@ export default function ManagerConsultantsPage() {
                       <button
                         onClick={() => toggleConsultantStatus(c.id)}
                         className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
-                          c.active ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-750'
+                          c.active ? 'bg-success-soft border-success-border text-success-strong' : 'bg-critical-soft border-critical-border text-red-750'
                         }`}
                       >
                         {c.active ? 'Active' : 'Disabled'}
                       </button>
                       <button
                         onClick={() => deleteConsultant(c.id)}
-                        className="p-1 rounded hover:bg-red-50 text-ink-muted hover:text-critical transition cursor-pointer"
+                        className="p-1 rounded hover:bg-critical-soft text-ink-muted hover:text-critical transition cursor-pointer"
                         title="Remove Profile"
                       >
                         <XCircle size={15} />
@@ -1228,14 +1228,14 @@ export default function ManagerConsultantsPage() {
                       <button
                         onClick={() => toggleCustomerStatus(c.id)}
                         className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
-                          c.active ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-750'
+                          c.active ? 'bg-success-soft border-success-border text-success-strong' : 'bg-critical-soft border-critical-border text-red-750'
                         }`}
                       >
                         {c.active ? 'Active' : 'Disabled'}
                       </button>
                       <button
                         onClick={() => deleteCustomer(c.id)}
-                        className="p-1 rounded hover:bg-red-50 text-ink-muted hover:text-critical transition cursor-pointer"
+                        className="p-1 rounded hover:bg-critical-soft text-ink-muted hover:text-critical transition cursor-pointer"
                         title="Remove Account"
                       >
                         <XCircle size={15} />
@@ -1721,7 +1721,7 @@ export default function ManagerConsultantsPage() {
               </div>
             </div>
             
-            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[11px] text-amber-800 leading-normal">
+            <div className="bg-warning-soft border border-warning-border rounded p-3 text-[11px] text-amber-800 leading-normal">
               <span className="font-bold">Important Notice:</span> Provide this temporary password to the user. They will be forced to change it immediately upon their first login to access the workspace.
             </div>
             

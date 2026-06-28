@@ -538,13 +538,13 @@ export default function ConsultantMyTicketsPage() {
           <DropdownMenuSeparator />
           {(t.hourEstimates || []).length === 0 ? (
             <DropdownMenuItem
-              className="cursor-pointer font-bold text-emerald-700 focus:text-emerald-700"
+              className="cursor-pointer font-bold text-success-strong focus:text-success-strong"
               onClick={() => { setActiveTicketId(t.id); setActiveAction('quoteHours'); }}>
               <Timer size={12} className="mr-2" /> Quote Estimated Hours
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem
-              className="cursor-pointer font-bold text-amber-700 focus:text-amber-700"
+              className="cursor-pointer font-bold text-warning-strong focus:text-warning-strong"
               onClick={() => {
                 setActiveTicketId(t.id);
                 setEstFuncHours(String(latestEst?.functionalEstimatedHours || 0));
@@ -555,7 +555,7 @@ export default function ConsultantMyTicketsPage() {
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
-            className="cursor-pointer font-bold text-emerald-700 focus:text-emerald-700"
+            className="cursor-pointer font-bold text-success-strong focus:text-success-strong"
             onClick={() => {
               setActiveTicketId(t.id);
               setActFuncHours(''); setActTechHours('');
@@ -568,7 +568,7 @@ export default function ConsultantMyTicketsPage() {
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="cursor-pointer font-bold text-red-700 focus:text-red-700"
+                className="cursor-pointer font-bold text-critical-strong focus:text-critical-strong"
                 onClick={() => {
                   setActiveTicketId(t.id);
                   setActFuncHours(String(rejectedClosure.functionalActualHours));
@@ -608,7 +608,7 @@ export default function ConsultantMyTicketsPage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   {isEscAck && (
-                    <Badge className="bg-red-150 text-red-700 border-red-200 font-bold text-[11px] py-0 px-1 uppercase leading-none h-4">TOP PRIORITY</Badge>
+                    <Badge className="bg-red-150 text-critical-strong border-critical-border font-bold text-[11px] py-0 px-1 uppercase leading-none h-4">TOP PRIORITY</Badge>
                   )}
                   <StatusBadge status={t.status} />
                   <PriorityBadge priority={t.priority} />
@@ -754,7 +754,7 @@ export default function ConsultantMyTicketsPage() {
           {/* Modal Body */}
           <div className="p-5 max-h-[75vh] overflow-y-auto space-y-4 text-xs">
             {validationError && (
-              <div className="p-3 bg-red-50 text-red-800 border border-red-200 text-[11px] font-bold rounded flex items-center gap-2">
+              <div className="p-3 bg-critical-soft text-red-800 border border-critical-border text-[11px] font-bold rounded flex items-center gap-2">
                 <AlertCircle size={14} className="shrink-0" />
                 {validationError}
               </div>
@@ -938,7 +938,7 @@ export default function ConsultantMyTicketsPage() {
             {/* RESUBMIT CLOSURE */}
             {activeAction === 'resubmitClosure' && (
               <form onSubmit={handleResubmitClosureSubmit} className="space-y-3">
-                <div className="p-3 bg-red-50 text-red-800 border border-red-200 rounded text-xs mb-2">
+                <div className="p-3 bg-critical-soft text-red-800 border border-critical-border rounded text-xs mb-2">
                   Previous Closure Request was rejected by Manager. Update and resubmit.
                 </div>
                 <div className="grid grid-cols-2 gap-3">

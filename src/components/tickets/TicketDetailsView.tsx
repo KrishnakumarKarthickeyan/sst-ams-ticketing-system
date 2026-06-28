@@ -731,20 +731,20 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
     }
     const due = new Date(slaDueAt).getTime();
     if (due < Date.now()) {
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 uppercase py-0 text-[11px] font-bold animate-pulse">SLA Breached</Badge>;
+      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-critical-border uppercase py-0 text-[11px] font-bold animate-pulse">SLA Breached</Badge>;
     }
     return <Badge className="bg-surface-subtle text-ink hover:bg-surface-subtle border-line uppercase py-0 text-[11px] font-bold">SLA Active</Badge>;
   };
 
   const getStatusColor = (status: TicketStatus) => {
     if (status === 'Resolved' || status === 'Closed') return 'bg-green-50 text-green-700 border-green-200';
-    if (status === 'Waiting for Customer' || status === 'Customer Action' || status === 'Raised to SAP' || status === 'Waiting for Hours Approval') return 'bg-amber-50 text-amber-700 border-amber-200';
+    if (status === 'Waiting for Customer' || status === 'Customer Action' || status === 'Raised to SAP' || status === 'Waiting for Hours Approval') return 'bg-warning-soft text-warning-strong border-warning-border';
     if (status === 'New') return 'bg-surface-subtle text-ink border-ink font-bold';
-    return 'bg-blue-50 text-blue-700 border-blue-200';
+    return 'bg-brand-soft text-brand-strong border-brand-border';
   };
 
   const getPriorityColor = (prio: TicketPriority) => {
-    if (prio === 'Critical') return 'bg-red-50 text-red-700 border-red-200';
+    if (prio === 'Critical') return 'bg-critical-soft text-critical-strong border-critical-border';
     if (prio === 'High') return 'bg-orange-50 text-orange-700 border-orange-200';
     return 'bg-surface-muted text-ink-secondary border-line';
   };
@@ -777,8 +777,8 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
           : 'Unknown';
           
         return (
-          <div className="bg-red-50 border-2 border-red-500 rounded-lg p-5 space-y-3 text-red-955 shadow-card animate-in fade-in duration-200">
-            <div className="flex items-center gap-2 border-b border-red-200 pb-2">
+          <div className="bg-critical-soft border-2 border-red-500 rounded-lg p-5 space-y-3 text-red-955 shadow-card animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 border-b border-critical-border pb-2">
               <ShieldAlert className="text-critical animate-pulse" size={18} />
               <span className="font-bold text-xs uppercase tracking-wider">CRITICAL INCIDENT ESCALATION ALERT</span>
               <Badge className="bg-red-600 text-white font-bold ml-auto uppercase text-[11px] px-2">
@@ -788,37 +788,37 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px] pt-1">
               <div>
-                <span className="font-bold text-red-700 block uppercase text-[11px]">Escalated By:</span>
+                <span className="font-bold text-critical-strong block uppercase text-[11px]">Escalated By:</span>
                 <span className="font-bold text-ink block mt-0.5">{latestEsc?.escalatedBy || 'Customer'}</span>
               </div>
               <div>
-                <span className="font-bold text-red-700 block uppercase text-[11px]">Date & Time:</span>
+                <span className="font-bold text-critical-strong block uppercase text-[11px]">Date & Time:</span>
                 <span className="font-semibold text-ink block mt-0.5">{escDate ? escDate.toLocaleString() : 'N/A'}</span>
               </div>
               <div>
-                <span className="font-bold text-red-700 block uppercase text-[11px]">Escalation Age:</span>
+                <span className="font-bold text-critical-strong block uppercase text-[11px]">Escalation Age:</span>
                 <span className="font-semibold text-ink block mt-0.5">{escAgeStr}</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] pt-2 border-t border-red-200/50">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] pt-2 border-t border-critical-border/50">
               <div>
-                <span className="font-bold text-red-700 block uppercase text-[11px]">Escalation Reason:</span>
+                <span className="font-bold text-critical-strong block uppercase text-[11px]">Escalation Reason:</span>
                 <p className="bg-surface border border-red-100 p-2.5 rounded text-ink leading-relaxed whitespace-pre-wrap mt-1">
                   {latestEsc?.reason || 'No details provided.'}
                 </p>
               </div>
               <div>
-                <span className="font-bold text-red-700 block uppercase text-[11px]">Current Incident Assignees:</span>
+                <span className="font-bold text-critical-strong block uppercase text-[11px]">Current Incident Assignees:</span>
                 <div className="bg-surface border border-red-100 p-2.5 rounded text-ink leading-relaxed mt-1 space-y-1">
                   <div>Manager: <strong className="font-bold text-ink">{ticket.assignedManager || 'Unassigned'}</strong></div>
                   <div>Lead Consultant: <strong className="font-bold text-ink">{ticket.assignedConsultant || 'Unassigned'}</strong></div>
-                  <div>Status: <strong className="font-bold text-red-700 uppercase">{ticket.status}</strong></div>
+                  <div>Status: <strong className="font-bold text-critical-strong uppercase">{ticket.status}</strong></div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-red-100/50 border border-red-200 rounded p-2.5 text-[11px] text-red-900 flex items-center justify-between">
+            <div className="bg-red-100/50 border border-critical-border rounded p-2.5 text-[11px] text-red-900 flex items-center justify-between">
               <div>
                 <span className="font-bold uppercase tracking-wider block mb-0.5">Required Administrative Action:</span>
                 Manager must review SLA threshold parameters and initiate resolution or assign additional Functional/Technical resources immediately.
@@ -1333,7 +1333,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                                 <button
                                                   type="button"
                                                   onClick={() => { setReplacingResource(eff); setReplacementConsultantName(''); }}
-                                                  className="p-1 border border-line hover:border-blue-500 hover:text-blue-700 rounded transition"
+                                                  className="p-1 border border-line hover:border-blue-500 hover:text-brand-strong rounded transition"
                                                   title="Replace Consultant"
                                                 >
                                                   <RefreshCw size={11} />
@@ -1341,7 +1341,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                                 <button
                                                   type="button"
                                                   onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
-                                                  className="p-1 border border-line hover:border-red-500 hover:text-red-700 rounded transition"
+                                                  className="p-1 border border-line hover:border-red-500 hover:text-critical-strong rounded transition"
                                                   title="Remove Consultant"
                                                 >
                                                   <Trash2 size={11} />
@@ -1450,7 +1450,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                                 <button
                                                   type="button"
                                                   onClick={() => { setReplacingResource(eff); setReplacementConsultantName(''); }}
-                                                  className="p-1 border border-line hover:border-blue-500 hover:text-blue-700 rounded transition"
+                                                  className="p-1 border border-line hover:border-blue-500 hover:text-brand-strong rounded transition"
                                                   title="Replace Consultant"
                                                 >
                                                   <RefreshCw size={11} />
@@ -1458,7 +1458,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                                 <button
                                                   type="button"
                                                   onClick={() => handleRemoveResource(eff.id, eff.consultantName)}
-                                                  className="p-1 border border-line hover:border-red-500 hover:text-red-700 rounded transition"
+                                                  className="p-1 border border-line hover:border-red-500 hover:text-critical-strong rounded transition"
                                                   title="Remove Consultant"
                                                 >
                                                   <Trash2 size={11} />
@@ -1550,7 +1550,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
               {activeHubTab === 'actuals' && (
                 <div className="space-y-4">
                   {role === 'Customer' && !hasApprovedClosure ? (
-                    <div className="bg-amber-50 border border-amber-300 rounded p-4 text-center text-amber-800 font-bold">
+                    <div className="bg-warning-soft border border-amber-300 rounded p-4 text-center text-amber-800 font-bold">
                       Actual hours will be visible upon final ticket resolution approval.
                     </div>
                   ) : (
@@ -1593,7 +1593,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                                       </td>
                                       <td className="py-2 px-3 text-center">
                                         <span className={`px-1.5 py-0.2 rounded font-bold text-[11px] uppercase ${
-                                          eff.closureStatus === 'Submitted' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                                          eff.closureStatus === 'Submitted' ? 'bg-green-50 text-green-700' : 'bg-warning-soft text-warning-strong'
                                         }`}>{eff.closureStatus || 'Pending'}</span>
                                       </td>
                                     </tr>
@@ -1902,7 +1902,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                           <button
                             type="button"
                             onClick={() => triggerRejectionModal('estimate', est.id)}
-                            className="flex-1 py-1 border border-red-500 text-red-800 hover:bg-red-50 rounded font-bold uppercase text-[11px] tracking-wider transition"
+                            className="flex-1 py-1 border border-red-500 text-red-800 hover:bg-critical-soft rounded font-bold uppercase text-[11px] tracking-wider transition"
                           >
                             Reject
                           </button>
@@ -1937,7 +1937,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                             <button
                               type="button"
                               onClick={() => triggerRejectionModal('effort', log.id)}
-                              className="flex-1 py-0.5 border border-red-500 text-red-850 hover:bg-red-50 rounded font-bold uppercase text-[11px] tracking-wider transition"
+                              className="flex-1 py-0.5 border border-red-500 text-red-850 hover:bg-critical-soft rounded font-bold uppercase text-[11px] tracking-wider transition"
                             >
                               Reject
                             </button>
@@ -1975,7 +1975,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                           <button
                             type="button"
                             onClick={() => triggerRejectionModal('closure', cls.id)}
-                            className="flex-1 py-1 border border-red-500 text-red-800 hover:bg-red-50 rounded font-bold uppercase text-[11px] tracking-wider transition"
+                            className="flex-1 py-1 border border-red-500 text-red-800 hover:bg-critical-soft rounded font-bold uppercase text-[11px] tracking-wider transition"
                           >
                             Reject
                           </button>
@@ -2007,7 +2007,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                           <button
                             type="button"
                             onClick={() => triggerRejectionModal('unlock', unl.id)}
-                            className="flex-1 py-1 border border-red-500 text-red-800 hover:bg-red-50 rounded font-bold uppercase text-[11px] tracking-wider transition"
+                            className="flex-1 py-1 border border-red-500 text-red-800 hover:bg-critical-soft rounded font-bold uppercase text-[11px] tracking-wider transition"
                           >
                             Reject
                           </button>
@@ -2030,7 +2030,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
 
                 {/* Reopen reviews */}
                 {ticket.status === 'Reopened' && (
-                  <div className="border border-red-200 rounded p-3 bg-red-50/50 space-y-2 text-[11px]">
+                  <div className="border border-critical-border rounded p-3 bg-critical-soft/50 space-y-2 text-[11px]">
                     <div className="flex items-center gap-1 font-bold text-red-800 uppercase text-[11px]">
                       <ShieldAlert size={12} /> Awaiting Reopen Approval
                     </div>
@@ -2053,7 +2053,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                       <button
                         type="button"
                         onClick={() => triggerRejectionModal('reopen', ticket.id)}
-                        className="flex-1 py-1 border border-red-500 text-red-850 hover:bg-red-50 rounded font-bold uppercase text-[11px] tracking-wider transition"
+                        className="flex-1 py-1 border border-red-500 text-red-850 hover:bg-critical-soft rounded font-bold uppercase text-[11px] tracking-wider transition"
                       >
                         Reject
                       </button>
@@ -2468,7 +2468,7 @@ export const TicketDetailsView: React.FC<TicketDetailsViewProps> = ({ ticketId, 
                 disabled={!rejectionModal.reason.trim()}
                 className={`py-1.5 px-4 rounded font-bold transition uppercase text-[11px] text-white ${
                   rejectionModal.reason.trim()
-                    ? 'bg-red-650 hover:bg-red-700'
+                    ? 'bg-red-650 hover:bg-critical-strong'
                     : 'bg-surface-subtle text-ink-muted cursor-not-allowed border border-line'
                 }`}
               >

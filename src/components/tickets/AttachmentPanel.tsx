@@ -345,7 +345,7 @@ export default function AttachmentPanel({ ticketId }: AttachmentPanelProps) {
                     )}
 
                     {item.status === 'success' && (
-                      <Badge className="bg-emerald-50 hover:bg-emerald-50 text-emerald-800 text-[11px] font-bold border-emerald-100 rounded px-1.5 py-0">
+                      <Badge className="bg-success-soft hover:bg-success-soft text-emerald-800 text-[11px] font-bold border-emerald-100 rounded px-1.5 py-0">
                         Ready
                       </Badge>
                     )}

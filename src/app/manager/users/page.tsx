@@ -925,7 +925,7 @@ export default function UserManagementPage() {
                               )}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs font-bold uppercase p-2 text-critical focus:text-critical focus:bg-red-50" onClick={() => handleOpenDeleteDialog(u)}>
+                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs font-bold uppercase p-2 text-critical focus:text-critical focus:bg-critical-soft" onClick={() => handleOpenDeleteDialog(u)}>
                               <Trash2 className="h-3.5 w-3.5" />
                               Delete
                             </DropdownMenuItem>
@@ -1100,7 +1100,7 @@ export default function UserManagementPage() {
                               )}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs font-bold uppercase p-2 text-critical focus:text-critical focus:bg-red-50" onClick={() => handleOpenDeleteDialog(u)}>
+                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs font-bold uppercase p-2 text-critical focus:text-critical focus:bg-critical-soft" onClick={() => handleOpenDeleteDialog(u)}>
                               <Trash2 className="h-3.5 w-3.5" />
                               Delete
                             </DropdownMenuItem>
@@ -1466,7 +1466,7 @@ export default function UserManagementPage() {
               </div>
             ) : deleteGuardStatus.blocked ? (
               <div className="space-y-3">
-                <div className="bg-red-50 border border-red-200 rounded p-3 text-red-800 flex items-start gap-2 text-[11px]">
+                <div className="bg-critical-soft border border-critical-border rounded p-3 text-red-800 flex items-start gap-2 text-[11px]">
                   <XCircle className="h-5 w-5 shrink-0 text-critical" />
                   <div>
                     <p className="font-bold uppercase tracking-wider text-[11px]">Hard Delete Blocked</p>
@@ -1477,7 +1477,7 @@ export default function UserManagementPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="bg-emerald-50 border border-emerald-200 rounded p-3 text-emerald-800 flex items-start gap-2 text-[11px]">
+                <div className="bg-success-soft border border-success-border rounded p-3 text-emerald-800 flex items-start gap-2 text-[11px]">
                   <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
                   <div>
                     <p className="font-bold uppercase tracking-wider text-[11px]">Delete Safe</p>
@@ -1734,7 +1734,7 @@ export default function UserManagementPage() {
                         </div>
 
                         {warn && (
-                          <div className="bg-amber-50 border border-amber-200 rounded px-3 py-1.5 text-[11px] text-amber-800 flex items-start gap-2">
+                          <div className="bg-warning-soft border border-warning-border rounded px-3 py-1.5 text-[11px] text-amber-800 flex items-start gap-2">
                             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
                             <span>allocation totals ({ann}h) deviate from duration totals ({tot}h).</span>
                           </div>
@@ -1767,7 +1767,7 @@ export default function UserManagementPage() {
       <Dialog open={provisionSuccessOpen} onOpenChange={setProvisionSuccessOpen}>
         <DialogContent className="max-w-md bg-surface p-6 rounded-lg text-ink border border-line shadow-xl text-xs">
           <DialogHeader className="border-b border-line pb-2">
-            <DialogTitle className="text-sm font-bold uppercase tracking-wide text-emerald-700 flex items-center gap-1.5">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wide text-success-strong flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4" /> Credentials Configuration Active
             </DialogTitle>
             <DialogDescription className="text-[11px] text-ink-secondary mt-1">

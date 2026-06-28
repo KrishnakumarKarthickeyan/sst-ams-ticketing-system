@@ -236,7 +236,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
   if (!ticket) {
     return (
-      <div className="p-8 text-center text-critical font-bold bg-red-50 border border-red-200 rounded-lg">
+      <div className="p-8 text-center text-critical font-bold bg-critical-soft border border-critical-border rounded-lg">
         ERROR: Ticket ID &quot;{ticketId}&quot; not found in database registry.
       </div>
     );
@@ -878,7 +878,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             <h1 className="text-xl font-bold text-slate-900 mt-1.5">{ticket.title}</h1>
             {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
               <div className="mt-1.5">
-                <Badge className="bg-red-655 hover:bg-red-700 text-white uppercase text-[11px]">TOP PRIORITY</Badge>
+                <Badge className="bg-red-655 hover:bg-critical-strong text-white uppercase text-[11px]">TOP PRIORITY</Badge>
               </div>
             )}
           </div>
@@ -887,7 +887,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
 
       {/* Banners */}
       {successBanner && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-lg flex items-center gap-2 text-xs font-semibold animate-slide-in">
+        <div className="bg-success-soft border border-success-border text-emerald-800 p-3 rounded-lg flex items-center gap-2 text-xs font-semibold animate-slide-in">
           <CheckCircle size={15} />
           {successBanner}
         </div>
@@ -901,13 +901,13 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       )}
 
       {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
-        <div className="border-l-4 border-l-emerald-500 bg-emerald-50 p-4 rounded-md flex items-start gap-3 animate-pulse-once">
+        <div className="border-l-4 border-l-emerald-500 bg-success-soft p-4 rounded-md flex items-start gap-3 animate-pulse-once">
           <ShieldAlert className="text-success size-5 mt-0.5 shrink-0" />
           <div>
             <p className="font-semibold text-emerald-800">
               🚨 ESCALATED · TOP PRIORITY — Focus Required
             </p>
-            <p className="text-sm text-emerald-700 mt-1">
+            <p className="text-sm text-success-strong mt-1">
               Acknowledged by <strong>{ticket.escalationAcknowledgedByName || 'Manager'}</strong> on {new Date(ticket.escalationAcknowledgedAt).toLocaleString()}. This ticket requires your immediate attention.
             </p>
           </div>
@@ -915,7 +915,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       )}
 
       {isTicketFullyLocked && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-semibold">
+        <div className="bg-critical-soft border border-critical-border text-critical-strong p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-semibold">
           <div className="flex items-start gap-2.5">
             <Lock size={16} className="text-critical shrink-0 mt-0.5" />
             <div>
@@ -939,7 +939,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 setValidationError(null);
                 setActiveModal('unlock');
               }}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase text-[11px] h-8 cursor-pointer"
+              className="bg-red-600 hover:bg-critical-strong text-white font-bold uppercase text-[11px] h-8 cursor-pointer"
             >
               Request Manager Unlock
             </Button>
@@ -948,7 +948,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
       )}
 
       {myEffort?.closureStatus === 'Submitted' && !isTicketFullyLocked && (
-        <div className="bg-amber-50 border border-amber-250 text-amber-800 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-semibold">
+        <div className="bg-warning-soft border border-amber-250 text-amber-800 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-semibold">
           <div className="flex items-start gap-2.5">
             <Lock size={16} className="text-amber-500 shrink-0 mt-0.5" />
             <div>
@@ -972,7 +972,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                 setValidationError(null);
                 setActiveModal('unlock');
               }}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-bold uppercase text-[11px] h-8 cursor-pointer border border-amber-500"
+              className="bg-amber-600 hover:bg-warning-strong text-white font-bold uppercase text-[11px] h-8 cursor-pointer border border-amber-500"
             >
               Request Manager Unlock
             </Button>
@@ -1369,7 +1369,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             )}
 
             {currentRevisionReq && (
-              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded text-xs text-amber-800 space-y-1">
+              <div className="bg-warning-soft border border-warning-border p-3.5 rounded text-xs text-amber-800 space-y-1">
                 <div className="font-bold flex items-center gap-1">
                   <AlertCircle size={13} className="text-warning" />
                   Pending Estimate Revision Request
@@ -1491,7 +1491,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                     </div>
 
                     {latestClosureReq.status === 'Rejected' && (
-                      <div className="bg-red-50 p-3 rounded border border-red-200 space-y-2 mt-2">
+                      <div className="bg-critical-soft p-3 rounded border border-critical-border space-y-2 mt-2">
                         <div className="text-red-850 font-bold text-[11px] uppercase">Manager Rejection Reason:</div>
                         <p className="text-slate-900 italic">&quot;{latestClosureReq.rejectionReason || 'No reason specified.'}&quot;</p>
                         {isPrimaryConsultant ? (
@@ -1754,7 +1754,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
             <div className="p-5 max-h-[75vh] overflow-y-auto space-y-4">
               
               {validationError && (
-                <div className="p-3 bg-red-50 text-red-800 border border-red-200 text-xs font-bold rounded flex items-center gap-2">
+                <div className="p-3 bg-critical-soft text-red-800 border border-critical-border text-xs font-bold rounded flex items-center gap-2">
                   <AlertCircle size={14} className="shrink-0" />
                   <span>{validationError}</span>
                 </div>
@@ -1993,7 +1993,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                               <button
                                 type="button"
                                 onClick={() => removeAttachmentFromClosure(i)}
-                                className="p-1 border border-slate-200 text-slate-400 hover:text-red-700 hover:border-red-500 rounded transition cursor-pointer"
+                                className="p-1 border border-slate-200 text-slate-400 hover:text-critical-strong hover:border-red-500 rounded transition cursor-pointer"
                                 title="Remove"
                               >
                                 <Trash2 size={11} />
@@ -2131,7 +2131,7 @@ export const ConsultantTicketDetailsView: React.FC<ConsultantTicketDetailsViewPr
                               <button
                                 type="button"
                                 onClick={() => removeAttachmentFromClosure(i)}
-                                className="p-1 border border-slate-200 text-slate-400 hover:text-red-700 hover:border-red-500 rounded transition cursor-pointer"
+                                className="p-1 border border-slate-200 text-slate-400 hover:text-critical-strong hover:border-red-500 rounded transition cursor-pointer"
                                 title="Remove"
                               >
                                 <Trash2 size={11} />

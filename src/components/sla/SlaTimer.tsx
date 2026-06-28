@@ -20,10 +20,10 @@ interface SlaTimerProps {
 
 const STATUS_STYLE: Record<SlaStatus, string> = {
   'Not Started': 'bg-surface-muted border-line text-ink-secondary',
-  'On Track': 'bg-emerald-50 border-emerald-200 text-emerald-700',
-  'At Risk': 'bg-amber-50 border-amber-200 text-amber-800',
-  'Breached': 'bg-red-50 border-red-200 text-red-700',
-  'Met': 'bg-emerald-50 border-emerald-200 text-emerald-700',
+  'On Track': 'bg-success-soft border-success-border text-success-strong',
+  'At Risk': 'bg-warning-soft border-warning-border text-amber-800',
+  'Breached': 'bg-critical-soft border-critical-border text-critical-strong',
+  'Met': 'bg-success-soft border-success-border text-success-strong',
 };
 
 const STATUS_ICON: Record<SlaStatus, React.ComponentType<{ size?: number; className?: string }>> = {

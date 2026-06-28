@@ -521,7 +521,7 @@ export default function CustomerReportsPage() {
             <ShieldCheck size={12} className="text-success" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold text-emerald-700">{m3_resolvedWaiting}</span>
+            <span className="text-lg font-bold text-success-strong">{m3_resolvedWaiting}</span>
             <span className="text-[11px] text-ink-muted block">Resolved queue</span>
           </div>
         </Card>
@@ -545,7 +545,7 @@ export default function CustomerReportsPage() {
             <ShieldCheck size={12} className="text-success" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold text-emerald-700">{m5_slaCompliant}</span>
+            <span className="text-lg font-bold text-success-strong">{m5_slaCompliant}</span>
             <span className="text-[11px] text-ink-muted block">Incidents met</span>
           </div>
         </Card>
@@ -569,7 +569,7 @@ export default function CustomerReportsPage() {
             <TrendingUp size={12} className="text-ink" />
           </div>
           <div className="mt-2.5">
-            <span className={`text-lg font-bold ${Number(m7_slaPercentage) >= 90 ? 'text-emerald-755' : 'text-amber-700'}`}>{m7_slaPercentage}%</span>
+            <span className={`text-lg font-bold ${Number(m7_slaPercentage) >= 90 ? 'text-emerald-755' : 'text-warning-strong'}`}>{m7_slaPercentage}%</span>
             <span className="text-[11px] text-ink-muted block">Compliance target</span>
           </div>
         </Card>
@@ -629,7 +629,7 @@ export default function CustomerReportsPage() {
             <FolderLock size={12} className="text-success" />
           </div>
           <div className="mt-2.5">
-            <span className="text-lg font-bold text-emerald-700">{m12_remainingBudget}h</span>
+            <span className="text-lg font-bold text-success-strong">{m12_remainingBudget}h</span>
             <span className="text-[11px] text-ink-muted block">Contracts balance</span>
           </div>
         </Card>
@@ -771,9 +771,9 @@ export default function CustomerReportsPage() {
                           variant="outline" 
                           className={`text-[11px] uppercase px-1.5 py-0 ${
                             softDeleteStatus === 'Active' 
-                              ? 'border-emerald-250 text-emerald-700 bg-emerald-50' 
+                              ? 'border-emerald-250 text-success-strong bg-success-soft' 
                               : softDeleteStatus === 'Pending Delete' 
-                                ? 'border-amber-250 text-amber-700 bg-amber-50 animate-pulse' 
+                                ? 'border-amber-250 text-warning-strong bg-warning-soft animate-pulse' 
                                 : 'border-line text-ink-secondary bg-surface-muted'
                           }`}
                         >

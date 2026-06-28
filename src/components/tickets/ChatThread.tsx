@@ -202,7 +202,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
                     {/* Bubble */}
                     <div className={`p-3 rounded-lg border leading-relaxed text-xs break-words shadow-xs ${
                       comment.isInternal
-                        ? 'bg-amber-50/80 border-amber-250 text-ink rounded-tl-none'
+                        ? 'bg-warning-soft/80 border-amber-250 text-ink rounded-tl-none'
                         : isMe
                           ? 'bg-ink text-white border-zinc-900 rounded-tr-none'
                           : 'bg-surface text-ink border-line rounded-tl-none'
@@ -266,7 +266,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
                   <button
                     type="button"
                     onClick={() => setCommentAttachments(prev => prev.filter(x => x.id !== f.id))}
-                    className="p-1 border border-line text-ink-muted hover:text-red-700 hover:border-red-500 rounded transition"
+                    className="p-1 border border-line text-ink-muted hover:text-critical-strong hover:border-red-500 rounded transition"
                   >
                     <Trash2 size={10} />
                   </button>
@@ -334,7 +334,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
                   onChange={e => setIsInternalComment(e.target.checked)}
                   className="w-3.5 h-3.5 rounded border-line-strong text-ink focus:ring-brand/30 cursor-pointer"
                 />
-                <span className={`text-[11px] font-bold uppercase flex items-center gap-1 ${isInternalComment ? 'text-amber-700' : 'text-ink-secondary'}`}>
+                <span className={`text-[11px] font-bold uppercase flex items-center gap-1 ${isInternalComment ? 'text-warning-strong' : 'text-ink-secondary'}`}>
                   {isInternalComment ? <Lock size={10} /> : <Eye size={10} />}
                   Internal Note
                 </span>

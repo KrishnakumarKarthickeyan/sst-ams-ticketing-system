@@ -1859,7 +1859,7 @@ export default function AdminDashboardPage() {
                     <div 
                       key={idx} 
                       className={`p-2.5 rounded-lg border flex flex-col justify-between ${
-                        c.workloadRisk === 'Overloaded' ? 'bg-red-50 border-red-200 text-red-700' :
+                        c.workloadRisk === 'Overloaded' ? 'bg-critical-soft border-critical-border text-critical-strong' :
                         c.workloadRisk === 'Near Capacity' ? 'bg-orange-50 border-orange-200 text-orange-700' :
                         c.workloadRisk === 'Underutilized' ? 'bg-surface-muted border-line text-ink-secondary' :
                         'bg-zinc-900 border-zinc-900 text-white'
@@ -1878,9 +1878,9 @@ export default function AdminDashboardPage() {
                 {overloadedConsultants.length > 0 ? (
                   <div className="space-y-2">
                     {overloadedConsultants.map((c, i) => (
-                      <div key={i} className="flex justify-between items-center p-2 bg-red-50/50 border border-red-100 rounded-lg">
+                      <div key={i} className="flex justify-between items-center p-2 bg-critical-soft/50 border border-red-100 rounded-lg">
                         <span>{c.name} ({c.type})</span>
-                        <Badge className="bg-red-100 text-red-700 text-[11px] font-bold">{c.activeCount} open cases</Badge>
+                        <Badge className="bg-red-100 text-critical-strong text-[11px] font-bold">{c.activeCount} open cases</Badge>
                       </div>
                     ))}
                   </div>
@@ -2066,10 +2066,10 @@ export default function AdminDashboardPage() {
                           </TableCell>
                           <TableCell className="py-3 px-4">
                             <Badge className={
-                              item.type === 'Timesheet' ? 'bg-blue-50 text-blue-700 border border-blue-100 text-[11px]' :
-                              item.type === 'Closure' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 text-[11px]' :
+                              item.type === 'Timesheet' ? 'bg-brand-soft text-brand-strong border border-blue-100 text-[11px]' :
+                              item.type === 'Closure' ? 'bg-success-soft text-success-strong border border-emerald-100 text-[11px]' :
                               item.type === 'Unlock' ? 'bg-info-soft text-info-strong border border-info-border text-[11px]' :
-                              item.type === 'Delete' ? 'bg-red-50 text-red-700 border border-red-100 text-[11px]' :
+                              item.type === 'Delete' ? 'bg-critical-soft text-critical-strong border border-red-100 text-[11px]' :
                               'bg-surface-subtle text-ink-secondary border border-line text-[11px]'
                             }>
                               {item.type}
@@ -2095,7 +2095,7 @@ export default function AdminDashboardPage() {
                             )}
                             {item.type === 'Delete' && (
                               <>
-                                <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-red-600 hover:bg-red-700 text-white rounded">Confirm Delete</Button>
+                                <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Approved')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-red-600 hover:bg-critical-strong text-white rounded">Confirm Delete</Button>
                                 <Button onClick={() => executeDeleteRequest(item.ticketId, item.refObject.id, 'Rejected')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-surface text-ink-secondary border border-line hover:bg-surface-muted rounded">Reject</Button>
                               </>
                             )}
@@ -2218,9 +2218,9 @@ export default function AdminDashboardPage() {
               <span className="text-[11px] font-bold text-ink-muted uppercase block">Delivery Health Posture Status</span>
               <div className="flex items-center gap-4">
                 <div className={`w-14 h-14 rounded-full flex items-center justify-center font-extrabold text-sm border-2 ${
-                  deliveryHealthPostures.posture === 'Healthy' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' :
+                  deliveryHealthPostures.posture === 'Healthy' ? 'bg-success-soft border-emerald-500 text-success-strong' :
                   deliveryHealthPostures.posture === 'Warning' ? 'bg-orange-50 border-orange-500 text-orange-700' :
-                  'bg-red-50 border-red-500 text-red-700'
+                  'bg-critical-soft border-red-500 text-critical-strong'
                 }`}>
                   {deliveryHealthPostures.posture}
                 </div>
@@ -2418,7 +2418,7 @@ export default function AdminDashboardPage() {
                                 onClick={() => handleUserToggleActive(u)} 
                                 size="sm" 
                                 className={`h-6 text-[11px] uppercase font-bold rounded ${
-                                  u.is_active ? 'bg-red-50 text-red-700 border border-red-100 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100'
+                                  u.is_active ? 'bg-critical-soft text-critical-strong border border-red-100 hover:bg-red-100' : 'bg-success-soft text-success-strong border border-emerald-100 hover:bg-emerald-100'
                                 }`}
                               >
                                 {u.is_active ? 'Disable' : 'Enable'}
@@ -2463,7 +2463,7 @@ export default function AdminDashboardPage() {
 
                 {generatedPassResult && (
                   <div className="p-3 bg-surface-muted border border-line rounded-lg space-y-1">
-                    <span className="text-[11px] text-emerald-700 font-bold uppercase block">Temporary Credentials Ready</span>
+                    <span className="text-[11px] text-success-strong font-bold uppercase block">Temporary Credentials Ready</span>
                     <div className="flex justify-between items-center bg-surface p-2 rounded border border-line text-ink text-[11px] font-extrabold select-all">
                       <span>{generatedPassResult}</span>
                       <Button 

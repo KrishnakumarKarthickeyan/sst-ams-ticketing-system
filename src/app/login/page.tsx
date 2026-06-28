@@ -333,7 +333,7 @@ export default function LoginPage() {
                 <Button 
                   type="submit"
                   disabled={authenticating}
-                  className="w-full py-2.5 bg-brand hover:bg-blue-700 text-[11px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider border-none"
+                  className="w-full py-2.5 bg-brand hover:bg-brand-strong text-[11px] font-bold text-white rounded transition active:scale-[0.98] uppercase tracking-wider border-none"
                 >
                   {authenticating ? 'Verifying...' : 'Sign In'}
                 </Button>

@@ -187,7 +187,7 @@ export default function AdminCreateTicketPage() {
       </div>
 
       {success && (
-        <div className="bg-emerald-50 border border-emerald-500 rounded p-3 text-emerald-800 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5 animate-fade-in">
+        <div className="bg-success-soft border border-emerald-500 rounded p-3 text-emerald-800 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5 animate-fade-in">
           <Check size={14} className="text-success" />
           Ticket registered on behalf of customer. Redirecting to queue...
         </div>

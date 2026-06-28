@@ -349,11 +349,11 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ ticket, userRole
 
   const getRoleBadge = (role: TimelineItem['role']) => {
     switch (role) {
-      case 'Customer': return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
-      case 'Manager': return { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
+      case 'Customer': return { bg: 'bg-brand-soft', text: 'text-brand-strong', border: 'border-brand-border' };
+      case 'Manager': return { bg: 'bg-warning-soft', text: 'text-warning-strong', border: 'border-warning-border' };
       case 'SuperAdmin': return { bg: 'bg-surface-subtle', text: 'text-ink', border: 'border-line-strong' };
       case 'System': return { bg: 'bg-surface-muted', text: 'text-ink-secondary', border: 'border-line' };
-      default: return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+      default: return { bg: 'bg-success-soft', text: 'text-success-strong', border: 'border-success-border' };
     }
   };
 

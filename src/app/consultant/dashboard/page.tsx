@@ -1095,8 +1095,8 @@ export default function ConsultantDashboardPage() {
             tone={monthlyStats.workloadHealth === 'Overloaded' ? 'critical' : monthlyStats.workloadHealth === 'Underutilized' ? 'warning' : 'success'}
             value={
               <span className={`inline-block text-sm font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                monthlyStats.workloadHealth === 'Overloaded' ? 'bg-red-50 text-red-700' :
-                monthlyStats.workloadHealth === 'Underutilized' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
+                monthlyStats.workloadHealth === 'Overloaded' ? 'bg-critical-soft text-critical-strong' :
+                monthlyStats.workloadHealth === 'Underutilized' ? 'bg-warning-soft text-warning-strong' : 'bg-green-50 text-green-700'
               }`}>{monthlyStats.workloadHealth}</span>
             }
             sub={`${monthlyStats.ticketsAssigned} assigned backlogs`}
@@ -1205,7 +1205,7 @@ export default function ConsultantDashboardPage() {
                       <td className="py-2.5 text-right text-ink">{c.hours.toFixed(1)}h</td>
                       <td className="py-2.5 text-right text-ink-secondary">{c.volume}</td>
                       <td className="py-2.5 text-right">
-                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${c.open > 2 ? 'bg-red-50 text-red-700' : 'bg-surface-muted text-ink-secondary'}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${c.open > 2 ? 'bg-critical-soft text-critical-strong' : 'bg-surface-muted text-ink-secondary'}`}>
                           {c.open}
                         </span>
                       </td>
@@ -1236,7 +1236,7 @@ export default function ConsultantDashboardPage() {
                       <td className="py-2.5 text-right text-ink">{m.hours.toFixed(1)}h</td>
                       <td className="py-2.5 text-right text-ink-secondary">{m.count}</td>
                       <td className="py-2.5 text-right">
-                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${m.open > 2 ? 'bg-amber-50 text-amber-700' : 'bg-surface-muted text-ink-secondary'}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${m.open > 2 ? 'bg-warning-soft text-warning-strong' : 'bg-surface-muted text-ink-secondary'}`}>
                           {m.open}
                         </span>
                       </td>
@@ -1252,8 +1252,8 @@ export default function ConsultantDashboardPage() {
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs font-bold text-ink uppercase tracking-wider font-sans">E. Workload Allocation Health</span>
               <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                monthlyStats.workloadHealth === 'Overloaded' ? 'bg-red-50 text-red-700' :
-                monthlyStats.workloadHealth === 'Underutilized' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
+                monthlyStats.workloadHealth === 'Overloaded' ? 'bg-critical-soft text-critical-strong' :
+                monthlyStats.workloadHealth === 'Underutilized' ? 'bg-warning-soft text-warning-strong' : 'bg-green-50 text-green-700'
               }`}>{monthlyStats.workloadHealth}</span>
             </div>
             

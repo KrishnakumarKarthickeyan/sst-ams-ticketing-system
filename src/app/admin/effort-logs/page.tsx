@@ -129,7 +129,7 @@ export default function AdminEffortLogsPage() {
 
         <div className="bg-surface border border-line p-4 rounded-lg shadow-card space-y-1 border-l-4 border-l-emerald-500">
           <div className="text-ink-muted font-bold text-[11px] uppercase">Approved</div>
-          <div className="text-lg font-bold text-emerald-700 flex items-baseline gap-1">
+          <div className="text-lg font-bold text-success-strong flex items-baseline gap-1">
             {approvedHours.toFixed(1)} <span className="text-[11px] font-normal text-ink-muted">h</span>
           </div>
         </div>
@@ -343,20 +343,20 @@ export default function AdminEffortLogsPage() {
                   </td>
                   <td className="py-2.5 px-4 text-center whitespace-nowrap">
                     {log.billable ? (
-                      <span className="text-emerald-700 font-bold">Billable</span>
+                      <span className="text-success-strong font-bold">Billable</span>
                     ) : (
                       <span className="text-ink-muted">Non-Billable</span>
                     )}
                   </td>
                   <td className="py-2.5 px-4 text-right whitespace-nowrap">
                     {log.status === 'Approved' && (
-                      <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                      <span className="inline-flex items-center gap-1 text-success-strong font-bold">
                         <CheckCircle2 size={10} className="text-success" />
                         Approved
                       </span>
                     )}
                     {log.status === 'Pending' && (
-                      <span className="inline-flex items-center gap-1 text-warning font-bold bg-amber-50 px-1 py-0.5 border border-amber-200 rounded text-[11px]">
+                      <span className="inline-flex items-center gap-1 text-warning font-bold bg-warning-soft px-1 py-0.5 border border-warning-border rounded text-[11px]">
                         Pending
                       </span>
                     )}

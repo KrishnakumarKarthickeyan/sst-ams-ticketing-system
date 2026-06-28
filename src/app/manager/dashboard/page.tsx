@@ -2201,7 +2201,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Customers</span>
-                {checklistData.customers.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.customers.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-success-strong hover:bg-success-strong text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.customers.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.customers.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -2217,7 +2217,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Consultants</span>
-                {checklistData.consultants.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.consultants.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-success-strong hover:bg-success-strong text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.consultants.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.consultants.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -2233,7 +2233,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Tickets</span>
-                {checklistData.tickets.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.tickets.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-success-strong hover:bg-success-strong text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.tickets.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.tickets.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -2249,7 +2249,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Approvals</span>
-                {checklistData.approvals.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.approvals.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-success-strong hover:bg-success-strong text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.approvals.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.approvals.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -2265,7 +2265,7 @@ export default function ManagerDashboardPage() {
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Reports</span>
-                {checklistData.reports.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
+                {checklistData.reports.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-success-strong hover:bg-success-strong text-white px-1 py-0.5 border-none">Active</Badge>}
                 {checklistData.reports.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.reports.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
@@ -3449,7 +3449,7 @@ export default function ManagerDashboardPage() {
                         <Button size="icon" className="h-6 w-6 bg-green-600 hover:bg-green-700 text-white rounded cursor-pointer" onClick={() => handleApproveEffort(log.ticketId, log.logId, log.consultantName)}>
                           <Check size={11} />
                         </Button>
-                        <Button size="icon" className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer" onClick={() => triggerRejection('effort', log.ticketId, log.logId)}>
+                        <Button size="icon" className="h-6 w-6 bg-red-650 hover:bg-critical-strong text-white rounded cursor-pointer" onClick={() => triggerRejection('effort', log.ticketId, log.logId)}>
                           <X size={11} />
                         </Button>
                       </div>
@@ -3482,7 +3482,7 @@ export default function ManagerDashboardPage() {
                         <Button size="sm" className="h-6 bg-ink hover:bg-zinc-800 text-white text-[11px] uppercase font-bold px-2 rounded cursor-pointer" onClick={() => triggerClosureVerify(r.ticketId, r.requestId)}>
                           Verify
                         </Button>
-                        <Button size="icon" className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer" onClick={() => triggerRejection('closure', r.ticketId, r.requestId)}>
+                        <Button size="icon" className="h-6 w-6 bg-red-650 hover:bg-critical-strong text-white rounded cursor-pointer" onClick={() => triggerRejection('closure', r.ticketId, r.requestId)}>
                           <X size={11} />
                         </Button>
                       </div>
@@ -3511,7 +3511,7 @@ export default function ManagerDashboardPage() {
                         <Button size="icon" className="h-6 w-6 bg-green-600 hover:bg-green-700 text-white rounded cursor-pointer" onClick={() => handleApproveUnlock(u.ticketId, u.requestId, u.requestedBy)}>
                           <Check size={11} />
                         </Button>
-                        <Button size="icon" className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer" onClick={() => triggerRejection('unlock', u.ticketId, u.requestId)}>
+                        <Button size="icon" className="h-6 w-6 bg-red-650 hover:bg-critical-strong text-white rounded cursor-pointer" onClick={() => triggerRejection('unlock', u.ticketId, u.requestId)}>
                           <X size={11} />
                         </Button>
                       </div>
@@ -3576,7 +3576,7 @@ export default function ManagerDashboardPage() {
                                 </Button>
                                 <Button
                                   size="icon"
-                                  className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer"
+                                  className="h-6 w-6 bg-red-650 hover:bg-critical-strong text-white rounded cursor-pointer"
                                   onClick={() => handleRejectPasswordRequest(req)}
                                 >
                                   <X size={11} />
@@ -3639,7 +3639,7 @@ export default function ManagerDashboardPage() {
                                 </Button>
                                 <Button
                                   size="icon"
-                                  className="h-6 w-6 bg-red-650 hover:bg-red-700 text-white rounded cursor-pointer"
+                                  className="h-6 w-6 bg-red-650 hover:bg-critical-strong text-white rounded cursor-pointer"
                                   onClick={() => handleRejectReopenRequest(req)}
                                 >
                                   <X size={11} />
@@ -4206,7 +4206,7 @@ export default function ManagerDashboardPage() {
               Cancel
             </Button>
             <Button
-              className="bg-red-650 hover:bg-red-700 text-white text-[11px] uppercase font-bold h-8 cursor-pointer"
+              className="bg-red-650 hover:bg-critical-strong text-white text-[11px] uppercase font-bold h-8 cursor-pointer"
               onClick={handleConfirmRejection}
             >
               Confirm Rejection

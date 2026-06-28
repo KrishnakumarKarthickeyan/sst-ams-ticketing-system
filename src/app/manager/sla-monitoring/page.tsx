@@ -52,7 +52,7 @@ export default function ManagerSlaMonitoringPage() {
     if (diff < 0) {
       return {
         label: 'BREACHED',
-        style: 'bg-red-50 text-red-750 border-red-200 animate-pulse font-black',
+        style: 'bg-critical-soft text-red-750 border-critical-border animate-pulse font-black',
         textStyle: 'text-red-750 font-bold'
       };
     }
@@ -61,8 +61,8 @@ export default function ManagerSlaMonitoringPage() {
     if (hoursRemaining < 24) {
       return {
         label: `${Math.round(hoursRemaining)}h remaining`,
-        style: 'bg-amber-50 text-amber-700 border-amber-200 font-bold',
-        textStyle: 'text-amber-700 font-semibold'
+        style: 'bg-warning-soft text-warning-strong border-warning-border font-bold',
+        textStyle: 'text-warning-strong font-semibold'
       };
     }
 
@@ -117,7 +117,7 @@ export default function ManagerSlaMonitoringPage() {
         <Card className="border border-line shadow-card p-4 space-y-1">
           <span className="text-[11px] uppercase font-bold text-ink-secondary">Healthy Response State</span>
           <div className="text-xl font-bold flex items-center justify-between">
-            <span className={slaMetrics.healthy > 0 ? 'text-emerald-700' : 'text-ink'}>{slaMetrics.healthy}</span>
+            <span className={slaMetrics.healthy > 0 ? 'text-success-strong' : 'text-ink'}>{slaMetrics.healthy}</span>
             <CheckCircle size={14} className={slaMetrics.healthy > 0 ? 'text-emerald-650' : 'text-ink-muted'} />
           </div>
         </Card>

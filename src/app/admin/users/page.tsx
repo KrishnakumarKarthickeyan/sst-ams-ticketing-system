@@ -675,7 +675,7 @@ export default function AdminUsersPage() {
       cell: ({ row }) => <span className="font-semibold text-ink-secondary">{row.original.organization}</span> },
     { id: 'status', accessorFn: (u: any) => (u.active ? 'Active' : 'Disabled'), header: 'Status',
       cell: ({ row }) => { const a = row.original.active; return (
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-bold ${a ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-750'}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-bold ${a ? 'bg-success-soft border-success-border text-success-strong' : 'bg-critical-soft border-critical-border text-red-750'}`}>
           {a ? <ShieldCheck size={11} className="text-success" /> : <XCircle size={11} className="text-red-605" />}{a ? 'Active' : 'Disabled'}
         </span>); } },
     { id: 'actions', header: 'Actions', enableSorting: false,
@@ -933,7 +933,7 @@ export default function AdminUsersPage() {
                     <div className="space-y-1">
                       <span className="text-[11px] uppercase text-ink-muted font-bold block">Setup Status:</span>
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold ${
-                        selectedUser.first_login_completed ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                        selectedUser.first_login_completed ? 'bg-success-soft text-success-strong border border-emerald-100' : 'bg-warning-soft text-warning-strong border border-amber-100'
                       }`}>
                         {selectedUser.first_login_completed ? 'Setup Completed' : 'Pending Initial Reset'}
                       </span>
@@ -943,7 +943,7 @@ export default function AdminUsersPage() {
                       <span className="text-[11px] uppercase text-ink-muted font-bold block">IAM Lockout Status:</span>
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold ${
-                          selectedUser.is_locked ? 'bg-red-50 text-red-750 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          selectedUser.is_locked ? 'bg-critical-soft text-red-750 border border-red-100' : 'bg-success-soft text-success-strong border border-emerald-100'
                         }`}>
                           {selectedUser.is_locked ? 'Account Locked' : 'Account Active'}
                         </span>
@@ -969,7 +969,7 @@ export default function AdminUsersPage() {
                     <div className="space-y-1">
                       <span className="text-[11px] uppercase text-ink-muted font-bold block">Account Status:</span>
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold ${
-                        selectedUser.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-750 border border-red-100'
+                        selectedUser.active ? 'bg-success-soft text-success-strong border border-emerald-100' : 'bg-critical-soft text-red-750 border border-red-100'
                       }`}>
                         {selectedUser.active ? 'Access Enabled' : 'Access Disabled'}
                       </span>
@@ -1208,7 +1208,7 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={() => handleToggleUserStatus(selectedUser.id, selectedUser.email, selectedUser.active)}
                         className={`px-4 py-2 rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer ${
-                          selectedUser.active ? 'bg-amber-50 border border-amber-300 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                          selectedUser.active ? 'bg-warning-soft border border-amber-300 text-warning-strong hover:bg-amber-100' : 'bg-success-soft border border-emerald-300 text-success-strong hover:bg-emerald-100'
                         }`}
                       >
                         {selectedUser.active ? 'Disable User Access' : 'Enable User Access'}
@@ -1218,18 +1218,18 @@ export default function AdminUsersPage() {
 
                   {/* Remove Account Block */}
                   {user?.email !== selectedUser.email && (
-                    <div className="border border-red-200 bg-red-50/30 rounded p-4 space-y-3">
+                    <div className="border border-critical-border bg-critical-soft/30 rounded p-4 space-y-3">
                       <h5 className="text-xs font-bold uppercase text-red-900">
                         Prune Account Registration
                       </h5>
-                      <p className="text-red-700/80 leading-relaxed text-[11px]">
+                      <p className="text-critical-strong/80 leading-relaxed text-[11px]">
                         Warning: This action is irreversible. Permanently deletes the user record from both the database profiles and authentication registry.
                       </p>
                       <div className="flex justify-end">
                         <button
                           type="button"
                           onClick={() => handleDeleteUser(selectedUser.id, selectedUser.email)}
-                          className="px-4 py-2 bg-red-650 text-white hover:bg-red-700 rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
+                          className="px-4 py-2 bg-red-650 text-white hover:bg-critical-strong rounded font-bold uppercase text-[11px] tracking-wider transition cursor-pointer"
                         >
                           Prune User Account
                         </button>
@@ -1267,7 +1267,7 @@ export default function AdminUsersPage() {
               </div>
             </div>
             
-            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[11px] text-amber-800 leading-normal">
+            <div className="bg-warning-soft border border-warning-border rounded p-3 text-[11px] text-amber-800 leading-normal">
               <span className="font-bold">Important Notice:</span> Provide this temporary password to the user. They will be forced to change it immediately upon their first login to access the workspace.
             </div>
             
@@ -1390,14 +1390,14 @@ export default function AdminUsersPage() {
                 </>
               ) : (
                 <>
-                  <div className="bg-emerald-50 border border-emerald-250 text-emerald-900 rounded p-4 text-[11px] font-bold space-y-2">
+                  <div className="bg-success-soft border border-emerald-250 text-emerald-900 rounded p-4 text-[11px] font-bold space-y-2">
                     <span className="text-[11px] text-emerald-800 uppercase block">Password Reset Successful!</span>
-                    <div className="flex items-center justify-between gap-2 bg-surface p-2.5 rounded border border-emerald-200">
-                      <span className="text-xs tracking-wider select-all font-extrabold text-emerald-700">
+                    <div className="flex items-center justify-between gap-2 bg-surface p-2.5 rounded border border-success-border">
+                      <span className="text-xs tracking-wider select-all font-extrabold text-success-strong">
                         {resetManualPassword.trim() !== '' ? resetManualPassword.trim() : resetGeneratedPassword}
                       </span>
                     </div>
-                    <span className="text-[11px] text-emerald-700 block font-normal pt-1 leading-normal">
+                    <span className="text-[11px] text-success-strong block font-normal pt-1 leading-normal">
                       User must login with this password and create a new password on their next login.
                     </span>
                   </div>
