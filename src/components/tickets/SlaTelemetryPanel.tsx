@@ -90,19 +90,19 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
     switch (slaMetrics.status) {
       case 'MET':
         return (
-          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 uppercase text-[11px] font-bold py-0.5 px-2">
+          <Badge className="bg-success-soft text-success-strong hover:bg-success-soft border border-success-border uppercase text-[11px] font-bold py-0.5 px-2">
             SLA Met
           </Badge>
         );
       case 'BREACHED':
         return (
-          <Badge className="bg-red-50 text-red-700 hover:bg-red-50 border border-red-200 uppercase text-[11px] font-bold py-0.5 px-2 animate-pulse">
+          <Badge className="bg-critical-soft text-critical-strong hover:bg-critical-soft border border-critical-border uppercase text-[11px] font-bold py-0.5 px-2 animate-pulse">
             Breached
           </Badge>
         );
       case 'WARNING':
         return (
-          <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200 uppercase text-[11px] font-bold py-0.5 px-2">
+          <Badge className="bg-warning-soft text-warning-strong hover:bg-warning-soft border border-warning-border uppercase text-[11px] font-bold py-0.5 px-2">
             Warning
           </Badge>
         );
@@ -116,9 +116,9 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
   };
 
   const getProgressColor = () => {
-    if (slaMetrics.status === 'BREACHED') return 'bg-red-500';
-    if (slaMetrics.status === 'WARNING' || consumedPercentage > 80) return 'bg-amber-500';
-    return 'bg-indigo-600';
+    if (slaMetrics.status === 'BREACHED') return 'bg-critical';
+    if (slaMetrics.status === 'WARNING' || consumedPercentage > 80) return 'bg-warning';
+    return 'bg-info';
   };
 
   const formattedDueDate = useMemo(() => {

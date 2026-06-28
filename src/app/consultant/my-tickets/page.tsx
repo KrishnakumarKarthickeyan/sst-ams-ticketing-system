@@ -294,7 +294,7 @@ export default function ConsultantMyTicketsPage() {
     if (!activeTicketId || !statusValue) return;
     if (statusValue === 'Request for Closure') { setValidationError(null); setActiveAction('raiseClosure'); return; }
     updateTicketStatus(activeTicketId, statusValue, consultantName);
-    triggerToast(`Status of ${activeTicketId} updated to "${statusValue}".`);
+    triggerToast(`Status of ${activeTicket?.ticketNumber || activeTicketId} updated to "${statusValue}".`);
     closeActionModal();
   };
 
@@ -744,7 +744,7 @@ export default function ConsultantMyTicketsPage() {
           <div className="border-b border-line px-5 py-4 bg-surface-muted/60 backdrop-blur-md flex justify-between items-center">
             <div>
               <p className="text-[11px] text-ink-muted font-semibold uppercase tracking-widest font-sans">Action Panel</p>
-              <h3 className="text-sm font-bold text-ink">{actionLabel[activeAction]} — <span className="text-xs">{activeTicketId}</span></h3>
+              <h3 className="text-sm font-bold text-ink">{actionLabel[activeAction]} — <span className="text-xs">{activeTicket?.ticketNumber || activeTicketId}</span></h3>
             </div>
             <button onClick={closeActionModal} className="p-1.5 hover:bg-surface-subtle rounded text-ink-muted hover:text-ink-secondary transition cursor-pointer">
               <X size={14} />

@@ -80,7 +80,7 @@ const SHOWCASE: StickyScrollItem[] = [
     description:
       'Monthly budgets, annual allocations and consumed effort reconcile in real time across every customer contract — no spreadsheet drift, no billing surprises.',
     content: (
-      <PreviewPanel icon={FileSignature} accent="bg-indigo-50 text-indigo-600" title="Contract Utilization"
+      <PreviewPanel icon={FileSignature} accent="bg-info-soft text-info" title="Contract Utilization"
         rows={[
           { left: 'Acme Industries — AMS Gold', right: '81% consumed', tone: 'bg-amber-50 text-amber-600' },
           { left: 'Northwind GmbH — AMS Silver', right: '47% consumed', tone: 'bg-emerald-50 text-emerald-600' },
@@ -128,7 +128,7 @@ const SHOWCASE: StickyScrollItem[] = [
       <PreviewPanel icon={BrainCircuit} accent="bg-sky-50 text-sky-600" title="AI Recommendations"
         rows={[
           { left: 'Route TKT-2241 → S. Iyer (Basis)', right: '96% confidence', tone: 'bg-sky-50 text-sky-600' },
-          { left: 'Similar incident: KB-0871', right: 'SUGGESTED', tone: 'bg-indigo-50 text-indigo-600' },
+          { left: 'Similar incident: KB-0871', right: 'SUGGESTED', tone: 'bg-info-soft text-info' },
           { left: 'Forecast: +18% MM queue load', right: 'NEXT 7 DAYS', tone: 'bg-amber-50 text-amber-600' },
           { left: 'Breach risk — TKT-2207', right: 'AUTO-ESCALATED', tone: 'bg-red-50 text-red-600' },
         ]} />

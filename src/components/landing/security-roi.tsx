@@ -75,7 +75,7 @@ export function SecurityRoi() {
         >
           <div className="relative">
             <div className="absolute -top-24 left-1/2 h-64 w-[560px] -translate-x-1/2 rounded-full bg-blue-100/70 blur-3xl" />
-            <div className="absolute -bottom-32 right-0 h-56 w-[420px] rounded-full bg-indigo-100/60 blur-3xl" />
+            <div className="absolute -bottom-32 right-0 h-56 w-[420px] rounded-full bg-info-soft/60 blur-3xl" />
             <div className="relative text-center">
               <span className="font-mono text-[11px] font-bold tracking-widest text-blue-600 uppercase">
                 Measured Outcomes

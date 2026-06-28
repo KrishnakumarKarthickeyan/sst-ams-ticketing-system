@@ -194,8 +194,8 @@ export function Hero() {
           {/* Floating KPI: AI insight */}
           <FloatingCard delay={0.55} className="absolute -left-2 top-6 z-20 w-56 lg:left-0">
             <div className="flex items-start gap-2.5 p-3.5">
-              <div className="rounded-lg bg-indigo-50 p-2">
-                <BrainCircuit size={15} className="text-indigo-600" />
+              <div className="rounded-lg bg-info-soft p-2">
+                <BrainCircuit size={15} className="text-info" />
               </div>
               <div>
                 <div className="font-sans text-[11px] font-bold text-zinc-950">AI Insight</div>
