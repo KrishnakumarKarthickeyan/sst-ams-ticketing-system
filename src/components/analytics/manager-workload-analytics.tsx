@@ -126,7 +126,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
 
   // LoadBuckets distribution + compact rosters/charts (top-N + pagination).
   const loadItems = useMemo<LoadItem[]>(() => rows.map(r => ({ id: r.id, name: r.name, utilization: r.utilization })), [rows]);
-  const utilRoster = useMemo(() => [...rows].sort((a, b) => b.utilization - a.utilization), [rows]);
+  const utilRoster = useMemo(() => [...rows].sort((a, b) => b.utilization - a.utilization || b.active - a.active), [rows]);
   const activeResolved = useMemo(() => rows.map(r => ({ name: r.name, Active: r.active, Resolved: r.resolved }))
     .filter(d => d.Active + d.Resolved > 0).sort((a, b) => (b.Active + b.Resolved) - (a.Active + a.Resolved)), [rows]);
 

@@ -169,7 +169,37 @@ export interface ConsultantAgg {
   technical: number;
 }
 
-/** Per-consultant aggregates over a ticket set (keyed by assigned consultant). */
+export interface TicketConsultant { id: string; name: string }
+
+/**
+ * Every consultant assigned to / working a ticket — the lead AND every additional
+ * assigned consultant — so a ticket's load counts for ALL of them, not just the lead.
+ * Prefers the multi-consultant model (active assignments ∪ per-consultant effort rows)
+ * and falls back to the single `assignedConsultant` for legacy/local tickets.
+ */
+export function ticketConsultants(t: Ticket): TicketConsultant[] {
+  const byName = new Map<string, TicketConsultant>();
+  (t.assignments || []).forEach((a) => {
+    if (a.active === false) return;
+    if (a.consultantName) byName.set(a.consultantName, { id: a.consultantId || a.consultantName, name: a.consultantName });
+  });
+  (t.consultantEfforts || []).forEach((e) => {
+    if (e.isDeleted) return;
+    if (e.consultantName && !byName.has(e.consultantName)) byName.set(e.consultantName, { id: e.consultantId || e.consultantName, name: e.consultantName });
+  });
+  if (byName.size === 0 && t.assignedConsultant) {
+    byName.set(t.assignedConsultant, { id: t.assignedConsultantId || t.assignedConsultant, name: t.assignedConsultant });
+  }
+  return Array.from(byName.values());
+}
+
+/**
+ * Per-consultant aggregates over a ticket set. A ticket assigned to N consultants
+ * credits handled/active/closed/SLA/resolution to EVERY one of them; logged hours and
+ * the F/T split are attributed per consultant from their own effort rows (so hours are
+ * never double-counted). Single-consultant / legacy tickets fall back to whole-ticket
+ * approved hours for the one assignee.
+ */
 export function aggregateConsultants(tickets: Ticket[], now: number): ConsultantAgg[] {
   const map = new Map<string, ConsultantAgg & { _resSum: number; _resN: number }>();
   const ensure = (name: string, id: string) => {
@@ -181,21 +211,34 @@ export function aggregateConsultants(tickets: Ticket[], now: number): Consultant
     return row;
   };
   tickets.forEach((t) => {
-    const name = t.assignedConsultant;
-    if (!name) return;
-    const row = ensure(name, t.assignedConsultantId || name);
-    row.handled++;
-    if (isClosed(t)) row.closed++; else row.active++;
-    row.loggedHours += approvedHours(t);
+    const participants = ticketConsultants(t);
+    if (participants.length === 0) return;
+    const closed = isClosed(t);
     const res = resolutionHours(t);
-    if (res !== null) { row._resSum += res; row._resN++; }
-    if (hasSlaTarget(t)) {
-      row.slaTotal++;
-      if (!slaBreached(t, now)) row.slaMet++;
-    }
-    const split = functionalTechnicalSplit(t);
-    row.functional += split.functional;
-    row.technical += split.technical;
+    const hasSla = hasSlaTarget(t);
+    const slaMet = hasSla && !slaBreached(t, now);
+    participants.forEach((p) => {
+      const row = ensure(p.name, p.id);
+      row.handled++;
+      if (closed) row.closed++; else row.active++;
+      if (res !== null) { row._resSum += res; row._resN++; }
+      if (hasSla) { row.slaTotal++; if (slaMet) row.slaMet++; }
+      // Per-consultant hours + F/T split from their own non-deleted effort rows; fall
+      // back to the whole-ticket approved hours only for a sole/legacy assignee.
+      const mine = (t.consultantEfforts || []).filter((e) => !e.isDeleted && e.consultantName === p.name);
+      if (mine.length > 0) {
+        mine.forEach((e) => {
+          const h = e.actualHours || 0;
+          row.loggedHours += h;
+          if (e.consultantType === 'Technical') row.technical += h; else row.functional += h;
+        });
+      } else if (participants.length === 1) {
+        row.loggedHours += approvedHours(t);
+        const split = functionalTechnicalSplit(t);
+        row.functional += split.functional;
+        row.technical += split.technical;
+      }
+    });
   });
   return Array.from(map.values()).map((r) => ({
     ...r,

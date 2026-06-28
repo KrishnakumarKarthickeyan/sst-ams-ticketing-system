@@ -88,6 +88,31 @@ describe('aggregateConsultants / aggregateCustomers', () => {
     expect(agg[0].slaMet).toBe(1); // the open one is breached as of now
     expect(agg[0].slaAdherence).toBe(50);
   });
+  it('credits active count + logged hours to EVERY assigned consultant', () => {
+    const t = [
+      mk({
+        status: 'In Progress', assignedConsultant: 'Sara',
+        assignments: [
+          { ticketId: 'id', consultantId: 'c1', consultantName: 'Sara', consultantType: 'Functional', isPrimary: true, active: true, assignedAt: '' },
+          { ticketId: 'id', consultantId: 'c2', consultantName: 'Omar', consultantType: 'Technical', isPrimary: false, active: true, assignedAt: '' },
+        ],
+        consultantEfforts: [
+          { id: 'e1', ticketId: 'id', consultantId: 'c1', consultantName: 'Sara', consultantType: 'Functional', estimatedHours: 0, actualHours: 4, createdAt: '', updatedAt: '' },
+          { id: 'e2', ticketId: 'id', consultantId: 'c2', consultantName: 'Omar', consultantType: 'Technical', estimatedHours: 0, actualHours: 6, createdAt: '', updatedAt: '' },
+        ],
+      } as Partial<Ticket>),
+    ];
+    const agg = aggregateConsultants(t, now);
+    const sara = agg.find(a => a.name === 'Sara')!;
+    const omar = agg.find(a => a.name === 'Omar')!;
+    expect(agg).toHaveLength(2);
+    expect(sara.active).toBe(1);
+    expect(omar.active).toBe(1); // additional consultant gets the load too
+    expect(sara.loggedHours).toBe(4);
+    expect(omar.loggedHours).toBe(6); // each attributed their OWN hours (no double-count)
+    expect(sara.functional).toBe(4);
+    expect(omar.technical).toBe(6);
+  });
   it('aggregates per customer org', () => {
     const c = aggregateCustomers([mk({ organization: 'BASAMH' }), mk({ organization: 'BASAMH', status: 'Closed', resolvedAt: '2026-06-01T01:00:00Z' })], now);
     expect(c).toHaveLength(1);
