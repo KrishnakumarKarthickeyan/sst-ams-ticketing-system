@@ -562,7 +562,7 @@ export default function ManagerTicketsPage() {
       {selectedTicketIds.length > 0 && (
         <div className="bg-ink text-white rounded-lg p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md border border-zinc-800 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2">
-            <CheckSquare size={14} className="text-green-400" />
+            <CheckSquare size={14} className="text-success" />
             <span className="font-bold text-[11px] uppercase tracking-wider">{selectedTicketIds.length} Tickets Selected</span>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -730,7 +730,7 @@ export default function ManagerTicketsPage() {
                     <div className="bg-surface-muted border border-line p-1.5 rounded">
                       <span className="text-[11px] text-ink-muted font-bold uppercase block">Actual Logged</span>
                       <span className="font-semibold text-ink-secondary block mt-0.5">F: {funcAct}h | T: {techAct}h</span>
-                      <span className={`font-bold block mt-0.5 ${totalAct > totalEst ? 'text-critical' : 'text-green-700'}`}>Total: {totalAct}h</span>
+                      <span className={`font-bold block mt-0.5 ${totalAct > totalEst ? 'text-critical' : 'text-success-strong'}`}>Total: {totalAct}h</span>
                     </div>
                   </div>
 
@@ -799,7 +799,7 @@ export default function ManagerTicketsPage() {
                           Wait customer
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          className="cursor-pointer font-bold text-critical focus:text-red-700"
+                          className="cursor-pointer font-bold text-critical focus:text-critical-strong"
                           onClick={() => { updateTicketStatus(t.id, 'Closed', managerName); }}
                         >
                           Force close
@@ -910,7 +910,7 @@ export default function ManagerTicketsPage() {
                       <td className="py-2.5 px-4 text-center text-ink-secondary whitespace-nowrap">
                         {totalEst}h (F:{funcEst}/T:{techEst})
                       </td>
-                      <td className={`py-2.5 px-4 text-center whitespace-nowrap font-bold ${totalAct > totalEst ? 'text-critical' : 'text-green-700'}`}>
+                      <td className={`py-2.5 px-4 text-center whitespace-nowrap font-bold ${totalAct > totalEst ? 'text-critical' : 'text-success-strong'}`}>
                         {totalAct}h (F:{funcAct}/T:{techAct})
                       </td>
                       <td className="py-2.5 px-4 text-center">
