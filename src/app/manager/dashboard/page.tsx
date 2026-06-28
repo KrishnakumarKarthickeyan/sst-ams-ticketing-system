@@ -1085,7 +1085,9 @@ export default function ManagerDashboardPage() {
         loadPercentage,
         loadStatus
       };
-    });
+    })
+    // Workload Balancer order: busiest first by utilization %, ties broken by active count.
+    .sort((a, b) => b.loadPercentage - a.loadPercentage || b.activeCount - a.activeCount);
   }, [filteredDashboardTickets, workingDaysInMonth, consultantsDbList, managedConsultantsList]);
 
   // Dynamic calculations for all requested sections
