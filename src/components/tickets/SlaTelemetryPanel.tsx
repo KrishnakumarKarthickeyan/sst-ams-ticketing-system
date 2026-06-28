@@ -2,135 +2,110 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Ticket } from '../../types/ticket';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Progress } from '../ui/progress';
-import { Clock, ShieldAlert, ShieldCheck, AlertTriangle, Calendar, Activity } from 'lucide-react';
+import { useTickets } from '../../context/TicketContext';
+import {
+  computeSla, getTargetHours, formatIstDateTime, type SlaStatus,
+} from '../../lib/sla/slaEngine';
+import { Clock, ShieldAlert, ShieldCheck, Calendar, Activity, Info } from 'lucide-react';
 
 interface SlaTelemetryPanelProps {
   ticket: Ticket;
 }
 
+/** Business-hours remaining → "12.5h left" / "45m left" / "0m left". */
+function formatRemaining(hours: number): string {
+  if (hours >= 1) return `${hours.toFixed(1)}h left`;
+  return `${Math.round(hours * 60)}m left`;
+}
+
 export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) => {
-  const [timeLeftStr, setTimeLeftStr] = useState('');
-  const [slaStatus, setSlaStatus] = useState<'MET' | 'BREACHED' | 'WARNING' | 'COMPLIANT'>('COMPLIANT');
+  const { getClientTargets } = useTickets();
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     setNow(new Date());
-    const interval = setInterval(() => setNow(new Date()), 60000); // Update every minute
+    const interval = setInterval(() => setNow(new Date()), 60000); // re-tick every minute
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate SLA Status and Calendar Time Left
-  const slaMetrics = useMemo(() => {
-    if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
-      return { status: 'MET' as const, timeLeft: 'SLA Met' };
-    }
+  // SLA applies ONLY to Incident tickets. Service Request / Change / Problem / etc.
+  // have no time-bound SLA — show a clear "not applicable" state for every role.
+  const isIncident = ticket.ticketType === 'Incident';
 
-    if (!ticket.slaDueAt || ticket.slaDueAt === 'SLA Not Applicable') {
-      return { status: 'COMPLIANT' as const, timeLeft: 'N/A' };
-    }
-
-    const due = new Date(ticket.slaDueAt).getTime();
-    const diffMs = due - now.getTime();
-
-    if (diffMs <= 0) {
-      return { status: 'BREACHED' as const, timeLeft: 'SLA Breached' };
-    }
-
-    const diffHrs = diffMs / (1000 * 60 * 60);
-    const hrs = Math.floor(diffHrs);
-    const mins = Math.floor((diffHrs - hrs) * 60);
-
-    if (diffHrs < 2) {
-      return { status: 'WARNING' as const, timeLeft: `${hrs}h ${mins}m left` };
-    }
-
-    return { status: 'COMPLIANT' as const, timeLeft: `${hrs}h left` };
-  }, [ticket.slaDueAt, ticket.status, now]);
-
-  // SLA Target Hours calculation
-  const targetHours = useMemo(() => {
-    if (!ticket.slaDueAt || ticket.slaDueAt === 'SLA Not Applicable') return null;
-    const created = new Date(ticket.createdAt).getTime();
-    const due = new Date(ticket.slaDueAt).getTime();
-    const diffHrs = (due - created) / (1000 * 60 * 60);
-    return Math.max(1, Math.round(diffHrs));
-  }, [ticket.createdAt, ticket.slaDueAt]);
-
-  // Consumed Hours calculation (only approved actual hours)
-  const consumedHours = useMemo(() => {
-    const approvedLogs = (ticket.actualHoursLogs || []).filter(
-      log => log.approvalStatus === 'Approved' || log.approvalStatus?.toLowerCase() === 'approved'
+  // Single source of truth: the IST business-hours engine, against the client's
+  // per-priority target. Target Hours, Due, Time Remaining and Remaining SLA Hours
+  // all derive from this one computation so they can never disagree.
+  const sla = useMemo(() => {
+    const targets = getClientTargets(ticket.organizationId);
+    const targetHours = getTargetHours(ticket.priority, targets);
+    return computeSla(
+      {
+        leadAssignedAt: ticket.leadAssignedAt,
+        status: ticket.status,
+        resolvedAt: ticket.resolvedAt,
+        closedAt: ticket.closedAt,
+      },
+      targetHours,
+      now,
     );
-    return approvedLogs.reduce((sum, log) => sum + log.actualHours, 0);
-  }, [ticket.actualHoursLogs]);
-
-  // Remaining Hours calculation
-  const remainingHours = useMemo(() => {
-    if (targetHours === null) return null;
-    return Math.max(0, targetHours - consumedHours);
-  }, [targetHours, consumedHours]);
-
-  // Consumed Percentage
-  const consumedPercentage = useMemo(() => {
-    if (!targetHours) return 0;
-    return Math.min(100, Math.max(0, (consumedHours / targetHours) * 100));
-  }, [targetHours, consumedHours]);
+  }, [getClientTargets, ticket.organizationId, ticket.priority, ticket.leadAssignedAt, ticket.status, ticket.resolvedAt, ticket.closedAt, now]);
 
   const escalationLevel = useMemo(() => {
-    if (ticket.escalations && ticket.escalations.length > 0) {
-      return ticket.escalations.length;
-    }
+    if (ticket.escalations && ticket.escalations.length > 0) return ticket.escalations.length;
     return ticket.escalationFlag ? 1 : 0;
   }, [ticket.escalations, ticket.escalationFlag]);
 
-  const statusBadge = () => {
-    switch (slaMetrics.status) {
-      case 'MET':
-        return (
-          <Badge className="bg-success-soft text-success-strong hover:bg-success-soft border border-success-border uppercase text-[11px] font-bold py-0.5 px-2">
-            SLA Met
-          </Badge>
-        );
-      case 'BREACHED':
-        return (
-          <Badge className="bg-critical-soft text-critical-strong hover:bg-critical-soft border border-critical-border uppercase text-[11px] font-bold py-0.5 px-2 animate-pulse">
-            Breached
-          </Badge>
-        );
-      case 'WARNING':
-        return (
-          <Badge className="bg-warning-soft text-warning-strong hover:bg-warning-soft border border-warning-border uppercase text-[11px] font-bold py-0.5 px-2">
-            Warning
-          </Badge>
-        );
-      case 'COMPLIANT':
-        return (
+  // ── Non-Incident: SLA not applicable ──────────────────────────────────────
+  if (!isIncident) {
+    return (
+      <Card className="bg-surface border border-line rounded-lg p-5 shadow-card space-y-4">
+        <div className="flex justify-between items-center border-b border-line pb-2">
+          <h3 className="font-bold text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
+            <Clock size={14} className="text-ink-secondary" /> SLA Governance
+          </h3>
           <Badge className="bg-surface-subtle text-ink hover:bg-surface-subtle border border-line uppercase text-[11px] font-bold py-0.5 px-2">
-            Compliant
+            N/A
           </Badge>
-        );
+        </div>
+        <div className="flex items-start gap-2 text-xs text-ink-secondary bg-surface-muted border border-line rounded p-3">
+          <Info size={14} className="text-ink-muted shrink-0 mt-0.5" />
+          <span>
+            SLA not applicable for this ticket type
+            {ticket.ticketType ? ` (${ticket.ticketType})` : ''}. Time-bound SLA targets apply to <span className="font-bold text-ink">Incident</span> tickets only.
+          </span>
+        </div>
+      </Card>
+    );
+  }
+
+  // ── Incident: live engine telemetry ───────────────────────────────────────
+  const badgeFor = (s: SlaStatus) => {
+    switch (s) {
+      case 'Met':
+        return <Badge className="bg-success-soft text-success-strong hover:bg-success-soft border border-success-border uppercase text-[11px] font-bold py-0.5 px-2">SLA Met</Badge>;
+      case 'Breached':
+        return <Badge className="bg-critical-soft text-critical-strong hover:bg-critical-soft border border-critical-border uppercase text-[11px] font-bold py-0.5 px-2 animate-pulse">Breached</Badge>;
+      case 'At Risk':
+        return <Badge className="bg-warning-soft text-warning-strong hover:bg-warning-soft border border-warning-border uppercase text-[11px] font-bold py-0.5 px-2">At Risk</Badge>;
+      case 'On Track':
+        return <Badge className="bg-success-soft text-success-strong hover:bg-success-soft border border-success-border uppercase text-[11px] font-bold py-0.5 px-2">On Track</Badge>;
+      case 'Not Started':
+      default:
+        return <Badge className="bg-surface-subtle text-ink hover:bg-surface-subtle border border-line uppercase text-[11px] font-bold py-0.5 px-2">Not Started</Badge>;
     }
   };
 
-  const getProgressColor = () => {
-    if (slaMetrics.status === 'BREACHED') return 'bg-critical';
-    if (slaMetrics.status === 'WARNING' || consumedPercentage > 80) return 'bg-warning';
-    return 'bg-info';
-  };
-
-  const formattedDueDate = useMemo(() => {
-    if (!ticket.slaDueAt || ticket.slaDueAt === 'SLA Not Applicable') return 'N/A';
-    return new Date(ticket.slaDueAt).toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  }, [ticket.slaDueAt]);
+  const dueLabel = sla.dueAt ? formatIstDateTime(sla.dueAt) : 'Pending lead';
+  const timeRemainingLabel =
+    sla.status === 'Not Started' ? 'Not started'
+    : sla.status === 'Breached' ? 'SLA Breached'
+    : sla.status === 'Met' ? 'SLA Met'
+    : formatRemaining(sla.remainingHours);
+  const consumedPct = sla.targetHours > 0 ? Math.min(100, Math.max(0, (sla.elapsedHours / sla.targetHours) * 100)) : 0;
+  const gaugeColor = sla.status === 'Breached' ? 'bg-critical' : (sla.status === 'At Risk' ? 'bg-warning' : 'bg-info');
+  const remainingCritical = sla.status === 'Breached' || (sla.status !== 'Not Started' && sla.remainingHours < 2);
 
   return (
     <Card className="bg-surface border border-line rounded-lg p-5 shadow-card space-y-4">
@@ -138,7 +113,7 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
         <h3 className="font-bold text-xs uppercase tracking-wider text-ink flex items-center gap-1.5">
           <Clock size={14} className="text-ink-secondary" /> SLA Governance
         </h3>
-        {statusBadge()}
+        {badgeFor(sla.status)}
       </div>
 
       <div className="space-y-3.5 text-ink-secondary text-xs">
@@ -149,7 +124,7 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
               <Calendar size={10} /> SLA Target Due
             </span>
             <span className="font-bold text-ink text-[11px] block leading-tight">
-              {formattedDueDate}
+              {dueLabel}
             </span>
           </div>
 
@@ -158,32 +133,30 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
               <Activity size={10} /> Time Remaining
             </span>
             <span className={`font-black text-[11px] block leading-tight ${
-              slaMetrics.status === 'BREACHED' ? 'text-critical' : 
-              slaMetrics.status === 'WARNING' ? 'text-warning-strong animate-pulse' : 
+              sla.status === 'Breached' ? 'text-critical' :
+              sla.status === 'At Risk' ? 'text-warning-strong animate-pulse' :
               'text-ink'
             }`}>
-              {slaMetrics.timeLeft}
+              {timeRemainingLabel}
             </span>
           </div>
         </div>
 
-        {/* SLA Hours Progress Gauge */}
-        {targetHours !== null && (
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between text-[11px]">
-              <span className="text-ink-muted">SLA Capacity (Consumed / Target)</span>
-              <span className="font-bold text-ink">
-                {consumedHours.toFixed(1)}h / {targetHours}h ({Math.round(consumedPercentage)}%)
-              </span>
-            </div>
-            <div className="w-full bg-surface-subtle rounded-full h-2 overflow-hidden border border-line/50">
-              <div 
-                className={`h-full transition-all duration-300 ${getProgressColor()}`}
-                style={{ width: `${consumedPercentage}%` }}
-              />
-            </div>
+        {/* SLA business-hours consumed vs target (engine elapsed / target) */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex justify-between text-[11px]">
+            <span className="text-ink-muted">SLA Time (Consumed / Target)</span>
+            <span className="font-bold text-ink">
+              {sla.elapsedHours.toFixed(1)}h / {sla.targetHours}h ({Math.round(consumedPct)}%)
+            </span>
           </div>
-        )}
+          <div className="w-full bg-surface-subtle rounded-full h-2 overflow-hidden border border-line/50">
+            <div
+              className={`h-full transition-all duration-300 ${gaugeColor}`}
+              style={{ width: `${consumedPct}%` }}
+            />
+          </div>
+        </div>
 
         {/* Numerical Grid */}
         <div className="divide-y divide-line text-[11px]">
@@ -191,31 +164,23 @@ export const SlaTelemetryPanel: React.FC<SlaTelemetryPanelProps> = ({ ticket }) 
             <span className="text-ink-secondary">Urgency Priority:</span>
             <span className="font-bold text-ink uppercase">{ticket.priority}</span>
           </div>
-          {targetHours !== null && (
-            <>
-              <div className="flex justify-between py-1.5">
-                <span className="text-ink-secondary">SLA Target Hours:</span>
-                <span className="font-bold text-ink">{targetHours} Hours</span>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-ink-secondary">Remaining SLA Hours:</span>
-                <span className={`font-bold ${remainingHours && remainingHours < 2 ? 'text-critical' : 'text-ink'}`}>
-                  {remainingHours !== null ? `${remainingHours.toFixed(1)} Hours` : 'N/A'}
-                </span>
-              </div>
-            </>
-          )}
+          <div className="flex justify-between py-1.5">
+            <span className="text-ink-secondary">SLA Target Hours:</span>
+            <span className="font-bold text-ink">{sla.targetHours} Hours</span>
+          </div>
+          <div className="flex justify-between py-1.5">
+            <span className="text-ink-secondary">Remaining SLA Hours:</span>
+            <span className={`font-bold ${remainingCritical ? 'text-critical' : 'text-ink'}`}>
+              {sla.status === 'Not Started' ? `${sla.remainingHours.toFixed(1)} Hours (not started)` : `${sla.remainingHours.toFixed(1)} Hours`}
+            </span>
+          </div>
           <div className="flex justify-between py-1.5">
             <span className="text-ink-secondary">Escalation path level:</span>
             <span className={`font-bold flex items-center gap-1 ${escalationLevel > 0 ? 'text-critical animate-pulse' : 'text-ink'}`}>
               {escalationLevel > 0 ? (
-                <>
-                  <ShieldAlert size={11} /> Level {escalationLevel}
-                </>
+                <><ShieldAlert size={11} /> Level {escalationLevel}</>
               ) : (
-                <>
-                  <ShieldCheck size={11} className="text-ink-muted" /> Level 0 (Nominal)
-                </>
+                <><ShieldCheck size={11} className="text-ink-muted" /> Level 0 (Nominal)</>
               )}
             </span>
           </div>
