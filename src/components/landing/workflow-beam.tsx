@@ -47,7 +47,7 @@ export function WorkflowBeam() {
                 transition={{ duration: 0.45 }}
                 className="flex items-start gap-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.5)]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.5)]">
                   <step.icon size={18} />
                 </div>
                 <div>

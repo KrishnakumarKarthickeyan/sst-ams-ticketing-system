@@ -25,7 +25,7 @@ const METRICS = [
     span: '',
   },
   {
-    icon: Workflow, tone: 'bg-indigo-50 text-indigo-600',
+    icon: Workflow, tone: 'bg-info-soft text-info',
     value: <AnimatedCounter value={87} suffix="%" />, label: 'Automation Rate',
     description: 'Classification, routing and escalations handled without manual touch.',
     span: '',

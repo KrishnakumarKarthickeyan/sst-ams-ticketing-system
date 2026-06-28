@@ -417,8 +417,9 @@ export default function ManagerCreateTicketPage() {
       const res = await createTicket(ticketPayload);
 
       if (res.success && res.ticketId) {
-        toast.success(`Ticket ${res.ticketId} created successfully!`, { id: toastId });
-        setSuccessTicketId(res.ticketId);
+        const displayId = res.ticketNumber || res.ticketId;
+        toast.success(`Ticket ${displayId} created successfully!`, { id: toastId });
+        setSuccessTicketId(displayId);
         setSuccess(true);
         
         // Reset form
@@ -494,7 +495,7 @@ export default function ManagerCreateTicketPage() {
             <Check size={18} className="text-success shrink-0" />
             <div className="text-xs">
               <span className="font-bold block uppercase text-[11px] tracking-wider">Ticket Created Successfully</span>
-              <span>Ticket ID: <strong>{successTicketId}</strong>. Records saved, notifications sent, and workspace view refreshing...</span>
+              <span>Ticket Number: <strong>{successTicketId}</strong>. Records saved, notifications sent, and workspace view refreshing...</span>
             </div>
           </div>
         )}

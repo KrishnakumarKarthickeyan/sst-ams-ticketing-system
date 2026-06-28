@@ -66,7 +66,7 @@ export function AiSection() {
               transition={{ duration: 0.45, delay: (i % 3) * 0.1 }}
             >
               <CardSpotlight className="h-full p-5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-blue-100">
                   <feature.icon size={16} className="text-blue-600" />
                 </div>
                 <h3 className="mt-3.5 font-sans text-sm font-bold text-zinc-950">{feature.title}</h3>
