@@ -101,9 +101,9 @@ const CATEGORIES = [
 ];
 
 const PRIORITIES = [
-  { value: 'Critical', label: 'Critical (P1)', color: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30' },
+  { value: 'Critical', label: 'Critical (P1)', color: 'bg-critical-soft text-critical-strong border-critical-border dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30' },
   { value: 'High', label: 'High (P2)', color: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/30' },
-  { value: 'Medium', label: 'Medium (P3)', color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30' },
+  { value: 'Medium', label: 'Medium (P3)', color: 'bg-warning-soft text-warning-strong border-warning-border dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30' },
   { value: 'Low', label: 'Low (P4)', color: 'bg-surface-muted text-ink-secondary border-line dark:bg-ink/20 dark:text-ink-muted dark:border-zinc-900/30' }
 ];
 
@@ -429,7 +429,7 @@ export default function CustomerCreateTicketPage() {
 
         {/* Validation Errors Alert Box */}
         {validationErrors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 text-xs font-sans space-y-2 flex items-start gap-3">
+          <div className="bg-critical-soft border border-critical-border text-red-800 rounded-lg p-4 text-xs font-sans space-y-2 flex items-start gap-3">
             <AlertCircle className="text-critical shrink-0 mt-0.5" size={16} />
             <div className="space-y-1">
               <span className="font-bold uppercase text-[11px] tracking-wider block">Submission Blocked (Validation Failures)</span>
@@ -444,7 +444,7 @@ export default function CustomerCreateTicketPage() {
 
         {/* Success Alert Banner */}
         {success && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg p-4 font-sans font-medium flex items-center gap-3 animate-fade-in">
+          <div className="bg-success-soft border border-success-border text-emerald-900 rounded-lg p-4 font-sans font-medium flex items-center gap-3 animate-fade-in">
             <Check size={18} className="text-success shrink-0" />
             <div className="text-xs">
               <span className="font-bold block uppercase text-[11px] tracking-wider">Ticket Created Successfully</span>
@@ -850,7 +850,7 @@ export default function CustomerCreateTicketPage() {
                             )}
                             
                             {item.status === 'success' && (
-                              <Badge className="bg-emerald-50 hover:bg-emerald-50 text-emerald-800 text-[11px] font-bold border-emerald-100 rounded px-1.5 py-0 leading-none">Ready</Badge>
+                              <Badge className="bg-success-soft hover:bg-success-soft text-emerald-800 text-[11px] font-bold border-emerald-100 rounded px-1.5 py-0 leading-none">Ready</Badge>
                             )}
 
                             <button

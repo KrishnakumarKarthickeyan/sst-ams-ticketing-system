@@ -901,10 +901,10 @@ export default function CustomerDashboardPage() {
           />
           {/* D. Action Required Section */}
           <Card className="border-line shadow-card bg-surface overflow-hidden">
-            <CardHeader className="pb-3 border-b border-line bg-amber-50/50 flex flex-row items-center justify-between">
+            <CardHeader className="pb-3 border-b border-line bg-warning-soft/50 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-xs uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                  <Hourglass size={14} className="text-amber-700 animate-pulse" />
+                  <Hourglass size={14} className="text-warning-strong animate-pulse" />
                   Action Required Workspace ({actionRequiredList.length})
                 </CardTitle>
                 <CardDescription className="text-[11px] text-amber-800/80 mt-0.5">
@@ -933,7 +933,7 @@ export default function CustomerDashboardPage() {
                     {actionRequiredList.map((t: any) => {
                       const ageDays = getTicketAgeDays(t);
                       return (
-                        <TableRow key={t.id} className="hover:bg-amber-50/20 bg-amber-50/10 border-b border-line transition-colors">
+                        <TableRow key={t.id} className="hover:bg-warning-soft/20 bg-warning-soft/10 border-b border-line transition-colors">
                           <TableCell className="py-2.5 px-4 font-bold text-ink">
                             <Link href={`/customer/tickets/${t.id}`} className="hover:underline text-ink">
                               {t.ticketNumber}
@@ -941,8 +941,8 @@ export default function CustomerDashboardPage() {
                           </TableCell>
                           <TableCell className="py-2.5 px-4 font-semibold text-ink max-w-[220px] truncate">{t.title}</TableCell>
                           <TableCell className="py-2.5 px-4">
-                            <Badge variant="outline" className={`text-[11px] border-red-200 ${
-                              t.priority === 'Critical' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                            <Badge variant="outline" className={`text-[11px] border-critical-border ${
+                              t.priority === 'Critical' ? 'bg-critical-soft text-critical-strong' : 'bg-warning-soft text-warning-strong'
                             }`}>
                               {t.priority}
                             </Badge>
@@ -954,7 +954,7 @@ export default function CustomerDashboardPage() {
                           </TableCell>
                           <TableCell className="py-2.5 px-4 text-ink-secondary">{ageDays.toFixed(1)} days</TableCell>
                           <TableCell className="py-2.5 px-4 text-ink-secondary">{formatTimeAgo(t.updatedAt)}</TableCell>
-                          <TableCell className="py-2.5 px-4 text-right font-bold text-amber-700">
+                          <TableCell className="py-2.5 px-4 text-right font-bold text-warning-strong">
                             Provide Info / Confirm Solution
                           </TableCell>
                         </TableRow>
@@ -975,10 +975,10 @@ export default function CustomerDashboardPage() {
 
           {/* E. Critical / Alert Section */}
           <Card className="border-line shadow-card bg-surface overflow-hidden">
-            <CardHeader className="pb-3 border-b border-line bg-red-50/50 flex flex-row items-center justify-between">
+            <CardHeader className="pb-3 border-b border-line bg-critical-soft/50 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-xs uppercase tracking-wider text-red-900 flex items-center gap-1.5">
-                  <ShieldAlert size={14} className="text-red-700" />
+                  <ShieldAlert size={14} className="text-critical-strong" />
                   Critical Escalations & Alerts ({alertTicketsList.length})
                 </CardTitle>
                 <CardDescription className="text-[11px] text-red-800/80 mt-0.5">
@@ -1012,8 +1012,8 @@ export default function CustomerDashboardPage() {
                       if (t.status === 'Reopened') alertReasons.push('Reopened');
 
                       return (
-                        <TableRow key={t.id} className="hover:bg-red-50/10 border-b border-line transition-colors">
-                          <TableCell className="py-2.5 px-4 font-bold text-red-700">
+                        <TableRow key={t.id} className="hover:bg-critical-soft/10 border-b border-line transition-colors">
+                          <TableCell className="py-2.5 px-4 font-bold text-critical-strong">
                             <Link href={`/customer/tickets/${t.id}`} className="hover:underline text-critical">
                               {t.ticketNumber}
                             </Link>
@@ -1025,7 +1025,7 @@ export default function CustomerDashboardPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-2.5 px-4">
-                            <Badge variant="outline" className="border-red-200 text-critical bg-red-50 text-[11px]">
+                            <Badge variant="outline" className="border-critical-border text-critical bg-critical-soft text-[11px]">
                               {t.status}
                             </Badge>
                           </TableCell>
@@ -1103,7 +1103,7 @@ export default function CustomerDashboardPage() {
                           return (
                             <li key={item.id} className="flex items-start gap-3 px-6 py-3 transition-colors hover:bg-surface-muted/40">
                               <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
-                                isSeverity ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                isSeverity ? 'border-warning-border bg-warning-soft text-warning-strong'
                                   : isLatest ? 'border-brand bg-brand text-white'
                                     : 'border-line bg-surface-subtle text-ink-secondary'
                               }`}>
@@ -1167,7 +1167,7 @@ export default function CustomerDashboardPage() {
 
                 <div className="space-y-1">
                   <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">Logged / Approved Consumed Hours</span>
-                  <div className="text-2xl font-black text-emerald-700">
+                  <div className="text-2xl font-black text-success-strong">
                     {dashboardData.totalLoggedHoursUsed.toFixed(1)}h / {totalConsumedHours.toFixed(1)}h
                   </div>
                   <span className="text-[11px] text-ink-muted block leading-tight">Total logged vs verified and approved hours</span>
@@ -1175,7 +1175,7 @@ export default function CustomerDashboardPage() {
 
                 <div className="space-y-1">
                   <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">Remaining Pool Hours</span>
-                  <div className="text-2xl font-black text-emerald-700">{remainingHours.toFixed(1)}h</div>
+                  <div className="text-2xl font-black text-success-strong">{remainingHours.toFixed(1)}h</div>
                   <span className="text-[11px] text-ink-muted block leading-tight">Estimated remaining balance pool</span>
                 </div>
               </div>
@@ -1287,10 +1287,10 @@ export default function CustomerDashboardPage() {
                       </span>
                       <Badge variant="outline" className={`text-[11px] font-bold ${
                         contractMetrics.expiryStatus === 'Expired'
-                          ? 'bg-red-50 text-red-700 border-red-200'
+                          ? 'bg-critical-soft text-critical-strong border-critical-border'
                           : contractMetrics.expiryStatus === 'Expiring Soon'
-                            ? 'bg-amber-50 text-amber-700 border-amber-250 animate-pulse'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            ? 'bg-warning-soft text-warning-strong border-amber-250 animate-pulse'
+                            : 'bg-success-soft text-success-strong border-success-border'
                       }`}>
                         {contractMetrics.expiryStatus.toUpperCase()}
                       </Badge>
@@ -1340,7 +1340,7 @@ export default function CustomerDashboardPage() {
 
                     <div className="space-y-1">
                       <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider block">Total Remaining</span>
-                      <span className="text-sm font-black text-emerald-700">{contractMetrics.totalRemainingHours.toFixed(1)}h</span>
+                      <span className="text-sm font-black text-success-strong">{contractMetrics.totalRemainingHours.toFixed(1)}h</span>
                     </div>
 
                     <div className="space-y-1">
@@ -1350,7 +1350,7 @@ export default function CustomerDashboardPage() {
 
                     <div className="space-y-1">
                       <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider block">Current Month Remaining</span>
-                      <span className="text-sm font-black text-emerald-700">{contractMetrics.currentMonthRemainingHours.toFixed(1)}h</span>
+                      <span className="text-sm font-black text-success-strong">{contractMetrics.currentMonthRemainingHours.toFixed(1)}h</span>
                     </div>
                   </div>
                 </div>

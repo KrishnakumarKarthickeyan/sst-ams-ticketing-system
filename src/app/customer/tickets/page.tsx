@@ -344,14 +344,14 @@ export default function CustomerTicketsPage() {
       const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
       if (resolved) {
         sla = resolved > due
-          ? { label: 'Breached', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' }
-          : { label: 'Met', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
+          ? { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' }
+          : { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
       } else if (nowTime > due) {
-        sla = { label: 'Overdue', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' };
+        sla = { label: 'Overdue', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' };
       } else if (due - nowTime < 12 * 60 * 60 * 1000) {
-        sla = { label: 'At Risk', color: 'bg-amber-50 text-amber-650 border-amber-200', dot: 'bg-amber-500' };
+        sla = { label: 'At Risk', color: 'bg-warning-soft text-amber-650 border-warning-border', dot: 'bg-amber-500' };
       } else {
-        sla = { label: 'On Track', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
+        sla = { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
       }
     }
     let remaining = 'N/A';
@@ -377,22 +377,22 @@ export default function CustomerTicketsPage() {
     { id: 'status', accessorKey: 'status', header: 'Status',
       cell: ({ row }) => {
         const t = row.original;
-        const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-          : (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200'
-          : t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-info-soft text-info-strong border-info-border';
+        const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-success-soft text-success-strong border-success-border'
+          : (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-warning-soft text-warning-strong border-warning-border'
+          : t.status === 'New' ? 'bg-brand-soft text-brand-strong border-brand-border' : 'bg-info-soft text-info-strong border-info-border';
         return <Badge className={`${statusColor} border text-[11px] font-bold uppercase`}>{t.status}</Badge>;
       } },
     { id: 'priority', accessorKey: 'priority', header: 'Priority',
       cell: ({ row }) => {
         const t = row.original;
-        const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200'
+        const priorityColor = t.priority === 'Critical' ? 'bg-critical-soft text-critical-strong border-critical-border'
           : t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200'
-          : t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-surface-subtle text-ink-secondary border-line';
+          : t.priority === 'Medium' ? 'bg-warning-soft text-warning-strong border-warning-border' : 'bg-surface-subtle text-ink-secondary border-line';
         return (
           <div className="flex gap-1.5 items-center">
             <Badge className={`${priorityColor} border text-[11px] font-bold uppercase`}>{t.priority}</Badge>
             {t.escalationFlag && t.escalationAcknowledgedAt && (
-              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 border text-[11px] font-bold uppercase">Priority Handling</Badge>
+              <Badge className="bg-success-soft text-success-strong border-success-border border text-[11px] font-bold uppercase">Priority Handling</Badge>
             )}
           </div>
         );
@@ -414,7 +414,7 @@ export default function CustomerTicketsPage() {
       cell: ({ row }) => { const t = row.original; return <span className="text-ink-secondary text-xs">{t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' ? new Date(t.slaDueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</span>; } },
     { id: 'escalation', header: 'Escalation', enableSorting: false,
       cell: ({ row }) => { const { escalationLevel } = rowSlaMeta(row.original); return escalationLevel > 0
-        ? <Badge className="bg-red-50 text-red-755 border border-red-200 uppercase text-[11px] font-black">Level {escalationLevel}</Badge>
+        ? <Badge className="bg-critical-soft text-red-755 border border-critical-border uppercase text-[11px] font-black">Level {escalationLevel}</Badge>
         : <span className="text-ink-muted text-[11px]">Nominal</span>; } },
   ], []);
 
@@ -423,21 +423,21 @@ export default function CustomerTicketsPage() {
     const sla = getSlaStatus(t);
     if (sla === 'Healthy') {
       return (
-        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-250 text-[11px] font-bold rounded px-1.5 py-0">
+        <Badge variant="outline" className="bg-success-soft text-success-strong border-emerald-250 text-[11px] font-bold rounded px-1.5 py-0">
           Healthy
         </Badge>
       );
     }
     if (sla === 'Warning') {
       return (
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-250 text-[11px] font-bold rounded px-1.5 py-0">
+        <Badge variant="outline" className="bg-warning-soft text-warning-strong border-amber-250 text-[11px] font-bold rounded px-1.5 py-0">
           Warning
         </Badge>
       );
     }
     if (sla === 'Breached') {
       return (
-        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[11px] font-bold rounded px-1.5 py-0 animate-pulse">
+        <Badge variant="outline" className="bg-critical-soft text-critical-strong border-critical-border text-[11px] font-bold rounded px-1.5 py-0 animate-pulse">
           Breached
         </Badge>
       );
@@ -467,7 +467,7 @@ export default function CustomerTicketsPage() {
     }
     if (prio === 'Medium') {
       return (
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[11px] font-bold rounded px-1.5 py-0">
+        <Badge variant="outline" className="bg-warning-soft text-warning-strong border-warning-border text-[11px] font-bold rounded px-1.5 py-0">
           Medium
         </Badge>
       );
@@ -483,14 +483,14 @@ export default function CustomerTicketsPage() {
   const getStatusBadge = (status: string) => {
     const classes: Record<string, string> = {
       New: 'bg-surface-subtle text-ink-secondary border-line',
-      Unassigned: 'bg-amber-50 text-amber-700 border-amber-250',
+      Unassigned: 'bg-warning-soft text-warning-strong border-amber-250',
       Assigned: 'bg-surface-subtle text-ink border-line',
       'In Progress': 'bg-surface-subtle text-ink border-line',
-      'Waiting for Customer': 'bg-amber-50 text-amber-700 border-amber-250',
+      'Waiting for Customer': 'bg-warning-soft text-warning-strong border-amber-250',
       'Waiting for Internal Team': 'bg-surface-subtle text-ink border-line',
-      Resolved: 'bg-emerald-50 text-emerald-700 border-emerald-250',
-      Closed: 'bg-emerald-50 text-emerald-700 border-emerald-250',
-      Reopened: 'bg-red-50 text-red-700 border-red-250'
+      Resolved: 'bg-success-soft text-success-strong border-emerald-250',
+      Closed: 'bg-success-soft text-success-strong border-emerald-250',
+      Reopened: 'bg-critical-soft text-critical-strong border-red-250'
     };
 
     return (
@@ -506,20 +506,20 @@ export default function CustomerTicketsPage() {
     const label = `${ageDays.toFixed(1)}d`;
     if (ageDays <= 2) {
       return (
-        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-250 text-[11px] font-bold rounded px-1.5 py-0">
+        <Badge variant="outline" className="bg-success-soft text-success-strong border-emerald-250 text-[11px] font-bold rounded px-1.5 py-0">
           {label}
         </Badge>
       );
     }
     if (ageDays <= 7) {
       return (
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-250 text-[11px] font-bold rounded px-1.5 py-0">
+        <Badge variant="outline" className="bg-warning-soft text-warning-strong border-amber-250 text-[11px] font-bold rounded px-1.5 py-0">
           {label}
         </Badge>
       );
     }
     return (
-      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[11px] font-bold rounded px-1.5 py-0">
+      <Badge variant="outline" className="bg-critical-soft text-critical-strong border-critical-border text-[11px] font-bold rounded px-1.5 py-0">
         {label}
       </Badge>
     );
@@ -854,12 +854,12 @@ ${ticket.description}
                   const due = new Date(t.slaDueAt).getTime();
                   const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
                   if (resolved) {
-                    if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' };
-                    return { label: 'Met', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
+                    if (resolved > due) return { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' };
+                    return { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
                   }
-                  if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' };
-                  if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-amber-650 border-amber-200', dot: 'bg-amber-500' };
-                  return { label: 'On Track', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
+                  if (nowTime > due) return { label: 'Overdue', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' };
+                  if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-warning-soft text-amber-650 border-warning-border', dot: 'bg-amber-500' };
+                  return { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
                 };
                 const sla = getSlaStatus();
 
@@ -883,14 +883,14 @@ ${ticket.description}
                 const createdDate = new Date(t.createdAt);
                 const ageDays = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
                 
-                const priorityColor = t.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
+                const priorityColor = t.priority === 'Critical' ? 'bg-critical-soft text-critical-strong border-critical-border' :
                                       t.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                      t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                      t.priority === 'Medium' ? 'bg-warning-soft text-warning-strong border-warning-border' :
                                       'bg-surface-subtle text-ink-secondary border-line';
 
-                const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                     (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                     t.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                const statusColor = (t.status === 'Resolved' || t.status === 'Closed') ? 'bg-success-soft text-success-strong border-success-border' :
+                                     (t.status === 'Waiting for Customer' || t.status === 'Customer Action') ? 'bg-warning-soft text-warning-strong border-warning-border' :
+                                     t.status === 'New' ? 'bg-brand-soft text-brand-strong border-brand-border' :
                                      'bg-info-soft text-info-strong border-info-border';
 
                 return (
@@ -902,7 +902,7 @@ ${ticket.description}
                         </span>
                         <div className="flex gap-1.5">
                           {t.escalationFlag && t.escalationAcknowledgedAt && (
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 border text-[11px] font-bold uppercase">Priority Handling</Badge>
+                            <Badge className="bg-success-soft text-success-strong border-success-border hover:bg-success-soft border text-[11px] font-bold uppercase">Priority Handling</Badge>
                           )}
                           <Badge className={`${priorityColor} border text-[11px] font-bold uppercase`}>{t.priority}</Badge>
                           <Badge className={`${statusColor} border text-[11px] font-bold uppercase`}>{t.status}</Badge>
@@ -1207,7 +1207,7 @@ ${ticket.description}
                         <button
                           type="button"
                           onClick={() => removeEscalateFile(pf.id)}
-                          className="absolute top-2 right-2 text-ink-muted hover:text-critical p-0.5 rounded-full hover:bg-red-50 transition"
+                          className="absolute top-2 right-2 text-ink-muted hover:text-critical p-0.5 rounded-full hover:bg-critical-soft transition"
                         >
                           <X size={12} />
                         </button>
