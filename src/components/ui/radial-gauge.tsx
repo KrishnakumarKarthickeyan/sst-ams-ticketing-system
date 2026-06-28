@@ -41,9 +41,9 @@ export function RadialGauge({
 }) {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2" style={{ width: size }}>
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2">
         <Skeleton className="rounded-full" style={{ width: size, height: size }} />
-        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-3 w-24" />
       </div>
     );
   }
@@ -54,8 +54,8 @@ export function RadialGauge({
   const data = [{ name: label, value: v }];
 
   return (
-    <div className="flex flex-col items-center justify-center" style={{ width: size }}>
-      <div className="relative" style={{ width: size, height: size }}>
+    <div className="flex h-full w-full flex-col items-center justify-center text-center">
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart innerRadius="72%" outerRadius="100%" data={data} startAngle={90} endAngle={-270}>
             <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
@@ -70,13 +70,13 @@ export function RadialGauge({
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="type-num text-2xl font-semibold tracking-tight text-ink">
+          <span className="type-num text-3xl font-semibold tracking-tight text-ink">
             {hasValue ? `${Math.round(v)}${suffix}` : '—'}
           </span>
         </div>
       </div>
-      <span className="mt-1 type-status uppercase tracking-wider text-ink-muted">{label}</span>
-      {sublabel && <span className="type-status text-ink-muted">{sublabel}</span>}
+      <span className="mt-3 type-status uppercase tracking-wider text-ink-muted">{label}</span>
+      {sublabel && <span className="mt-0.5 type-status text-ink-muted">{sublabel}</span>}
     </div>
   );
 }
