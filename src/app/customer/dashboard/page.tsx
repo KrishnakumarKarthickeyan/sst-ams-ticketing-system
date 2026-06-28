@@ -535,9 +535,9 @@ export default function CustomerDashboardPage() {
   // 6. SLA Status Chart for Incident tickets only
   const slaChartData = useMemo(() => {
     return [
-      { name: 'SLA Healthy', value: slaHealthy, fill: '#10b981' },
-      { name: 'SLA Warning', value: slaWarning, fill: '#f59e0b' },
-      { name: 'SLA Breached', value: slaBreached, fill: '#ef4444' }
+      { name: 'SLA Healthy', value: slaHealthy, fill: chartColors.semantic.success },
+      { name: 'SLA Warning', value: slaWarning, fill: chartColors.semantic.warning },
+      { name: 'SLA Breached', value: slaBreached, fill: chartColors.semantic.danger }
     ].filter(item => item.value > 0);
   }, [slaHealthy, slaWarning, slaBreached]);
 
