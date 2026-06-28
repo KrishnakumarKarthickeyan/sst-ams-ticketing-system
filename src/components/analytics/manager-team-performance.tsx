@@ -271,8 +271,8 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
 
         {/* Hero SLA gauge beside the KPI cards */}
         <div className="flex flex-col gap-4 lg:flex-row">
-          <div className="flex shrink-0 items-center justify-center rounded-lg border border-line bg-surface p-4 shadow-card lg:w-56">
-            <RadialGauge value={teamKpis.slaAdh} label="Team SLA Adherence" sublabel={`${teamKpis.activeConsultants} consultants`} bands={SLA_GAUGE_BANDS} loading={loading} />
+          <div className="flex shrink-0 items-center justify-center rounded-lg border border-line bg-surface p-5 shadow-card lg:w-56">
+            <RadialGauge value={teamKpis.slaAdh} label="Team SLA Adherence" sublabel={`${teamKpis.activeConsultants} ${teamKpis.activeConsultants === 1 ? 'consultant' : 'consultants'}`} bands={SLA_GAUGE_BANDS} loading={loading} />
           </div>
           <div className="grid flex-1 grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Active Consultants" value={teamKpis.activeConsultants} icon={Users} tone="brand" loading={loading} />
