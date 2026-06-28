@@ -203,7 +203,7 @@ const EscalationTicketRow = ({
           </Link>
         </span>
         <span className="text-ink-muted">·</span>
-        <Badge variant="outline" className="text-[11px] font-semibold bg-amber-50 text-amber-800 border-amber-200 uppercase py-0.5 px-1.5 leading-none h-5">
+        <Badge variant="outline" className="text-[11px] font-semibold bg-warning-soft text-amber-800 border-warning-border uppercase py-0.5 px-1.5 leading-none h-5">
           ESCALATED
         </Badge>
         <Badge variant="outline" className="text-[11px] font-semibold bg-surface-muted text-ink-secondary border-line uppercase py-0.5 px-1.5 leading-none h-5">
@@ -981,7 +981,7 @@ export default function ManagerDashboardPage() {
           title: t.title,
           priority: t.priority,
           detail: `Breached on ${new Date(t.slaDueAt).toLocaleDateString()}`,
-          badgeColor: 'bg-red-100 text-red-800 border-red-200'
+          badgeColor: 'bg-red-100 text-red-800 border-critical-border'
         });
       } else if (t.priority === 'Critical') {
         list.push({
@@ -991,7 +991,7 @@ export default function ManagerDashboardPage() {
           title: t.title,
           priority: t.priority,
           detail: `SLA: ${t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' ? new Date(t.slaDueAt).toLocaleString() : 'N/A'}`,
-          badgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+          badgeColor: 'bg-amber-100 text-amber-800 border-warning-border'
         });
       } else if (t.escalationFlag) {
         list.push({
@@ -1001,7 +1001,7 @@ export default function ManagerDashboardPage() {
           title: t.title,
           priority: t.priority,
           detail: `Escalated flag set to TRUE`,
-          badgeColor: 'bg-red-50 text-red-750 border-red-100'
+          badgeColor: 'bg-critical-soft text-red-750 border-red-100'
         });
       }
     });
@@ -2196,13 +2196,13 @@ export default function ManagerDashboardPage() {
             
             {/* Customers Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
-              checklistData.customers.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.customers.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
+              checklistData.customers.status === 'ACTIVE' ? 'border-success-border bg-success-soft/10' :
+              checklistData.customers.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-critical-border bg-critical-soft/10'
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Customers</span>
                 {checklistData.customers.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.customers.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.customers.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.customers.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
               <p className="text-[11px] text-ink-secondary mt-1">
@@ -2212,13 +2212,13 @@ export default function ManagerDashboardPage() {
 
             {/* Consultants Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
-              checklistData.consultants.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.consultants.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
+              checklistData.consultants.status === 'ACTIVE' ? 'border-success-border bg-success-soft/10' :
+              checklistData.consultants.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-critical-border bg-critical-soft/10'
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Consultants</span>
                 {checklistData.consultants.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.consultants.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.consultants.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.consultants.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
               <p className="text-[11px] text-ink-secondary mt-1">
@@ -2228,13 +2228,13 @@ export default function ManagerDashboardPage() {
 
             {/* Tickets Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
-              checklistData.tickets.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.tickets.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
+              checklistData.tickets.status === 'ACTIVE' ? 'border-success-border bg-success-soft/10' :
+              checklistData.tickets.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-critical-border bg-critical-soft/10'
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Tickets</span>
                 {checklistData.tickets.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.tickets.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.tickets.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.tickets.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
               <p className="text-[11px] text-ink-secondary mt-1">
@@ -2244,13 +2244,13 @@ export default function ManagerDashboardPage() {
 
             {/* Approvals Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
-              checklistData.approvals.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.approvals.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
+              checklistData.approvals.status === 'ACTIVE' ? 'border-success-border bg-success-soft/10' :
+              checklistData.approvals.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-critical-border bg-critical-soft/10'
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Approvals</span>
                 {checklistData.approvals.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.approvals.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.approvals.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.approvals.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
               <p className="text-[11px] text-ink-secondary mt-1">
@@ -2260,13 +2260,13 @@ export default function ManagerDashboardPage() {
 
             {/* Reports Row */}
             <div className={`p-3 rounded border flex flex-col justify-between ${
-              checklistData.reports.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50/10' :
-              checklistData.reports.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-red-200 bg-red-50/10'
+              checklistData.reports.status === 'ACTIVE' ? 'border-success-border bg-success-soft/10' :
+              checklistData.reports.status === 'EMPTY' ? 'border-dashed border-line bg-surface' : 'border-critical-border bg-critical-soft/10'
             }`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-ink-secondary">Reports</span>
                 {checklistData.reports.status === 'ACTIVE' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-700 text-white px-1 py-0.5 border-none">Active</Badge>}
-                {checklistData.reports.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border-amber-255 px-1 py-0.5">Empty</Badge>}
+                {checklistData.reports.status === 'EMPTY' && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wider text-warning-strong bg-warning-soft border-amber-255 px-1 py-0.5">Empty</Badge>}
                 {checklistData.reports.status === 'ERROR' && <Badge className="text-[11px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-600 text-white px-1 py-0.5 border-none">Error</Badge>}
               </div>
               <p className="text-[11px] text-ink-secondary mt-1">
@@ -2612,7 +2612,7 @@ export default function ManagerDashboardPage() {
                               <div className="flex justify-between items-center">
                                 <Link href={`/manager/tickets/${t.id}`} className="font-semibold text-ink hover:underline">{t.ticketNumber || t.id}</Link>
                                 <div className="flex gap-1.5 items-center">
-                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-150 text-[11px] font-semibold py-0.5 px-1.5 uppercase leading-none h-4.5 flex items-center gap-1">
+                                  <Badge className="bg-success-soft text-success-strong border-emerald-150 text-[11px] font-semibold py-0.5 px-1.5 uppercase leading-none h-4.5 flex items-center gap-1">
                                     <Check className="size-2.5 text-success" /> Ack
                                   </Badge>
                                   <span className="text-[11px] bg-surface-subtle text-ink px-1 py-0.2 rounded font-bold uppercase leading-none h-4 flex items-center">{t.priority}</span>
@@ -2951,7 +2951,7 @@ export default function ManagerDashboardPage() {
                 <div
                   key={idx}
                   className={`border p-3.5 rounded-lg flex items-start justify-between gap-4 bg-surface ${
-                    alert.severity === 'Critical' ? 'border-red-200 bg-red-50/10' : 'border-line'
+                    alert.severity === 'Critical' ? 'border-critical-border bg-critical-soft/10' : 'border-line'
                   }`}
                 >
                   <div className="flex items-start gap-2.5">
@@ -3170,7 +3170,7 @@ export default function ManagerDashboardPage() {
                               <td className="py-2 px-3 text-ink-secondary whitespace-nowrap">{new Date(t.slaDueAt).toLocaleString()}</td>
                               <td className="py-2 px-3 text-ink-secondary font-semibold">{t.assignedConsultant || 'Unassigned'}</td>
                               <td className="py-2 px-3 text-center">
-                                <span className="px-1.5 py-0.2 rounded font-bold border text-[11px] uppercase text-blue-700 bg-blue-50 border-blue-200">{t.status}</span>
+                                <span className="px-1.5 py-0.2 rounded font-bold border text-[11px] uppercase text-brand-strong bg-brand-soft border-brand-border">{t.status}</span>
                               </td>
                             </tr>
                           );
@@ -3902,7 +3902,7 @@ export default function ManagerDashboardPage() {
                           {t.ticketNumber}
                         </Link>
                         <span className={`text-[11px] font-extrabold uppercase px-1 py-0.5 rounded ${
-                          t.priority === 'Critical' ? 'bg-red-50 text-red-700' : 'bg-surface-subtle text-ink-secondary'
+                          t.priority === 'Critical' ? 'bg-critical-soft text-critical-strong' : 'bg-surface-subtle text-ink-secondary'
                         }`}>
                           {t.priority}
                         </span>
@@ -3974,7 +3974,7 @@ export default function ManagerDashboardPage() {
 
                 <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                   {escalationsAndBreachesList.map((esc, idx) => (
-                    <div key={idx} className="p-2.5 bg-red-50/10 border border-red-100 rounded-lg hover:border-red-200 transition flex flex-col justify-between gap-1.5">
+                    <div key={idx} className="p-2.5 bg-critical-soft/10 border border-red-100 rounded-lg hover:border-critical-border transition flex flex-col justify-between gap-1.5">
                       <div className="flex justify-between items-start">
                         <span className={`text-[11px] font-extrabold uppercase px-1 py-0.5 rounded border ${esc.badgeColor}`}>
                           {esc.type}
@@ -4193,7 +4193,7 @@ export default function ManagerDashboardPage() {
                 placeholder="Describe why this effort/closure/unlock request is being rejected or sent back for revision..."
                 value={rejectDialog.reason}
                 onChange={e => setRejectDialog(prev => ({ ...prev, reason: e.target.value }))}
-                className="w-full text-[11px] focus:outline-none min-h-[90px] border-red-200 focus:border-red-400"
+                className="w-full text-[11px] focus:outline-none min-h-[90px] border-critical-border focus:border-red-400"
               />
             </div>
           </div>

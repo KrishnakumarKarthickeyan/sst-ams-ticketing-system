@@ -549,7 +549,7 @@ export default function AdminManagersPage() {
                               </span>
                             </div>
                             {mgr.criticalCount > 0 && (
-                              <div className="flex items-center gap-1.5 text-amber-700">
+                              <div className="flex items-center gap-1.5 text-warning-strong">
                                 <AlertTriangle size={11} className="shrink-0" />
                                 <span className="text-[11px] font-bold">
                                   {mgr.criticalCount} SLA Risk Ticket{mgr.criticalCount > 1 ? 's' : ''}
@@ -565,7 +565,7 @@ export default function AdminManagersPage() {
                         </td>
                         <td className="p-4">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-bold ${
-                            mgr.active ? 'bg-emerald-50 border-emerald-250 text-emerald-800' : 'bg-red-50 border-red-250 text-red-800'
+                            mgr.active ? 'bg-success-soft border-emerald-250 text-emerald-800' : 'bg-critical-soft border-red-250 text-red-800'
                           }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${mgr.active ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                             {mgr.active ? 'Active' : 'Disabled'}
@@ -584,8 +584,8 @@ export default function AdminManagersPage() {
                               onClick={() => handleToggleStatus(mgr)}
                               className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border transition cursor-pointer ${
                                 mgr.active 
-                                  ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100' 
-                                  : 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+                                  ? 'bg-warning-soft border-warning-border text-amber-800 hover:bg-amber-100' 
+                                  : 'bg-success-soft border-success-border text-emerald-800 hover:bg-emerald-100'
                               }`}
                             >
                               {mgr.active ? 'Disable' : 'Enable'}
@@ -599,7 +599,7 @@ export default function AdminManagersPage() {
                             </button>
                             <button
                               onClick={() => handleDeleteManager(mgr)}
-                              className="p-1.5 rounded hover:bg-red-50 text-ink-muted hover:text-red-750 transition cursor-pointer"
+                              className="p-1.5 rounded hover:bg-critical-soft text-ink-muted hover:text-red-750 transition cursor-pointer"
                               title="Remove Manager"
                             >
                               <Trash2 size={12} />
@@ -670,9 +670,9 @@ export default function AdminManagersPage() {
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-ink text-[11px]">{t.ticket_number || t.id}</span>
                           <span className={`px-1.5 py-0.2 rounded text-[11px] font-bold uppercase ${
-                            t.priority === 'Critical' ? 'bg-red-50 text-red-700 border border-red-200' :
+                            t.priority === 'Critical' ? 'bg-critical-soft text-critical-strong border border-critical-border' :
                             t.priority === 'High' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
-                            t.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            t.priority === 'Medium' ? 'bg-warning-soft text-warning-strong border border-warning-border' :
                             'bg-surface-subtle text-ink-secondary border border-line'
                           }`}>
                             {t.priority}

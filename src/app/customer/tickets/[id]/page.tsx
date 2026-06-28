@@ -215,7 +215,7 @@ export default function CustomerTicketDetailPage() {
   if (!ticket) {
     return (
       <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-surface border border-line shadow-card space-y-4">
-        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto">
+        <div className="w-14 h-14 rounded-full bg-critical-soft flex items-center justify-center mx-auto">
           <AlertCircle size={24} className="text-critical" />
         </div>
         <h2 className="text-lg font-semibold text-ink">Ticket Not Found</h2>
@@ -233,11 +233,11 @@ export default function CustomerTicketDetailPage() {
   const customerCompany = user?.company || 'Apex Global Industries';
   if (ticket.organization !== customerCompany) {
     return (
-      <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-surface border border-red-200 shadow-card space-y-4">
-        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto">
+      <div className="max-w-lg mx-auto my-16 p-8 text-center rounded-2xl bg-surface border border-critical-border shadow-card space-y-4">
+        <div className="w-14 h-14 rounded-full bg-critical-soft flex items-center justify-center mx-auto">
           <ShieldCheck size={24} className="text-critical" />
         </div>
-        <h2 className="text-lg font-semibold text-red-700">Access Denied</h2>
+        <h2 className="text-lg font-semibold text-critical-strong">Access Denied</h2>
         <p className="text-sm text-ink-secondary">
           You don&apos;t have permission to view this ticket. It belongs to a different organization.
         </p>
@@ -296,12 +296,12 @@ export default function CustomerTicketDetailPage() {
     const due = new Date(ticket.slaDueAt).getTime();
     const resolved = ticket.resolvedAt ? new Date(ticket.resolvedAt).getTime() : null;
     if (resolved) {
-      if (resolved > due) return { label: 'Breached', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500' };
-      return { label: 'Met', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
+      if (resolved > due) return { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' };
+      return { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
     }
-    if (nowTime > due) return { label: 'Overdue', color: 'bg-red-50 text-critical border-red-200', dot: 'bg-red-500 animate-pulse' };
-    if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-amber-50 text-warning border-amber-200', dot: 'bg-amber-500' };
-    return { label: 'On Track', color: 'bg-emerald-50 text-success border-emerald-200', dot: 'bg-emerald-500' };
+    if (nowTime > due) return { label: 'Overdue', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500 animate-pulse' };
+    if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-warning-soft text-warning border-warning-border', dot: 'bg-amber-500' };
+    return { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
   };
   const slaStatus = getSlaStatus();
 
@@ -592,18 +592,18 @@ export default function CustomerTicketDetailPage() {
 
   // Status color helper
   const getStatusStyle = (status: string) => {
-    if (status === 'Resolved' || status === 'Closed') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    if (status === 'Waiting for Customer' || status === 'Customer Action') return 'bg-amber-50 text-amber-700 border-amber-200';
-    if (status === 'New') return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (status === 'Resolved' || status === 'Closed') return 'bg-success-soft text-success-strong border-success-border';
+    if (status === 'Waiting for Customer' || status === 'Customer Action') return 'bg-warning-soft text-warning-strong border-warning-border';
+    if (status === 'New') return 'bg-brand-soft text-brand-strong border-brand-border';
     if (status === 'In Progress' || status.includes('Progress')) return 'bg-info-soft text-info-strong border-info-border';
     if (status === 'Reopened' || status === 'Reopen Requested') return 'bg-orange-50 text-orange-700 border-orange-200';
     return 'bg-surface-subtle text-ink-secondary border-line';
   };
 
   const getPriorityStyle = (priority: string) => {
-    if (priority === 'Critical') return 'bg-red-50 text-red-700 border-red-200';
+    if (priority === 'Critical') return 'bg-critical-soft text-critical-strong border-critical-border';
     if (priority === 'High') return 'bg-orange-50 text-orange-700 border-orange-200';
-    if (priority === 'Medium') return 'bg-amber-50 text-amber-700 border-amber-200';
+    if (priority === 'Medium') return 'bg-warning-soft text-warning-strong border-warning-border';
     return 'bg-surface-subtle text-ink-secondary border-line';
   };
 
@@ -620,7 +620,7 @@ export default function CustomerTicketDetailPage() {
 
       {/* ── Success Banner ── */}
       {successBanner && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3 shadow-card animate-in slide-in-from-top-2 duration-300">
+        <div className="bg-success-soft border border-success-border rounded-lg p-4 flex items-center gap-3 shadow-card animate-in slide-in-from-top-2 duration-300">
           <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
             <CheckCircle2 size={16} className="text-success" />
           </div>
@@ -677,7 +677,7 @@ export default function CustomerTicketDetailPage() {
                 })()}
 
                  {ticket.softDeleteStatus === 'Pending Delete' && (
-                  <Badge className="bg-amber-50 text-warning border border-amber-200 text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse hover:bg-transparent">
+                  <Badge className="bg-warning-soft text-warning border border-warning-border text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse hover:bg-transparent">
                     Pending Deletion
                   </Badge>
                 )}
@@ -767,7 +767,7 @@ export default function CustomerTicketDetailPage() {
 
                   <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" className="h-9 text-[13px] font-medium border-red-200 text-critical hover:bg-red-50 rounded-lg gap-1.5">
+                      <Button variant="outline" className="h-9 text-[13px] font-medium border-critical-border text-critical hover:bg-critical-soft rounded-lg gap-1.5">
                         Reject & Reopen
                       </Button>
                     </DialogTrigger>
@@ -847,7 +847,7 @@ export default function CustomerTicketDetailPage() {
 
               {ticket.status !== 'Closed' && ticket.status !== 'Resolved' && (
                 ticket.isEscalated ? (
-                  <Badge variant="destructive" className="h-9 text-[13px] font-medium border-red-200 bg-red-100 text-red-800 hover:bg-red-100 rounded-lg">
+                  <Badge variant="destructive" className="h-9 text-[13px] font-medium border-critical-border bg-red-100 text-red-800 hover:bg-red-100 rounded-lg">
                     Escalated — Awaiting Acknowledgment
                   </Badge>
                 ) : (
@@ -904,7 +904,7 @@ export default function CustomerTicketDetailPage() {
                 <Button
                   onClick={() => setShowDeleteDialog(true)}
                   variant="outline"
-                  className="h-9 text-[13px] font-medium border-line text-ink-secondary hover:text-critical hover:border-red-200 hover:bg-red-50 rounded-lg gap-1.5 transition"
+                  className="h-9 text-[13px] font-medium border-line text-ink-secondary hover:text-critical hover:border-critical-border hover:bg-critical-soft rounded-lg gap-1.5 transition"
                 >
                   <Trash2 size={14} /> Delete
                 </Button>
@@ -964,7 +964,7 @@ export default function CustomerTicketDetailPage() {
       )}
 
       {ticket.isEscalated && ticket.escalationAcknowledgedAt && (
-        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
+        <Alert className="border-success-border bg-success-soft text-emerald-800">
           <ShieldCheck className="size-4 text-success" />
           <AlertTitle>Escalation Acknowledged — Priority Handling Active</AlertTitle>
           <AlertDescription>
@@ -976,12 +976,12 @@ export default function CustomerTicketDetailPage() {
 
       {/* SLA Breach Warning */}
       {ticket.status !== 'Resolved' && ticket.status !== 'Closed' && isSlaApplicable && new Date(ticket.slaDueAt).getTime() < Date.now() && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 shadow-card">
+        <div className="bg-critical-soft border border-critical-border rounded-lg p-4 flex items-start gap-3 shadow-card">
           <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
             <AlertTriangle size={16} className="text-critical" />
           </div>
           <div>
-            <p className="font-semibold text-red-700 text-sm">SLA Target Exceeded</p>
+            <p className="font-semibold text-critical-strong text-sm">SLA Target Exceeded</p>
             <p className="text-[13px] text-critical/80 mt-0.5 leading-relaxed">This ticket has exceeded its resolution target. The support team has been notified for immediate action.</p>
           </div>
         </div>
@@ -1037,7 +1037,7 @@ export default function CustomerTicketDetailPage() {
 
               {/* Resolution Summary */}
               {(ticket.status === 'Resolved' || ticket.status === 'Closed') && (
-                <div className="bg-emerald-50/50 rounded-2xl border border-emerald-200/60 shadow-card overflow-hidden">
+                <div className="bg-success-soft/50 rounded-2xl border border-success-border/60 shadow-card overflow-hidden">
                   <div className="px-6 py-4 border-b border-emerald-100 flex items-center gap-2">
                     <ShieldCheck size={16} className="text-success" />
                     <h3 className="text-sm font-semibold text-emerald-800">Resolution Summary</h3>
@@ -1045,20 +1045,20 @@ export default function CustomerTicketDetailPage() {
                   <div className="p-6 space-y-4">
                     {ticket.rootCause && (
                       <div className="space-y-1.5">
-                        <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Root Cause</h4>
+                        <h4 className="text-xs font-semibold text-success-strong uppercase tracking-wider">Root Cause</h4>
                         <p className="text-[13px] text-ink-secondary leading-relaxed">{ticket.rootCause}</p>
                       </div>
                     )}
                     {ticket.resolutionSummary && (
                       <div className="space-y-1.5">
-                        <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Fix Applied</h4>
+                        <h4 className="text-xs font-semibold text-success-strong uppercase tracking-wider">Fix Applied</h4>
                         <p className="text-[13px] text-ink-secondary leading-relaxed">{ticket.resolutionSummary}</p>
                       </div>
                     )}
                     {ticket.transportRequest && (
                       <div className="space-y-1.5">
-                        <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">SAP Transport</h4>
-                        <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs rounded-lg px-2.5 py-0.5 hover:bg-transparent">
+                        <h4 className="text-xs font-semibold text-success-strong uppercase tracking-wider">SAP Transport</h4>
+                        <Badge className="bg-emerald-100 text-success-strong border border-success-border text-xs rounded-lg px-2.5 py-0.5 hover:bg-transparent">
                           {ticket.transportRequest}
                         </Badge>
                       </div>
@@ -1224,7 +1224,7 @@ export default function CustomerTicketDetailPage() {
                                 <button
                                   type="button"
                                   onClick={() => removePendingFile(pf.id)}
-                                  className="absolute top-2 right-2 text-ink-muted hover:text-critical p-1 rounded-full hover:bg-red-50 transition"
+                                  className="absolute top-2 right-2 text-ink-muted hover:text-critical p-1 rounded-full hover:bg-critical-soft transition"
                                 >
                                   <X size={14} />
                                 </button>
@@ -1303,7 +1303,7 @@ export default function CustomerTicketDetailPage() {
                 <div className="p-6">
                   {isClosed ? (
                     <div className="space-y-5">
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+                      <div className="bg-success-soft border border-success-border rounded-lg p-4 flex items-start gap-3">
                         <Unlock size={16} className="text-success shrink-0 mt-0.5" />
                         <div>
                           <p className="font-semibold text-emerald-800 text-sm">Hours Released</p>
@@ -1349,7 +1349,7 @@ export default function CustomerTicketDetailPage() {
 
           {/* Pending Delete Alert */}
           {ticket.softDeleteStatus === 'Pending Delete' && ticket.deleteRequests && ticket.deleteRequests.length > 0 && (
-            <div className="bg-amber-50 rounded-2xl border border-amber-200/60 shadow-card overflow-hidden">
+            <div className="bg-warning-soft rounded-2xl border border-warning-border/60 shadow-card overflow-hidden">
               <div className="px-5 py-3.5 border-b border-amber-100 flex items-center gap-2">
                 <Trash2 size={14} className="text-warning" />
                 <h3 className="text-sm font-semibold text-amber-800">Deletion Pending</h3>
@@ -1369,11 +1369,11 @@ export default function CustomerTicketDetailPage() {
                     <div className="grid grid-cols-2 gap-2 text-center">
                       <div className="p-2.5 bg-surface rounded-lg border border-amber-100">
                         <p className="text-[11px] text-ink-muted font-medium uppercase">Manager</p>
-                        <Badge className="mt-1 bg-amber-100 text-amber-700 border border-amber-200 text-[11px] rounded-full hover:bg-transparent">{req.managerApproval}</Badge>
+                        <Badge className="mt-1 bg-amber-100 text-warning-strong border border-warning-border text-[11px] rounded-full hover:bg-transparent">{req.managerApproval}</Badge>
                       </div>
                       <div className="p-2.5 bg-surface rounded-lg border border-amber-100">
                         <p className="text-[11px] text-ink-muted font-medium uppercase">Director</p>
-                        <Badge className="mt-1 bg-amber-100 text-amber-700 border border-amber-200 text-[11px] rounded-full hover:bg-transparent">{req.adminApproval}</Badge>
+                        <Badge className="mt-1 bg-amber-100 text-warning-strong border border-warning-border text-[11px] rounded-full hover:bg-transparent">{req.adminApproval}</Badge>
                       </div>
                     </div>
                   </div>
@@ -1418,7 +1418,7 @@ export default function CustomerTicketDetailPage() {
                         </div>
                       </div>
                       {assignment.isPrimary && (
-                        <Badge className="bg-amber-100 text-amber-700 border border-amber-200 text-[11px] font-semibold rounded-full px-2 py-0 hover:bg-transparent">
+                        <Badge className="bg-amber-100 text-warning-strong border border-warning-border text-[11px] font-semibold rounded-full px-2 py-0 hover:bg-transparent">
                           <Star size={9} className="fill-amber-500 text-amber-500 mr-0.5" /> Lead
                         </Badge>
                       )}
@@ -1528,7 +1528,7 @@ export default function CustomerTicketDetailPage() {
                 </div>
                 <div className={`p-2.5 rounded-lg border text-[11px] font-semibold ${
                   ticket.status === 'Resolved' || ticket.status === 'Closed'
-                    ? 'bg-emerald-50 text-success border-emerald-200'
+                    ? 'bg-success-soft text-success border-success-border'
                     : 'bg-info-soft text-info border-info-border'
                 }`}>
                   {ticket.status === 'Resolved' || ticket.status === 'Closed' ? '✓ Resolution Complete' : '◉ Clock Active'}
