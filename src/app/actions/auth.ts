@@ -1,6 +1,7 @@
 'use server';
 
 import { getErrorMessage } from '@/lib/errors';
+import { generateTemporaryPassword as sharedGenerateTemporaryPassword } from '@/lib/security/temp-password';
 import { createClient } from '@supabase/supabase-js';
 
 const getAdminClient = () => {
@@ -39,36 +40,10 @@ export async function verifyPasswordPolicy(password: string): Promise<{ isValid:
   return { isValid: true };
 }
 
-// Automatic Secure Temporary Password Generator
+// Automatic Secure Temporary Password Generator — single source of truth in
+// lib/security/temp-password (always >=14 chars + mixed-class, Supabase-policy safe).
 function generateTemporaryPassword(): string {
-  const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // exclude easily confused characters (I, O)
-  const lowers = 'abcdefghijkmnopqrstuvwxyz'; // exclude l
-  const numbers = '23456789'; // exclude 0, 1
-  const specials = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  
-  const getRand = (str: string) => str[Math.floor(Math.random() * str.length)];
-  
-  // Ensure we satisfy the complexity requirements:
-  const chars = [
-    getRand(uppers),
-    getRand(lowers),
-    getRand(numbers),
-    getRand(specials)
-  ];
-  
-  const allChars = uppers + lowers + numbers + specials;
-  const length = 10; // between 8-12 characters
-  for (let i = 4; i < length; i++) {
-    chars.push(getRand(allChars));
-  }
-  
-  // Shuffle characters
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  
-  return chars.join('');
+  return sharedGenerateTemporaryPassword();
 }
 
 export async function createAuthUser(email: string, password: string, fullName: string, role: string) {
