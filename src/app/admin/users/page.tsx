@@ -264,13 +264,8 @@ export default function AdminUsersPage() {
         });
 
         if (authRes.error === 'NO_SERVICE_KEY') {
-          // Generate password on client fallback
-          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-          let tempPass = '';
-          for (let i = 0; i < 10; i++) {
-            tempPass += chars.charAt(Math.floor(Math.random() * chars.length));
-          }
-          const password = pwdOption === 'manual' ? newPassword : ('Temp@' + tempPass);
+          // Generate password on client fallback — shared compliant generator (>=14, mixed-class).
+          const password = pwdOption === 'manual' ? newPassword : generateTemporaryPassword();
 
           // Fallback to client-side signup
           const authClient = getClientSideAuthClient();
