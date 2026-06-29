@@ -5,73 +5,62 @@ import { useTickets } from '../../../context/TicketContext';
 import Link from 'next/link';
 import { Clock, ShieldAlert, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
+import { Card } from '../../../components/ui/card';
+import { computeSla, getTargetHours, formatIstDateTime, formatBusinessDuration, type SlaComputation } from '../../../lib/sla/slaEngine';
 
 export default function ManagerSlaMonitoringPage() {
-  const { tickets } = useTickets();
+  const { tickets, getClientTargets } = useTickets();
 
-  // Active tickets sorted by SLA urgency
-  const activeTickets = useMemo(() => {
+  // Active Incident tickets with their LIVE engine SLA — single source of truth.
+  // Sorted by urgency: breached first, then soonest engine due; Not Started last.
+  const activeRows = useMemo(() => {
+    const now = new Date();
     return tickets
       .filter(t => t.status !== 'Resolved' && t.status !== 'Closed')
-      .sort((a, b) => new Date(a.slaDueAt).getTime() - new Date(b.slaDueAt).getTime());
-  }, [tickets]);
+      .filter(t => (t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt !== 'SLA Not Applicable')
+      .map(t => {
+        const target = getTargetHours(t.priority, getClientTargets(t.organizationId));
+        const sla = computeSla(
+          { leadAssignedAt: t.leadAssignedAt, status: t.status, resolvedAt: t.resolvedAt, closedAt: t.closedAt },
+          target,
+          now,
+        );
+        return { t, sla };
+      })
+      .sort((a, b) => {
+        const rank = (s: SlaComputation) => (s.status === 'Breached' ? 0 : s.status === 'Not Started' ? 2 : 1);
+        const ra = rank(a.sla), rb = rank(b.sla);
+        if (ra !== rb) return ra - rb;
+        const da = a.sla.dueAt ? a.sla.dueAt.getTime() : Infinity;
+        const db = b.sla.dueAt ? b.sla.dueAt.getTime() : Infinity;
+        return da - db;
+      });
+  }, [tickets, getClientTargets]);
 
-  // SLA Summary Metrics
+  // SLA Summary Metrics — all from engine sla_status, so they reconcile with the
+  // service-desk SLA Breached tab, the dashboard KPI and the card pills.
   const slaMetrics = useMemo(() => {
-    const now = Date.now();
-    let breached = 0;
-    let warning = 0; // Less than 24 hours remaining
-    let healthy = 0;
-
-    activeTickets.forEach(t => {
-      const diff = new Date(t.slaDueAt).getTime() - now;
-      if (diff < 0) {
-        breached++;
-      } else if (diff < 24 * 60 * 60 * 1000) {
-        warning++;
-      } else {
-        healthy++;
-      }
+    let breached = 0, warning = 0, healthy = 0;
+    activeRows.forEach(({ sla }) => {
+      if (sla.status === 'Breached') breached++;
+      else if (sla.status === 'At Risk') warning++;
+      else healthy++; // On Track / Not Started
     });
+    return { total: activeRows.length, breached, warning, healthy };
+  }, [activeRows]);
 
-    return {
-      total: activeTickets.length,
-      breached,
-      warning,
-      healthy
-    };
-  }, [activeTickets]);
-
-  // Helper: Live SLA status resolver
-  const getSlaDetails = (dueDateStr: string) => {
-    const due = new Date(dueDateStr);
-    const now = new Date();
-    const diff = due.getTime() - now.getTime();
-
-    if (diff < 0) {
-      return {
-        label: 'BREACHED',
-        style: 'bg-critical-soft text-red-750 border-critical-border animate-pulse font-black',
-        textStyle: 'text-red-750 font-bold'
-      };
+  // Per-row countdown label from the engine (business-hours remaining).
+  const getSlaDetails = (sla: SlaComputation) => {
+    if (sla.status === 'Breached') {
+      return { label: 'BREACHED', style: 'bg-critical-soft text-critical-strong border-critical-border animate-pulse font-black' };
     }
-
-    const hoursRemaining = diff / (1000 * 60 * 60);
-    if (hoursRemaining < 24) {
-      return {
-        label: `${Math.round(hoursRemaining)}h remaining`,
-        style: 'bg-warning-soft text-warning-strong border-warning-border font-bold',
-        textStyle: 'text-warning-strong font-semibold'
-      };
+    if (sla.status === 'Not Started') {
+      return { label: 'NOT STARTED', style: 'bg-surface-subtle text-ink-secondary border-line font-semibold' };
     }
-
-    const daysRemaining = hoursRemaining / 24;
-    return {
-      label: `${Math.round(daysRemaining)}d remaining`,
-      style: 'bg-surface-subtle text-ink-secondary border-line font-semibold',
-      textStyle: 'text-ink-secondary font-normal'
-    };
+    if (sla.status === 'At Risk') {
+      return { label: `${formatBusinessDuration(sla.remainingHours)} left`, style: 'bg-warning-soft text-warning-strong border-warning-border font-bold' };
+    }
+    return { label: `${formatBusinessDuration(sla.remainingHours)} left`, style: 'bg-surface-subtle text-ink-secondary border-line font-semibold' };
   };
 
   return (
@@ -140,15 +129,15 @@ export default function ManagerSlaMonitoringPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line text-[11px]">
-              {activeTickets.length === 0 ? (
+              {activeRows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-ink-muted italic uppercase">
                     All active tickets fully comply with SLA resolution rules
                   </td>
                 </tr>
               ) : (
-                activeTickets.map((t) => {
-                  const sla = getSlaDetails(t.slaDueAt);
+                activeRows.map(({ t, sla: slaComp }) => {
+                  const sla = getSlaDetails(slaComp);
                   return (
                     <tr key={t.id} className="hover:bg-surface-muted/40 transition">
                       
@@ -177,9 +166,9 @@ export default function ManagerSlaMonitoringPage() {
                         {t.assignedConsultant || <span className="text-ink-muted font-normal italic">Unassigned</span>}
                       </td>
 
-                      {/* SLA Deadline Time */}
+                      {/* SLA Deadline Time — engine business-hours due (IST). */}
                       <td className="py-3 px-4 text-ink-secondary">
-                        {new Date(t.slaDueAt).toLocaleString()}
+                        {slaComp.dueAt ? formatIstDateTime(slaComp.dueAt) : 'Pending lead'}
                       </td>
 
                       {/* SLA Countdown Status */}

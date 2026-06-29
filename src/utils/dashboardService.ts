@@ -103,22 +103,23 @@ export const getEscalationCounts = (tickets: Ticket[], scope: DashboardScope): n
   return scoped.filter(t => t.escalationFlag).length;
 };
 
-// 5b. Centralized SLA Status Helper
-export const getSlaStatus = (t: Ticket, now = Date.now()) => {
+// 5b. Centralized SLA Status Helper — adapter over the engine's sla_status.
+// SINGLE SOURCE OF TRUTH: the IST business-hours engine (computeSla) writes
+// `slaStatus` onto every mapped ticket in TicketContext. This helper only maps
+// that engine status to the dashboard's Healthy/Warning/Breached vocabulary, so
+// the dashboard KPIs reconcile exactly with the service-desk SLA Breached tab,
+// the card pills and the SlaTimer. No wall-clock recompute.
+export const getSlaStatus = (t: Ticket, _now = Date.now()) => {
   const isInc = t.ticketType === 'Incident' || !t.ticketType;
   if (!isInc || t.slaDueAt === 'SLA Not Applicable' || !t.slaDueAt) return 'Not Applicable';
-  const start = new Date(t.createdAt).getTime();
-  const due = new Date(t.slaDueAt).getTime();
-  const end = t.status === 'Resolved' || t.status === 'Closed'
-    ? new Date(t.resolvedAt || t.closedAt || now).getTime()
-    : now;
-  if (end > due) return 'Breached';
-  const totalSlaTime = due - start;
-  const remainingTime = due - now;
-  if (t.status !== 'Resolved' && t.status !== 'Closed' && remainingTime > 0 && (remainingTime / totalSlaTime) <= 0.3) {
-    return 'Warning';
+  switch (t.slaStatus) {
+    case 'Breached': return 'Breached';
+    case 'At Risk': return 'Warning';
+    case 'On Track':
+    case 'Met':
+    case 'Not Started':
+    default: return 'Healthy';
   }
-  return 'Healthy';
 };
 
 // 5c. Centralized Ticket Age Helper

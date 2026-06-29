@@ -146,26 +146,19 @@ export default function CustomerTicketsPage() {
   };
 
   // Helper: SLA Status for Incidents
+  // Single source of truth: the engine status (slaStatus) attached to every ticket
+  // in TicketContext. No wall-clock recompute — keeps sort/filter/export truthful.
   const getSlaStatus = (t: any) => {
     const isInc = t.ticketType === 'Incident' || !t.ticketType;
     if (!isInc || t.slaDueAt === 'SLA Not Applicable') return 'Not Applicable';
-
-    const start = new Date(t.createdAt).getTime();
-    const due = new Date(t.slaDueAt).getTime();
-    const end = t.status === 'Resolved' || t.status === 'Closed'
-      ? new Date(t.resolvedAt || t.closedAt || now).getTime()
-      : now;
-
-    if (end > due) return 'Breached';
-    
-    // SLA warning: remaining time is less than 30% of total SLA time
-    const totalSlaTime = due - start;
-    const remainingTime = due - now;
-    if (t.status !== 'Resolved' && t.status !== 'Closed' && remainingTime > 0 && (remainingTime / totalSlaTime) <= 0.3) {
-      return 'Warning';
+    switch (t.slaStatus) {
+      case 'Breached': return 'Breached';
+      case 'At Risk': return 'Warning';
+      case 'On Track':
+      case 'Met':
+      case 'Not Started':
+      default: return 'Healthy';
     }
-    
-    return 'Healthy';
   };
 
   // Helper: Sum Approved efforts hours logged
@@ -848,18 +841,17 @@ ${ticket.description}
                 const isIncident = t.ticketType === 'Incident' || !t.ticketType;
                 const hasSla = isIncident && t.slaDueAt !== 'SLA Not Applicable';
                 
+                // Single source of truth: engine slaStatus attached in TicketContext.
                 const getSlaStatus = () => {
                   if (!hasSla) return { label: 'Not Applicable', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' };
-                  const nowTime = Date.now();
-                  const due = new Date(t.slaDueAt).getTime();
-                  const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
-                  if (resolved) {
-                    if (resolved > due) return { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' };
-                    return { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
+                  switch (t.slaStatus) {
+                    case 'Breached': return { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500 animate-pulse' };
+                    case 'At Risk': return { label: 'At Risk', color: 'bg-warning-soft text-amber-650 border-warning-border', dot: 'bg-amber-500' };
+                    case 'Met': return { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
+                    case 'Not Started': return { label: 'Not Started', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' };
+                    case 'On Track':
+                    default: return { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
                   }
-                  if (nowTime > due) return { label: 'Overdue', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' };
-                  if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-warning-soft text-amber-650 border-warning-border', dot: 'bg-amber-500' };
-                  return { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
                 };
                 const sla = getSlaStatus();
 
