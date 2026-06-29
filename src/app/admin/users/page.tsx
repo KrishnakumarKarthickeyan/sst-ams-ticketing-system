@@ -1,6 +1,7 @@
 'use client';
 
 import { getErrorMessage } from '@/lib/errors';
+import { generateTemporaryPassword } from '@/lib/security/temp-password';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useTickets } from '../../../context/TicketContext';
@@ -85,21 +86,8 @@ export default function AdminUsersPage() {
   const [updateConfirmPassword, setUpdateConfirmPassword] = useState('');
   const [updateForceChange, setUpdateForceChange] = useState(false);
 
-  const generatePass = () => {
-    const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lowers = 'abcdefghijkmnopqrstuvwxyz';
-    const numbers = '23456789';
-    const specials = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-    const getRand = (str: string) => str[Math.floor(Math.random() * str.length)];
-    const chars = [getRand(uppers), getRand(lowers), getRand(numbers), getRand(specials)];
-    const allChars = uppers + lowers + numbers + specials;
-    for (let i = 4; i < 12; i++) chars.push(getRand(allChars));
-    for (let i = chars.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [chars[i], chars[j]] = [chars[j], chars[i]];
-    }
-    return chars.join('');
-  };
+  // Shared compliant generator (>=14 chars, mixed-class) — see lib/security/temp-password.
+  const generatePass = () => generateTemporaryPassword();
 
   const handleDirectResetPassword = async () => {
     if (!resetTargetUser) return;

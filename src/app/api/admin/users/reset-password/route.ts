@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { logUserAuditAction, verifyPasswordPolicy } from '@/app/actions/auth';
+import { generateTemporaryPassword } from '@/lib/security/temp-password';
 import { checkRateLimit } from '@/lib/security/rate-limit';
 import { logError } from '@/lib/observability/log-error';
 
@@ -18,32 +19,6 @@ const getAdminClient = () => {
     }
   });
 };
-
-function generateTemporaryPassword(): string {
-  const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lowers = 'abcdefghijkmnopqrstuvwxyz';
-  const numbers = '23456789';
-  const specials = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  const getRand = (str: string) => str[Math.floor(Math.random() * str.length)];
-  
-  const chars = [
-    getRand(uppers),
-    getRand(lowers),
-    getRand(numbers),
-    getRand(specials)
-  ];
-  
-  const allChars = uppers + lowers + numbers + specials;
-  for (let i = 4; i < 12; i++) {
-    chars.push(getRand(allChars));
-  }
-  
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  return chars.join('');
-}
 
 export async function POST(request: Request) {
   try {
@@ -116,10 +91,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Target user profile not found.' }, { status: 404 });
     }
 
-    // 5. Verify target user role is Manager, Customer (Client), or Consultant
-    const allowedRoles = ['Manager', 'Customer', 'Consultant'];
-    if (!allowedRoles.includes(targetProfile.role)) {
-      return NextResponse.json({ success: false, error: 'Target user role must be Manager, Customer (Client), or Consultant.' }, { status: 400 });
+    // 5. Role-scoped authorization of the reset:
+    //    • SuperAdmin may reset ANYONE (Consultant, Customer, Manager, SuperAdmin).
+    //    • Manager may reset only Consultants and Customers (clients) — never other
+    //      Managers or SuperAdmins.
+    const targetableBy: Record<string, string[]> = {
+      SuperAdmin: ['Consultant', 'Customer', 'Manager', 'SuperAdmin'],
+      Manager: ['Consultant', 'Customer'],
+    };
+    const allowedTargets = targetableBy[requesterProfile.role] || [];
+    if (!allowedTargets.includes(targetProfile.role)) {
+      return NextResponse.json(
+        { success: false, error: `A ${requesterProfile.role} is not permitted to reset a ${targetProfile.role}.` },
+        { status: 403 },
+      );
     }
 
     // 6. Generate or validate secure temporary password
