@@ -4,6 +4,7 @@ import { TicketProvider } from "../context/TicketContext";
 import { AuthProvider } from "../context/AuthContext";
 import { QueryProvider } from "../lib/queries/query-provider";
 import { ErrorListener } from "../components/observability/ErrorListener";
+import { OverlayGuard } from "../components/observability/OverlayGuard";
 import { Toaster } from "sonner";
 
 import { BRAND_CONFIG } from "../config/branding";
@@ -39,6 +40,7 @@ export default function RootLayout({
           <AuthProvider>
             <TicketProvider>
               <ErrorListener />
+              <OverlayGuard />
               {children}
               <Toaster position="top-right" richColors />
             </TicketProvider>
