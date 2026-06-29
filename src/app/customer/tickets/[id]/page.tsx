@@ -4,6 +4,7 @@ import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTickets } from '../../../../context/TicketContext';
+import { SlaTelemetryPanel } from '../../../../components/tickets/SlaTelemetryPanel';
 import { useAuth } from '../../../../context/AuthContext';
 import Link from 'next/link';
 import {
@@ -290,18 +291,18 @@ export default function CustomerTicketDetailPage() {
   const isIncident = ticket.ticketType === 'Incident' || !ticket.ticketType;
   const isSlaApplicable = isIncident && ticket.slaDueAt !== 'SLA Not Applicable';
 
+  // Single source of truth: the engine status attached to every ticket by
+  // TicketContext (computeSla). No wall-clock recompute here.
   const getSlaStatus = () => {
     if (!isSlaApplicable) return { label: 'Not Applicable', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' };
-    const nowTime = Date.now();
-    const due = new Date(ticket.slaDueAt).getTime();
-    const resolved = ticket.resolvedAt ? new Date(ticket.resolvedAt).getTime() : null;
-    if (resolved) {
-      if (resolved > due) return { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' };
-      return { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
+    switch (ticket.slaStatus) {
+      case 'Breached': return { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500 animate-pulse' };
+      case 'At Risk': return { label: 'At Risk', color: 'bg-warning-soft text-warning border-warning-border', dot: 'bg-amber-500' };
+      case 'Met': return { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
+      case 'Not Started': return { label: 'Not Started', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' };
+      case 'On Track':
+      default: return { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
     }
-    if (nowTime > due) return { label: 'Overdue', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500 animate-pulse' };
-    if (due - nowTime < 12 * 60 * 60 * 1000) return { label: 'At Risk', color: 'bg-warning-soft text-warning border-warning-border', dot: 'bg-amber-500' };
-    return { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
   };
   const slaStatus = getSlaStatus();
 
@@ -975,7 +976,7 @@ export default function CustomerTicketDetailPage() {
       )}
 
       {/* SLA Breach Warning */}
-      {ticket.status !== 'Resolved' && ticket.status !== 'Closed' && isSlaApplicable && new Date(ticket.slaDueAt).getTime() < Date.now() && (
+      {ticket.status !== 'Resolved' && ticket.status !== 'Closed' && isSlaApplicable && ticket.slaStatus === 'Breached' && (
         <div className="bg-critical-soft border border-critical-border rounded-lg p-4 flex items-start gap-3 shadow-card">
           <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
             <AlertTriangle size={16} className="text-critical" />
@@ -1247,47 +1248,8 @@ export default function CustomerTicketDetailPage() {
 
             {/* TAB 3: SLA & Efforts */}
             <TabsContent value="sla" className="space-y-5 animate-in fade-in duration-200">
-              {/* SLA Card */}
-              <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
-                <div className="px-6 py-4 border-b border-line flex items-center gap-2">
-                  <Timer size={16} className="text-info" />
-                  <h3 className="text-sm font-semibold text-ink">SLA Details</h3>
-                </div>
-                <div className="p-6 space-y-4 text-sm">
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-ink-secondary">Coverage</span>
-                    <span className="font-medium text-ink">{isIncident ? 'Active Incident SLA' : 'Exempt (Non-Incident)'}</span>
-                  </div>
-                  {isSlaApplicable ? (
-                    <>
-                      <div className="flex justify-between items-center py-2 border-t border-line">
-                        <span className="text-ink-secondary">Resolution Due</span>
-                        <span className="font-medium text-ink">{new Date(ticket.slaDueAt).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-t border-line">
-                        <span className="text-ink-secondary">Status</span>
-                        <Badge className={`${slaStatus.color} border text-[11px] font-semibold px-2.5 py-0.5 rounded-full hover:bg-transparent`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${slaStatus.dot} mr-1.5 inline-block`}></span>
-                          {slaStatus.label}
-                        </Badge>
-                      </div>
-                      {ticket.resolvedAt && (
-                        <div className="flex justify-between items-center py-2 border-t border-line">
-                          <span className="text-ink-secondary">Resolved At</span>
-                          <span className="font-medium text-ink">{new Date(ticket.resolvedAt).toLocaleString()}</span>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="bg-surface-muted border border-line rounded-lg p-4 flex items-start gap-3 mt-2">
-                      <Info size={16} className="text-info shrink-0 mt-0.5" />
-                      <p className="text-[13px] text-ink-secondary leading-relaxed">
-                        SLA tracking is applicable to Incident-type tickets only. Enhancement and change requests follow milestone-based delivery timelines.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              {/* SLA Governance — shared engine panel, identical to every other role. */}
+              <SlaTelemetryPanel ticket={ticket} />
 
               {/* Effort Hours Card */}
               <div className="bg-surface rounded-2xl border border-line/80 shadow-card overflow-hidden">
