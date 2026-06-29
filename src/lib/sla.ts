@@ -1,20 +1,14 @@
 /**
- * SLA deadline math — pure, framework-free, unit-tested.
+ * SLA deadline math — now a thin delegate to the ONE SLA engine.
  *
- * Adds `hours` of WORKING time to a start instant, skipping the weekend.
- * The working week is Sunday–Thursday (Friday=5 and Saturday=6 are the
- * weekend) to match the platform's primary market. Extracted from
- * TicketContext so the SLA contract can be verified in isolation.
+ * Historically this added `hours` of working time on its own (Sun–Thu, but 24h/day,
+ * ignoring the 10:30–19:30 window) — a second calendar that diverged from
+ * slaEngine. It only ever seeds the stored `sla_due_at` placeholder (overwritten by
+ * the engine on lead assignment). It now delegates to slaEngine.addBusinessHours so
+ * there is a single source of truth: IST business hours 10:30–19:30, Sun–Thu, Fri/Sat
+ * and out-of-window time paused.
  */
-export const addSlaHours = (startDate: Date | string, hours: number): string => {
-  const date = new Date(startDate);
-  let remainingHours = hours;
-  while (remainingHours > 0) {
-    date.setTime(date.getTime() + 60 * 60 * 1000);
-    const day = date.getDay(); // 0=Sun … 5=Fri, 6=Sat
-    if (day !== 5 && day !== 6) {
-      remainingHours--;
-    }
-  }
-  return date.toISOString();
-};
+import { addBusinessHours } from './sla/slaEngine';
+
+export const addSlaHours = (startDate: Date | string, hours: number): string =>
+  addBusinessHours(startDate, hours).toISOString();

@@ -2,78 +2,75 @@
 
 import React, { useEffect, useState } from 'react';
 import { Ticket } from '../../types/ticket';
-import { ShieldCheck, ShieldAlert, ShieldX, Check } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, ShieldX, Check, Clock } from 'lucide-react';
+import { useTickets } from '../../context/TicketContext';
+import { computeSla, getTargetHours, formatBusinessDuration } from '../../lib/sla/slaEngine';
 
 interface SlaBadgeProps {
   ticket: Ticket;
 }
 
+/**
+ * Card/detail SLA chip. Single source of truth: the SLA engine (IST business hours,
+ * per-client priority targets, starts on lead assignment). Shows live business-hours
+ * remaining and engine status, and never recomputes SLA from wall-clock slaDueAt.
+ */
 export const SlaBadge: React.FC<SlaBadgeProps> = ({ ticket }) => {
-  const [timeLeftStr, setTimeLeftStr] = useState('');
-  const [slaStatus, setSlaStatus] = useState<'MET' | 'BREACHED' | 'WARNING' | 'COMPLIANT'>('COMPLIANT');
+  const { getClientTargets } = useTickets();
+  const [, setTick] = useState(0);
 
+  // Re-render every minute so the remaining business time stays live.
   useEffect(() => {
-    const calculateSLA = () => {
-      if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
-        setSlaStatus('MET');
-        setTimeLeftStr('SLA Met');
-        return;
-      }
+    const id = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
 
-      const due = new Date(ticket.slaDueAt).getTime();
-      const now = new Date().getTime();
-      const diffMs = due - now;
+  const isIncident = (ticket.ticketType === 'Incident' || !ticket.ticketType) && ticket.slaDueAt !== 'SLA Not Applicable';
+  if (!isIncident) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-subtle border border-line text-ink-secondary text-[11px] font-bold">
+        <ShieldCheck size={11} className="text-ink-muted" /> SLA N/A
+      </span>
+    );
+  }
 
-      if (diffMs <= 0) {
-        setSlaStatus('BREACHED');
-        setTimeLeftStr('SLA Breached');
-      } else {
-        const diffHrs = diffMs / (1000 * 60 * 60);
-        const hrs = Math.floor(diffHrs);
-        const mins = Math.floor((diffHrs - hrs) * 60);
+  const target = getTargetHours(ticket.priority, getClientTargets(ticket.organizationId));
+  const sla = computeSla(
+    { leadAssignedAt: ticket.leadAssignedAt, status: ticket.status, resolvedAt: ticket.resolvedAt, closedAt: ticket.closedAt },
+    target,
+    new Date(),
+  );
 
-        if (diffHrs < 2) {
-          setSlaStatus('WARNING');
-          setTimeLeftStr(`${hrs}h ${mins}m left`);
-        } else {
-          setSlaStatus('COMPLIANT');
-          setTimeLeftStr(`${hrs}h left`);
-        }
-      }
-    };
-
-    calculateSLA();
-    const interval = setInterval(calculateSLA, 60000); // refresh every minute
-    return () => clearInterval(interval);
-  }, [ticket.slaDueAt, ticket.status]);
-
-  switch (slaStatus) {
-    case 'MET':
+  switch (sla.status) {
+    case 'Met':
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-success-soft border border-success-border text-success-strong text-[11px] font-bold">
-          <Check size={11} className="text-success" />
-          {timeLeftStr}
+          <Check size={11} className="text-success" /> SLA Met
         </span>
       );
-    case 'BREACHED':
+    case 'Breached':
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-critical-soft border border-critical-border text-critical-strong text-[11px] font-bold animate-pulse">
-          <ShieldX size={11} className="text-critical" />
-          {timeLeftStr}
+          <ShieldX size={11} className="text-critical" /> SLA Breached
         </span>
       );
-    case 'WARNING':
+    case 'At Risk':
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-warning-soft border border-warning-border text-warning-strong text-[11px] font-bold">
-          <ShieldAlert size={11} className="text-warning" />
-          {timeLeftStr}
+          <ShieldAlert size={11} className="text-warning" /> {formatBusinessDuration(sla.remainingHours)} left
         </span>
       );
-    case 'COMPLIANT':
+    case 'Not Started':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-subtle border border-line text-ink-secondary text-[11px] font-bold">
+          <Clock size={11} className="text-ink-muted" /> Not started
+        </span>
+      );
+    case 'On Track':
+    default:
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-subtle border border-line text-ink text-[11px] font-bold">
-          <ShieldCheck size={11} className="text-ink-secondary" />
-          {timeLeftStr}
+          <ShieldCheck size={11} className="text-ink-secondary" /> {formatBusinessDuration(sla.remainingHours)} left
         </span>
       );
   }

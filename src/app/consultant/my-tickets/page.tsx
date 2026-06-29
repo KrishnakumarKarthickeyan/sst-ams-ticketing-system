@@ -82,16 +82,6 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
-function SLAIndicator({ slaDueAt }: { slaDueAt: string }) {
-  const now = Date.now();
-  const due = new Date(slaDueAt).getTime();
-  const hoursLeft = (due - now) / (1000 * 60 * 60);
-
-  if (hoursLeft < 0) return <span className="text-[11px] font-bold text-critical flex items-center gap-1"><AlertTriangle size={10} /> SLA Breached</span>;
-  if (hoursLeft < 4)  return <span className="text-[11px] font-bold text-warning flex items-center gap-1"><Timer size={10} /> {hoursLeft.toFixed(1)}h left</span>;
-  return <span className="text-[11px] text-slate-400 flex items-center gap-1"><Clock size={10} /> {new Date(slaDueAt).toLocaleDateString()}</span>;
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function ConsultantMyTicketsPage() {

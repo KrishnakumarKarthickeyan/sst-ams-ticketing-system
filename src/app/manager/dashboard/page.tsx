@@ -237,8 +237,8 @@ export default function ManagerDashboardPage() {
     const now = Date.now();
     const open = tickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
     const hasSla = (t: { slaDueAt: string }) => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable';
-    const atRisk = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() - now > 0 && new Date(t.slaDueAt).getTime() - now < 12 * 3600e3);
-    const breached = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() < now);
+    const atRisk = open.filter(t => hasSla(t) && t.slaStatus === 'At Risk');
+    const breached = open.filter(t => hasSla(t) && t.slaStatus === 'Breached');
     const unackedEscalations = tickets.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt);
     const unassigned = open.filter(t => !t.leadConsultantId); // dispatch backlog = no lead yet (matches desk Unassigned tab)
     const loadMap: Record<string, number> = {};
@@ -942,7 +942,7 @@ export default function ManagerDashboardPage() {
     filteredTickets.forEach(t => {
       if (t.status === 'Closed' || t.status === 'Resolved') return;
       
-      const hasSlaBreached = t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable' && new Date(t.slaDueAt).getTime() < now;
+      const hasSlaBreached = t.slaStatus === 'Breached';
       if (hasSlaBreached) {
         list.push({
           type: 'SLA Breach',

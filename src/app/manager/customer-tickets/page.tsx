@@ -154,7 +154,7 @@ export default function AllCustomerTicketsPage() {
       case 'critical':
         return scopedTickets.filter(t => t.priority === 'Critical');
       case 'slaBreached':
-        return scopedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && new Date(t.slaDueAt).getTime() < nowTime);
+        return scopedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaStatus === 'Breached');
       case 'raisedToSap':
         return scopedTickets.filter(t => t.status === 'Raised to SAP' || t.raisedToSap);
       case 'customerAction':
@@ -217,9 +217,9 @@ export default function AllCustomerTicketsPage() {
 
       // SLA Status
       if (slaFilter !== 'All') {
-        const due = new Date(t.slaDueAt).getTime();
-        const breached = due < nowTime && t.status !== 'Closed' && t.status !== 'Resolved';
-        const warning = !breached && (due - nowTime) > 0 && (due - nowTime) < 24 * 60 * 60 * 1000 && t.status !== 'Closed' && t.status !== 'Resolved';
+        const notClosed = t.status !== 'Closed' && t.status !== 'Resolved';
+        const breached = t.slaStatus === 'Breached' && notClosed;
+        const warning = t.slaStatus === 'At Risk' && notClosed;
         if (slaFilter === 'Breached' && !breached) return false;
         if (slaFilter === 'Warning' && !warning) return false;
         if (slaFilter === 'Met' && (breached || warning)) return false;
@@ -304,7 +304,7 @@ export default function AllCustomerTicketsPage() {
       all: scopedTickets.length,
       unassigned: scopedTickets.filter(t => !t.assignedConsultantId && (!t.consultantEfforts || t.consultantEfforts.length === 0)).length,
       critical: scopedTickets.filter(t => t.priority === 'Critical').length,
-      slaBreached: scopedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && new Date(t.slaDueAt).getTime() < nowTime).length,
+      slaBreached: scopedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved' && t.slaStatus === 'Breached').length,
       raisedToSap: scopedTickets.filter(t => t.status === 'Raised to SAP' || t.raisedToSap).length,
       customerAction: scopedTickets.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer').length,
       reqClosure: scopedTickets.filter(t => t.status === 'Request for Closure' || t.status === 'Awaiting Manager Approval').length,
@@ -393,21 +393,18 @@ export default function AllCustomerTicketsPage() {
     return `${days}d ago`;
   };
 
-  const getSLAStatus = (slaDueAt: string, status: string) => {
-    if (status === 'Closed' || status === 'Resolved') {
-      return { label: 'SLA MET', color: 'text-green-700 bg-green-50 border-green-200' };
+  // Single source of truth: the engine status attached to every ticket (slaStatus).
+  const getSLAStatus = (t: { ticketType?: string; slaDueAt: string; slaStatus?: string | null }) => {
+    const isInc = (t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt !== 'SLA Not Applicable';
+    if (!isInc) return { label: 'SLA N/A', color: 'text-ink-secondary bg-surface-muted border-line' };
+    switch (t.slaStatus) {
+      case 'Breached': return { label: 'SLA BREACHED', color: 'text-critical-strong bg-critical-soft border-critical-border' };
+      case 'At Risk': return { label: 'SLA AT RISK', color: 'text-warning-strong bg-warning-soft border-warning-border' };
+      case 'Met': return { label: 'SLA MET', color: 'text-green-700 bg-green-50 border-green-200' };
+      case 'Not Started': return { label: 'SLA NOT STARTED', color: 'text-ink-secondary bg-surface-muted border-line' };
+      case 'On Track':
+      default: return { label: 'ON TRACK', color: 'text-ink-secondary bg-surface-muted border-line' };
     }
-    const now = Date.now();
-    const due = new Date(slaDueAt).getTime();
-    const hoursLeft = (due - now) / (1000 * 60 * 60);
-
-    if (hoursLeft < 0) {
-      return { label: 'SLA BREACHED', color: 'text-critical-strong bg-critical-soft border-critical-border' };
-    }
-    if (hoursLeft < 24) {
-      return { label: `SLA WARNING (${Math.round(hoursLeft)}h left)`, color: 'text-warning-strong bg-warning-soft border-warning-border' };
-    }
-    return { label: `SLA MET (${new Date(slaDueAt).toLocaleDateString()})`, color: 'text-ink-secondary bg-surface-muted border-line' };
   };
 
   // CSV Export handler
@@ -485,8 +482,7 @@ export default function AllCustomerTicketsPage() {
     const now = Date.now();
     return filteredTickets.filter(t => {
       if (t.status === 'Closed' || t.status === 'Resolved') return false;
-      const due = new Date(t.slaDueAt).getTime();
-      return due < now || (due - now > 0 && due - now < 24 * 60 * 60 * 1000);
+      return t.slaStatus === 'Breached' || t.slaStatus === 'At Risk';
     }).length;
   }, [filteredTickets]);
 
@@ -881,7 +877,7 @@ export default function AllCustomerTicketsPage() {
           {paginatedTickets.map((t) => {
             const priorityCfg = priorityConfig[t.priority] || priorityConfig['Low'];
             const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-ink-secondary bg-surface-muted border-line' };
-            const slaCfg = getSLAStatus(t.slaDueAt, t.status);
+            const slaCfg = getSLAStatus(t);
 
             const funcEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
             const techEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Technical');
@@ -1102,7 +1098,7 @@ export default function AllCustomerTicketsPage() {
                 {paginatedTickets.map((t) => {
                   const statusCfg = statusConfig[t.status] || { label: t.status, color: 'text-ink-secondary bg-surface-muted border-line' };
                   const priorityCfg = priorityConfig[t.priority] || priorityConfig['Low'];
-                  const slaCfg = getSLAStatus(t.slaDueAt, t.status);
+                  const slaCfg = getSLAStatus(t);
 
                   const funcEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Functional');
                   const techEfforts = (t.consultantEfforts || []).filter(e => e.consultantType === 'Technical');

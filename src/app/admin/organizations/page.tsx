@@ -186,20 +186,18 @@ export default function AdminOrganizationsPage() {
     }
   }, [organizations]);
 
-  // SLA Health helper
+  // SLA Health helper — engine sla_status (single source of truth), mapped to the
+  // org-360 Healthy/Warning/Breached vocabulary. No wall-clock recompute.
   const getTicketSlaStatus = (ticket: any) => {
     if (!ticket.slaDueAt || ticket.slaDueAt === 'SLA Not Applicable') return 'Healthy';
-    const now = Date.now();
-    const due = new Date(ticket.slaDueAt).getTime();
-    
-    if (ticket.status === 'Closed' || ticket.status === 'Resolved') {
-      const closedTime = new Date(ticket.closedAt || ticket.resolvedAt || ticket.updatedAt).getTime();
-      return closedTime <= due ? 'Healthy' : 'Breached';
+    switch (ticket.slaStatus) {
+      case 'Breached': return 'Breached';
+      case 'At Risk': return 'Warning';
+      case 'On Track':
+      case 'Met':
+      case 'Not Started':
+      default: return 'Healthy';
     }
-    
-    if (due < now) return 'Breached';
-    if (due - now < 24 * 60 * 60 * 1000) return 'Warning'; // Under 24h
-    return 'Healthy';
   };
 
   // -------------------------------------------------------------
