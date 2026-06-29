@@ -96,9 +96,14 @@ export function hasSlaTarget(t: Pick<Ticket, 'ticketType' | 'slaDueAt'>): boolea
   return Boolean((t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable');
 }
 
-/** True if the SLA was/has been breached as of `now`. */
-export function slaBreached(t: Pick<Ticket, 'ticketType' | 'slaDueAt' | 'status' | 'resolvedAt' | 'closedAt'>, now: number): boolean {
+/**
+ * True if the SLA was/has been breached as of `now`. Single source of truth: the
+ * engine status attached to every mapped ticket (slaStatus). Falls back to the
+ * legacy slaDueAt recompute only when slaStatus is absent (local/offline objects).
+ */
+export function slaBreached(t: Pick<Ticket, 'ticketType' | 'slaDueAt' | 'status' | 'resolvedAt' | 'closedAt' | 'slaStatus'>, now: number): boolean {
   if (!hasSlaTarget(t)) return false;
+  if (t.slaStatus != null) return t.slaStatus === 'Breached';
   const due = new Date(t.slaDueAt).getTime();
   if (!Number.isFinite(due)) return false;
   const end = isClosed(t)
