@@ -4,6 +4,7 @@ import { getErrorMessage } from '@/lib/errors';
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
+import { CreateTicketSlaPanel } from '../../../components/sla/CreateTicketSlaPanel';
 import { useRouter } from 'next/navigation';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { moduleLabel } from '../../../lib/sap-modules';
@@ -115,7 +116,7 @@ const BUSINESS_IMPACTS = [
 ];
 
 export default function CustomerCreateTicketPage() {
-  const { createTicket } = useTickets();
+  const { createTicket, slaTargetsByOrg } = useTickets();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -530,15 +531,13 @@ export default function CustomerCreateTicketPage() {
 
                 </div>
 
-                {/* SLA Indicator Banner */}
-                {requestType === 'Incident' && (
-                  <div className="bg-surface-muted border border-line/80 rounded-lg p-3 flex items-start gap-2.5 text-[11px] text-ink-secondary font-sans">
-                    <Clock className="text-ink-secondary shrink-0 mt-0.5" size={14} />
-                    <div className="space-y-0.5">
-                      <span className="font-bold text-ink uppercase block text-[11px]">SLA Response Notice</span>
-                      <span>This incident falls under active Service Level Agreements (SLA). Critical: 4h, High: 8h, Medium: 48h, Low: 120h.</span>
-                    </div>
-                  </div>
+                {/* SLA panel — engine-sourced from this client's configured targets. */}
+                {requestType && (
+                  <CreateTicketSlaPanel
+                    ticketType={requestType}
+                    priority={priority}
+                    targets={user?.organizationId ? (slaTargetsByOrg[user.organizationId] ?? null) : null}
+                  />
                 )}
 
                 {/* Description Textarea */}
