@@ -5,6 +5,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { getManagerDashboardData, getSlaStatus } from '../../../utils/dashboardService';
+import { BUSINESS_DAY_HOURS } from '../../../lib/analytics/capacity';
 import { supabase } from '../../../lib/supabase/client';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -1052,7 +1053,7 @@ export default function ManagerDashboardPage() {
 
   // Capacity & Load dynamic calculations for individual consultants
   const consultantsLoad = useMemo(() => {
-    const expectedCapacity = workingDaysInMonth * 8;
+    const expectedCapacity = workingDaysInMonth * BUSINESS_DAY_HOURS;
     // Show only managed consultants
     const activeConsultantsList = consultantsDbList.filter(c => managedConsultantsList.includes(c.name));
     return activeConsultantsList.map(consultant => {
@@ -2380,7 +2381,7 @@ export default function ManagerDashboardPage() {
                     <div className="flex justify-between"><span>Unallocated Staff:</span><span className="font-bold text-ink">{consultantsLoad.filter(c => c.activeCount === 0).length}</span></div>
                     <div className="flex justify-between"><span>Overloaded Staff:</span><span className="font-bold text-critical">{consultantsLoad.filter(c => c.loadStatus === 'Overloaded').length}</span></div>
                     <div className="flex justify-between"><span>Available Capacity:</span><span className="font-bold text-ink">
-                      {Math.max(0, (profiles.filter(p => p.role === 'Consultant').length * workingDaysInMonth * 8) - filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0)).toFixed(0)} hrs
+                      {Math.max(0, (profiles.filter(p => p.role === 'Consultant').length * workingDaysInMonth * BUSINESS_DAY_HOURS) - filteredDashboardTickets.flatMap(t => t.actualHoursLogs || []).filter(ah => ah.approvalStatus?.toLowerCase() === 'approved').reduce((sum, ah) => sum + ah.actualHours, 0)).toFixed(0)} hrs
                     </span></div>
                     <div className="flex justify-between pt-1.5 border-t border-line mt-1">
                       <span>Avg Utilization %:</span>
@@ -3176,7 +3177,7 @@ export default function ManagerDashboardPage() {
               </div>
               <div>
                 <span className="font-bold text-ink-muted uppercase text-[11px] tracking-wider block">Expected Month Hours</span>
-                <span className="text-base font-bold text-ink block mt-1">{workingDaysInMonth * 8} Hours / FTE</span>
+                <span className="text-base font-bold text-ink block mt-1">{workingDaysInMonth * BUSINESS_DAY_HOURS} Hours / FTE</span>
                 <span className="text-[11px] text-ink-secondary block">Based on {workingDaysInMonth} active expected working days.</span>
               </div>
               <div>
@@ -3276,7 +3277,7 @@ export default function ManagerDashboardPage() {
                       const approvedOnly = filteredDashboardTickets.flatMap(t => t.actualHoursLogs || [])
                         .filter(ah => (ah.consultantId === c.id || ah.approvedBy === c.name) && ah.approvalStatus?.toLowerCase() === 'approved')
                         .reduce((sum, ah) => sum + ah.actualHours, 0);
-                      return { name: c.name, Expected: workingDaysInMonth * 8, Logged: loggedAll || 0, Approved: approvedOnly || 0 };
+                      return { name: c.name, Expected: workingDaysInMonth * BUSINESS_DAY_HOURS, Logged: loggedAll || 0, Approved: approvedOnly || 0 };
                     })} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
                       <XAxis dataKey="name" interval={0} stroke="#71717a" fontSize={7} />

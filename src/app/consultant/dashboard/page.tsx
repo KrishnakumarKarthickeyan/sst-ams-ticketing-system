@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { getConsultantDashboardData } from '../../../utils/dashboardService';
+import { BUSINESS_DAY_HOURS } from '../../../lib/analytics/capacity';
 import { categoryCounts, TICKET_CATEGORIES } from '../../../lib/ticket-categories';
 import Link from 'next/link';
 import {
@@ -312,7 +313,7 @@ export default function ConsultantDashboardPage() {
     }
 
     const workingDays = getWorkingDaysInRange(start, end);
-    const expectedHours = workingDays * 8;
+    const expectedHours = workingDays * BUSINESS_DAY_HOURS;
 
     const dbMonthTickets = filteredTickets;
 

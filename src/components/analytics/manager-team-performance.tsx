@@ -21,6 +21,7 @@ import {
   aggregateConsultants, type ConsultantAgg, utilizationBand,
   hasSlaTarget, slaBreached, resolutionHours,
 } from '../../lib/analytics/derive';
+import { computePeriodCapacityHours, startOfMonthMs } from '../../lib/analytics/capacity';
 
 interface Props {
   tickets: Ticket[];
@@ -52,13 +53,6 @@ const trendTone = (s: number[]): SparklineTone => {
   return b > a ? 'positive' : b < a ? 'negative' : 'neutral';
 };
 
-function businessDays(startMs: number, endMs: number): number {
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return 0;
-  let n = 0; const c = new Date(startMs); c.setHours(0, 0, 0, 0); const end = new Date(endMs);
-  while (c <= end) { const d = c.getDay(); if (d !== 0 && d !== 6) n++; c.setDate(c.getDate() + 1); }
-  return n;
-}
-
 type LeaderRow = ConsultantAgg & { utilization: number; closedTrend: number[] };
 
 export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
@@ -84,7 +78,10 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
     };
   }, [tickets, now]);
 
-  const capacityHours = useMemo(() => businessDays(periodStart, periodEnd) * 8, [periodStart, periodEnd]);
+  // Utilization capacity = available business hours over the reporting window
+  // (month-to-date), business-days × 9h on the IST SLA-engine basis — NOT a single
+  // day. Shared helper so the KPI card, table column and gauge all agree.
+  const capacityHours = useMemo(() => computePeriodCapacityHours(startOfMonthMs(now), now), [now]);
   const agg = useMemo(() => aggregateConsultants(tickets, now), [tickets, now]);
   const utilOf = useCallback((a: ConsultantAgg) => (capacityHours > 0 ? Math.round((a.loggedHours / capacityHours) * 100) : 0), [capacityHours]);
   const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
@@ -276,7 +273,7 @@ export function ManagerTeamPerformance({ tickets, loading, now }: Props) {
           </div>
           <div className="grid flex-1 grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Active Consultants" value={teamKpis.activeConsultants} icon={Users} tone="brand" loading={loading} />
-            <StatCard label="Avg Utilization" value={`${teamKpis.avgUtil}%`} icon={Gauge} tone={BAND_TONE[utilBand]} progress={teamKpis.avgUtil} progressTone={BAND_TONE[utilBand]} sub={`≈${capacityHours}h capacity`} loading={loading} />
+            <StatCard label="Avg Utilization" value={`${teamKpis.avgUtil}%`} icon={Gauge} tone={BAND_TONE[utilBand]} progress={teamKpis.avgUtil} progressTone={BAND_TONE[utilBand]} sub={`≈${capacityHours}h capacity this period`} loading={loading} />
             <StatCard label="Avg Resolution Time" value={teamKpis.avgRes !== null ? `${teamKpis.avgRes}h` : '—'} icon={Timer} tone="info" loading={loading} />
             <StatCard label="Team SLA Adherence" value={teamKpis.slaAdh !== null ? `${teamKpis.slaAdh}%` : '—'} icon={ShieldCheck} tone={teamKpis.slaAdh !== null ? pctTone(teamKpis.slaAdh) : 'neutral'} progress={teamKpis.slaAdh ?? undefined} progressTone={teamKpis.slaAdh !== null ? pctTone(teamKpis.slaAdh) : 'neutral'} loading={loading} />
           </div>

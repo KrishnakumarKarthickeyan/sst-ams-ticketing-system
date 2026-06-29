@@ -19,6 +19,7 @@ import {
   buildBuckets, bucketIndex, autoGranularity, approvedHours, completionDate,
   aggregateConsultants, aggregateCustomers, utilizationBand, type Bucket,
 } from '../../lib/analytics/derive';
+import { computePeriodCapacityHours, startOfMonthMs } from '../../lib/analytics/capacity';
 
 interface Props {
   section: 'consultants' | 'customers';
@@ -48,13 +49,6 @@ const trendTone = (s: number[]): SparklineTone => {
   return b > a ? 'positive' : b < a ? 'negative' : 'neutral';
 };
 
-function businessDays(startMs: number, endMs: number): number {
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return 0;
-  let n = 0; const c = new Date(startMs); c.setHours(0, 0, 0, 0); const end = new Date(endMs);
-  while (c <= end) { const d = c.getDay(); if (d !== 0 && d !== 6) n++; c.setDate(c.getDate() + 1); }
-  return n;
-}
-
 function UtilCell({ value }: { value: number | null }) {
   if (value === null) return <span className="text-ink-muted">—</span>;
   const band = utilizationBand(value);
@@ -76,7 +70,9 @@ export function ManagerWorkloadAnalytics({ section, tickets, contracts, now }: P
     };
   }, [tickets, now]);
   const buckets = useMemo(() => buildBuckets(periodStart, periodEnd, autoGranularity(periodStart, periodEnd)), [periodStart, periodEnd]);
-  const capacityHours = useMemo(() => businessDays(periodStart, periodEnd) * 8, [periodStart, periodEnd]);
+  // Capacity = business-days × 9h over the reporting window (month-to-date), IST
+  // SLA-engine basis — shared helper so KPI, roster and table agree (never ~8h/1 day).
+  const capacityHours = useMemo(() => computePeriodCapacityHours(startOfMonthMs(now), now), [now]);
 
   if (section === 'consultants') {
     return <ConsultantsSection tickets={tickets} now={now} buckets={buckets} capacityHours={capacityHours} />;
@@ -172,7 +168,7 @@ function ConsultantsSection({ tickets, now, buckets, capacityHours }: {
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Active Consultants" value={kpis.count} icon={Users} tone="brand" />
-        <StatCard label="Avg Utilization" value={`${kpis.avgUtil}%`} icon={Gauge} tone={utilTone} progress={kpis.avgUtil} progressTone={utilTone} sub={`≈${capacityHours}h capacity`} />
+        <StatCard label="Avg Utilization" value={`${kpis.avgUtil}%`} icon={Gauge} tone={utilTone} progress={kpis.avgUtil} progressTone={utilTone} sub={`≈${capacityHours}h capacity this period`} />
         <StatCard label="Total Logged Hours" value={`${kpis.totalLogged}h`} icon={Clock} tone="info" />
         <StatCard label="Overloaded" value={kpis.overloaded} icon={AlertTriangle} tone={kpis.overloaded > 0 ? 'critical' : 'success'} />
       </div>

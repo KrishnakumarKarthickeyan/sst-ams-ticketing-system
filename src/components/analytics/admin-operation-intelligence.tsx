@@ -19,6 +19,7 @@ import {
   isOpen, isClosed, statusGroup, hasSlaTarget, slaBreached, resolutionHours,
   approvedHours,
 } from '../../lib/analytics/derive';
+import { computePeriodCapacityHours } from '../../lib/analytics/capacity';
 
 interface Props {
   tickets: Ticket[];          // period-filtered
@@ -31,19 +32,6 @@ interface Props {
 
 const PRIORITY_ORDER = ['Critical', 'High', 'Medium', 'Low'];
 const distinct = (arr: (string | undefined)[]) => new Set(arr.filter(Boolean) as string[]).size;
-
-function businessDaysBetween(startMs: number, endMs: number): number {
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return 0;
-  let n = 0;
-  const c = new Date(startMs); c.setHours(0, 0, 0, 0);
-  const end = new Date(endMs);
-  while (c <= end) {
-    const d = c.getDay();
-    if (d !== 0 && d !== 6) n++;
-    c.setDate(c.getDate() + 1);
-  }
-  return n;
-}
 
 export function AdminOperationIntelligence({ tickets, previousTickets, loading, now, periodStart, periodEnd }: Props) {
   const [gran, setGran] = useState<Granularity>(() => autoGranularity(periodStart, periodEnd));
@@ -149,7 +137,8 @@ export function AdminOperationIntelligence({ tickets, previousTickets, loading, 
   const cumulativeEmpty = cumulative.every(r => r.Open === 0 && r.Closed === 0);
 
   // 10 — Consultant utilization (logged hours) + capacity reference line
-  const capacityHours = useMemo(() => businessDaysBetween(periodStart, periodEnd) * 8, [periodStart, periodEnd]);
+  // Shared capacity helper (business-days × 9h, IST SLA basis) over the active period.
+  const capacityHours = useMemo(() => computePeriodCapacityHours(periodStart, periodEnd), [periodStart, periodEnd]);
   const utilization = useMemo(() => {
     const m: Record<string, number> = {};
     tickets.forEach(t => { const c = t.assignedConsultant; if (!c) return; m[c] = (m[c] || 0) + approvedHours(t); });
