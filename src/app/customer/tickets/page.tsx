@@ -330,30 +330,17 @@ export default function CustomerTicketsPage() {
   const rowSlaMeta = (t: any) => {
     const isIncident = t.ticketType === 'Incident' || !t.ticketType;
     const hasSla = isIncident && t.slaDueAt !== 'SLA Not Applicable';
+    // Single source of truth: engine slaStatus attached in TicketContext.
     let sla = { label: 'N/A', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' };
-    if (hasSla) {
-      const nowTime = Date.now();
-      const due = new Date(t.slaDueAt).getTime();
-      const resolved = t.resolvedAt ? new Date(t.resolvedAt).getTime() : null;
-      if (resolved) {
-        sla = resolved > due
-          ? { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' }
-          : { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
-      } else if (nowTime > due) {
-        sla = { label: 'Overdue', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' };
-      } else if (due - nowTime < 12 * 60 * 60 * 1000) {
-        sla = { label: 'At Risk', color: 'bg-warning-soft text-amber-650 border-warning-border', dot: 'bg-amber-500' };
-      } else {
-        sla = { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' };
-      }
-    }
     let remaining = 'N/A';
     if (hasSla) {
-      if (t.status === 'Resolved' || t.status === 'Closed') remaining = 'SLA Met';
-      else {
-        const diffMs = new Date(t.slaDueAt).getTime() - Date.now();
-        if (diffMs <= 0) remaining = 'Breached';
-        else { const h = Math.floor(diffMs / 3600000); const m = Math.floor((diffMs % 3600000) / 60000); remaining = `${h}h ${m}m left`; }
+      switch (t.slaStatus) {
+        case 'Breached': sla = { label: 'Breached', color: 'bg-critical-soft text-critical border-critical-border', dot: 'bg-red-500' }; remaining = 'Breached'; break;
+        case 'At Risk': sla = { label: 'At Risk', color: 'bg-warning-soft text-amber-650 border-warning-border', dot: 'bg-amber-500' }; remaining = 'At Risk'; break;
+        case 'Met': sla = { label: 'Met', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' }; remaining = 'SLA Met'; break;
+        case 'Not Started': sla = { label: 'Not Started', color: 'bg-surface-subtle text-ink-secondary border-line', dot: 'bg-zinc-400' }; remaining = 'Not started'; break;
+        case 'On Track':
+        default: sla = { label: 'On Track', color: 'bg-success-soft text-success border-success-border', dot: 'bg-emerald-500' }; remaining = 'On Track'; break;
       }
     }
     const escalationLevel = t.escalations && t.escalations.length > 0 ? t.escalations.length : (t.escalationFlag ? 1 : 0);

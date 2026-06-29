@@ -234,7 +234,7 @@ export default function ReportsView({ role, userScope }: ReportsViewProps) {
   const nowTime = Date.now();
   const breachedCount = filteredTickets.filter(t => {
     if (t.status === 'Closed' || t.status === 'Resolved') return false;
-    return new Date(t.slaDueAt).getTime() < nowTime;
+    return t.slaStatus === 'Breached'; // engine sla_status, single source of truth
   }).length;
   const compliancePct = totalCount > 0 ? Math.max(0, Math.min(100, Math.round(((totalCount - breachedCount) / totalCount) * 100))).toFixed(0) : '100';
   

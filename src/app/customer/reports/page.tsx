@@ -175,11 +175,8 @@ export default function CustomerReportsPage() {
   const m6_slaBreached = filteredTickets.filter(t => {
     const isInc = t.ticketType === 'Incident' || !t.ticketType;
     if (!isInc) return false;
-    if (t.status === 'Closed' || t.status === 'Resolved') {
-      if (t.resolvedAt) return new Date(t.resolvedAt).getTime() > new Date(t.slaDueAt).getTime();
-      return false;
-    }
-    return new Date(t.slaDueAt).getTime() < now;
+    // Engine sla_status (frozen Breached/Met on closure) is the single source of truth.
+    return t.slaStatus === 'Breached';
   }).length;
 
   // 7. SLA Compliance Percentage (On Time / Total Incidents)

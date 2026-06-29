@@ -22,14 +22,12 @@ interface Props {
 
 const isOpen = (t: Ticket) => t.status !== 'Closed' && t.status !== 'Resolved';
 
-function slaCountdown(dueStr: string, now: number) {
-  const diff = new Date(dueStr).getTime() - now;
-  const breached = diff < 0;
-  const abs = Math.abs(diff);
-  const d = Math.floor(abs / 86400e3);
-  const h = Math.floor((abs % 86400e3) / 3600e3);
-  const label = (d > 0 ? `${d}d ` : '') + `${h}h`;
-  return { breached, soon: !breached && abs < 12 * 3600e3, label };
+// Single source of truth: the engine status attached to every ticket (slaStatus).
+function slaCountdown(t: { slaStatus?: string | null }) {
+  const breached = t.slaStatus === 'Breached';
+  const soon = t.slaStatus === 'At Risk';
+  const label = breached ? 'SLA Breached' : soon ? 'At Risk' : 'On Track';
+  return { breached, soon, label };
 }
 
 export function ConsultantWorkAnalytics({ myTickets, loading, now }: Props) {
@@ -57,7 +55,7 @@ export function ConsultantWorkAnalytics({ myTickets, loading, now }: Props) {
   const timers = useMemo(() => {
     return myTickets
       .filter(t => isOpen(t) && t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable')
-      .map(t => ({ t, c: slaCountdown(t.slaDueAt, now) }))
+      .map(t => ({ t, c: slaCountdown(t) }))
       .sort((a, b) => new Date(a.t.slaDueAt).getTime() - new Date(b.t.slaDueAt).getTime());
   }, [myTickets, now]);
 
@@ -133,7 +131,7 @@ export function ConsultantWorkAnalytics({ myTickets, loading, now }: Props) {
                 </div>
                 <span className={`type-status type-num inline-flex shrink-0 items-center gap-1 font-semibold ${c.breached ? 'text-critical' : c.soon ? 'text-warning-strong' : 'text-ink-secondary'}`}>
                   {c.breached ? <AlertTriangle size={11} /> : <Clock size={11} />}
-                  {c.breached ? `Breached ${c.label}` : `Due ${c.label}`}
+                  {c.label}
                 </span>
               </li>
               ))}

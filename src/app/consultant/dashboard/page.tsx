@@ -780,8 +780,8 @@ export default function ConsultantDashboardPage() {
         const now = Date.now();
         const open = myTickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
         const hasSla = (t: { slaDueAt: string }) => t.slaDueAt && t.slaDueAt !== 'SLA Not Applicable';
-        const breached = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() < now);
-        const dueToday = open.filter(t => hasSla(t) && new Date(t.slaDueAt).getTime() - now > 0 && new Date(t.slaDueAt).getTime() - now < 24 * 3600e3);
+        const breached = open.filter(t => hasSla(t) && t.slaStatus === 'Breached');
+        const dueToday = open.filter(t => hasSla(t) && t.slaStatus === 'At Risk');
         const waitingCustomer = open.filter(t => t.status === 'Customer Action' || t.status === 'Waiting for Customer');
         const critical = open.filter(t => t.priority === 'Critical');
         const next = [...breached, ...dueToday, ...critical].filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i)[0];

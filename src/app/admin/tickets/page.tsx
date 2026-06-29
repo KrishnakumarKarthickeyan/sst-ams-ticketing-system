@@ -5,6 +5,7 @@ import { matchesTicketNumber } from '../../../lib/ticket-search';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTickets } from '../../../context/TicketContext';
+import { computeSla, getTargetHours, formatBusinessDuration } from '../../../lib/sla/slaEngine';
 import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { PageHeader } from '../../../components/ui/page-header';
 import { DataTable, DataTableColumn } from '../../../components/ui/data-table';
@@ -58,7 +59,7 @@ function matchesAdminTab(tab: TabType, t: Ticket): boolean {
 }
 
 export default function AdminTicketsPage() {
-  const { tickets, loading } = useTickets();
+  const { tickets, loading, getClientTargets } = useTickets();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('All');
@@ -140,45 +141,33 @@ export default function AdminTicketsPage() {
     [dropdownFiltered, activeTab],
   );
 
-  // SLA countdown rendering
-  const formatSlaCountdown = (dueDateStr: string, status: string) => {
-    if (status === 'Closed' || status === 'Resolved') {
-      return <span className="type-status font-medium text-ink-muted">SLA Completed</span>;
-    }
-    if (!dueDateStr || dueDateStr === 'SLA Not Applicable') {
-      return <span className="type-status text-ink-muted">Not Applicable</span>;
-    }
-
-    const diff = new Date(dueDateStr).getTime() - Date.now();
-    const isBreached = diff < 0;
-    const absDiff = Math.abs(diff);
-
-    const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
-
-    let displayStr = '';
-    if (days > 0) displayStr += `${days}d `;
-    if (hours > 0) displayStr += `${hours}h `;
-    displayStr += `${minutes}m`;
-
-    if (isBreached) {
+  // SLA countdown rendering — single source of truth: the SLA engine (IST business
+  // hours, per-client priority target, starts on lead assignment).
+  const formatSlaCountdown = (t: Ticket) => {
+    const isInc = (t.ticketType === 'Incident' || !t.ticketType) && t.slaDueAt !== 'SLA Not Applicable';
+    if (!isInc) return <span className="type-status text-ink-muted">Not Applicable</span>;
+    const sla = computeSla(
+      { leadAssignedAt: t.leadAssignedAt, status: t.status, resolvedAt: t.resolvedAt, closedAt: t.closedAt },
+      getTargetHours(t.priority, getClientTargets(t.organizationId)),
+      new Date(),
+    );
+    if (sla.status === 'Met') return <span className="type-status font-medium text-ink-muted">SLA Met</span>;
+    if (sla.status === 'Not Started') return <span className="type-status text-ink-muted">Not started</span>;
+    if (sla.status === 'Breached') {
       return (
         <span className="type-status type-num inline-flex items-center gap-1 font-semibold text-critical">
-          <AlertTriangle size={11} className="shrink-0" />
-          Breached by {displayStr}
+          <AlertTriangle size={11} className="shrink-0" /> SLA Breached
         </span>
       );
     }
-    if (absDiff < 12 * 60 * 60 * 1000) {
+    if (sla.status === 'At Risk') {
       return (
         <span className="type-status type-num inline-flex items-center gap-1 font-semibold text-warning-strong">
-          <Clock size={11} className="shrink-0" />
-          Due in {displayStr}
+          <Clock size={11} className="shrink-0" /> {formatBusinessDuration(sla.remainingHours)} left
         </span>
       );
     }
-    return <span className="type-status type-num text-ink-secondary">Due in {displayStr}</span>;
+    return <span className="type-status type-num text-ink-secondary">{formatBusinessDuration(sla.remainingHours)} left</span>;
   };
 
   const columns: DataTableColumn<Ticket>[] = [
@@ -239,7 +228,7 @@ export default function AdminTicketsPage() {
       width: '170px',
       sortValue: t => (t.slaDueAt ? new Date(t.slaDueAt).getTime() : Number.MAX_SAFE_INTEGER),
       exportValue: t => t.slaDueAt || '',
-      render: t => formatSlaCountdown(t.slaDueAt, t.status),
+      render: t => formatSlaCountdown(t),
     },
     {
       key: 'team',
