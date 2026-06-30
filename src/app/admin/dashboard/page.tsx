@@ -28,6 +28,7 @@ import { PageHeader } from '../../../components/ui/page-header';
 import { StatCard } from '../../../components/ui/stat-card';
 import type { PillTone } from '../../../components/ui/status-pill';
 import { AdminOperationIntelligence } from '../../../components/analytics/admin-operation-intelligence';
+import { AdminPageHeader, AdminStat, AdminCard, AdminGrid, AdminButton } from '../../../components/admin/ui/admin-kit';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
@@ -1461,20 +1462,15 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* ── COMMAND CENTER HEADER ── */}
-      <PageHeader
+      {/* ── COMMAND CENTER HEADER (ui-ux-pro-max) ── */}
+      <AdminPageHeader
+        eyebrow={<><Sliders size={13} strokeWidth={2} /> Executive console</>}
         title="Executive Command Center"
-        description={
-          <>
-            Assist360 operations &amp; delivery management console · RLS posture:{' '}
-            <span className="font-medium text-ink">{RLS_POSTURE}</span>
-          </>
-        }
+        subtitle={`Assist360 operations & delivery management · RLS posture: ${RLS_POSTURE}`}
         actions={
-          <Button onClick={refetchData} variant="outline" className="h-9 gap-2 rounded-md">
-            <RefreshCw size={13} />
-            Sync Supabase
-          </Button>
+          <AdminButton variant="primary" onClick={refetchData}>
+            <RefreshCw size={13} /> Sync Supabase
+          </AdminButton>
         }
       />
 
@@ -1683,7 +1679,7 @@ export default function AdminDashboardPage() {
 
         {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
         <TabsContent value="cockpit" className="space-y-6 outline-none">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <AdminGrid cols={5}>
             {[
               { label: 'Total Customers', value: globalStats.totalCustomers, icon: Building2, desc: 'Registered Organizations' },
               { label: 'Active Customers', value: globalStats.activeCustomers, icon: UserCheck, desc: 'With Active Contracts' },
@@ -1692,24 +1688,21 @@ export default function AdminDashboardPage() {
               { label: 'Total Contracts', value: globalStats.totalContracts, icon: FileText, desc: 'Support Agreements' },
               { label: 'Open Tickets', value: globalStats.openTicketsCount, icon: Ticket, desc: 'Active Queue backlog' },
               { label: 'Closed Tickets', value: globalStats.closedTicketsCount, icon: CheckCircle2, desc: 'SLA Resolved / Closed' },
-              { label: 'Escalated Tickets', value: globalStats.escalatedTicketsCount, icon: AlertTriangle, desc: 'Active Warning Alerts', tone: (globalStats.escalatedTicketsCount > 0 ? 'critical' : 'neutral') as PillTone },
-              { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, icon: Clock, desc: 'Awaiting Administrator Actions', tone: (globalStats.pendingApprovalsCount > 0 ? 'warning' : 'neutral') as PillTone },
-              { label: 'SLA Breaches', value: globalStats.slaBreachesCount, icon: ShieldAlert, desc: 'Violations Reported', tone: (globalStats.slaBreachesCount > 0 ? 'critical' : 'neutral') as PillTone },
+              { label: 'Escalated Tickets', value: globalStats.escalatedTicketsCount, icon: AlertTriangle, desc: 'Active Warning Alerts', tone: (globalStats.escalatedTicketsCount > 0 ? 'critical' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
+              { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, icon: Clock, desc: 'Awaiting Administrator Actions', tone: (globalStats.pendingApprovalsCount > 0 ? 'warning' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
+              { label: 'SLA Breaches', value: globalStats.slaBreachesCount, icon: ShieldAlert, desc: 'Violations Reported', tone: (globalStats.slaBreachesCount > 0 ? 'critical' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
               { label: 'Total Approved Hours', value: `${globalStats.totalApprovedHours.toFixed(1)}h`, icon: DollarSign, desc: 'Accumulated Timesheet Hours' },
               { label: 'Current Month Utilized', value: `${globalStats.currentMonthUtilizedHours.toFixed(1)}h`, icon: Activity, desc: 'Logged this Month' },
               { label: 'Remaining Hours', value: `${globalStats.remainingContractHours.toFixed(1)}h`, icon: Sliders, desc: 'Active contracts pool' },
-              { label: 'Platform Health Score', value: `${globalStats.platformHealthScore}%`, icon: HeartHandshake, desc: 'Active health status check', tone: (globalStats.platformHealthScore > 90 ? 'success' : 'warning') as PillTone }
-            ].map((kpi, i) => (
-              <StatCard
-                key={i}
-                label={kpi.label}
-                value={kpi.value}
-                icon={kpi.icon}
-                tone={kpi.tone ?? 'neutral'}
-                sub={kpi.desc}
-              />
-            ))}
-          </div>
+              { label: 'Platform Health Score', value: `${globalStats.platformHealthScore}%`, icon: HeartHandshake, desc: 'Active health status check', tone: (globalStats.platformHealthScore > 90 ? 'success' : 'warning') as 'neutral' | 'success' | 'warning' | 'critical' },
+            ].map((kpi, i) => {
+              const Icon = kpi.icon;
+              return (
+                <AdminStat key={i} label={kpi.label} value={kpi.value} sub={kpi.desc}
+                  tone={kpi.tone ?? 'neutral'} icon={<Icon size={15} strokeWidth={2} />} />
+              );
+            })}
+          </AdminGrid>
 
           {/* Core overview details */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

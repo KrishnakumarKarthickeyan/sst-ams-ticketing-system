@@ -77,15 +77,16 @@ export function AdminCard({
 /* ─────────────────────────────── KPI stat ─────────────────────────────────── */
 
 export function AdminStat({
-  label, value, delta, deltaUnit = '%', invertDelta = false, icon, sub, progress, loading,
+  label, value, delta, deltaUnit = '%', invertDelta = false, icon, sub, progress, loading, tone = 'neutral',
 }: {
   label: string; value: React.ReactNode; delta?: number; deltaUnit?: string; invertDelta?: boolean;
   icon?: React.ReactNode; sub?: string; progress?: number; loading?: boolean;
+  tone?: 'neutral' | 'success' | 'warning' | 'critical';
 }) {
   const good = delta == null ? false : invertDelta ? delta < 0 : delta > 0;
   const DeltaIcon = (delta ?? 0) >= 0 ? ArrowUpRight : ArrowDownRight;
   return (
-    <article className="ak-card ak-stat">
+    <article className={`ak-card ak-stat ak-tone-${tone}`}>
       <div className="ak-stat-top">
         <span className="ak-stat-label">{label}</span>
         {icon && <span className="ak-stat-icon">{icon}</span>}
@@ -348,6 +349,12 @@ const AK_CSS = `
 .admin-shell .ak-stat-label{font-size:12px;font-weight:560;color:var(--ak-ink2);}
 .admin-shell .ak-stat-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--ak-panel2);color:var(--ak-ink2);}
 .admin-shell .ak-stat-value{font-size:26px;font-weight:680;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;color:var(--ak-ink);}
+.admin-shell .ak-tone-success .ak-stat-value{color:var(--ak-success);}
+.admin-shell .ak-tone-warning .ak-stat-value{color:var(--ak-warning);}
+.admin-shell .ak-tone-critical .ak-stat-value{color:var(--ak-critical);}
+.admin-shell .ak-tone-success .ak-stat-icon{background:rgba(15,122,79,.1);color:var(--ak-success);}
+.admin-shell .ak-tone-warning .ak-stat-icon{background:rgba(184,105,12,.12);color:var(--ak-warning);}
+.admin-shell .ak-tone-critical .ak-stat-icon{background:rgba(197,57,43,.1);color:var(--ak-critical);}
 .admin-shell .ak-stat-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .admin-shell .ak-stat-sub{font-size:11.5px;color:var(--ak-ink3);}
 .admin-shell .ak-delta{display:inline-flex;align-items:center;gap:2px;font-size:11.5px;font-weight:620;padding:2px 6px;border-radius:6px;}
