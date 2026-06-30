@@ -67,3 +67,7 @@ teardown-seed.mjs
 /playwright-report/
 /blob-report/
 /e2e/.auth/
+
+# python skill caches
+__pycache__/
+*.pyc

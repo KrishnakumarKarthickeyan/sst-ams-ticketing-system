@@ -28,6 +28,7 @@ import { PageHeader } from '../../../components/ui/page-header';
 import { StatCard } from '../../../components/ui/stat-card';
 import type { PillTone } from '../../../components/ui/status-pill';
 import { AdminOperationIntelligence } from '../../../components/analytics/admin-operation-intelligence';
+import { AdminPageHeader, AdminStat, AdminCard, AdminGrid, AdminButton, AdminGauge, AdminLoadBuckets, AdminBullet, AdminEmpty } from '../../../components/admin/ui/admin-kit';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
@@ -1439,42 +1440,30 @@ export default function AdminDashboardPage() {
       
       {/* ── ESCALATION RED WARNING BANNER ── */}
       {escalationsQueue.length > 0 && (
-        <div className="flex items-center justify-between gap-4 rounded-lg border border-critical-border bg-critical-soft p-4 shadow-card">
+        <div className="ak-banner">
           <div className="flex items-center gap-3">
-            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-critical/10">
-              <span className="absolute h-2 w-2 animate-ping rounded-full bg-critical opacity-60" />
-              <AlertTriangle className="relative text-critical" size={16} />
+            <span className="ak-banner-icon">
+              <span className="absolute h-2 w-2 animate-ping rounded-full" style={{ background: 'var(--ak-critical)', opacity: 0.6 }} />
+              <AlertTriangle size={16} style={{ position: 'relative' }} />
             </span>
             <div>
-              <span className="type-widget block text-critical-strong">Critical Escalations Alert</span>
-              <span className="type-meta mt-0.5 block text-critical">
-                <span className="type-num font-semibold">{escalationsQueue.length}</span> tickets are currently escalated. Manager intervention required immediately.
-              </span>
+              <span className="ak-banner-title">Critical Escalations Alert</span>
+              <span className="ak-banner-sub"><span className="ak-num" style={{ fontWeight: 680, color: 'var(--ak-critical)' }}>{escalationsQueue.length}</span> tickets are currently escalated — manager intervention required.</span>
             </div>
           </div>
-          <Button
-            onClick={() => setActiveTab('escalations')}
-            className="h-8 rounded-md bg-critical px-3 text-[11px] font-semibold text-white hover:bg-critical-strong"
-          >
-            Review Queue
-          </Button>
+          <AdminButton variant="primary" onClick={() => setActiveTab('escalations')}>Review Queue</AdminButton>
         </div>
       )}
 
-      {/* ── COMMAND CENTER HEADER ── */}
-      <PageHeader
+      {/* ── COMMAND CENTER HEADER (ui-ux-pro-max) ── */}
+      <AdminPageHeader
+        eyebrow={<><Sliders size={13} strokeWidth={2} /> Executive console</>}
         title="Executive Command Center"
-        description={
-          <>
-            Assist360 operations &amp; delivery management console · RLS posture:{' '}
-            <span className="font-medium text-ink">{RLS_POSTURE}</span>
-          </>
-        }
+        subtitle={`Assist360 operations & delivery management · RLS posture: ${RLS_POSTURE}`}
         actions={
-          <Button onClick={refetchData} variant="outline" className="h-9 gap-2 rounded-md">
-            <RefreshCw size={13} />
-            Sync Supabase
-          </Button>
+          <AdminButton variant="primary" onClick={refetchData}>
+            <RefreshCw size={13} /> Sync Supabase
+          </AdminButton>
         }
       />
 
@@ -1507,7 +1496,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.customer}
               onChange={(e) => setFilters(prev => ({ ...prev, customer: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL CUSTOMERS</option>
               {customerOrgsList.map(c => (
@@ -1522,7 +1511,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.consultant}
               onChange={(e) => setFilters(prev => ({ ...prev, consultant: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL CONSULTANTS</option>
               {consultantsProfilesList.map(c => (
@@ -1537,7 +1526,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.manager}
               onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL MANAGERS</option>
               {managersProfilesList.map(m => (
@@ -1552,7 +1541,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.module}
               onChange={(e) => setFilters(prev => ({ ...prev, module: e.target.value }))}
-              className="h-9 min-w-[110px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL MODULES</option>
               {modulesList.map(m => (
@@ -1567,7 +1556,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.priority}
               onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-              className="h-9 min-w-[110px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL PRIORITIES</option>
               <option value="Critical">CRITICAL</option>
@@ -1655,35 +1644,27 @@ export default function AdminDashboardPage() {
 
       {/* ── NAVIGATION TABS ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="flex flex-wrap h-auto bg-surface-subtle p-1 border border-line rounded-lg text-[11px] gap-0.5">
-          <TabsTrigger value="cockpit" className="py-2 px-3 uppercase font-bold rounded-md">Cockpit</TabsTrigger>
-          <TabsTrigger value="customers" className="py-2 px-3 uppercase font-bold rounded-md">Customers</TabsTrigger>
-          <TabsTrigger value="consultants" className="py-2 px-3 uppercase font-bold rounded-md">Consultants</TabsTrigger>
-          <TabsTrigger value="managers" className="py-2 px-3 uppercase font-bold rounded-md">Managers</TabsTrigger>
-          <TabsTrigger value="approvals" className="py-2 px-3 uppercase font-bold rounded-md">
+        <TabsList className="ak-tabs">
+          <TabsTrigger value="cockpit" className="ak-tab">Cockpit</TabsTrigger>
+          <TabsTrigger value="customers" className="ak-tab">Customers</TabsTrigger>
+          <TabsTrigger value="consultants" className="ak-tab">Consultants</TabsTrigger>
+          <TabsTrigger value="managers" className="ak-tab">Managers</TabsTrigger>
+          <TabsTrigger value="approvals" className="ak-tab">
             Approvals
-            {approvalsQueue.length > 0 && (
-              <Badge className="bg-zinc-900 text-white text-[11px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
-                {approvalsQueue.length}
-              </Badge>
-            )}
+            {approvalsQueue.length > 0 && <span className="ak-tab-badge">{approvalsQueue.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="escalations" className="py-2 px-3 uppercase font-bold rounded-md">
+          <TabsTrigger value="escalations" className="ak-tab">
             Escalations
-            {escalationsQueue.length > 0 && (
-              <Badge className="bg-red-600 text-white text-[11px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
-                {escalationsQueue.length}
-              </Badge>
-            )}
+            {escalationsQueue.length > 0 && <span className="ak-tab-badge is-crit">{escalationsQueue.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="health" className="py-2 px-3 uppercase font-bold rounded-md">Health</TabsTrigger>
-          <TabsTrigger value="audits" className="py-2 px-3 uppercase font-bold rounded-md">Audits</TabsTrigger>
-          <TabsTrigger value="iam" className="py-2 px-3 uppercase font-bold rounded-md">Passwords & IAM</TabsTrigger>
+          <TabsTrigger value="health" className="ak-tab">Health</TabsTrigger>
+          <TabsTrigger value="audits" className="ak-tab">Audits</TabsTrigger>
+          <TabsTrigger value="iam" className="ak-tab">Passwords & IAM</TabsTrigger>
         </TabsList>
 
         {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
         <TabsContent value="cockpit" className="space-y-6 outline-none">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <AdminGrid cols={5}>
             {[
               { label: 'Total Customers', value: globalStats.totalCustomers, icon: Building2, desc: 'Registered Organizations' },
               { label: 'Active Customers', value: globalStats.activeCustomers, icon: UserCheck, desc: 'With Active Contracts' },
@@ -1692,24 +1673,96 @@ export default function AdminDashboardPage() {
               { label: 'Total Contracts', value: globalStats.totalContracts, icon: FileText, desc: 'Support Agreements' },
               { label: 'Open Tickets', value: globalStats.openTicketsCount, icon: Ticket, desc: 'Active Queue backlog' },
               { label: 'Closed Tickets', value: globalStats.closedTicketsCount, icon: CheckCircle2, desc: 'SLA Resolved / Closed' },
-              { label: 'Escalated Tickets', value: globalStats.escalatedTicketsCount, icon: AlertTriangle, desc: 'Active Warning Alerts', tone: (globalStats.escalatedTicketsCount > 0 ? 'critical' : 'neutral') as PillTone },
-              { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, icon: Clock, desc: 'Awaiting Administrator Actions', tone: (globalStats.pendingApprovalsCount > 0 ? 'warning' : 'neutral') as PillTone },
-              { label: 'SLA Breaches', value: globalStats.slaBreachesCount, icon: ShieldAlert, desc: 'Violations Reported', tone: (globalStats.slaBreachesCount > 0 ? 'critical' : 'neutral') as PillTone },
+              { label: 'Escalated Tickets', value: globalStats.escalatedTicketsCount, icon: AlertTriangle, desc: 'Active Warning Alerts', tone: (globalStats.escalatedTicketsCount > 0 ? 'critical' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
+              { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, icon: Clock, desc: 'Awaiting Administrator Actions', tone: (globalStats.pendingApprovalsCount > 0 ? 'warning' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
+              { label: 'SLA Breaches', value: globalStats.slaBreachesCount, icon: ShieldAlert, desc: 'Violations Reported', tone: (globalStats.slaBreachesCount > 0 ? 'critical' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
               { label: 'Total Approved Hours', value: `${globalStats.totalApprovedHours.toFixed(1)}h`, icon: DollarSign, desc: 'Accumulated Timesheet Hours' },
               { label: 'Current Month Utilized', value: `${globalStats.currentMonthUtilizedHours.toFixed(1)}h`, icon: Activity, desc: 'Logged this Month' },
               { label: 'Remaining Hours', value: `${globalStats.remainingContractHours.toFixed(1)}h`, icon: Sliders, desc: 'Active contracts pool' },
-              { label: 'Platform Health Score', value: `${globalStats.platformHealthScore}%`, icon: HeartHandshake, desc: 'Active health status check', tone: (globalStats.platformHealthScore > 90 ? 'success' : 'warning') as PillTone }
-            ].map((kpi, i) => (
-              <StatCard
-                key={i}
-                label={kpi.label}
-                value={kpi.value}
-                icon={kpi.icon}
-                tone={kpi.tone ?? 'neutral'}
-                sub={kpi.desc}
-              />
-            ))}
-          </div>
+              { label: 'Platform Health Score', value: `${globalStats.platformHealthScore}%`, icon: HeartHandshake, desc: 'Active health status check', tone: (globalStats.platformHealthScore > 90 ? 'success' : 'warning') as 'neutral' | 'success' | 'warning' | 'critical' },
+            ].map((kpi, i) => {
+              const Icon = kpi.icon;
+              return (
+                <AdminStat key={i} label={kpi.label} value={kpi.value} sub={kpi.desc}
+                  tone={kpi.tone ?? 'neutral'} icon={<Icon size={15} strokeWidth={2} />} />
+              );
+            })}
+          </AdminGrid>
+
+          {/* ── COMMAND HERO: health + workload (ui-ux-pro-max) ── */}
+          <AdminGrid cols={3}>
+            {/* Platform health gauge + posture factors (real derived data) */}
+            <AdminCard title="Platform Health" desc="Composite delivery posture this period.">
+              <div className="flex flex-col items-center gap-4">
+                <AdminGauge score={globalStats.platformHealthScore} label="Health score" size={140} />
+                {(() => {
+                  const open = globalStats.openTicketsCount || 1;
+                  const avgUtil = consultantsPortfolio.length
+                    ? Math.round(consultantsPortfolio.reduce((s, c) => s + c.utilization, 0) / consultantsPortfolio.length) : 0;
+                  const factors = [
+                    { label: 'SLA posture', value: Math.max(0, Math.min(100, Math.round((1 - globalStats.slaBreachesCount / open) * 100))) },
+                    { label: 'Escalation posture', value: Math.max(0, Math.min(100, Math.round((1 - globalStats.escalatedTicketsCount / open) * 100))) },
+                    { label: 'Avg utilization', value: Math.min(100, avgUtil) },
+                    { label: 'Capacity headroom', value: Math.max(0, 100 - Math.min(100, avgUtil)) },
+                  ];
+                  return (
+                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 11 }}>
+                      {factors.map(f => (
+                        <div key={f.label}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--ak-ink2)' }}>
+                            <span>{f.label}</span><span style={{ fontWeight: 620, color: 'var(--ak-ink)' }}>{f.value}%</span>
+                          </div>
+                          <div className="ak-util-track">
+                            <div style={{ width: `${f.value}%`, background: f.value >= 75 ? 'var(--ak-success)' : f.value >= 50 ? 'var(--ak-warning)' : 'var(--ak-critical)' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </AdminCard>
+
+            {/* Workload distribution buckets (consultants by capacity band) */}
+            <AdminCard title="Workload Distribution" desc="Consultants by capacity band.">
+              {(() => {
+                const counts = { Underutilized: 0, Healthy: 0, 'Near Capacity': 0, Overloaded: 0 } as Record<string, number>;
+                consultantsPortfolio.forEach(c => { counts[c.workloadRisk] = (counts[c.workloadRisk] || 0) + 1; });
+                return consultantsPortfolio.length === 0
+                  ? <AdminEmpty small title="No consultants" sub="No staffed consultants in scope." />
+                  : (
+                    <>
+                      <AdminLoadBuckets buckets={[
+                        { label: 'Idle', count: counts.Underutilized, tone: 'idle' },
+                        { label: 'Healthy', count: counts.Healthy, tone: 'healthy' },
+                        { label: 'Busy', count: counts['Near Capacity'], tone: 'busy' },
+                        { label: 'Overloaded', count: counts.Overloaded, tone: 'over' },
+                      ]} />
+                      <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div style={{ background: 'var(--ak-panel2)', border: '1px solid var(--ak-line)', borderRadius: 10, padding: '10px 12px' }}>
+                          <div style={{ fontSize: 11, color: 'var(--ak-ink3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Active on desk</div>
+                          <div className="ak-num" style={{ fontSize: 22, fontWeight: 680, color: 'var(--ak-ink)', marginTop: 4 }}>{globalStats.activeConsultants}</div>
+                        </div>
+                        <div style={{ background: 'var(--ak-panel2)', border: '1px solid var(--ak-line)', borderRadius: 10, padding: '10px 12px' }}>
+                          <div style={{ fontSize: 11, color: 'var(--ak-ink3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Overloaded</div>
+                          <div className="ak-num" style={{ fontSize: 22, fontWeight: 680, color: overloadedConsultants.length ? 'var(--ak-critical)' : 'var(--ak-ink)', marginTop: 4 }}>{overloadedConsultants.length}</div>
+                        </div>
+                      </div>
+                    </>
+                  );
+              })()}
+            </AdminCard>
+
+            {/* Top load — consultant utilization bullets */}
+            <AdminCard title="Highest Load" desc="Top consultants by utilization.">
+              {consultantsPortfolio.length === 0
+                ? <AdminEmpty small title="No consultants" sub="Nothing to rank yet." />
+                : [...consultantsPortfolio].sort((a, b) => b.utilization - a.utilization).slice(0, 6).map(c => (
+                  <AdminBullet key={c.id} label={c.name} value={c.approvedHours} max={c.capacity}
+                    valueText={`${Math.round(c.utilization)}% · ${c.approvedHours.toFixed(0)}h`} />
+                ))}
+            </AdminCard>
+          </AdminGrid>
 
           {/* Core overview details */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1722,28 +1775,28 @@ export default function AdminDashboardPage() {
                 <CardDescription className="text-[11px]">Review system alerts requiring Super Admin sync</CardDescription>
               </CardHeader>
               <CardContent className="p-4 space-y-4 text-[11px]">
-                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                <div className="ak-alert">
                   <div>
-                    <span className="font-bold text-ink block">System RLS Posture Check</span>
-                    <span className="text-[11px] text-ink-muted mt-0.5 block">Verifies row-level security configuration across Postgres schemas</span>
+                    <span className="ak-alert-title">System RLS Posture Check</span>
+                    <span className="ak-alert-sub">Verifies row-level security configuration across Postgres schemas</span>
                   </div>
                   <Badge className="bg-success-soft text-success-strong border border-success-border">VERIFIED</Badge>
                 </div>
                 
-                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                <div className="ak-alert">
                   <div>
-                    <span className="font-bold text-ink block">Expiring Contracts Warning</span>
-                    <span className="text-[11px] text-ink-muted mt-0.5 block">
+                    <span className="ak-alert-title">Expiring Contracts Warning</span>
+                    <span className="ak-alert-sub">
                       {contracts.filter(c => c.isActive && (new Date(c.endDate).getTime() - Date.now()) <= 30 * 24 * 60 * 60 * 1000).length} contracts expire within 30 days.
                     </span>
                   </div>
                   <Button onClick={() => setActiveTab('customers')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Audit Contracts</Button>
                 </div>
 
-                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                <div className="ak-alert">
                   <div>
-                    <span className="font-bold text-ink block">SLA Breaches Response</span>
-                    <span className="text-[11px] text-ink-muted mt-0.5 block">Check active violation warnings</span>
+                    <span className="ak-alert-title">SLA Breaches Response</span>
+                    <span className="ak-alert-sub">Check active violation warnings</span>
                   </div>
                   <Button onClick={() => setActiveTab('escalations')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Audit Violations</Button>
                 </div>
@@ -2200,7 +2253,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent className="p-4 space-y-3 text-xs">
                 {Object.entries(healthStatus).map(([key, h]) => (
-                  <div key={key} className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                  <div key={key} className="ak-alert">
                     <span className="font-extrabold uppercase text-ink">{key} Integration</span>
                     <div className="flex items-center gap-3">
                       <span className="text-[11px] text-ink-muted font-normal">Latency: {h.latency}ms</span>
@@ -2497,7 +2550,7 @@ export default function AdminDashboardPage() {
                   <div className="flex items-center justify-between p-1">
                     <div>
                       <span className="font-bold text-ink block text-[11px]">Force Setup on Next Login</span>
-                      <span className="text-[11px] text-ink-muted mt-0.5 block">Requires user to change password on authentication</span>
+                      <span className="ak-alert-sub">Requires user to change password on authentication</span>
                     </div>
                     <input 
                       type="checkbox" 
