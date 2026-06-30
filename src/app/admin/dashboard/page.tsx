@@ -1693,8 +1693,8 @@ export default function AdminDashboardPage() {
           <AdminGrid cols={3}>
             {/* Platform health gauge + posture factors (real derived data) */}
             <AdminCard title="Platform Health" desc="Composite delivery posture this period.">
-              <div className="flex flex-col items-center gap-5">
-                <AdminGauge score={globalStats.platformHealthScore} label="Health score" />
+              <div className="flex flex-col items-center gap-4">
+                <AdminGauge score={globalStats.platformHealthScore} label="Health score" size={140} />
                 {(() => {
                   const open = globalStats.openTicketsCount || 1;
                   const avgUtil = consultantsPortfolio.length

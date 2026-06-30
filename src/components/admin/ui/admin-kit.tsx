@@ -107,8 +107,8 @@ export function AdminStat({
 
 /* ─────────────────────────────── gauge ────────────────────────────────────── */
 
-export function AdminGauge({ score, label, suffix = '/ 100' }: { score: number; label: string; suffix?: string }) {
-  const size = 176, stroke = 13, r = (size - stroke) / 2, c = 2 * Math.PI * r;
+export function AdminGauge({ score, label, suffix = '/ 100', size = 176 }: { score: number; label: string; suffix?: string; size?: number }) {
+  const stroke = Math.round(size * 0.075), r = (size - stroke) / 2, c = 2 * Math.PI * r;
   const pct = Math.max(0, Math.min(100, score));
   const tone = pct >= 90 ? 'var(--ak-success)' : pct >= 75 ? 'var(--ak-warning)' : 'var(--ak-critical)';
   return (
@@ -153,6 +153,31 @@ export function AdminBullet({ label, value, max, valueText, target = 100 }: { la
         <div className="ak-bullet-target" style={{ left: `${Math.min(100, target)}%` }} />
         <div className="ak-bullet-fill" style={{ width: `${pct}%`, background: tone }} />
       </div>
+    </div>
+  );
+}
+
+/* ─────────────── ranked bar list (dense, gap-free at any count) ───────────── */
+
+export function AdminBarList({
+  data, color = 'var(--ak-accent)', valueSuffix = '', max, emptyLabel = 'No data',
+}: {
+  data: { name: string; value: number; color?: string }[];
+  color?: string; valueSuffix?: string; max?: number; emptyLabel?: string;
+}) {
+  if (!data.length) return <AdminEmpty small title={emptyLabel} sub="Nothing to rank in this view." />;
+  const peak = max ?? Math.max(1, ...data.map(d => d.value));
+  return (
+    <div className="ak-barlist">
+      {data.map(d => (
+        <div key={d.name} className="ak-barlist-row">
+          <span className="ak-barlist-label" title={d.name}>{d.name}</span>
+          <div className="ak-barlist-track">
+            <div className="ak-barlist-fill" style={{ width: `${Math.max(2, (d.value / peak) * 100)}%`, background: d.color ?? color }} />
+          </div>
+          <span className="ak-barlist-val ak-num">{d.value}{valueSuffix}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -382,6 +407,14 @@ const AK_CSS = `
 .admin-shell .ak-bullet-fill{height:100%;border-radius:99px;transition:width .5s;}
 .admin-shell .ak-bullet-target{position:absolute;top:-3px;width:2px;height:13px;background:var(--ak-ink3);opacity:.5;transform:translateX(-1px);}
 
+/* ranked bar list */
+.admin-shell .ak-barlist{display:flex;flex-direction:column;gap:10px;}
+.admin-shell .ak-barlist-row{display:grid;grid-template-columns:104px 1fr 44px;align-items:center;gap:10px;}
+.admin-shell .ak-barlist-label{font-size:12.5px;color:var(--ak-ink2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.admin-shell .ak-barlist-track{height:8px;border-radius:99px;background:var(--ak-panel2);overflow:hidden;}
+.admin-shell .ak-barlist-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.22,1,.36,1);}
+.admin-shell .ak-barlist-val{font-size:12.5px;font-weight:640;color:var(--ak-ink);text-align:right;}
+
 /* buckets */
 .admin-shell .ak-buckets-bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--ak-line);gap:2px;}
 .admin-shell .ak-bucket-seg{height:100%;}
@@ -473,7 +506,7 @@ const AK_CSS = `
 .admin-shell .ak-toggle.is-on{background:var(--ak-ink);border-color:var(--ak-ink);color:#fff;}
 
 /* chart helpers */
-.admin-shell .ak-chartgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:stretch;}
+.admin-shell .ak-chartgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start;}
 .admin-shell .ak-col-full{grid-column:1 / -1;}
 .admin-shell .ak-chartbox{position:relative;width:100%;}
 .admin-shell .ak-chart{height:240px;margin:0 -4px;}
