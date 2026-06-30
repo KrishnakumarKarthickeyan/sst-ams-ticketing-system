@@ -454,6 +454,9 @@ const AK_CSS = `
 .admin-shell .ak-toggle.is-on{background:var(--ak-ink);border-color:var(--ak-ink);color:#fff;}
 
 /* chart helpers */
+.admin-shell .ak-chartgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:stretch;}
+.admin-shell .ak-col-full{grid-column:1 / -1;}
+.admin-shell .ak-chartbox{position:relative;width:100%;}
 .admin-shell .ak-chart{height:240px;margin:0 -4px;}
 .admin-shell .ak-chart-sm{height:200px;}
 .admin-shell .ak-legend{display:flex;gap:14px;font-size:11.5px;color:var(--ak-ink2);flex-wrap:wrap;}
@@ -486,6 +489,9 @@ const AK_CSS = `
   .admin-shell .ak-grid-5{grid-template-columns:repeat(3,1fr);}
   .admin-shell .ak-grid-4{grid-template-columns:repeat(2,1fr);}
   .admin-shell .ak-grid-3,.admin-shell .ak-grid-2{grid-template-columns:1fr;}
+}
+@media (max-width:1024px){
+  .admin-shell .ak-chartgrid{grid-template-columns:1fr;}
 }
 @media (max-width:640px){
   .admin-shell .ak-grid-5,.admin-shell .ak-grid-4{grid-template-columns:repeat(2,1fr);}
