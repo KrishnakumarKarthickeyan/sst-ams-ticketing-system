@@ -442,6 +442,25 @@ const AK_CSS = `
 .admin-shell .ak-pager-btn:hover:not(:disabled){color:var(--ak-ink);border-color:var(--ak-ink3);}
 .admin-shell .ak-pager-btn:disabled{opacity:.4;cursor:not-allowed;}
 
+/* tab bar (works with shadcn Tabs via data-state) */
+.admin-shell .ak-tabs{display:flex;flex-wrap:wrap;gap:2px;background:var(--ak-panel2);border:1px solid var(--ak-line2);border-radius:11px;padding:3px;height:auto;}
+.admin-shell .ak-tab{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:560;color:var(--ak-ink2);border:0;background:transparent;cursor:pointer;transition:all .15s;}
+.admin-shell .ak-tab:hover{color:var(--ak-ink);}
+.admin-shell .ak-tab[data-state="active"]{background:var(--ak-panel);color:var(--ak-ink);box-shadow:0 1px 2px rgba(15,23,42,.1);}
+.admin-shell .ak-tab-badge{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 5px;border-radius:99px;font-size:10.5px;font-weight:700;background:var(--ak-ink);color:#fff;}
+.admin-shell .ak-tab-badge.is-crit{background:var(--ak-critical);}
+
+/* banner (critical alert) */
+.admin-shell .ak-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--ak-critical);background:rgba(197,57,43,.06);border-radius:var(--ak-radius);padding:14px 16px;}
+.admin-shell .ak-banner-icon{position:relative;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:rgba(197,57,43,.12);color:var(--ak-critical);flex:none;}
+.admin-shell .ak-banner-title{font-size:13px;font-weight:640;color:var(--ak-critical);}
+.admin-shell .ak-banner-sub{font-size:12px;color:var(--ak-ink2);margin-top:2px;}
+
+/* alert row (quick actions) */
+.admin-shell .ak-alert{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--ak-panel2);border:1px solid var(--ak-line);border-radius:10px;padding:11px 12px;}
+.admin-shell .ak-alert-title{font-size:12.5px;font-weight:580;color:var(--ak-ink);display:block;}
+.admin-shell .ak-alert-sub{font-size:11.5px;color:var(--ak-ink3);margin-top:2px;display:block;}
+
 /* filter controls */
 .admin-shell .ak-filter-bar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;}
 .admin-shell .ak-field{display:flex;flex-direction:column;gap:5px;}

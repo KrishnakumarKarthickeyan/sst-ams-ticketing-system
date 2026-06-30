@@ -1440,25 +1440,18 @@ export default function AdminDashboardPage() {
       
       {/* ── ESCALATION RED WARNING BANNER ── */}
       {escalationsQueue.length > 0 && (
-        <div className="flex items-center justify-between gap-4 rounded-lg border border-critical-border bg-critical-soft p-4 shadow-card">
+        <div className="ak-banner">
           <div className="flex items-center gap-3">
-            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-critical/10">
-              <span className="absolute h-2 w-2 animate-ping rounded-full bg-critical opacity-60" />
-              <AlertTriangle className="relative text-critical" size={16} />
+            <span className="ak-banner-icon">
+              <span className="absolute h-2 w-2 animate-ping rounded-full" style={{ background: 'var(--ak-critical)', opacity: 0.6 }} />
+              <AlertTriangle size={16} style={{ position: 'relative' }} />
             </span>
             <div>
-              <span className="type-widget block text-critical-strong">Critical Escalations Alert</span>
-              <span className="type-meta mt-0.5 block text-critical">
-                <span className="type-num font-semibold">{escalationsQueue.length}</span> tickets are currently escalated. Manager intervention required immediately.
-              </span>
+              <span className="ak-banner-title">Critical Escalations Alert</span>
+              <span className="ak-banner-sub"><span className="ak-num" style={{ fontWeight: 680, color: 'var(--ak-critical)' }}>{escalationsQueue.length}</span> tickets are currently escalated — manager intervention required.</span>
             </div>
           </div>
-          <Button
-            onClick={() => setActiveTab('escalations')}
-            className="h-8 rounded-md bg-critical px-3 text-[11px] font-semibold text-white hover:bg-critical-strong"
-          >
-            Review Queue
-          </Button>
+          <AdminButton variant="primary" onClick={() => setActiveTab('escalations')}>Review Queue</AdminButton>
         </div>
       )}
 
@@ -1651,30 +1644,22 @@ export default function AdminDashboardPage() {
 
       {/* ── NAVIGATION TABS ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="flex flex-wrap h-auto bg-surface-subtle p-1 border border-line rounded-lg text-[11px] gap-0.5">
-          <TabsTrigger value="cockpit" className="py-2 px-3 uppercase font-bold rounded-md">Cockpit</TabsTrigger>
-          <TabsTrigger value="customers" className="py-2 px-3 uppercase font-bold rounded-md">Customers</TabsTrigger>
-          <TabsTrigger value="consultants" className="py-2 px-3 uppercase font-bold rounded-md">Consultants</TabsTrigger>
-          <TabsTrigger value="managers" className="py-2 px-3 uppercase font-bold rounded-md">Managers</TabsTrigger>
-          <TabsTrigger value="approvals" className="py-2 px-3 uppercase font-bold rounded-md">
+        <TabsList className="ak-tabs">
+          <TabsTrigger value="cockpit" className="ak-tab">Cockpit</TabsTrigger>
+          <TabsTrigger value="customers" className="ak-tab">Customers</TabsTrigger>
+          <TabsTrigger value="consultants" className="ak-tab">Consultants</TabsTrigger>
+          <TabsTrigger value="managers" className="ak-tab">Managers</TabsTrigger>
+          <TabsTrigger value="approvals" className="ak-tab">
             Approvals
-            {approvalsQueue.length > 0 && (
-              <Badge className="bg-zinc-900 text-white text-[11px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
-                {approvalsQueue.length}
-              </Badge>
-            )}
+            {approvalsQueue.length > 0 && <span className="ak-tab-badge">{approvalsQueue.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="escalations" className="py-2 px-3 uppercase font-bold rounded-md">
+          <TabsTrigger value="escalations" className="ak-tab">
             Escalations
-            {escalationsQueue.length > 0 && (
-              <Badge className="bg-red-600 text-white text-[11px] ml-1.5 px-1 py-0.5 h-auto rounded-full font-bold">
-                {escalationsQueue.length}
-              </Badge>
-            )}
+            {escalationsQueue.length > 0 && <span className="ak-tab-badge is-crit">{escalationsQueue.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="health" className="py-2 px-3 uppercase font-bold rounded-md">Health</TabsTrigger>
-          <TabsTrigger value="audits" className="py-2 px-3 uppercase font-bold rounded-md">Audits</TabsTrigger>
-          <TabsTrigger value="iam" className="py-2 px-3 uppercase font-bold rounded-md">Passwords & IAM</TabsTrigger>
+          <TabsTrigger value="health" className="ak-tab">Health</TabsTrigger>
+          <TabsTrigger value="audits" className="ak-tab">Audits</TabsTrigger>
+          <TabsTrigger value="iam" className="ak-tab">Passwords & IAM</TabsTrigger>
         </TabsList>
 
         {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
@@ -1790,28 +1775,28 @@ export default function AdminDashboardPage() {
                 <CardDescription className="text-[11px]">Review system alerts requiring Super Admin sync</CardDescription>
               </CardHeader>
               <CardContent className="p-4 space-y-4 text-[11px]">
-                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                <div className="ak-alert">
                   <div>
-                    <span className="font-bold text-ink block">System RLS Posture Check</span>
-                    <span className="text-[11px] text-ink-muted mt-0.5 block">Verifies row-level security configuration across Postgres schemas</span>
+                    <span className="ak-alert-title">System RLS Posture Check</span>
+                    <span className="ak-alert-sub">Verifies row-level security configuration across Postgres schemas</span>
                   </div>
                   <Badge className="bg-success-soft text-success-strong border border-success-border">VERIFIED</Badge>
                 </div>
                 
-                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                <div className="ak-alert">
                   <div>
-                    <span className="font-bold text-ink block">Expiring Contracts Warning</span>
-                    <span className="text-[11px] text-ink-muted mt-0.5 block">
+                    <span className="ak-alert-title">Expiring Contracts Warning</span>
+                    <span className="ak-alert-sub">
                       {contracts.filter(c => c.isActive && (new Date(c.endDate).getTime() - Date.now()) <= 30 * 24 * 60 * 60 * 1000).length} contracts expire within 30 days.
                     </span>
                   </div>
                   <Button onClick={() => setActiveTab('customers')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Audit Contracts</Button>
                 </div>
 
-                <div className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                <div className="ak-alert">
                   <div>
-                    <span className="font-bold text-ink block">SLA Breaches Response</span>
-                    <span className="text-[11px] text-ink-muted mt-0.5 block">Check active violation warnings</span>
+                    <span className="ak-alert-title">SLA Breaches Response</span>
+                    <span className="ak-alert-sub">Check active violation warnings</span>
                   </div>
                   <Button onClick={() => setActiveTab('escalations')} size="sm" className="h-6 text-[11px] uppercase font-bold bg-ink text-white rounded">Audit Violations</Button>
                 </div>
@@ -2268,7 +2253,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent className="p-4 space-y-3 text-xs">
                 {Object.entries(healthStatus).map(([key, h]) => (
-                  <div key={key} className="flex justify-between items-center bg-surface-muted border border-line p-2.5 rounded-lg">
+                  <div key={key} className="ak-alert">
                     <span className="font-extrabold uppercase text-ink">{key} Integration</span>
                     <div className="flex items-center gap-3">
                       <span className="text-[11px] text-ink-muted font-normal">Latency: {h.latency}ms</span>
@@ -2565,7 +2550,7 @@ export default function AdminDashboardPage() {
                   <div className="flex items-center justify-between p-1">
                     <div>
                       <span className="font-bold text-ink block text-[11px]">Force Setup on Next Login</span>
-                      <span className="text-[11px] text-ink-muted mt-0.5 block">Requires user to change password on authentication</span>
+                      <span className="ak-alert-sub">Requires user to change password on authentication</span>
                     </div>
                     <input 
                       type="checkbox" 
