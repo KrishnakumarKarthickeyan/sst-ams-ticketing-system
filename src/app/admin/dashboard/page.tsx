@@ -28,7 +28,7 @@ import { PageHeader } from '../../../components/ui/page-header';
 import { StatCard } from '../../../components/ui/stat-card';
 import type { PillTone } from '../../../components/ui/status-pill';
 import { AdminOperationIntelligence } from '../../../components/analytics/admin-operation-intelligence';
-import { AdminPageHeader, AdminStat, AdminCard, AdminGrid, AdminButton } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminStat, AdminCard, AdminGrid, AdminButton, AdminGauge, AdminLoadBuckets, AdminBullet, AdminEmpty } from '../../../components/admin/ui/admin-kit';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
@@ -1702,6 +1702,81 @@ export default function AdminDashboardPage() {
                   tone={kpi.tone ?? 'neutral'} icon={<Icon size={15} strokeWidth={2} />} />
               );
             })}
+          </AdminGrid>
+
+          {/* ── COMMAND HERO: health + workload (ui-ux-pro-max) ── */}
+          <AdminGrid cols={3}>
+            {/* Platform health gauge + posture factors (real derived data) */}
+            <AdminCard title="Platform Health" desc="Composite delivery posture this period.">
+              <div className="flex flex-col items-center gap-5">
+                <AdminGauge score={globalStats.platformHealthScore} label="Health score" />
+                {(() => {
+                  const open = globalStats.openTicketsCount || 1;
+                  const avgUtil = consultantsPortfolio.length
+                    ? Math.round(consultantsPortfolio.reduce((s, c) => s + c.utilization, 0) / consultantsPortfolio.length) : 0;
+                  const factors = [
+                    { label: 'SLA posture', value: Math.max(0, Math.min(100, Math.round((1 - globalStats.slaBreachesCount / open) * 100))) },
+                    { label: 'Escalation posture', value: Math.max(0, Math.min(100, Math.round((1 - globalStats.escalatedTicketsCount / open) * 100))) },
+                    { label: 'Avg utilization', value: Math.min(100, avgUtil) },
+                    { label: 'Capacity headroom', value: Math.max(0, 100 - Math.min(100, avgUtil)) },
+                  ];
+                  return (
+                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 11 }}>
+                      {factors.map(f => (
+                        <div key={f.label}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--ak-ink2)' }}>
+                            <span>{f.label}</span><span style={{ fontWeight: 620, color: 'var(--ak-ink)' }}>{f.value}%</span>
+                          </div>
+                          <div className="ak-util-track">
+                            <div style={{ width: `${f.value}%`, background: f.value >= 75 ? 'var(--ak-success)' : f.value >= 50 ? 'var(--ak-warning)' : 'var(--ak-critical)' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </AdminCard>
+
+            {/* Workload distribution buckets (consultants by capacity band) */}
+            <AdminCard title="Workload Distribution" desc="Consultants by capacity band.">
+              {(() => {
+                const counts = { Underutilized: 0, Healthy: 0, 'Near Capacity': 0, Overloaded: 0 } as Record<string, number>;
+                consultantsPortfolio.forEach(c => { counts[c.workloadRisk] = (counts[c.workloadRisk] || 0) + 1; });
+                return consultantsPortfolio.length === 0
+                  ? <AdminEmpty small title="No consultants" sub="No staffed consultants in scope." />
+                  : (
+                    <>
+                      <AdminLoadBuckets buckets={[
+                        { label: 'Idle', count: counts.Underutilized, tone: 'idle' },
+                        { label: 'Healthy', count: counts.Healthy, tone: 'healthy' },
+                        { label: 'Busy', count: counts['Near Capacity'], tone: 'busy' },
+                        { label: 'Overloaded', count: counts.Overloaded, tone: 'over' },
+                      ]} />
+                      <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div style={{ background: 'var(--ak-panel2)', border: '1px solid var(--ak-line)', borderRadius: 10, padding: '10px 12px' }}>
+                          <div style={{ fontSize: 11, color: 'var(--ak-ink3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Active on desk</div>
+                          <div className="ak-num" style={{ fontSize: 22, fontWeight: 680, color: 'var(--ak-ink)', marginTop: 4 }}>{globalStats.activeConsultants}</div>
+                        </div>
+                        <div style={{ background: 'var(--ak-panel2)', border: '1px solid var(--ak-line)', borderRadius: 10, padding: '10px 12px' }}>
+                          <div style={{ fontSize: 11, color: 'var(--ak-ink3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Overloaded</div>
+                          <div className="ak-num" style={{ fontSize: 22, fontWeight: 680, color: overloadedConsultants.length ? 'var(--ak-critical)' : 'var(--ak-ink)', marginTop: 4 }}>{overloadedConsultants.length}</div>
+                        </div>
+                      </div>
+                    </>
+                  );
+              })()}
+            </AdminCard>
+
+            {/* Top load — consultant utilization bullets */}
+            <AdminCard title="Highest Load" desc="Top consultants by utilization.">
+              {consultantsPortfolio.length === 0
+                ? <AdminEmpty small title="No consultants" sub="Nothing to rank yet." />
+                : [...consultantsPortfolio].sort((a, b) => b.utilization - a.utilization).slice(0, 6).map(c => (
+                  <AdminBullet key={c.id} label={c.name} value={c.approvedHours} max={c.capacity}
+                    valueText={`${Math.round(c.utilization)}% · ${c.approvedHours.toFixed(0)}h`} />
+                ))}
+            </AdminCard>
           </AdminGrid>
 
           {/* Core overview details */}
