@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { Header } from '../../components/layout/Header';
 import { Skeleton } from '../../components/ui/skeleton';
+import { AdminThemeStyle } from '../../components/admin/ui/admin-kit';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -73,7 +74,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-        <main className="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
+        {/* Scoped SuperAdmin design system — `.admin-shell` confines all skill-driven
+            tokens to the admin content area; injected once here. No bleed to other roles. */}
+        <AdminThemeStyle />
+        <main className="admin-shell flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
           {children}
         </main>
       </div>
