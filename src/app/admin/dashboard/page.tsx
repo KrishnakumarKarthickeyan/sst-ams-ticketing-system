@@ -1503,7 +1503,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.customer}
               onChange={(e) => setFilters(prev => ({ ...prev, customer: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL CUSTOMERS</option>
               {customerOrgsList.map(c => (
@@ -1518,7 +1518,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.consultant}
               onChange={(e) => setFilters(prev => ({ ...prev, consultant: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL CONSULTANTS</option>
               {consultantsProfilesList.map(c => (
@@ -1533,7 +1533,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.manager}
               onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
-              className="h-9 min-w-[140px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL MANAGERS</option>
               {managersProfilesList.map(m => (
@@ -1548,7 +1548,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.module}
               onChange={(e) => setFilters(prev => ({ ...prev, module: e.target.value }))}
-              className="h-9 min-w-[110px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL MODULES</option>
               {modulesList.map(m => (
@@ -1563,7 +1563,7 @@ export default function AdminDashboardPage() {
             <select
               value={filters.priority}
               onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-              className="h-9 min-w-[110px] px-3 border border-line rounded-md bg-surface text-[11px] font-medium text-ink-secondary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              className="ak-select"
             >
               <option value="All">ALL PRIORITIES</option>
               <option value="Critical">CRITICAL</option>

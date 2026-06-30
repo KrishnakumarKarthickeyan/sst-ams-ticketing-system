@@ -442,6 +442,17 @@ const AK_CSS = `
 .admin-shell .ak-pager-btn:hover:not(:disabled){color:var(--ak-ink);border-color:var(--ak-ink3);}
 .admin-shell .ak-pager-btn:disabled{opacity:.4;cursor:not-allowed;}
 
+/* filter controls */
+.admin-shell .ak-filter-bar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;}
+.admin-shell .ak-field{display:flex;flex-direction:column;gap:5px;}
+.admin-shell .ak-field-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ak-ink3);}
+.admin-shell .ak-select,.admin-shell .ak-date{height:34px;padding:0 10px;border:1px solid var(--ak-line2);border-radius:9px;background:var(--ak-panel);color:var(--ak-ink2);font-size:12px;font-weight:500;min-width:130px;transition:border-color .15s;cursor:pointer;}
+.admin-shell .ak-select:hover,.admin-shell .ak-date:hover{border-color:var(--ak-ink3);}
+.admin-shell .ak-select:focus,.admin-shell .ak-date:focus{outline:none;border-color:var(--ak-accent);box-shadow:0 0 0 3px rgba(14,99,201,.12);}
+.admin-shell .ak-toggle{height:28px;padding:0 11px;border-radius:99px;font-size:11px;font-weight:560;border:1px solid var(--ak-line2);background:var(--ak-panel);color:var(--ak-ink2);cursor:pointer;transition:all .15s;}
+.admin-shell .ak-toggle:hover{color:var(--ak-ink);border-color:var(--ak-ink3);}
+.admin-shell .ak-toggle.is-on{background:var(--ak-ink);border-color:var(--ak-ink);color:#fff;}
+
 /* chart helpers */
 .admin-shell .ak-chart{height:240px;margin:0 -4px;}
 .admin-shell .ak-chart-sm{height:200px;}
