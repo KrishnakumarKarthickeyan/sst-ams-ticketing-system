@@ -2,13 +2,18 @@
 
 import React from 'react';
 import { useTickets } from '../../../context/TicketContext';
-import { ShieldCheck, Calendar, Activity, Loader2 } from 'lucide-react';
+import { ShieldCheck, Activity, Users, FileClock, CalendarClock } from 'lucide-react';
+import {
+  AdminPageHeader, AdminGrid, AdminStat, AdminCard, AdminDataTable, AdminEmpty, type AdminColumn,
+} from '../../../components/admin/ui/admin-kit';
+
+type LogRow = { id: string; timestamp: string; actor: string; action: string; target: string; details: string };
 
 export default function AdminAuditLogsPage() {
   const { tickets, loading } = useTickets();
 
-  // Extract all history events from all tickets to build system audit logs
-  const logs = React.useMemo(() => {
+  // Immutable audit ledger built from ticket history (unchanged logic).
+  const logs = React.useMemo<LogRow[]>(() => {
     return tickets
       .flatMap((ticket) =>
         (ticket.history || []).map((h) => ({
@@ -19,69 +24,60 @@ export default function AdminAuditLogsPage() {
           target: ticket.title || `Ticket #${ticket.ticketNumber || ticket.id}`,
           details: h.fieldChanged
             ? `Changed ${h.fieldChanged} from "${h.oldValue}" to "${h.newValue}"`
-            : `Ticket activity logged.`
-        }))
+            : `Ticket activity logged.`,
+        })),
       )
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [tickets]);
 
-  if (loading) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center text-ink-secondary">
-        <Loader2 className="animate-spin mr-2" size={16} />
-        LOADING SYSTEM AUDIT LEDGER...
-      </div>
-    );
-  }
+  const kpis = React.useMemo(() => {
+    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+    const distinct = (arr: string[]) => new Set(arr).size;
+    return {
+      total: logs.length,
+      today: logs.filter(l => new Date(l.timestamp).getTime() >= startOfToday.getTime()).length,
+      actors: distinct(logs.map(l => l.actor)),
+      entities: distinct(logs.map(l => l.target)),
+    };
+  }, [logs]);
+
+  const columns: AdminColumn<LogRow>[] = [
+    { key: 'ts', header: 'Timestamp', sortValue: r => new Date(r.timestamp).getTime(), width: '180px',
+      render: r => <span className="ak-num" style={{ color: 'var(--ak-ink3)', whiteSpace: 'nowrap' }}>{new Date(r.timestamp).toLocaleString()}</span> },
+    { key: 'actor', header: 'Actor', sortValue: r => r.actor, width: '160px',
+      render: r => <span style={{ fontWeight: 580, color: 'var(--ak-ink)' }}>{r.actor}</span> },
+    { key: 'action', header: 'Action', sortValue: r => r.action,
+      render: r => <span className="ak-chip"><Activity size={10} style={{ marginRight: 4, verticalAlign: '-1px' }} />{r.action}</span> },
+    { key: 'target', header: 'Target Entity', sortValue: r => r.target,
+      render: r => <span style={{ color: 'var(--ak-ink2)', display: 'block', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.target}>{r.target}</span> },
+    { key: 'details', header: 'Details', align: 'right', sortValue: r => r.details,
+      render: r => <span style={{ color: 'var(--ak-ink3)', fontSize: 11.5 }}>{r.details}</span> },
+  ];
 
   return (
-    <div className="space-y-6 text-xs text-ink">
-      <div className="border-b border-line pb-4">
-        <h1 className="type-title text-ink">System Audit Logs</h1>
-        <p className="type-meta mt-1 text-ink-secondary">Immutable security ledger of all platform administrative adjustments, user logins, and database mutations.</p>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow={<><ShieldCheck size={13} strokeWidth={2} /> Security ledger</>}
+        title="System Audit Logs"
+        subtitle="Immutable ledger of platform administrative adjustments, routing transitions, and database mutations."
+      />
 
-      {/* Log list */}
-      {logs.length === 0 ? (
-        <div className="bg-surface border border-line rounded-lg p-8 text-center space-y-3">
-          <Activity className="mx-auto text-ink-muted" size={32} />
-          <h3 className="text-sm font-bold text-ink uppercase tracking-wider">No audit logs recorded yet</h3>
-          <p className="text-xs text-ink-secondary max-w-sm mx-auto">System activities, ticket routing transitions, and authorization resets will be recorded in this secure log ledger.</p>
-        </div>
-      ) : (
-        <div className="bg-surface border border-line rounded overflow-hidden">
-          <div className="overflow-x-auto"><table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="bg-surface-muted border-b border-line uppercase font-bold text-[11px] tracking-wider text-ink-secondary">
-                <th className="p-4">Timestamp</th>
-                <th className="p-4">Actor</th>
-                <th className="p-4">Action Event</th>
-                <th className="p-4">Target Entity</th>
-                <th className="p-4 text-right">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line text-ink-secondary">
-              {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-surface-muted/60">
-                  <td className="p-4 text-ink-muted flex items-center gap-1.5 whitespace-nowrap">
-                    <Calendar size={12} />
-                    {new Date(log.timestamp).toLocaleString()}
-                  </td>
-                  <td className="p-4 font-bold text-ink">{log.actor}</td>
-                  <td className="p-4">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-subtle text-ink font-semibold border border-line">
-                      <Activity size={10} />
-                      {log.action}
-                    </span>
-                  </td>
-                  <td className="p-4 font-bold text-ink-secondary truncate max-w-[180px]">{log.target}</td>
-                  <td className="p-4 text-right text-[11px] text-ink-secondary">{log.details}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        </div>
-      )}
+      <AdminGrid cols={4}>
+        <AdminStat label="Total Events" value={kpis.total} icon={<FileClock size={15} strokeWidth={2} />} sub="in the ledger" loading={loading} />
+        <AdminStat label="Today" value={kpis.today} icon={<CalendarClock size={15} strokeWidth={2} />} sub="events since midnight" loading={loading} />
+        <AdminStat label="Distinct Actors" value={kpis.actors} icon={<Users size={15} strokeWidth={2} />} sub="users / system" loading={loading} />
+        <AdminStat label="Entities Touched" value={kpis.entities} icon={<Activity size={15} strokeWidth={2} />} sub="tickets affected" loading={loading} />
+      </AdminGrid>
+
+      <AdminCard title="Activity Ledger" desc="Most recent first · sortable." pad={false}>
+        <AdminDataTable
+          rows={logs} columns={columns} pageSize={12} loading={loading}
+          getRowKey={(r, i) => `${r.id}-${i}`}
+          initialSort={{ key: 'ts', dir: 'desc' }}
+          empty={<AdminEmpty icon={<ShieldCheck size={18} />} title="No audit logs yet"
+            sub="System activities, routing transitions, and authorization resets are recorded here as they happen." />}
+        />
+      </AdminCard>
     </div>
   );
 }

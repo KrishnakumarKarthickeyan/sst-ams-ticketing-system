@@ -485,6 +485,12 @@ const AK_CSS = `
 .admin-shell .ak-pager-btn:hover:not(:disabled){color:var(--ak-ink);border-color:var(--ak-ink3);}
 .admin-shell .ak-pager-btn:disabled{opacity:.4;cursor:not-allowed;}
 
+/* Refine the shared typography scale on every admin screen (scoped) so bespoke
+   headers (type-title / type-widget / type-section) match the redesigned pages. */
+.admin-shell .type-title{ font-size:1.375rem; line-height:1.15; font-weight:680; letter-spacing:-0.025em; }
+.admin-shell .type-section{ font-weight:660; letter-spacing:-0.015em; }
+.admin-shell .type-widget{ letter-spacing:-0.01em; }
+
 /* Unify the shared <Card> look across ALL admin screens (scoped): the base Card ships
    hardcoded border-zinc-200 + shadow-sm + rounded-lg (not themed) — align them to the kit
    shadow / 14px radius / navy hairline so every admin card matches the dashboard. */
