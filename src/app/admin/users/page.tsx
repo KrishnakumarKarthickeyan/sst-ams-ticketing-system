@@ -31,6 +31,8 @@ import {
   DialogFooter
 } from '../../../components/ui/dialog';
 import { PageHeader } from '../../../components/ui/page-header';
+import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { Users as UsersIcon, BadgeCheck, Building2, UserCheck } from 'lucide-react';
 import { CreateConsultantDialog } from '../../../components/users/CreateConsultantDialog';
 import { CreateClientDialog } from '../../../components/users/CreateClientDialog';
 import { Button } from '../../../components/ui/button';
@@ -697,6 +699,15 @@ export default function AdminUsersPage() {
           </div>
         }
       />
+
+      {/* KPI strip (ui-ux-pro-max) — live directory counts */}
+      <AdminGrid cols={5}>
+        <AdminStat label="Total Users" value={usersList.length} icon={<UsersIcon size={15} strokeWidth={2} />} sub="in directory" />
+        <AdminStat label="Active" value={usersList.filter((u: any) => u.active).length} tone="success" icon={<UserCheck size={15} strokeWidth={2} />} sub="sign-in enabled" />
+        <AdminStat label="Managers" value={usersList.filter((u: any) => u.role === 'Manager').length} icon={<BadgeCheck size={15} strokeWidth={2} />} sub="delivery controllers" />
+        <AdminStat label="Consultants" value={usersList.filter((u: any) => u.role === 'Consultant').length} icon={<ShieldCheck size={15} strokeWidth={2} />} sub="on the desk" />
+        <AdminStat label="Customers" value={usersList.filter((u: any) => u.role === 'Customer').length} icon={<Building2 size={15} strokeWidth={2} />} sub="client contacts" />
+      </AdminGrid>
 
       <CreateConsultantDialog open={createConsultantOpen} onOpenChange={setCreateConsultantOpen} performedBy={user?.email} onCreated={fetchUsers} />
       <CreateClientDialog open={createClientOpen} onOpenChange={setCreateClientOpen} performedBy={user?.email} onCreated={fetchUsers} />

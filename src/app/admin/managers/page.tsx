@@ -9,6 +9,8 @@ import {
   User, Plus, Mail, ShieldCheck, XCircle, Trash2, Key, ListFilter, 
   AlertTriangle, CheckCircle, Clock, ShieldAlert, ArrowRight, Eye 
 } from 'lucide-react';
+import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { BadgeCheck as Bdg, UserCheck as UCk, Ticket as Tkt, Flame as Flm } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../../../components/ui/badge';
 import { PageHeader } from '../../../components/ui/page-header';
@@ -423,6 +425,14 @@ export default function AdminManagersPage() {
           </Button>
         }
       />
+
+      {/* KPI strip (ui-ux-pro-max) — oversight at a glance */}
+      <AdminGrid cols={4}>
+        <AdminStat label="Managers" value={managers.length} icon={<Bdg size={15} strokeWidth={2} />} sub="provisioned" />
+        <AdminStat label="Active" value={managers.filter(m => m.active).length} tone="success" icon={<UCk size={15} strokeWidth={2} />} sub="sign-in enabled" />
+        <AdminStat label="Tickets Overseen" value={managers.reduce((s, m) => s + (m.ticketCount || 0), 0)} icon={<Tkt size={15} strokeWidth={2} />} sub="across cockpits" />
+        <AdminStat label="Critical Load" value={managers.reduce((s, m) => s + (m.criticalCount || 0), 0)} tone={managers.reduce((s, m) => s + (m.criticalCount || 0), 0) > 0 ? 'critical' : 'neutral'} icon={<Flm size={15} strokeWidth={2} />} sub="high-priority items" />
+      </AdminGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main List */}

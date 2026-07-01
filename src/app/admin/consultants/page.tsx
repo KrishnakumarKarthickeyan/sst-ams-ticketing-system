@@ -10,6 +10,8 @@ import {
   Plus, Edit3, Trash2, KeyRound, Mail, Phone, Calendar, ShieldAlert,
   ChevronLeft, Award, HelpCircle, Layers, CheckSquare, RefreshCw, Eye, Lock
 } from 'lucide-react';
+import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { Users as UsersIco, UserCheck as UChk, Wrench as Wr, Cpu as Cp } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
@@ -432,6 +434,14 @@ export default function AdminConsultantsPage() {
           </Button>
         }
       />
+
+      {/* KPI strip (ui-ux-pro-max) — roster at a glance */}
+      <AdminGrid cols={4}>
+        <AdminStat label="Total Consultants" value={consultants.length} icon={<UsersIco size={15} strokeWidth={2} />} sub="on record" />
+        <AdminStat label="Active" value={consultants.filter(c => c.is_active).length} tone="success" icon={<UChk size={15} strokeWidth={2} />} sub="sign-in enabled" />
+        <AdminStat label="Functional" value={consultants.filter(c => c.consultant_type === 'Functional').length} icon={<Wr size={15} strokeWidth={2} />} sub="functional stream" />
+        <AdminStat label="Technical" value={consultants.filter(c => c.consultant_type === 'Technical').length} icon={<Cp size={15} strokeWidth={2} />} sub="technical stream" />
+      </AdminGrid>
 
       {/* Roster list & filters */}
       <Card className="border-line shadow-card">
