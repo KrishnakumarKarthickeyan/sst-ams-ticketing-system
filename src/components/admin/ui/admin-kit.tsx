@@ -485,6 +485,13 @@ const AK_CSS = `
 .admin-shell .ak-pager-btn:hover:not(:disabled){color:var(--ak-ink);border-color:var(--ak-ink3);}
 .admin-shell .ak-pager-btn:disabled{opacity:.4;cursor:not-allowed;}
 
+/* Unify the shared <Card> look across ALL admin screens (scoped): the base Card ships
+   hardcoded border-zinc-200 + shadow-sm + rounded-lg (not themed) — align them to the kit
+   shadow / 14px radius / navy hairline so every admin card matches the dashboard. */
+.admin-shell .shadow-card,.admin-shell .shadow-sm{ box-shadow:var(--ak-shadow); }
+.admin-shell .shadow-card{ border-radius:14px; }
+.admin-shell .border-zinc-200{ border-color:var(--ak-line); }
+
 /* Structural refinement of the shared <Table> across ALL admin screens (scoped).
    .admin-shell table… outranks the utility classes, so every admin data table gets the
    premium kit look (uppercase muted headers, row hover, consistent density) with no
