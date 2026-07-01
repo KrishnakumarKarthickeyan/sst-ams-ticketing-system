@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { isSupabaseConfigured } from '../../../lib/supabase/client';
-import { Activity, ShieldAlert, Check, RefreshCw } from 'lucide-react';
+import { ShieldAlert, Check, RefreshCw, Database, Server, Settings as SettingsIcon } from 'lucide-react';
+import { AdminPageHeader, AdminCard, AdminButton, AdminPill } from '../../../components/admin/ui/admin-kit';
 
 export default function AdminSettingsPage() {
   const { resetMockData } = useTickets();
@@ -21,77 +22,62 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 text-xs text-ink">
-      <div className="border-b border-line pb-4">
-        <h1 className="type-title text-ink">Platform Configurations</h1>
-        <p className="type-meta mt-1 text-ink-secondary">Audit active API connections, verify RLS settings, or re-initialize client storage.</p>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow={<><SettingsIcon size={13} strokeWidth={2} /> Platform</>}
+        title="Platform Configurations"
+        subtitle="Audit active API connections, verify RLS posture, or re-initialize local storage."
+      />
 
       {success && (
-        <div className="bg-surface-muted border border-zinc-900 rounded p-3 text-ink font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-          <Check size={14} />
-          Local storage state re-seeded with mock database profiles
+        <div className="ak-banner" style={{ borderColor: 'var(--ak-success)', background: 'rgba(15,122,79,.06)' }}>
+          <div className="flex items-center gap-3">
+            <span className="ak-banner-icon" style={{ background: 'rgba(15,122,79,.12)', color: 'var(--ak-success)' }}><Check size={16} /></span>
+            <div><span className="ak-banner-title" style={{ color: 'var(--ak-success)' }}>Local storage re-seeded</span>
+              <span className="ak-banner-sub">Mock database profiles were restored.</span></div>
+          </div>
         </div>
       )}
 
-      {/* Connection state */}
-      <div className="bg-surface border border-line rounded p-5 space-y-4">
-        <h3 className="font-bold text-xs uppercase tracking-wider text-ink border-b border-line pb-2 flex items-center justify-between">
-          <span>Backend Link Status</span>
-          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${isSupabaseConfigured ? 'bg-ink text-white animate-pulse' : 'bg-surface-subtle text-ink-muted'}`}>
-            {isSupabaseConfigured ? 'LIVE INTEGRATION' : 'LOCAL FALLBACK'}
-          </span>
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <span className="text-[11px] text-ink-muted font-bold uppercase block">API Endpoints URL:</span>
-            <span className="text-ink-secondary block select-all">
+      <AdminCard
+        title="Backend Link Status"
+        actions={<AdminPill tone={isSupabaseConfigured ? 'ok' : 'muted'}>{isSupabaseConfigured ? 'Live integration' : 'Local fallback'}</AdminPill>}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--ak-ink3)', display: 'flex', alignItems: 'center', gap: 5 }}><Server size={12} /> API Endpoint</span>
+            <span className="select-all" style={{ color: 'var(--ak-ink2)', fontSize: 12.5, display: 'block', marginTop: 4, wordBreak: 'break-all' }}>
               {isSupabaseConfigured ? process.env.NEXT_PUBLIC_SUPABASE_URL : 'https://localfallback.assist360.internal'}
             </span>
           </div>
-
-          <div className="space-y-1">
-            <span className="text-[11px] text-ink-muted font-bold uppercase block">Row Level Security Compliance:</span>
-            <span className="font-bold text-ink-secondary block uppercase">
-              {isSupabaseConfigured ? 'ENFORCED (SCHEMA LEVEL)' : 'SIMULATED (STATE CONTEXTS)'}
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--ak-ink3)', display: 'flex', alignItems: 'center', gap: 5 }}><ShieldAlert size={12} /> Row-Level Security</span>
+            <span style={{ color: 'var(--ak-ink2)', fontSize: 12.5, fontWeight: 600, display: 'block', marginTop: 4 }}>
+              {isSupabaseConfigured ? 'Enforced (schema level)' : 'Simulated (state contexts)'}
             </span>
           </div>
         </div>
-      </div>
+      </AdminCard>
 
-      {/* Reset Operations */}
-      <div className="bg-surface border border-line rounded p-5 space-y-4">
-        <h3 className="font-bold text-xs uppercase tracking-wider text-ink border-b border-line pb-2">
-          Platform Data Diagnostics
-        </h3>
-        <p className="text-ink-secondary leading-normal max-w-xl">
-          {isSupabaseConfigured
-            ? 'Local storage state seeding is disabled when Supabase is active as the single source of truth.'
-            : 'Resetting database states empties local edits and re-populates default organizations, tickets, efforts, and categories.'}
-        </p>
-
+      <AdminCard title="Platform Data Diagnostics" desc={isSupabaseConfigured
+        ? 'Local seeding is disabled while Supabase is the single source of truth.'
+        : 'Resetting empties local edits and re-populates default orgs, tickets, efforts, and categories.'}>
         {!isSupabaseConfigured && (
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 border border-zinc-900 hover:bg-ink hover:text-white rounded font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5 transition disabled:opacity-50"
-            disabled={resetting}
-          >
+          <AdminButton variant="ghost" onClick={handleReset} disabled={resetting}>
             <RefreshCw size={12} className={resetting ? 'animate-spin' : ''} />
-            {resetting ? 'Seeding Local Database...' : 'Re-Seed Local Storage'}
-          </button>
+            {resetting ? 'Seeding local database…' : 'Re-seed local storage'}
+          </AdminButton>
         )}
-      </div>
+      </AdminCard>
 
-      {/* Diagnostics Panel */}
-      <div className="p-5 border border-line rounded bg-surface-muted flex items-start gap-3">
-        <ShieldAlert size={16} className="text-ink-secondary shrink-0 mt-0.5" />
-        <div className="space-y-1 leading-normal">
-          <h4 className="font-bold text-ink">Invitation Only Registrations</h4>
-          <p className="text-ink-secondary">
-            Platform accounts must be provisioned inside user settings. Direct client-side registrations are blocked.
-          </p>
-        </div>
+      <div className="ak-alert" style={{ alignItems: 'flex-start' }}>
+        <span style={{ display: 'flex', gap: 10 }}>
+          <ShieldAlert size={16} style={{ color: 'var(--ak-ink3)', flex: 'none', marginTop: 2 }} />
+          <span>
+            <span className="ak-alert-title">Invitation-only registrations</span>
+            <span className="ak-alert-sub">Accounts are provisioned in User settings. Direct client-side registration is blocked.</span>
+          </span>
+        </span>
       </div>
     </div>
   );
