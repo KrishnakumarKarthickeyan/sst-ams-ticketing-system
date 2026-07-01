@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { ArrowLeft, Clock, Search, Shield, Filter, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { AdminPageHeader } from '../../../components/admin/ui/admin-kit';
 import Link from 'next/link';
 
 export default function AdminEffortLogsPage() {
@@ -99,10 +100,11 @@ export default function AdminEffortLogsPage() {
         </div>
       </div>
 
-      <div className="border-b border-line pb-4">
-        <h1 className="type-title text-ink">Consultant Timesheets & Effort Logs</h1>
-        <p className="type-meta mt-1 text-ink-secondary">Audit billing items, view work breakdowns, and track project efforts globally.</p>
-      </div>
+      <AdminPageHeader
+        eyebrow={<><FileText size={13} strokeWidth={2} /> Timesheets</>}
+        title="Consultant Timesheets & Effort Logs"
+        subtitle="Audit billing items, view work breakdowns, and track project efforts globally."
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">

@@ -5,6 +5,7 @@ import { getErrorMessage } from '@/lib/errors';
 import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { ShieldCheck, User, Check, Mail, KeyRound, Lock } from 'lucide-react';
+import { AdminPageHeader } from '../../../components/admin/ui/admin-kit';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -81,14 +82,11 @@ export default function AdminProfilePage() {
   return (
     <div className="space-y-6 max-w-xl mx-auto">
       {/* Header */}
-      <div className="border-b border-line pb-4">
-        <h1 className="type-title text-ink">
-          Super Admin Profile
-        </h1>
-        <p className="text-xs text-ink-secondary font-medium">
-          Manage your administrative profile settings and password credentials.
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow={<><ShieldCheck size={13} strokeWidth={2} /> Account</>}
+        title="Super Admin Profile"
+        subtitle="Manage your administrative profile settings and password credentials."
+      />
 
       {success && (
         <div className="bg-ink text-white border border-zinc-900 rounded-lg p-4 text-xs font-bold uppercase tracking-wider flex items-center gap-2">

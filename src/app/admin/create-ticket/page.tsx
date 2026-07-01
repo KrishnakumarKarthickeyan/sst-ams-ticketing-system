@@ -5,6 +5,7 @@ import { useTickets } from '../../../context/TicketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Check, ArrowLeft, Send, Paperclip, X } from 'lucide-react';
+import { AdminPageHeader } from '../../../components/admin/ui/admin-kit';
 import Link from 'next/link';
 import { SAPModule, IssueCategory, TicketPriority } from '../../../types/ticket';
 
@@ -181,10 +182,11 @@ export default function AdminCreateTicketPage() {
         Back to Admin Dashboard
       </Link>
 
-      <div className="border-b border-line pb-4">
-        <h1 className="type-title text-ink">Create Ticket on Behalf of Customer</h1>
-        <p className="type-meta mt-1 text-ink-secondary">Submit, categorize, and optionally assign a new incident or service request directly.</p>
-      </div>
+      <AdminPageHeader
+        eyebrow={<><Send size={13} strokeWidth={2} /> New Ticket</>}
+        title="Create Ticket on Behalf of Customer"
+        subtitle="Submit, categorize, and optionally assign a new incident or service request directly."
+      />
 
       {success && (
         <div className="bg-success-soft border border-emerald-500 rounded p-3 text-emerald-800 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5 animate-fade-in">
