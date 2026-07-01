@@ -321,6 +321,16 @@ export function AdminThemeStyle() {
 
 const AK_CSS = `
 .admin-shell{
+  /* Re-theme the app's shared Tailwind tokens for SuperAdmin ONLY (scoped — no bleed).
+     Every app component used inside admin (Card, Table, Button, badges, PageHeader…)
+     reads these var()s, so overriding them here shifts the whole admin surface to the
+     cohesive navy/blue enterprise palette without editing each screen. */
+  --color-ink:#0F172A; --color-ink-secondary:#475569; --color-ink-muted:#8A93A3;
+  --color-line:#E7EAF0; --color-line-strong:#DCE0E8;
+  --color-surface:#FFFFFF; --color-surface-muted:#F6F8FB; --color-surface-subtle:#EEF2F7;
+  --color-brand:#0E63C9; --color-brand-strong:#0B4DA0; --color-brand-soft:#EAF1FC; --color-brand-border:#C7DBF6;
+  background:#F7F9FC;
+
   --ak-ink:#0F172A; --ak-ink2:#475569; --ak-ink3:#8A93A3;
   --ak-line:#E7EAF0; --ak-line2:#DCE0E8; --ak-panel:#FFFFFF; --ak-panel2:#F6F8FB; --ak-bg:#F7F9FC;
   --ak-accent:#0E63C9; --ak-accent-ink:#0B4DA0; --ak-amber:#C2730C;
