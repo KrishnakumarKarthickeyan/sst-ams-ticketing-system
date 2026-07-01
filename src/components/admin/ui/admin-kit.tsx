@@ -485,6 +485,20 @@ const AK_CSS = `
 .admin-shell .ak-pager-btn:hover:not(:disabled){color:var(--ak-ink);border-color:var(--ak-ink3);}
 .admin-shell .ak-pager-btn:disabled{opacity:.4;cursor:not-allowed;}
 
+/* Structural refinement of the shared <Table> across ALL admin screens (scoped).
+   .admin-shell table… outranks the utility classes, so every admin data table gets the
+   premium kit look (uppercase muted headers, row hover, consistent density) with no
+   per-screen edits. Recharts uses SVG, so charts are unaffected. */
+.admin-shell table thead th{
+  text-transform:uppercase; font-size:11px; letter-spacing:.05em; font-weight:600;
+  color:var(--ak-ink3); background:var(--ak-panel); border-bottom:1px solid var(--ak-line);
+  padding:10px 14px; white-space:nowrap;
+}
+.admin-shell table tbody td{ padding:11px 14px; border-bottom:1px solid var(--ak-line); color:var(--ak-ink); }
+.admin-shell table tbody tr{ transition:background .12s; }
+.admin-shell table tbody tr:hover{ background:var(--ak-panel2); }
+.admin-shell table tbody tr:last-child td{ border-bottom:0; }
+
 /* tab bar (works with shadcn Tabs via data-state) */
 .admin-shell .ak-tabs{display:flex;flex-wrap:wrap;gap:2px;background:var(--ak-panel2);border:1px solid var(--ak-line2);border-radius:11px;padding:3px;height:auto;}
 .admin-shell .ak-tab{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:560;color:var(--ak-ink2);border:0;background:transparent;cursor:pointer;transition:all .15s;}
