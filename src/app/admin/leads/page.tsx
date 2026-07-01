@@ -5,6 +5,7 @@ import { Inbox, Sparkles, MessageSquare, CalendarClock } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { PageHeader } from '../../../components/ui/page-header';
 import { StatCard } from '../../../components/ui/stat-card';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { StatusPill, type PillTone } from '../../../components/ui/status-pill';
 import { DataTable, type DataTableColumn } from '../../../components/ui/data-table';
 
@@ -98,17 +99,18 @@ export default function AdminLeadsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <AdminPageHeader
+        eyebrow={<><Inbox size={13} strokeWidth={2} /> Marketing inbound</>}
         title="Inbound Leads"
-        description="Waitlist signups, demo requests and contact-sales messages captured from the marketing site."
+        subtitle="Waitlist signups, demo requests and contact-sales messages from the marketing site."
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Total Leads" value={counts.total} icon={Inbox} loading={loading} />
-        <StatCard label="Waitlist" value={counts.waitlist} icon={Sparkles} tone="brand" loading={loading} />
-        <StatCard label="Demo Requests" value={counts.demo} icon={CalendarClock} tone="info" loading={loading} />
-        <StatCard label="Contact Sales" value={counts.contact} icon={MessageSquare} tone="warning" loading={loading} />
-      </div>
+      <AdminGrid cols={4}>
+        <AdminStat label="Total Leads" value={counts.total} icon={<Inbox size={15} strokeWidth={2} />} sub="all inbound" loading={loading} />
+        <AdminStat label="Waitlist" value={counts.waitlist} icon={<Sparkles size={15} strokeWidth={2} />} sub="early access" loading={loading} />
+        <AdminStat label="Demo Requests" value={counts.demo} icon={<CalendarClock size={15} strokeWidth={2} />} sub="sales demos" loading={loading} />
+        <AdminStat label="Contact Sales" value={counts.contact} tone={counts.contact > 0 ? 'warning' : 'neutral'} icon={<MessageSquare size={15} strokeWidth={2} />} sub="direct enquiries" loading={loading} />
+      </AdminGrid>
 
       <div className="flex max-w-full flex-wrap gap-1 overflow-x-auto rounded-lg border border-line bg-surface-subtle p-1">
         {tabs.map(tab => {
