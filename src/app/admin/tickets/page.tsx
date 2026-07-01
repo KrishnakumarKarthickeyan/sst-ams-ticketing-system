@@ -8,6 +8,8 @@ import { useTickets } from '../../../context/TicketContext';
 import { computeSla, getTargetHours, formatBusinessDuration } from '../../../lib/sla/slaEngine';
 import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
 import { PageHeader } from '../../../components/ui/page-header';
+import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { FolderOpen, ShieldAlert, Flame } from 'lucide-react';
 import { DataTable, DataTableColumn } from '../../../components/ui/data-table';
 import { StatusPill, statusTone, priorityTone } from '../../../components/ui/status-pill';
 import { Button } from '../../../components/ui/button';
@@ -141,6 +143,18 @@ export default function AdminTicketsPage() {
     [dropdownFiltered, activeTab],
   );
 
+  // KPI strip over the current (dropdown/search) filtered set — reconciles with the table.
+  const kpis = useMemo(() => {
+    const isOpen = (t: Ticket) => t.status !== 'Closed' && t.status !== 'Resolved';
+    return {
+      total: dropdownFiltered.length,
+      open: dropdownFiltered.filter(isOpen).length,
+      critical: dropdownFiltered.filter(t => isOpen(t) && t.priority === 'Critical').length,
+      breached: dropdownFiltered.filter(t => t.slaStatus === 'Breached').length,
+      escalated: dropdownFiltered.filter(t => t.escalationFlag && !t.escalationAcknowledgedAt).length,
+    };
+  }, [dropdownFiltered]);
+
   // SLA countdown rendering — single source of truth: the SLA engine (IST business
   // hours, per-client priority target, starts on lead assignment).
   const formatSlaCountdown = (t: Ticket) => {
@@ -271,6 +285,15 @@ export default function AdminTicketsPage() {
           </Button>
         }
       />
+
+      {/* KPI strip (ui-ux-pro-max) — live counts over the filtered set */}
+      <AdminGrid cols={5}>
+        <AdminStat label="Total Tickets" value={kpis.total} icon={<TicketIcon size={15} strokeWidth={2} />} sub="in current filter" loading={loading} />
+        <AdminStat label="Open" value={kpis.open} icon={<FolderOpen size={15} strokeWidth={2} />} sub="active pipeline" loading={loading} />
+        <AdminStat label="Critical (open)" value={kpis.critical} tone={kpis.critical > 0 ? 'critical' : 'neutral'} icon={<Flame size={15} strokeWidth={2} />} sub="highest urgency" loading={loading} />
+        <AdminStat label="SLA Breached" value={kpis.breached} tone={kpis.breached > 0 ? 'critical' : 'neutral'} icon={<ShieldAlert size={15} strokeWidth={2} />} sub="engine sla_status" loading={loading} />
+        <AdminStat label="Escalated" value={kpis.escalated} tone={kpis.escalated > 0 ? 'warning' : 'neutral'} icon={<AlertTriangle size={15} strokeWidth={2} />} sub="unacknowledged" loading={loading} />
+      </AdminGrid>
 
       {/* Search + advanced filters */}
       <div className="space-y-4">
