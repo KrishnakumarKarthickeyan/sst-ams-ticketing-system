@@ -30,7 +30,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '../../../components/ui/dialog';
-import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminCommandRibbon, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { Users as UsersIcon, BadgeCheck, Building2, UserCheck } from 'lucide-react';
 import { CreateConsultantDialog } from '../../../components/users/CreateConsultantDialog';
 import { CreateClientDialog } from '../../../components/users/CreateClientDialog';
@@ -700,14 +700,38 @@ export default function AdminUsersPage() {
         }
       />
 
-      {/* KPI strip (ui-ux-pro-max) — live directory counts */}
-      <AdminGrid cols={5}>
-        <AdminStat label="Total Users" value={usersList.length} icon={<UsersIcon size={15} strokeWidth={2} />} sub="in directory" />
-        <AdminStat label="Active" value={usersList.filter((u: any) => u.active).length} tone="success" icon={<UserCheck size={15} strokeWidth={2} />} sub="sign-in enabled" />
-        <AdminStat label="Managers" value={usersList.filter((u: any) => u.role === 'Manager').length} icon={<BadgeCheck size={15} strokeWidth={2} />} sub="delivery controllers" />
-        <AdminStat label="Consultants" value={usersList.filter((u: any) => u.role === 'Consultant').length} icon={<ShieldCheck size={15} strokeWidth={2} />} sub="on the desk" />
-        <AdminStat label="Customers" value={usersList.filter((u: any) => u.role === 'Customer').length} icon={<Building2 size={15} strokeWidth={2} />} sub="client contacts" />
-      </AdminGrid>
+      {/* Command ribbon + KPI strip (ui-ux-pro-max) — live directory counts */}
+      {(() => {
+        const active = usersList.filter((u: any) => u.active).length;
+        const inactive = usersList.length - active;
+        const managers = usersList.filter((u: any) => u.role === 'Manager').length;
+        const consultants = usersList.filter((u: any) => u.role === 'Consultant').length;
+        const customers = usersList.filter((u: any) => u.role === 'Customer').length;
+        const status = usersList.length && inactive > 0 ? 'warn' : 'ok';
+        const verdict = (usersList.length && inactive > 0) ? `${inactive} Disabled Account${inactive === 1 ? '' : 's'}` : 'All Accounts Active';
+        return (
+          <div className="space-y-6">
+          <AdminCommandRibbon
+            status={status}
+            verdict={verdict}
+            items={[
+              { label: 'Total Users', value: usersList.length },
+              { label: 'Active', value: active, tone: 'success' },
+              { label: 'Managers', value: managers },
+              { label: 'Consultants', value: consultants },
+              { label: 'Customers', value: customers },
+            ]}
+          />
+          <AdminGrid cols={5}>
+            <AdminStat label="Total Users" value={usersList.length} icon={<UsersIcon size={15} strokeWidth={2} />} sub="in directory" />
+            <AdminStat label="Active" value={active} tone="success" icon={<UserCheck size={15} strokeWidth={2} />} sub="sign-in enabled" />
+            <AdminStat label="Managers" value={managers} icon={<BadgeCheck size={15} strokeWidth={2} />} sub="delivery controllers" />
+            <AdminStat label="Consultants" value={consultants} icon={<ShieldCheck size={15} strokeWidth={2} />} sub="on the desk" />
+            <AdminStat label="Customers" value={customers} icon={<Building2 size={15} strokeWidth={2} />} sub="client contacts" />
+          </AdminGrid>
+          </div>
+        );
+      })()}
 
       <CreateConsultantDialog open={createConsultantOpen} onOpenChange={setCreateConsultantOpen} performedBy={user?.email} onCreated={fetchUsers} />
       <CreateClientDialog open={createClientOpen} onOpenChange={setCreateClientOpen} performedBy={user?.email} onCreated={fetchUsers} />
