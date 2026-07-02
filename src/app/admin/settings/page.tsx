@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { isSupabaseConfigured } from '../../../lib/supabase/client';
 import { ShieldAlert, Check, RefreshCw, Database, Server, Settings as SettingsIcon } from 'lucide-react';
-import { AdminPageHeader, AdminCard, AdminButton, AdminPill } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminCommandRibbon, AdminCard, AdminButton, AdminPill } from '../../../components/admin/ui/admin-kit';
 
 export default function AdminSettingsPage() {
   const { resetMockData } = useTickets();
@@ -27,6 +27,16 @@ export default function AdminSettingsPage() {
         eyebrow={<><SettingsIcon size={13} strokeWidth={2} /> Platform</>}
         title="Platform Configurations"
         subtitle="Audit active API connections, verify RLS posture, or re-initialize local storage."
+      />
+
+      <AdminCommandRibbon
+        status={isSupabaseConfigured ? 'ok' : 'warn'}
+        verdict={isSupabaseConfigured ? 'Live Integration Active' : 'Running on Local Fallback'}
+        items={[
+          { label: 'Backend', value: isSupabaseConfigured ? 'Supabase' : 'Local', tone: isSupabaseConfigured ? 'success' : 'warning' },
+          { label: 'Row-Level Security', value: isSupabaseConfigured ? 'Enforced' : 'Simulated', tone: isSupabaseConfigured ? 'success' : 'warning' },
+          { label: 'Source of Truth', value: isSupabaseConfigured ? 'Database' : 'State' },
+        ]}
       />
 
       {success && (

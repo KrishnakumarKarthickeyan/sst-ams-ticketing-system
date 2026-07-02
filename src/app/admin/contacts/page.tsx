@@ -6,7 +6,7 @@ import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { 
   Building2, Plus, Users, Mail, Phone, ShieldCheck, UserCheck, Trash2, Edit, X, User
 } from 'lucide-react';
-import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminGrid, AdminStat, AdminCommandRibbon } from '../../../components/admin/ui/admin-kit';
 import { Users as UsersK, Star as StarK, Building2 as BldK, Contact as ContactK } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -456,13 +456,26 @@ export default function AdminContactsPage() {
         const primary = contacts.filter((c) => c.is_primary).length;
         const secondary = contacts.filter((c) => c.is_secondary).length;
         const orgs = new Set(contacts.flatMap((c) => c.tags || [])).size;
+        const noPrimary = orgs - new Set(contacts.filter(c => c.is_primary).flatMap(c => c.tags || [])).size;
         return (
+          <div className="space-y-6">
+          <AdminCommandRibbon
+            status={total > 0 && noPrimary > 0 ? 'warn' : 'ok'}
+            verdict={total === 0 ? 'No Contacts Yet' : noPrimary > 0 ? `${noPrimary} Tenant(s) Without Primary` : 'Directory Complete'}
+            items={[
+              { label: 'Total Contacts', value: total },
+              { label: 'Primary', value: primary, tone: 'success' },
+              { label: 'Secondary', value: secondary },
+              { label: 'Organizations', value: orgs },
+            ]}
+          />
           <AdminGrid cols={4}>
             <AdminStat label="Total Contacts" value={total} icon={<UsersK size={15} strokeWidth={2} />} sub="Directory records" />
             <AdminStat label="Primary" value={primary} tone="success" icon={<StarK size={15} strokeWidth={2} />} sub="Main points of contact" />
             <AdminStat label="Secondary" value={secondary} icon={<ContactK size={15} strokeWidth={2} />} sub="Backup contacts" />
             <AdminStat label="Organizations" value={orgs} icon={<BldK size={15} strokeWidth={2} />} sub="Tenants tagged" />
           </AdminGrid>
+          </div>
         );
       })()}
 
