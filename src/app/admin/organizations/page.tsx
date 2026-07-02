@@ -11,7 +11,7 @@ import {
   Calendar, DollarSign, BarChart3, ChevronRight, Lock, CheckCircle,
   FolderMinus, Play, Pause, ChevronLeft, Download
 } from 'lucide-react';
-import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { Building2 as Bldg, FileText as FileTxt, Layers as Lyr, Gauge as Gg } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -28,7 +28,6 @@ import { Separator } from '../../../components/ui/separator';
 import { toast } from 'sonner';
 import { provisionUser, resetUserPasswordAdmin, adminUpdatePasswordDirect } from '../../actions/auth';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend } from 'recharts';
-import { PageHeader } from '../../../components/ui/page-header';
 
 interface OrgDetail {
   id: string;
@@ -619,9 +618,10 @@ export default function AdminOrganizationsPage() {
     <div className="space-y-6 font-sans text-sm text-ink pb-16">
       
       {/* Header */}
-      <PageHeader
+      <AdminPageHeader
+        eyebrow={<><Bldg size={13} strokeWidth={2} /> Customer 360</>}
         title="Customer 360 Workspace"
-        description="Audit customer telemetry, analyze SLA performance index, and track contract hour burn rates."
+        subtitle="Audit customer telemetry, analyze SLA performance index, and track contract hour burn rates."
         actions={
           <Button onClick={handleOpenWizard} className="gap-1.5 rounded-md">
             <Plus size={13} />

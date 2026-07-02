@@ -30,8 +30,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '../../../components/ui/dialog';
-import { PageHeader } from '../../../components/ui/page-header';
-import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { Users as UsersIcon, BadgeCheck, Building2, UserCheck } from 'lucide-react';
 import { CreateConsultantDialog } from '../../../components/users/CreateConsultantDialog';
 import { CreateClientDialog } from '../../../components/users/CreateClientDialog';
@@ -679,9 +678,10 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6 text-xs text-ink">
-      <PageHeader
+      <AdminPageHeader
+        eyebrow={<><UsersIcon size={13} strokeWidth={2} /> Identity & Access</>}
         title="User Management"
-        description="Manage platform authorization, issue roles, and assign organizational scopes."
+        subtitle="Manage platform authorization, issue roles, and assign organizational scopes."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setCreateConsultantOpen(true)} className="gap-1.5 rounded-md">

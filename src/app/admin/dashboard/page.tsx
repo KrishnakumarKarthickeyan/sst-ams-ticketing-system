@@ -24,7 +24,6 @@ import {
   Maximize2, Power
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
-import { PageHeader } from '../../../components/ui/page-header';
 import { StatCard } from '../../../components/ui/stat-card';
 import type { PillTone } from '../../../components/ui/status-pill';
 import { AdminOperationIntelligence } from '../../../components/analytics/admin-operation-intelligence';

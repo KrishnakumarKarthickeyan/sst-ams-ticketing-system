@@ -10,7 +10,7 @@ import {
   Plus, Edit3, Trash2, KeyRound, Mail, Phone, Calendar, ShieldAlert,
   ChevronLeft, Award, HelpCircle, Layers, CheckSquare, RefreshCw, Eye, Lock
 } from 'lucide-react';
-import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { Users as UsersIco, UserCheck as UChk, Wrench as Wr, Cpu as Cp } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -22,7 +22,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../../components/ui/dialog';
 import { toast } from 'sonner';
 import { provisionUser, resetUserPasswordAdmin, adminUpdatePasswordDirect } from '../../actions/auth';
-import { PageHeader } from '../../../components/ui/page-header';
 
 interface ConsultantDetail {
   id: string;
@@ -424,9 +423,10 @@ export default function AdminConsultantsPage() {
     <div className="space-y-6 font-sans text-sm text-ink pb-16">
       
       {/* Header */}
-      <PageHeader
+      <AdminPageHeader
+        eyebrow={<><UsersIco size={13} strokeWidth={2} /> Delivery Roster</>}
         title="Consultant Capacity Workspace"
-        description="Manage delivery capacity settings, inspect consultant rosters, and track performance scores."
+        subtitle="Manage delivery capacity settings, inspect consultant rosters, and track performance scores."
         actions={
           <Button onClick={handleOpenWizard} className="gap-1.5 rounded-md">
             <Plus size={13} />

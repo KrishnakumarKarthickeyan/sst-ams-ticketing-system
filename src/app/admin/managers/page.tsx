@@ -9,11 +9,10 @@ import {
   User, Plus, Mail, ShieldCheck, XCircle, Trash2, Key, ListFilter, 
   AlertTriangle, CheckCircle, Clock, ShieldAlert, ArrowRight, Eye 
 } from 'lucide-react';
-import { AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { BadgeCheck as Bdg, UserCheck as UCk, Ticket as Tkt, Flame as Flm } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../../../components/ui/badge';
-import { PageHeader } from '../../../components/ui/page-header';
 import { Button } from '../../../components/ui/button';
 
 interface ManagerProfile {
@@ -415,9 +414,10 @@ export default function AdminManagersPage() {
   return (
     <div className="space-y-6 text-xs text-ink">
       {/* Header Panel */}
-      <PageHeader
+      <AdminPageHeader
+        eyebrow={<><Bdg size={13} strokeWidth={2} /> Oversight</>}
         title="SAP Manager Cockpits"
-        description="Supervise operational leads, audit oversight workloads, and provision system coordinators."
+        subtitle="Supervise operational leads, audit oversight workloads, and provision system coordinators."
         actions={
           <Button onClick={() => setShowAddForm(!showAddForm)} className="gap-1.5 rounded-md">
             <Plus size={13} />

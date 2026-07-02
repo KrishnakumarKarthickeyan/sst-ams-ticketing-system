@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Inbox, Sparkles, MessageSquare, CalendarClock } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
-import { PageHeader } from '../../../components/ui/page-header';
 import { StatCard } from '../../../components/ui/stat-card';
 import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { StatusPill, type PillTone } from '../../../components/ui/status-pill';
