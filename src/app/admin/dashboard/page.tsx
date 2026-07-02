@@ -1724,8 +1724,8 @@ export default function AdminDashboardPage() {
                 items={[
                   { label: 'Platform Health', value: `${globalStats.platformHealthScore}%`, tone: globalStats.platformHealthScore >= 90 ? 'success' : 'warning' },
                   { label: 'Open Backlog', value: globalStats.openTicketsCount },
-                  { label: 'SLA Breaches', value: globalStats.slaBreachesCount, tone: globalStats.slaBreachesCount > 0 ? 'critical' : 'success' },
-                  { label: 'Escalations', value: globalStats.escalatedTicketsCount, tone: globalStats.escalatedTicketsCount > 0 ? 'critical' : 'success' },
+                  { label: 'SLA Breaches', value: globalStats.slaBreachesCount, tone: globalStats.slaBreachesCount > 0 ? 'critical' : 'neutral' },
+                  { label: 'Escalations', value: globalStats.escalatedTicketsCount, tone: globalStats.escalatedTicketsCount > 0 ? 'critical' : 'neutral' },
                   { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, tone: globalStats.pendingApprovalsCount > 0 ? 'warning' : 'neutral' },
                 ]}
               />

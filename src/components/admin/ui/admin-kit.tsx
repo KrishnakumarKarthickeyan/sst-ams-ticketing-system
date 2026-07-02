@@ -155,13 +155,16 @@ export function AdminSignal({
   series?: number[]; tone?: 'neutral' | 'success' | 'warning' | 'critical';
   sub?: string; icon?: React.ReactNode; footNote?: React.ReactNode;
 }) {
-  const good = delta == null ? false : invertDelta ? delta <= 0 : delta >= 0;
+  // 0% (or null) is NOT a "good increase" — render it as a neutral flat chip, no arrow.
+  const flat = delta == null || delta === 0;
+  const good = invertDelta ? (delta ?? 0) < 0 : (delta ?? 0) > 0;
   const DeltaIcon = (delta ?? 0) >= 0 ? ArrowUpRight : ArrowDownRight;
   const accent = tone === 'critical' ? 'var(--ak-critical)'
     : tone === 'warning' ? 'var(--ak-warning)'
     : tone === 'success' ? 'var(--ak-success)' : 'var(--ak-accent)';
   const w = 260, h = 48;
-  const data = series.length ? series : [0, 0];
+  const data = series.length ? series : [0];
+  const hasActivity = data.some(v => v > 0);
   const max = Math.max(...data), min = Math.min(...data);
   const coords = data.map((v, i) => {
     const x = (i / (data.length - 1 || 1)) * w;
@@ -181,23 +184,29 @@ export function AdminSignal({
       <div className="ak-signal-value">{value}</div>
       <div className="ak-stat-foot">
         {delta != null && (
-          <span className={`ak-delta ${good ? 'is-good' : 'is-bad'}`}>
-            <DeltaIcon size={12} strokeWidth={2.5} />{Math.abs(delta)}%
-          </span>
+          flat
+            ? <span className="ak-delta is-flat">±0%</span>
+            : <span className={`ak-delta ${good ? 'is-good' : 'is-bad'}`}>
+                <DeltaIcon size={12} strokeWidth={2.5} />{Math.abs(delta)}%
+              </span>
         )}
         {sub && <span className="ak-stat-sub">{sub}</span>}
       </div>
-      <svg className="ak-signal-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden>
-        <defs>
-          <linearGradient id={`sg-${gid}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={accent} stopOpacity="0.20" />
-            <stop offset="100%" stopColor={accent} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill={`url(#sg-${gid})`} />
-        <path d={line} fill="none" stroke={accent} strokeWidth="1.75"
-          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      </svg>
+      {hasActivity ? (
+        <svg className="ak-signal-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden>
+          <defs>
+            <linearGradient id={`sg-${gid}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={accent} stopOpacity="0.20" />
+              <stop offset="100%" stopColor={accent} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={area} fill={`url(#sg-${gid})`} />
+          <path d={line} fill="none" stroke={accent} strokeWidth="1.75"
+            strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+      ) : (
+        <div className="ak-signal-empty"><span>No activity this period</span></div>
+      )}
       {footNote && <span className="ak-signal-foot">{footNote}</span>}
     </article>
   );
@@ -481,8 +490,8 @@ const AK_CSS = `
 .admin-shell .ak-stat-label{font-size:12px;font-weight:560;color:var(--ak-ink2);}
 .admin-shell .ak-stat-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--ak-panel2);color:var(--ak-ink2);}
 .admin-shell .ak-stat-value{font-size:26px;font-weight:680;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;color:var(--ak-ink);}
-.admin-shell .ak-tone-success .ak-stat-value{color:var(--ak-success);}
-.admin-shell .ak-tone-warning .ak-stat-value{color:var(--ak-warning);}
+/* Values stay dark ink for calm scanning; only a genuine problem (critical) tints the number.
+   Success/neutral counts are NOT painted green — colour lives in the rail, icon and delta. */
 .admin-shell .ak-tone-critical .ak-stat-value{color:var(--ak-critical);}
 .admin-shell .ak-tone-success .ak-stat-icon{background:rgba(15,122,79,.1);color:var(--ak-success);}
 .admin-shell .ak-tone-warning .ak-stat-icon{background:rgba(184,105,12,.12);color:var(--ak-warning);}
@@ -492,6 +501,7 @@ const AK_CSS = `
 .admin-shell .ak-delta{display:inline-flex;align-items:center;gap:2px;font-size:11.5px;font-weight:620;padding:2px 6px;border-radius:6px;}
 .admin-shell .ak-delta.is-good{color:var(--ak-success);background:rgba(15,122,79,.1);}
 .admin-shell .ak-delta.is-bad{color:var(--ak-critical);background:rgba(197,57,43,.1);}
+.admin-shell .ak-delta.is-flat{color:var(--ak-ink3);background:var(--ak-panel2);}
 .admin-shell .ak-stat-bar{height:4px;border-radius:99px;background:var(--ak-line);overflow:hidden;}
 .admin-shell .ak-stat-bar>div{height:100%;background:var(--ak-accent);border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1);}
 
@@ -502,11 +512,12 @@ const AK_CSS = `
 .admin-shell .ak-signal-head{display:flex;justify-content:space-between;align-items:center;}
 .admin-shell .ak-signal-label{font-size:12px;font-weight:600;color:var(--ak-ink2);text-transform:uppercase;letter-spacing:.045em;}
 .admin-shell .ak-signal-value{font-size:34px;font-weight:700;letter-spacing:-0.035em;line-height:1;font-variant-numeric:tabular-nums;color:var(--ak-ink);}
-.admin-shell .ak-tone-success .ak-signal-value{color:var(--ak-success);}
-.admin-shell .ak-tone-warning .ak-signal-value{color:var(--ak-warning);}
+/* only a real problem (critical) tints the hero number red; everything else stays ink */
 .admin-shell .ak-tone-critical .ak-signal-value{color:var(--ak-critical);}
 .admin-shell .ak-signal-foot{font-size:11px;color:var(--ak-ink3);font-weight:500;margin-top:2px;}
 .admin-shell .ak-signal-spark{width:calc(100% + 36px);margin:6px -18px 0;height:48px;display:block;}
+.admin-shell .ak-signal-empty{margin:auto -18px 0;height:48px;display:flex;align-items:center;justify-content:center;border-top:1px dashed var(--ak-line);}
+.admin-shell .ak-signal-empty>span{font-size:11px;color:var(--ak-ink3);font-style:italic;}
 
 /* command ribbon — ops status hero */
 .admin-shell .ak-ribbon{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;

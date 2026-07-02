@@ -298,8 +298,8 @@ export default function AdminTicketsPage() {
             items={[
               { label: 'In View', value: kpis.total },
               { label: 'Open', value: kpis.open },
-              { label: 'Critical', value: kpis.critical, tone: kpis.critical > 0 ? 'critical' : 'success' },
-              { label: 'SLA Breached', value: kpis.breached, tone: kpis.breached > 0 ? 'critical' : 'success' },
+              { label: 'Critical', value: kpis.critical, tone: kpis.critical > 0 ? 'critical' : 'neutral' },
+              { label: 'SLA Breached', value: kpis.breached, tone: kpis.breached > 0 ? 'critical' : 'neutral' },
               { label: 'Escalated', value: kpis.escalated, tone: kpis.escalated > 0 ? 'warning' : 'neutral' },
             ]}
           />
