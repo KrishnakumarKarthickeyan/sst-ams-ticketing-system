@@ -203,6 +203,41 @@ export function AdminSignal({
   );
 }
 
+/* ─────────────────────── command ribbon (ops status hero) ─────────────────── */
+
+/**
+ * Operations command ribbon — the dark "live status" hero the Real-Time/Operations
+ * pattern calls for. A single scannable strip: overall posture (pulsing dot + verdict)
+ * on the left, live metric readout on the right. All values are passed in from real data.
+ */
+export function AdminCommandRibbon({
+  status, verdict, items,
+}: {
+  status: 'ok' | 'warn' | 'crit';
+  verdict: string;
+  items: { label: string; value: React.ReactNode; tone?: 'neutral' | 'success' | 'warning' | 'critical' }[];
+}) {
+  return (
+    <div className={`ak-ribbon ak-ribbon-${status}`} role="status">
+      <div className="ak-ribbon-status">
+        <span className="ak-ribbon-dot" aria-hidden><span /></span>
+        <div>
+          <span className="ak-ribbon-eyebrow">System Status</span>
+          <span className="ak-ribbon-verdict">{verdict}</span>
+        </div>
+      </div>
+      <div className="ak-ribbon-metrics">
+        {items.map((it, i) => (
+          <div key={i} className={`ak-ribbon-metric ak-tone-${it.tone ?? 'neutral'}`}>
+            <span className="ak-ribbon-val">{it.value}</span>
+            <span className="ak-ribbon-lbl">{it.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────── bullet (utilization) row ─────────────────────────── */
 
 export function AdminBullet({ label, value, max, valueText, target = 100 }: { label: string; value: number; max: number; valueText?: string; target?: number }) {
@@ -472,6 +507,33 @@ const AK_CSS = `
 .admin-shell .ak-tone-critical .ak-signal-value{color:var(--ak-critical);}
 .admin-shell .ak-signal-foot{font-size:11px;color:var(--ak-ink3);font-weight:500;margin-top:2px;}
 .admin-shell .ak-signal-spark{width:calc(100% + 36px);margin:6px -18px 0;height:48px;display:block;}
+
+/* command ribbon — ops status hero */
+.admin-shell .ak-ribbon{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  background:linear-gradient(120deg,#0F172A 0%,#132a45 100%);border:1px solid #1e2b40;border-radius:var(--ak-radius);
+  padding:16px 22px;box-shadow:0 18px 40px -26px rgba(15,23,42,.55);position:relative;overflow:hidden;}
+.admin-shell .ak-ribbon::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;}
+.admin-shell .ak-ribbon-ok::before{background:var(--ak-success);}
+.admin-shell .ak-ribbon-warn::before{background:var(--ak-warning);}
+.admin-shell .ak-ribbon-crit::before{background:var(--ak-critical);}
+.admin-shell .ak-ribbon-status{display:flex;align-items:center;gap:14px;min-width:210px;}
+.admin-shell .ak-ribbon-dot{position:relative;display:grid;place-items:center;width:14px;height:14px;}
+.admin-shell .ak-ribbon-dot>span{width:10px;height:10px;border-radius:99px;position:relative;z-index:1;}
+.admin-shell .ak-ribbon-ok .ak-ribbon-dot>span{background:#31d07f;box-shadow:0 0 0 0 rgba(49,208,127,.6);animation:ak-pulse 2.2s infinite;}
+.admin-shell .ak-ribbon-warn .ak-ribbon-dot>span{background:#f0a842;box-shadow:0 0 0 0 rgba(240,168,66,.6);animation:ak-pulse 2.2s infinite;}
+.admin-shell .ak-ribbon-crit .ak-ribbon-dot>span{background:#f2685a;box-shadow:0 0 0 0 rgba(242,104,90,.6);animation:ak-pulse 1.4s infinite;}
+@keyframes ak-pulse{0%{box-shadow:0 0 0 0 currentColor;}70%{box-shadow:0 0 0 9px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
+@media (prefers-reduced-motion: reduce){.admin-shell .ak-ribbon-dot>span{animation:none;}}
+.admin-shell .ak-ribbon-eyebrow{display:block;font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#7c8db0;}
+.admin-shell .ak-ribbon-verdict{display:block;font-size:17px;font-weight:680;letter-spacing:-0.01em;color:#fff;margin-top:2px;}
+.admin-shell .ak-ribbon-metrics{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;}
+.admin-shell .ak-ribbon-metric{display:flex;flex-direction:column;align-items:flex-start;padding:2px 20px;border-left:1px solid rgba(255,255,255,.09);}
+.admin-shell .ak-ribbon-metric:first-child{border-left:0;}
+.admin-shell .ak-ribbon-val{font-size:22px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums;color:#f1f5fb;}
+.admin-shell .ak-ribbon-metric.ak-tone-success .ak-ribbon-val{color:#4fd992;}
+.admin-shell .ak-ribbon-metric.ak-tone-warning .ak-ribbon-val{color:#f5b968;}
+.admin-shell .ak-ribbon-metric.ak-tone-critical .ak-ribbon-val{color:#f78e82;}
+.admin-shell .ak-ribbon-lbl{font-size:11px;font-weight:500;color:#8493b5;margin-top:3px;letter-spacing:.02em;}
 
 /* gauge */
 .admin-shell .ak-gauge{position:relative;display:grid;place-items:center;}
