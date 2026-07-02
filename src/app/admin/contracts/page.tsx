@@ -4,7 +4,7 @@ import React from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { FileText, Layers, Timer, Gauge, ShieldCheck } from 'lucide-react';
 import {
-  AdminPageHeader, AdminCommandRibbon, AdminGrid, AdminStat, AdminCard, AdminBullet, AdminEmpty,
+  AdminPageHeader, AdminGrid, AdminStat, AdminCard, AdminBullet, AdminEmpty,
 } from '../../../components/admin/ui/admin-kit';
 
 export default function AdminContractsPage() {
@@ -27,18 +27,6 @@ export default function AdminContractsPage() {
         eyebrow={<><ShieldCheck size={13} strokeWidth={2} /> AMS agreements</>}
         title="AMS Support Agreements"
         subtitle="Customer allocation pools, monthly burn, and agreement compliance across all clients."
-      />
-
-      <AdminCommandRibbon
-        status={kpis.util > 90 ? 'crit' : kpis.util >= 75 ? 'warn' : 'ok'}
-        verdict={kpis.util > 90 ? 'Pools Near Exhaustion' : kpis.util >= 75 ? 'Watch Burn Rate' : 'Healthy Burn Rate'}
-        items={[
-          { label: 'Agreements', value: kpis.count },
-          { label: 'Allocated', value: `${kpis.allocated.toLocaleString()}h` },
-          { label: 'Burned', value: `${kpis.burned.toLocaleString()}h` },
-          { label: 'Remaining', value: `${Math.max(0, kpis.allocated - kpis.burned).toLocaleString()}h`, tone: 'success' },
-          { label: 'Avg Utilization', value: `${kpis.util}%`, tone: kpis.util > 90 ? 'critical' : kpis.util >= 75 ? 'warning' : 'success' },
-        ]}
       />
 
       <AdminGrid cols={4}>

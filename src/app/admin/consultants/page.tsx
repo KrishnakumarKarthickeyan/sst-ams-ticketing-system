@@ -10,7 +10,7 @@ import {
   Plus, Edit3, Trash2, KeyRound, Mail, Phone, Calendar, ShieldAlert,
   ChevronLeft, Award, HelpCircle, Layers, CheckSquare, RefreshCw, Eye, Lock
 } from 'lucide-react';
-import { AdminPageHeader, AdminCommandRibbon, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { Users as UsersIco, UserCheck as UChk, Wrench as Wr, Cpu as Cp } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -444,24 +444,12 @@ export default function AdminConsultantsPage() {
         const status = consultants.length && inactive > 0 ? 'warn' : 'ok';
         const verdict = (consultants.length && inactive > 0) ? `${inactive} Inactive on Roster` : 'Roster Fully Active';
         return (
-          <div className="space-y-6">
-          <AdminCommandRibbon
-            status={status}
-            verdict={verdict}
-            items={[
-              { label: 'Consultants', value: consultants.length },
-              { label: 'Active', value: active, tone: 'success' },
-              { label: 'Functional', value: functional },
-              { label: 'Technical', value: technical },
-            ]}
-          />
           <AdminGrid cols={4}>
             <AdminStat label="Total Consultants" value={consultants.length} icon={<UsersIco size={15} strokeWidth={2} />} sub="on record" />
             <AdminStat label="Active" value={active} tone="success" icon={<UChk size={15} strokeWidth={2} />} sub="sign-in enabled" />
             <AdminStat label="Functional" value={functional} icon={<Wr size={15} strokeWidth={2} />} sub="functional stream" />
             <AdminStat label="Technical" value={technical} icon={<Cp size={15} strokeWidth={2} />} sub="technical stream" />
           </AdminGrid>
-          </div>
         );
       })()}
 

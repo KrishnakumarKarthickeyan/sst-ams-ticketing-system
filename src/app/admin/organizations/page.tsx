@@ -11,7 +11,7 @@ import {
   Calendar, DollarSign, BarChart3, ChevronRight, Lock, CheckCircle,
   FolderMinus, Play, Pause, ChevronLeft, Download
 } from 'lucide-react';
-import { AdminPageHeader, AdminCommandRibbon, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { Building2 as Bldg, FileText as FileTxt, Layers as Lyr, Gauge as Gg } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -640,25 +640,12 @@ export default function AdminOrganizationsPage() {
         const status = util > 90 ? 'crit' : util >= 75 ? 'warn' : 'ok';
         const verdict = util > 90 ? 'Capacity Critical' : util >= 75 ? 'Watch Utilization' : 'Healthy Portfolio';
         return (
-          <div className="space-y-6">
-          <AdminCommandRibbon
-            status={status}
-            verdict={verdict}
-            items={[
-              { label: 'Customers', value: customers },
-              { label: 'Active Contracts', value: active },
-              { label: 'Allocated', value: `${allocated.toLocaleString()}h` },
-              { label: 'Burned', value: `${burned.toLocaleString()}h` },
-              { label: 'Avg Utilization', value: `${util}%`, tone: util > 90 ? 'critical' : util >= 75 ? 'warning' : 'success' },
-            ]}
-          />
           <AdminGrid cols={4}>
             <AdminStat label="Customers" value={new Set(contracts.map(c => c.organizationName)).size} icon={<Bldg size={15} strokeWidth={2} />} sub="with agreements" />
             <AdminStat label="Active Contracts" value={contracts.filter(c => c.isActive).length} icon={<FileTxt size={15} strokeWidth={2} />} sub="in force" />
             <AdminStat label="Allocated Hours" value={`${allocated.toLocaleString()}h`} icon={<Lyr size={15} strokeWidth={2} />} sub="total pool" />
             <AdminStat label="Avg Utilization" value={`${util}%`} tone={util > 90 ? 'critical' : util >= 75 ? 'warning' : 'neutral'} icon={<Gg size={15} strokeWidth={2} />} sub="pool consumed" progress={util} />
           </AdminGrid>
-          </div>
         );
       })()}
 

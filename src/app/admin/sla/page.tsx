@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Check, AlertCircle, GaugeCircle } from 'lucide-react';
-import { AdminPageHeader, AdminCommandRibbon, AdminCard, AdminButton, SeverityPill } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminCard, AdminButton, SeverityPill } from '../../../components/admin/ui/admin-kit';
 
 export default function AdminSlaPage() {
   const [policies, setPolicies] = useState([
@@ -29,16 +29,6 @@ export default function AdminSlaPage() {
         eyebrow={<><GaugeCircle size={13} strokeWidth={2} /> SLA policy</>}
         title="SLA Priority Matrix"
         subtitle="Configure resolution targets, warning thresholds, and escalation rules per priority."
-      />
-
-      <AdminCommandRibbon
-        status="ok"
-        verdict="Resolution Targets Configured"
-        items={policies.map(p => ({
-          label: `${p.priority} target`,
-          value: `${p.resolutionTime}h`,
-          tone: (p.priority === 'Critical' ? 'critical' : p.priority === 'High' ? 'warning' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical',
-        }))}
       />
 
       {success && (

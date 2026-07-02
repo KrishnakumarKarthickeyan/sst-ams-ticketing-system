@@ -15,40 +15,40 @@
 import type { CSSProperties } from 'react';
 
 export const ADMIN = {
-  ink: '#0F172A',        // primary / foreground (navy)
-  ink2: '#475569',       // secondary text
-  ink3: '#8A93A3',       // muted text / axis
-  line: '#E7EAF0',       // hairline border
-  line2: '#DCE0E8',      // stronger border
+  ink: '#1A1D23',        // primary / foreground (near-black)
+  ink2: '#5A6472',       // secondary text
+  ink3: '#9098A4',       // muted text / axis
+  line: '#ECEEF2',       // hairline border
+  line2: '#E1E4EA',      // stronger border
   panel: '#FFFFFF',
-  panel2: '#F6F8FB',     // subtle fill / track
-  bg: '#F7F9FC',
-  accent: '#0E63C9',     // blue CTA (skill #0369A1 deepened for 4.5:1 on white)
-  accentInk: '#0B4DA0',
-  amber: '#C2730C',      // skill highlight #D97706 (AA tuned)
-  success: '#0F7A4F',
+  panel2: '#F7F8FA',     // subtle fill / track
+  bg: '#F4F5F7',
+  accent: '#6C5DD3',     // violet-indigo primary (light SaaS theme)
+  accentInk: '#5A49C0',
+  amber: '#C2730C',
+  success: '#12A594',    // teal
   warning: '#B8690C',
-  critical: '#C5392B',
+  critical: '#E1483B',
 } as const;
 
 /** Severity ramp Critical→High→Medium→Low (accessible, no color-only reliance — always paired with text). */
 export const SEVERITY: Record<'Critical' | 'High' | 'Medium' | 'Low', string> = {
-  Critical: '#C5392B', // red
+  Critical: '#E1483B', // red
   High: '#C2730C',     // amber
-  Medium: '#0E63C9',   // blue
-  Low: '#64748B',      // slate
+  Medium: '#6C5DD3',   // violet
+  Low: '#94A3B8',      // light slate
 };
 
-/** Harmonious categorical sequence for charts (blue/cyan/teal/slate/amber — no purple/neon). */
+/** Harmonious categorical sequence for charts (violet/teal/blue/indigo/amber — colorful, no neon). */
 export const ADMIN_CATEGORICAL = [
-  '#0E63C9', // blue 700
-  '#0E7490', // cyan 700
-  '#0F766E', // teal 700
-  '#475569', // slate 600
-  '#C2730C', // amber 700
-  '#1E40AF', // blue 800
-  '#0891B2', // cyan 600
-  '#64748B', // slate 500
+  '#6C5DD3', // violet (lead)
+  '#12A594', // teal
+  '#3B82F6', // blue
+  '#8B7FE0', // light violet
+  '#C2730C', // amber
+  '#0E9384', // deep teal
+  '#4F46E5', // indigo
+  '#94A3B8', // slate
 ];
 
 /** Semantic chart colors (status). */

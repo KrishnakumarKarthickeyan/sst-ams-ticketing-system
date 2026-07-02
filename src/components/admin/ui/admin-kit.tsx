@@ -4,7 +4,8 @@
  * SuperAdmin design-system kit — the reusable components every admin screen uses.
  *
  * APPLIED FROM THE SKILL (ui-ux-pro-max): "Data-Dense Dashboard" style (KPI cards +
- * charts + tables, space-efficient grid); B2B navy/blue palette; bullet charts for
+ * charts + tables, space-efficient grid); graphite / monochrome palette (steel accent,
+ * near-black brand, red/amber alerts only — no blue); bullet charts for
  * KPI-vs-target with always-visible values; subtle gridlines; 150–300ms hover/focus
  * motion; tabular numerals for data; accessible focus rings; graceful empty/loading.
  *
@@ -212,41 +213,6 @@ export function AdminSignal({
   );
 }
 
-/* ─────────────────────── command ribbon (ops status hero) ─────────────────── */
-
-/**
- * Operations command ribbon — the dark "live status" hero the Real-Time/Operations
- * pattern calls for. A single scannable strip: overall posture (pulsing dot + verdict)
- * on the left, live metric readout on the right. All values are passed in from real data.
- */
-export function AdminCommandRibbon({
-  status, verdict, items,
-}: {
-  status: 'ok' | 'warn' | 'crit';
-  verdict: string;
-  items: { label: string; value: React.ReactNode; tone?: 'neutral' | 'success' | 'warning' | 'critical' }[];
-}) {
-  return (
-    <div className={`ak-ribbon ak-ribbon-${status}`} role="status">
-      <div className="ak-ribbon-status">
-        <span className="ak-ribbon-dot" aria-hidden><span /></span>
-        <div>
-          <span className="ak-ribbon-eyebrow">System Status</span>
-          <span className="ak-ribbon-verdict">{verdict}</span>
-        </div>
-      </div>
-      <div className="ak-ribbon-metrics">
-        {items.map((it, i) => (
-          <div key={i} className={`ak-ribbon-metric ak-tone-${it.tone ?? 'neutral'}`}>
-            <span className="ak-ribbon-val">{it.value}</span>
-            <span className="ak-ribbon-lbl">{it.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ─────────────────────── bullet (utilization) row ─────────────────────────── */
 
 export function AdminBullet({ label, value, max, valueText, target = 100 }: { label: string; value: number; max: number; valueText?: string; target?: number }) {
@@ -430,18 +396,20 @@ const AK_CSS = `
   /* Re-theme the app's shared Tailwind tokens for SuperAdmin ONLY (scoped — no bleed).
      Every app component used inside admin (Card, Table, Button, badges, PageHeader…)
      reads these var()s, so overriding them here shifts the whole admin surface to the
-     cohesive navy/blue enterprise palette without editing each screen. */
-  --color-ink:#0F172A; --color-ink-secondary:#475569; --color-ink-muted:#8A93A3;
-  --color-line:#E7EAF0; --color-line-strong:#DCE0E8;
-  --color-surface:#FFFFFF; --color-surface-muted:#F6F8FB; --color-surface-subtle:#EEF2F7;
-  --color-brand:#0E63C9; --color-brand-strong:#0B4DA0; --color-brand-soft:#EAF1FC; --color-brand-border:#C7DBF6;
-  background:#F7F9FC;
+     clean light SaaS palette (violet primary + teal) without editing each screen. */
+  --color-ink:#1A1D23; --color-ink-secondary:#5A6472; --color-ink-muted:#9098A4;
+  --color-line:#ECEEF2; --color-line-strong:#E1E4EA;
+  --color-surface:#FFFFFF; --color-surface-muted:#F7F8FA; --color-surface-subtle:#F1F2F6;
+  /* Light / airy SaaS: violet-indigo primary (buttons/CTAs/accent) + teal secondary.
+     Soft rounded cards, gentle shadows. Alerts stay red/amber. */
+  --color-brand:#6C5DD3; --color-brand-strong:#5A49C0; --color-brand-soft:#EFEDFC; --color-brand-border:#DED8F6;
+  background:#F4F5F7;
 
-  --ak-ink:#0F172A; --ak-ink2:#475569; --ak-ink3:#8A93A3;
-  --ak-line:#E7EAF0; --ak-line2:#DCE0E8; --ak-panel:#FFFFFF; --ak-panel2:#F6F8FB; --ak-bg:#F7F9FC;
-  --ak-accent:#0E63C9; --ak-accent-ink:#0B4DA0; --ak-amber:#C2730C;
-  --ak-success:#0F7A4F; --ak-warning:#B8690C; --ak-critical:#C5392B;
-  --ak-radius:14px; --ak-shadow:0 1px 2px rgba(15,23,42,.04),0 10px 26px -18px rgba(15,23,42,.20);
+  --ak-ink:#1A1D23; --ak-ink2:#5A6472; --ak-ink3:#9098A4;
+  --ak-line:#ECEEF2; --ak-line2:#E1E4EA; --ak-panel:#FFFFFF; --ak-panel2:#F7F8FA; --ak-bg:#F4F5F7;
+  --ak-accent:#6C5DD3; --ak-accent-ink:#5A49C0; --ak-teal:#12A594; --ak-amber:#C2730C;
+  --ak-success:#12A594; --ak-warning:#B8690C; --ak-critical:#E1483B;
+  --ak-radius:16px; --ak-shadow:0 1px 2px rgba(26,29,35,.04),0 8px 24px -16px rgba(26,29,35,.18);
   color:var(--ak-ink);
   font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased; letter-spacing:-0.01em;
@@ -519,33 +487,6 @@ const AK_CSS = `
 .admin-shell .ak-signal-empty{margin:auto -18px 0;height:48px;display:flex;align-items:center;justify-content:center;border-top:1px dashed var(--ak-line);}
 .admin-shell .ak-signal-empty>span{font-size:11px;color:var(--ak-ink3);font-style:italic;}
 
-/* command ribbon — ops status hero */
-.admin-shell .ak-ribbon{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
-  background:linear-gradient(120deg,#0F172A 0%,#132a45 100%);border:1px solid #1e2b40;border-radius:var(--ak-radius);
-  padding:16px 22px;box-shadow:0 18px 40px -26px rgba(15,23,42,.55);position:relative;overflow:hidden;}
-.admin-shell .ak-ribbon::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;}
-.admin-shell .ak-ribbon-ok::before{background:var(--ak-success);}
-.admin-shell .ak-ribbon-warn::before{background:var(--ak-warning);}
-.admin-shell .ak-ribbon-crit::before{background:var(--ak-critical);}
-.admin-shell .ak-ribbon-status{display:flex;align-items:center;gap:14px;min-width:210px;}
-.admin-shell .ak-ribbon-dot{position:relative;display:grid;place-items:center;width:14px;height:14px;}
-.admin-shell .ak-ribbon-dot>span{width:10px;height:10px;border-radius:99px;position:relative;z-index:1;}
-.admin-shell .ak-ribbon-ok .ak-ribbon-dot>span{background:#31d07f;box-shadow:0 0 0 0 rgba(49,208,127,.6);animation:ak-pulse 2.2s infinite;}
-.admin-shell .ak-ribbon-warn .ak-ribbon-dot>span{background:#f0a842;box-shadow:0 0 0 0 rgba(240,168,66,.6);animation:ak-pulse 2.2s infinite;}
-.admin-shell .ak-ribbon-crit .ak-ribbon-dot>span{background:#f2685a;box-shadow:0 0 0 0 rgba(242,104,90,.6);animation:ak-pulse 1.4s infinite;}
-@keyframes ak-pulse{0%{box-shadow:0 0 0 0 currentColor;}70%{box-shadow:0 0 0 9px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
-@media (prefers-reduced-motion: reduce){.admin-shell .ak-ribbon-dot>span{animation:none;}}
-.admin-shell .ak-ribbon-eyebrow{display:block;font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#7c8db0;}
-.admin-shell .ak-ribbon-verdict{display:block;font-size:17px;font-weight:680;letter-spacing:-0.01em;color:#fff;margin-top:2px;}
-.admin-shell .ak-ribbon-metrics{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;}
-.admin-shell .ak-ribbon-metric{display:flex;flex-direction:column;align-items:flex-start;padding:2px 20px;border-left:1px solid rgba(255,255,255,.09);}
-.admin-shell .ak-ribbon-metric:first-child{border-left:0;}
-.admin-shell .ak-ribbon-val{font-size:22px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums;color:#f1f5fb;}
-.admin-shell .ak-ribbon-metric.ak-tone-success .ak-ribbon-val{color:#4fd992;}
-.admin-shell .ak-ribbon-metric.ak-tone-warning .ak-ribbon-val{color:#f5b968;}
-.admin-shell .ak-ribbon-metric.ak-tone-critical .ak-ribbon-val{color:#f78e82;}
-.admin-shell .ak-ribbon-lbl{font-size:11px;font-weight:500;color:#8493b5;margin-top:3px;letter-spacing:.02em;}
-
 /* gauge */
 .admin-shell .ak-gauge{position:relative;display:grid;place-items:center;}
 .admin-shell .ak-gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
@@ -597,7 +538,7 @@ const AK_CSS = `
 .admin-shell .ak-pill.is-warn circle{fill:var(--ak-warning);}
 .admin-shell .ak-pill.is-crit{background:rgba(197,57,43,.1);color:var(--ak-critical);}
 .admin-shell .ak-pill.is-crit circle{fill:var(--ak-critical);}
-.admin-shell .ak-pill.is-info{background:rgba(14,99,201,.1);color:var(--ak-accent);}
+.admin-shell .ak-pill.is-info{background:rgba(82,96,109,.12);color:var(--ak-accent);}
 .admin-shell .ak-pill.is-info circle{fill:var(--ak-accent);}
 .admin-shell .ak-pill.is-muted{background:var(--ak-panel2);color:var(--ak-ink2);}
 .admin-shell .ak-pill.is-muted circle{fill:var(--ak-ink3);}
@@ -685,7 +626,7 @@ const AK_CSS = `
 .admin-shell .ak-field-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ak-ink3);}
 .admin-shell .ak-select,.admin-shell .ak-date{height:34px;padding:0 10px;border:1px solid var(--ak-line2);border-radius:9px;background:var(--ak-panel);color:var(--ak-ink2);font-size:12px;font-weight:500;min-width:130px;transition:border-color .15s;cursor:pointer;}
 .admin-shell .ak-select:hover,.admin-shell .ak-date:hover{border-color:var(--ak-ink3);}
-.admin-shell .ak-select:focus,.admin-shell .ak-date:focus{outline:none;border-color:var(--ak-accent);box-shadow:0 0 0 3px rgba(14,99,201,.12);}
+.admin-shell .ak-select:focus,.admin-shell .ak-date:focus{outline:none;border-color:var(--ak-accent);box-shadow:0 0 0 3px rgba(82,96,109,.14);}
 .admin-shell .ak-toggle{height:28px;padding:0 11px;border-radius:99px;font-size:11px;font-weight:560;border:1px solid var(--ak-line2);background:var(--ak-panel);color:var(--ak-ink2);cursor:pointer;transition:all .15s;}
 .admin-shell .ak-toggle:hover{color:var(--ak-ink);border-color:var(--ak-ink3);}
 .admin-shell .ak-toggle.is-on{background:var(--ak-ink);border-color:var(--ak-ink);color:#fff;}

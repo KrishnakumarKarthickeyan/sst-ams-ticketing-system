@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Inbox, Sparkles, MessageSquare, CalendarClock } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase/client';
 import { StatCard } from '../../../components/ui/stat-card';
-import { AdminPageHeader, AdminCommandRibbon, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { StatusPill, type PillTone } from '../../../components/ui/status-pill';
 import { DataTable, type DataTableColumn } from '../../../components/ui/data-table';
 
@@ -102,17 +102,6 @@ export default function AdminLeadsPage() {
         eyebrow={<><Inbox size={13} strokeWidth={2} /> Marketing inbound</>}
         title="Inbound Leads"
         subtitle="Waitlist signups, demo requests and contact-sales messages from the marketing site."
-      />
-
-      <AdminCommandRibbon
-        status={counts.contact > 0 ? 'warn' : counts.total > 0 ? 'ok' : 'ok'}
-        verdict={counts.contact > 0 ? `${counts.contact} Awaiting Sales Reply` : counts.total > 0 ? 'Pipeline Flowing' : 'No Inbound Yet'}
-        items={[
-          { label: 'Total Leads', value: counts.total },
-          { label: 'Waitlist', value: counts.waitlist },
-          { label: 'Demo Requests', value: counts.demo },
-          { label: 'Contact Sales', value: counts.contact, tone: counts.contact > 0 ? 'warning' : 'neutral' },
-        ]}
       />
 
       <AdminGrid cols={4}>

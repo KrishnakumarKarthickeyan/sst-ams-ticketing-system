@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { ArrowLeft, Clock, Search, Shield, Filter, FileText, CheckCircle2, XCircle } from 'lucide-react';
-import { AdminPageHeader, AdminCommandRibbon } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader } from '../../../components/admin/ui/admin-kit';
 import Link from 'next/link';
 
 export default function AdminEffortLogsPage() {
@@ -104,18 +104,6 @@ export default function AdminEffortLogsPage() {
         eyebrow={<><FileText size={13} strokeWidth={2} /> Timesheets</>}
         title="Consultant Timesheets & Effort Logs"
         subtitle="Audit billing items, view work breakdowns, and track project efforts globally."
-      />
-
-      <AdminCommandRibbon
-        status={pendingHours > 0 ? 'warn' : 'ok'}
-        verdict={pendingHours > 0 ? `${pendingHours.toFixed(1)}h Awaiting Approval` : 'All Effort Approved'}
-        items={[
-          { label: 'Total Hours', value: `${totalLoggedHours.toFixed(1)}h` },
-          { label: 'Approved', value: `${approvedHours.toFixed(1)}h`, tone: 'success' },
-          { label: 'Pending', value: `${pendingHours.toFixed(1)}h`, tone: pendingHours > 0 ? 'warning' : 'neutral' },
-          { label: 'Billable', value: `${totalBillableHours.toFixed(1)}h` },
-          { label: 'Non-Billable', value: `${totalNonBillableHours.toFixed(1)}h` },
-        ]}
       />
 
       {/* KPI Cards */}

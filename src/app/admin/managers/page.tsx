@@ -9,7 +9,7 @@ import {
   User, Plus, Mail, ShieldCheck, XCircle, Trash2, Key, ListFilter, 
   AlertTriangle, CheckCircle, Clock, ShieldAlert, ArrowRight, Eye 
 } from 'lucide-react';
-import { AdminPageHeader, AdminCommandRibbon, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { BadgeCheck as Bdg, UserCheck as UCk, Ticket as Tkt, Flame as Flm } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../../../components/ui/badge';
@@ -434,24 +434,12 @@ export default function AdminManagersPage() {
         const status = critical > 0 ? 'crit' : managers.length && active < managers.length ? 'warn' : 'ok';
         const verdict = critical > 0 ? 'High-Priority Load' : (managers.length && active < managers.length) ? 'Inactive Accounts' : 'Oversight Healthy';
         return (
-          <div className="space-y-6">
-          <AdminCommandRibbon
-            status={status}
-            verdict={verdict}
-            items={[
-              { label: 'Managers', value: managers.length },
-              { label: 'Active', value: active, tone: 'success' },
-              { label: 'Tickets Overseen', value: overseen },
-              { label: 'Critical Load', value: critical, tone: critical > 0 ? 'critical' : 'success' },
-            ]}
-          />
           <AdminGrid cols={4}>
             <AdminStat label="Managers" value={managers.length} icon={<Bdg size={15} strokeWidth={2} />} sub="provisioned" />
             <AdminStat label="Active" value={active} tone="success" icon={<UCk size={15} strokeWidth={2} />} sub="sign-in enabled" />
             <AdminStat label="Tickets Overseen" value={overseen} icon={<Tkt size={15} strokeWidth={2} />} sub="across cockpits" />
             <AdminStat label="Critical Load" value={critical} tone={critical > 0 ? 'critical' : 'neutral'} icon={<Flm size={15} strokeWidth={2} />} sub="high-priority items" />
           </AdminGrid>
-          </div>
         );
       })()}
 

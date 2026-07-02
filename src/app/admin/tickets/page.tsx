@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { useTickets } from '../../../context/TicketContext';
 import { computeSla, getTargetHours, formatBusinessDuration } from '../../../lib/sla/slaEngine';
 import { TicketFilterPanel } from '../../../components/tickets/TicketFilterPanel';
-import { AdminPageHeader, AdminCommandRibbon } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { FolderOpen, ShieldAlert, Flame } from 'lucide-react';
 import { DataTable, DataTableColumn } from '../../../components/ui/data-table';
 import { StatusPill, statusTone, priorityTone } from '../../../components/ui/status-pill';
 import { Button } from '../../../components/ui/button';
@@ -285,26 +286,14 @@ export default function AdminTicketsPage() {
         }
       />
 
-      {/* Command ribbon — live queue posture (real data over the filtered set) */}
-      {(() => {
-        const crit = kpis.breached > 0 || kpis.critical > 0;
-        const warn = kpis.escalated > 0;
-        const status = crit ? 'crit' : warn ? 'warn' : 'ok';
-        const verdict = crit ? 'SLA At Risk' : warn ? 'Monitoring Queue' : 'Queue Healthy';
-        return (
-          <AdminCommandRibbon
-            status={status}
-            verdict={verdict}
-            items={[
-              { label: 'In View', value: kpis.total },
-              { label: 'Open', value: kpis.open },
-              { label: 'Critical', value: kpis.critical, tone: kpis.critical > 0 ? 'critical' : 'neutral' },
-              { label: 'SLA Breached', value: kpis.breached, tone: kpis.breached > 0 ? 'critical' : 'neutral' },
-              { label: 'Escalated', value: kpis.escalated, tone: kpis.escalated > 0 ? 'warning' : 'neutral' },
-            ]}
-          />
-        );
-      })()}
+      {/* KPI strip (ui-ux-pro-max) — live counts over the filtered set */}
+      <AdminGrid cols={5}>
+        <AdminStat label="Total Tickets" value={kpis.total} icon={<TicketIcon size={15} strokeWidth={2} />} sub="in current filter" loading={loading} />
+        <AdminStat label="Open" value={kpis.open} icon={<FolderOpen size={15} strokeWidth={2} />} sub="active pipeline" loading={loading} />
+        <AdminStat label="Critical (open)" value={kpis.critical} tone={kpis.critical > 0 ? 'critical' : 'neutral'} icon={<Flame size={15} strokeWidth={2} />} sub="highest urgency" loading={loading} />
+        <AdminStat label="SLA Breached" value={kpis.breached} tone={kpis.breached > 0 ? 'critical' : 'neutral'} icon={<ShieldAlert size={15} strokeWidth={2} />} sub="engine sla_status" loading={loading} />
+        <AdminStat label="Escalated" value={kpis.escalated} tone={kpis.escalated > 0 ? 'warning' : 'neutral'} icon={<AlertTriangle size={15} strokeWidth={2} />} sub="unacknowledged" loading={loading} />
+      </AdminGrid>
 
 
       {/* Search + advanced filters */}

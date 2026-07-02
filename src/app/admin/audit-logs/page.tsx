@@ -4,7 +4,7 @@ import React from 'react';
 import { useTickets } from '../../../context/TicketContext';
 import { ShieldCheck, Activity, Users, FileClock, CalendarClock } from 'lucide-react';
 import {
-  AdminPageHeader, AdminCommandRibbon, AdminGrid, AdminStat, AdminCard, AdminDataTable, AdminEmpty, type AdminColumn,
+  AdminPageHeader, AdminGrid, AdminStat, AdminCard, AdminDataTable, AdminEmpty, type AdminColumn,
 } from '../../../components/admin/ui/admin-kit';
 
 type LogRow = { id: string; timestamp: string; actor: string; action: string; target: string; details: string };
@@ -60,17 +60,6 @@ export default function AdminAuditLogsPage() {
         eyebrow={<><ShieldCheck size={13} strokeWidth={2} /> Security ledger</>}
         title="System Audit Logs"
         subtitle="Immutable ledger of platform administrative adjustments, routing transitions, and database mutations."
-      />
-
-      <AdminCommandRibbon
-        status="ok"
-        verdict={kpis.today > 0 ? `${kpis.today} Events Today` : 'Quiet Today'}
-        items={[
-          { label: 'Total Events', value: kpis.total },
-          { label: 'Today', value: kpis.today, tone: kpis.today > 0 ? 'success' : 'neutral' },
-          { label: 'Distinct Actors', value: kpis.actors },
-          { label: 'Entities Touched', value: kpis.entities },
-        ]}
       />
 
       <AdminGrid cols={4}>

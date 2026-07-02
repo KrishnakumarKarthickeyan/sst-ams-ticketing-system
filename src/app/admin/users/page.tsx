@@ -30,7 +30,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '../../../components/ui/dialog';
-import { AdminPageHeader, AdminCommandRibbon, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminGrid, AdminStat } from '../../../components/admin/ui/admin-kit';
 import { Users as UsersIcon, BadgeCheck, Building2, UserCheck } from 'lucide-react';
 import { CreateConsultantDialog } from '../../../components/users/CreateConsultantDialog';
 import { CreateClientDialog } from '../../../components/users/CreateClientDialog';
@@ -710,18 +710,6 @@ export default function AdminUsersPage() {
         const status = usersList.length && inactive > 0 ? 'warn' : 'ok';
         const verdict = (usersList.length && inactive > 0) ? `${inactive} Disabled Account${inactive === 1 ? '' : 's'}` : 'All Accounts Active';
         return (
-          <div className="space-y-6">
-          <AdminCommandRibbon
-            status={status}
-            verdict={verdict}
-            items={[
-              { label: 'Total Users', value: usersList.length },
-              { label: 'Active', value: active, tone: 'success' },
-              { label: 'Managers', value: managers },
-              { label: 'Consultants', value: consultants },
-              { label: 'Customers', value: customers },
-            ]}
-          />
           <AdminGrid cols={5}>
             <AdminStat label="Total Users" value={usersList.length} icon={<UsersIcon size={15} strokeWidth={2} />} sub="in directory" />
             <AdminStat label="Active" value={active} tone="success" icon={<UserCheck size={15} strokeWidth={2} />} sub="sign-in enabled" />
@@ -729,7 +717,6 @@ export default function AdminUsersPage() {
             <AdminStat label="Consultants" value={consultants} icon={<ShieldCheck size={15} strokeWidth={2} />} sub="on the desk" />
             <AdminStat label="Customers" value={customers} icon={<Building2 size={15} strokeWidth={2} />} sub="client contacts" />
           </AdminGrid>
-          </div>
         );
       })()}
 

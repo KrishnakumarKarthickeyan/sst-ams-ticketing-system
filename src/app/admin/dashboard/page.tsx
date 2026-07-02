@@ -27,7 +27,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { StatCard } from '../../../components/ui/stat-card';
 import type { PillTone } from '../../../components/ui/status-pill';
 import { AdminOperationIntelligence } from '../../../components/analytics/admin-operation-intelligence';
-import { AdminPageHeader, AdminStat, AdminSignal, AdminCommandRibbon, AdminCard, AdminGrid, AdminButton, AdminGauge, AdminLoadBuckets, AdminBullet, AdminEmpty } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminStat, AdminSignal, AdminCard, AdminGrid, AdminButton, AdminGauge, AdminLoadBuckets, AdminBullet, AdminEmpty } from '../../../components/admin/ui/admin-kit';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
@@ -1711,27 +1711,6 @@ export default function AdminDashboardPage() {
 
         {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
         <TabsContent value="cockpit" className="space-y-6 outline-none">
-          {/* ── COMMAND RIBBON: live operations posture hero (real data) ── */}
-          {(() => {
-            const crit = globalStats.slaBreachesCount > 0 || globalStats.escalatedTicketsCount > 0;
-            const warn = globalStats.pendingApprovalsCount > 0 || globalStats.platformHealthScore < 90;
-            const status = crit ? 'crit' : warn ? 'warn' : 'ok';
-            const verdict = crit ? 'Action Required' : warn ? 'Monitoring' : 'All Systems Operational';
-            return (
-              <AdminCommandRibbon
-                status={status}
-                verdict={verdict}
-                items={[
-                  { label: 'Platform Health', value: `${globalStats.platformHealthScore}%`, tone: globalStats.platformHealthScore >= 90 ? 'success' : 'warning' },
-                  { label: 'Open Backlog', value: globalStats.openTicketsCount },
-                  { label: 'SLA Breaches', value: globalStats.slaBreachesCount, tone: globalStats.slaBreachesCount > 0 ? 'critical' : 'neutral' },
-                  { label: 'Escalations', value: globalStats.escalatedTicketsCount, tone: globalStats.escalatedTicketsCount > 0 ? 'critical' : 'neutral' },
-                  { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, tone: globalStats.pendingApprovalsCount > 0 ? 'warning' : 'neutral' },
-                ]}
-              />
-            );
-          })()}
-
           {/* ── SIGNAL ROW: the 4 metrics that drive the day, with in-period trend + Δ ── */}
           <AdminGrid cols={4}>
             <AdminSignal
