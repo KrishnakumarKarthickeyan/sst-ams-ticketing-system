@@ -28,7 +28,7 @@ import { PageHeader } from '../../../components/ui/page-header';
 import { StatCard } from '../../../components/ui/stat-card';
 import type { PillTone } from '../../../components/ui/status-pill';
 import { AdminOperationIntelligence } from '../../../components/analytics/admin-operation-intelligence';
-import { AdminPageHeader, AdminStat, AdminCard, AdminGrid, AdminButton, AdminGauge, AdminLoadBuckets, AdminBullet, AdminEmpty } from '../../../components/admin/ui/admin-kit';
+import { AdminPageHeader, AdminStat, AdminSignal, AdminCard, AdminGrid, AdminButton, AdminGauge, AdminLoadBuckets, AdminBullet, AdminEmpty } from '../../../components/admin/ui/admin-kit';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
@@ -428,6 +428,54 @@ export default function AdminDashboardPage() {
       platformHealthScore
     };
   }, [activeTickets, tickets, contracts, profiles, orgMap, healthStatus]);
+
+  // ── 1b. COCKPIT SIGNALS — 4 hero metrics with in-period daily trend + delta vs
+  //        the equivalent previous period. 100% derived from live tickets. ──
+  const cockpitSignals = useMemo(() => {
+    const { periodStart, periodEnd, previousTickets } = periodWindow;
+    const span = Math.max(1, periodEnd - periodStart);
+    const BUCKETS = 24;
+    const seg = span / BUCKETS;
+    const blank = () => new Array(BUCKETS).fill(0) as number[];
+    const idxOf = (ts: number) => {
+      if (!Number.isFinite(ts)) return -1;
+      const i = Math.floor((ts - periodStart) / seg);
+      return i < 0 ? -1 : i >= BUCKETS ? BUCKETS - 1 : i;
+    };
+    const isBreached = (t: typeof tickets[number]) => {
+      if (!(t.ticketType === 'Incident' || !t.ticketType)) return false;
+      if (!t.slaDueAt || t.slaDueAt === 'SLA Not Applicable') return false;
+      const due = new Date(t.slaDueAt).getTime();
+      const end = (t.status === 'Resolved' || t.status === 'Closed')
+        ? new Date(t.resolvedAt || t.closedAt || SYSTEM_NOW).getTime()
+        : SYSTEM_NOW;
+      return end > due;
+    };
+    const newSeries = blank(), resSeries = blank(), breachSeries = blank(), escSeries = blank();
+    let newCurr = 0, resCurr = 0, breachCurr = 0, escCurr = 0;
+    activeTickets.forEach(t => {
+      const ci = idxOf(new Date(t.createdAt).getTime());
+      if (ci >= 0) { newSeries[ci]++; newCurr++; }
+      if (t.status === 'Resolved' || t.status === 'Closed') {
+        resCurr++;
+        const ri = idxOf(new Date(t.resolvedAt || t.closedAt || t.createdAt).getTime());
+        if (ri >= 0) resSeries[ri]++;
+      }
+      if (isBreached(t)) { breachCurr++; if (ci >= 0) breachSeries[ci]++; }
+      if (t.escalationFlag) { escCurr++; if (ci >= 0) escSeries[ci]++; }
+    });
+    const prevNew = previousTickets.length;
+    const prevRes = previousTickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
+    const prevBreach = previousTickets.filter(isBreached).length;
+    const prevEsc = previousTickets.filter(t => t.escalationFlag).length;
+    const pct = (curr: number, prev: number) => prev === 0 ? (curr > 0 ? 100 : 0) : Math.round(((curr - prev) / prev) * 100);
+    return {
+      newTickets: { value: newCurr, delta: pct(newCurr, prevNew), series: newSeries },
+      resolved: { value: resCurr, delta: pct(resCurr, prevRes), series: resSeries },
+      breaches: { value: breachCurr, delta: pct(breachCurr, prevBreach), series: breachSeries },
+      escalations: { value: escCurr, delta: pct(escCurr, prevEsc), series: escSeries },
+    };
+  }, [activeTickets, periodWindow, tickets]);
 
   // ── 2. CUSTOMER PORTFOLIO INTELLIGENCE ──
   const customerPortfolio = useMemo(() => {
@@ -1664,6 +1712,33 @@ export default function AdminDashboardPage() {
 
         {/* ── COCKPIT (GLOBAL OVERVIEW) ── */}
         <TabsContent value="cockpit" className="space-y-6 outline-none">
+          {/* ── SIGNAL ROW: the 4 metrics that drive the day, with in-period trend + Δ ── */}
+          <AdminGrid cols={4}>
+            <AdminSignal
+              label="New Tickets" value={cockpitSignals.newTickets.value}
+              delta={cockpitSignals.newTickets.delta} series={cockpitSignals.newTickets.series}
+              icon={<Ticket size={15} strokeWidth={2} />} sub="created this period"
+              footNote="Δ vs. previous period" />
+            <AdminSignal
+              label="Resolved" value={cockpitSignals.resolved.value} tone="success"
+              delta={cockpitSignals.resolved.delta} series={cockpitSignals.resolved.series}
+              icon={<CheckCircle2 size={15} strokeWidth={2} />} sub="closed / resolved"
+              footNote="Δ vs. previous period" />
+            <AdminSignal
+              label="SLA Breaches" value={cockpitSignals.breaches.value}
+              tone={cockpitSignals.breaches.value > 0 ? 'critical' : 'success'}
+              delta={cockpitSignals.breaches.delta} invertDelta series={cockpitSignals.breaches.series}
+              icon={<ShieldAlert size={15} strokeWidth={2} />} sub="incidents past due"
+              footNote="Δ vs. previous period" />
+            <AdminSignal
+              label="Escalations" value={cockpitSignals.escalations.value}
+              tone={cockpitSignals.escalations.value > 0 ? 'critical' : 'neutral'}
+              delta={cockpitSignals.escalations.delta} invertDelta series={cockpitSignals.escalations.series}
+              icon={<AlertTriangle size={15} strokeWidth={2} />} sub="active warnings"
+              footNote="Δ vs. previous period" />
+          </AdminGrid>
+
+          {/* ── SECONDARY STRIP: structural counts + capacity (no hero weight) ── */}
           <AdminGrid cols={5}>
             {[
               { label: 'Total Customers', value: globalStats.totalCustomers, icon: Building2, desc: 'Registered Organizations' },
@@ -1671,15 +1746,11 @@ export default function AdminDashboardPage() {
               { label: 'Total Consultants', value: globalStats.totalConsultants, icon: Users, desc: `${globalStats.activeConsultants} Active on Desk` },
               { label: 'SAP Managers', value: globalStats.totalManagers, icon: BadgeCheck, desc: 'Delivery Controllers' },
               { label: 'Total Contracts', value: globalStats.totalContracts, icon: FileText, desc: 'Support Agreements' },
-              { label: 'Open Tickets', value: globalStats.openTicketsCount, icon: Ticket, desc: 'Active Queue backlog' },
-              { label: 'Closed Tickets', value: globalStats.closedTicketsCount, icon: CheckCircle2, desc: 'SLA Resolved / Closed' },
-              { label: 'Escalated Tickets', value: globalStats.escalatedTicketsCount, icon: AlertTriangle, desc: 'Active Warning Alerts', tone: (globalStats.escalatedTicketsCount > 0 ? 'critical' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
+              { label: 'Open Backlog', value: globalStats.openTicketsCount, icon: Ticket, desc: 'Active Queue backlog' },
               { label: 'Pending Approvals', value: globalStats.pendingApprovalsCount, icon: Clock, desc: 'Awaiting Administrator Actions', tone: (globalStats.pendingApprovalsCount > 0 ? 'warning' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
-              { label: 'SLA Breaches', value: globalStats.slaBreachesCount, icon: ShieldAlert, desc: 'Violations Reported', tone: (globalStats.slaBreachesCount > 0 ? 'critical' : 'neutral') as 'neutral' | 'success' | 'warning' | 'critical' },
-              { label: 'Total Approved Hours', value: `${globalStats.totalApprovedHours.toFixed(1)}h`, icon: DollarSign, desc: 'Accumulated Timesheet Hours' },
-              { label: 'Current Month Utilized', value: `${globalStats.currentMonthUtilizedHours.toFixed(1)}h`, icon: Activity, desc: 'Logged this Month' },
+              { label: 'Approved Hours', value: `${globalStats.totalApprovedHours.toFixed(1)}h`, icon: DollarSign, desc: 'Accumulated Timesheet Hours' },
+              { label: 'Month Utilized', value: `${globalStats.currentMonthUtilizedHours.toFixed(1)}h`, icon: Activity, desc: 'Logged this Month' },
               { label: 'Remaining Hours', value: `${globalStats.remainingContractHours.toFixed(1)}h`, icon: Sliders, desc: 'Active contracts pool' },
-              { label: 'Platform Health Score', value: `${globalStats.platformHealthScore}%`, icon: HeartHandshake, desc: 'Active health status check', tone: (globalStats.platformHealthScore > 90 ? 'success' : 'warning') as 'neutral' | 'success' | 'warning' | 'critical' },
             ].map((kpi, i) => {
               const Icon = kpi.icon;
               return (
@@ -1803,24 +1874,51 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Quick status feed — terminal-style log panel (mono is intentional here) */}
-            <Card className="flex flex-col justify-between rounded-lg border border-zinc-800 bg-ink text-ink-muted shadow-card">
+            {/* Live activity feed — real Supabase audit rows + active escalations */}
+            <Card className="flex flex-col rounded-lg border border-zinc-800 bg-ink text-ink-muted shadow-card">
               <CardHeader className="border-b border-zinc-800 pb-3">
                 <CardTitle className="type-widget flex items-center gap-2 text-white uppercase">
-                  <Database size={14} /> Operations Log Stream
+                  <Database size={14} /> Live Activity Stream
                 </CardTitle>
-                <CardDescription className="type-status text-zinc-500">Live database transactional events</CardDescription>
+                <CardDescription className="type-status text-zinc-500">
+                  Most recent audit &amp; escalation events from Supabase
+                </CardDescription>
               </CardHeader>
-              <CardContent className="max-h-56 flex-1 space-y-1.5 overflow-y-auto p-4 font-mono text-[11px]">
-                <p><span className="text-zinc-600">&gt;</span> Checking Row Level Security policies...</p>
-                <p><span className="font-bold text-success">[OK]</span> Profiles partitions isolation active.</p>
-                <p><span className="text-zinc-600">&gt;</span> Pulled {tickets.length} tickets from Supabase successfully.</p>
-                <p><span className="text-zinc-600">&gt;</span> Synchronized {contracts.length} active contracts.</p>
-                {escalationsQueue.slice(0, 2).map((esc, i) => (
-                  <p key={i} className="text-red-400">
-                    <span className="font-bold text-critical">[ESCALATION]</span> Ticket {esc.ticketNumber} raised: {esc.reason}
-                  </p>
-                ))}
+              <CardContent className="max-h-56 flex-1 overflow-y-auto p-4 font-mono text-[11px] space-y-1.5">
+                {(() => {
+                  const rel = (ts: number) => {
+                    const s = Math.max(0, Math.floor((SYSTEM_NOW - ts) / 1000));
+                    if (s < 60) return `${s}s`;
+                    if (s < 3600) return `${Math.floor(s / 60)}m`;
+                    if (s < 86400) return `${Math.floor(s / 3600)}h`;
+                    return `${Math.floor(s / 86400)}d`;
+                  };
+                  type Row = { ts: number; kind: 'esc' | 'audit'; text: React.ReactNode };
+                  const rows: Row[] = [];
+                  escalationsQueue.slice(0, 4).forEach((esc) => rows.push({
+                    ts: new Date(esc.date || SYSTEM_NOW).getTime(),
+                    kind: 'esc',
+                    text: <><span className="font-bold text-critical">[ESCALATION]</span> {esc.ticketNumber} — {esc.reason}</>,
+                  }));
+                  [...auditLogs]
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .slice(0, 8)
+                    .forEach((log) => rows.push({
+                      ts: new Date(log.created_at).getTime(),
+                      kind: 'audit',
+                      text: <><span className="text-emerald-400 font-bold">[{(log.action || 'EVENT').toUpperCase()}]</span> <span className="text-zinc-300">{log.performed_by || 'system'}</span>{log.user_email ? <span className="text-zinc-500"> → {log.user_email}</span> : null}</>,
+                    }));
+                  rows.sort((a, b) => b.ts - a.ts);
+                  if (rows.length === 0) {
+                    return <p className="text-zinc-500">&gt; No recent audit or escalation events.</p>;
+                  }
+                  return rows.slice(0, 12).map((r, i) => (
+                    <p key={i} className="flex gap-2 leading-relaxed">
+                      <span className="text-zinc-600 shrink-0 tabular-nums w-8 text-right">{rel(r.ts)}</span>
+                      <span className="min-w-0">{r.text}</span>
+                    </p>
+                  ));
+                })()}
               </CardContent>
             </Card>
           </div>

@@ -141,6 +141,68 @@ export function AdminSparkline({ data, color = 'var(--ak-accent)', w = 64, h = 2
   return <svg width={w} height={h} className="ak-spark" aria-hidden><polyline points={pts} fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
+/* ─────────────────────── signal (hero KPI with trend) ─────────────────────── */
+
+/**
+ * Flagship KPI tile: dominant value, period-over-period delta chip, and a filled
+ * area sparkline of the in-period daily trend. Used for the 4 lead cockpit metrics
+ * that deserve visual weight over the uniform secondary strip.
+ */
+export function AdminSignal({
+  label, value, delta, invertDelta = false, series = [], tone = 'neutral', sub, icon, footNote,
+}: {
+  label: string; value: React.ReactNode; delta?: number; invertDelta?: boolean;
+  series?: number[]; tone?: 'neutral' | 'success' | 'warning' | 'critical';
+  sub?: string; icon?: React.ReactNode; footNote?: React.ReactNode;
+}) {
+  const good = delta == null ? false : invertDelta ? delta <= 0 : delta >= 0;
+  const DeltaIcon = (delta ?? 0) >= 0 ? ArrowUpRight : ArrowDownRight;
+  const accent = tone === 'critical' ? 'var(--ak-critical)'
+    : tone === 'warning' ? 'var(--ak-warning)'
+    : tone === 'success' ? 'var(--ak-success)' : 'var(--ak-accent)';
+  const w = 260, h = 48;
+  const data = series.length ? series : [0, 0];
+  const max = Math.max(...data), min = Math.min(...data);
+  const coords = data.map((v, i) => {
+    const x = (i / (data.length - 1 || 1)) * w;
+    const y = h - ((v - min) / (max - min || 1)) * (h - 7) - 4;
+    return [x, y] as const;
+  });
+  const line = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  const gid = React.useId().replace(/:/g, '');
+  return (
+    <article className={`ak-card ak-signal ak-tone-${tone}`}>
+      <span className="ak-signal-rail" style={{ background: accent }} aria-hidden />
+      <div className="ak-signal-head">
+        <span className="ak-signal-label">{label}</span>
+        {icon && <span className="ak-stat-icon">{icon}</span>}
+      </div>
+      <div className="ak-signal-value">{value}</div>
+      <div className="ak-stat-foot">
+        {delta != null && (
+          <span className={`ak-delta ${good ? 'is-good' : 'is-bad'}`}>
+            <DeltaIcon size={12} strokeWidth={2.5} />{Math.abs(delta)}%
+          </span>
+        )}
+        {sub && <span className="ak-stat-sub">{sub}</span>}
+      </div>
+      <svg className="ak-signal-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden>
+        <defs>
+          <linearGradient id={`sg-${gid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={accent} stopOpacity="0.20" />
+            <stop offset="100%" stopColor={accent} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill={`url(#sg-${gid})`} />
+        <path d={line} fill="none" stroke={accent} strokeWidth="1.75"
+          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+      {footNote && <span className="ak-signal-foot">{footNote}</span>}
+    </article>
+  );
+}
+
 /* ─────────────────────── bullet (utilization) row ─────────────────────────── */
 
 export function AdminBullet({ label, value, max, valueText, target = 100 }: { label: string; value: number; max: number; valueText?: string; target?: number }) {
@@ -397,6 +459,19 @@ const AK_CSS = `
 .admin-shell .ak-delta.is-bad{color:var(--ak-critical);background:rgba(197,57,43,.1);}
 .admin-shell .ak-stat-bar{height:4px;border-radius:99px;background:var(--ak-line);overflow:hidden;}
 .admin-shell .ak-stat-bar>div{height:100%;background:var(--ak-accent);border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1);}
+
+/* signal — hero KPI with trend */
+.admin-shell .ak-signal{position:relative;display:flex;flex-direction:column;gap:9px;padding:18px 18px 0;overflow:hidden;min-height:150px;transition:border-color .15s,box-shadow .15s,transform .15s;}
+.admin-shell .ak-signal:hover{border-color:var(--ak-line2);box-shadow:0 1px 2px rgba(15,23,42,.05),0 18px 34px -22px rgba(15,23,42,.34);transform:translateY(-1px);}
+.admin-shell .ak-signal-rail{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;opacity:.9;}
+.admin-shell .ak-signal-head{display:flex;justify-content:space-between;align-items:center;}
+.admin-shell .ak-signal-label{font-size:12px;font-weight:600;color:var(--ak-ink2);text-transform:uppercase;letter-spacing:.045em;}
+.admin-shell .ak-signal-value{font-size:34px;font-weight:700;letter-spacing:-0.035em;line-height:1;font-variant-numeric:tabular-nums;color:var(--ak-ink);}
+.admin-shell .ak-tone-success .ak-signal-value{color:var(--ak-success);}
+.admin-shell .ak-tone-warning .ak-signal-value{color:var(--ak-warning);}
+.admin-shell .ak-tone-critical .ak-signal-value{color:var(--ak-critical);}
+.admin-shell .ak-signal-foot{font-size:11px;color:var(--ak-ink3);font-weight:500;margin-top:2px;}
+.admin-shell .ak-signal-spark{width:calc(100% + 36px);margin:6px -18px 0;height:48px;display:block;}
 
 /* gauge */
 .admin-shell .ak-gauge{position:relative;display:grid;place-items:center;}
